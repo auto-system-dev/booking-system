@@ -6,14 +6,17 @@ require('dotenv').config();
 console.log('🔍 環境變數檢查:');
 console.log(`   - DATABASE_URL 存在: ${!!process.env.DATABASE_URL}`);
 console.log(`   - DATABASE_URL 長度: ${process.env.DATABASE_URL ? process.env.DATABASE_URL.length : 0}`);
-console.log(`   - DATABASE_URL 前綴: ${process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 20) + '...' : 'N/A'}`);
-console.log(`   - 所有環境變數鍵: ${Object.keys(process.env).filter(k => k.includes('DATABASE')).join(', ')}`);
+console.log(`   - DATABASE_URL 前綴: ${process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 30) + '...' : 'N/A'}`);
+console.log(`   - 所有環境變數鍵: ${Object.keys(process.env).filter(k => k.includes('DATABASE') || k.includes('POSTGRES')).join(', ') || '無'}`);
+console.log(`   - 所有環境變數數量: ${Object.keys(process.env).length}`);
+console.log(`   - 前 10 個環境變數鍵: ${Object.keys(process.env).slice(0, 10).join(', ')}`);
 
 // 檢查 DATABASE_URL 是否存在
 if (!process.env.DATABASE_URL) {
     console.error('❌ 錯誤：未設定 DATABASE_URL 環境變數');
     console.error('請確認 Railway 已正確設定 PostgreSQL 資料庫');
     console.error('可用的環境變數:', Object.keys(process.env).filter(k => k.includes('DATABASE') || k.includes('POSTGRES')));
+    console.error('所有環境變數列表:', Object.keys(process.env).join(', '));
     throw new Error('DATABASE_URL 環境變數未設定');
 }
 
