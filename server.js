@@ -43,7 +43,14 @@ const transporter = nodemailer.createTransport({
     auth: {
         user: process.env.EMAIL_USER || 'cheng701107@gmail.com', // 從 .env 檔案讀取，或使用預設值
         pass: process.env.EMAIL_PASS || 'vtik qvij ravh lirg' // 從 .env 檔案讀取，或使用預設值
-    }
+    },
+    // 增加超時時間和連接設定（Railway 環境需要）
+    connectionTimeout: 60000, // 60 秒
+    greetingTimeout: 30000, // 30 秒
+    socketTimeout: 60000, // 60 秒
+    pool: true, // 使用連接池
+    maxConnections: 1,
+    maxMessages: 3
 });
 
 // 房型名稱對照
@@ -225,22 +232,38 @@ app.post('/api/booking', async (req, res) => {
 
             // 發送郵件
             try {
-                console.log('正在發送郵件...');
-                console.log('發送給客戶:', guestEmail);
-                console.log('使用帳號:', process.env.EMAIL_USER || 'cheng701107@gmail.com');
+                console.log('📧 正在發送郵件...');
+                console.log('   發送給客戶:', guestEmail);
+                console.log('   使用帳號:', process.env.EMAIL_USER || 'cheng701107@gmail.com');
                 
-                await transporter.sendMail(customerMailOptions);
+                // 驗證 SMTP 連接（可選，但可以幫助診斷問題）
+                try {
+                    console.log('🔍 驗證 SMTP 連接...');
+                    await transporter.verify();
+                    console.log('✅ SMTP 連接驗證成功');
+                } catch (verifyError) {
+                    console.warn('⚠️  SMTP 連接驗證失敗，但繼續嘗試發送:', verifyError.message);
+                }
+                
+                console.log('📤 發送客戶確認郵件...');
+                const customerResult = await transporter.sendMail(customerMailOptions);
                 console.log('✅ 客戶確認郵件已發送');
+                console.log('   郵件 ID:', customerResult.messageId);
                 
-                await transporter.sendMail(adminMailOptions);
+                console.log('📤 發送管理員通知郵件...');
+                const adminResult = await transporter.sendMail(adminMailOptions);
                 console.log('✅ 管理員通知郵件已發送');
+                console.log('   郵件 ID:', adminResult.messageId);
                 
                 emailSent = true;
             } catch (emailError) {
                 emailErrorMsg = emailError.message || '未知錯誤';
                 console.error('❌ 郵件發送失敗:');
-                console.error('錯誤訊息:', emailErrorMsg);
-                console.error('完整錯誤:', emailError);
+                console.error('   錯誤訊息:', emailError.message);
+                console.error('   錯誤代碼:', emailError.code);
+                console.error('   錯誤命令:', emailError.command);
+                console.error('   完整錯誤:', emailError);
+                console.error('   錯誤堆疊:', emailError.stack);
                 
                 // 如果是認證錯誤，提供更詳細的說明
                 if (emailError.code === 'EAUTH' || emailError.message.includes('Invalid login')) {
