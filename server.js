@@ -1686,10 +1686,12 @@ async function startServer() {
         await db.initDatabase();
         
         // 啟動伺服器
-        app.listen(PORT, () => {
+        // Railway 需要監聽 0.0.0.0 才能接受外部請求
+        app.listen(PORT, '0.0.0.0', () => {
             console.log('\n========================================');
             console.log('🚀 訂房系統伺服器已啟動');
-            console.log(`📍 網址: http://localhost:${PORT}`);
+            console.log(`📍 端口: ${PORT}`);
+            console.log(`🌐 監聽地址: 0.0.0.0:${PORT}`);
             console.log(`📧 Email: ${process.env.EMAIL_USER || 'cheng701107@gmail.com'}`);
             console.log(`💾 資料庫: PostgreSQL`);
             console.log('========================================\n');
