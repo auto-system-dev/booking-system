@@ -1077,12 +1077,14 @@ const handlePaymentResult = async (req, res) => {
                                 };
                                 
                                 // 發送確認郵件給客戶
+                                console.log('📧 準備郵件內容...');
                                 const customerMailOptions = {
                                     from: process.env.EMAIL_USER || 'your-email@gmail.com',
                                     to: booking.guest_email,
                                     subject: '【訂房確認】您的訂房已成功',
                                     html: generateCustomerEmail(bookingData)
                                 };
+                                console.log('✅ 客戶郵件內容已準備');
 
                                 // 發送通知郵件給管理員
                                 const adminMailOptions = {
@@ -1091,16 +1093,25 @@ const handlePaymentResult = async (req, res) => {
                                     subject: `【新訂房通知】${booking.guest_name} - ${booking.booking_id}`,
                                     html: generateAdminEmail(bookingData)
                                 };
+                                console.log('✅ 管理員郵件內容已準備');
 
-                                await transporter.sendMail(customerMailOptions);
-                                console.log('✅ 客戶確認郵件已發送');
+                                console.log('📤 開始發送客戶確認郵件...');
+                                console.log('   使用帳號:', process.env.EMAIL_USER || 'cheng701107@gmail.com');
+                                console.log('   收件人:', booking.guest_email);
                                 
-                                await transporter.sendMail(adminMailOptions);
+                                const customerResult = await transporter.sendMail(customerMailOptions);
+                                console.log('✅ 客戶確認郵件已發送');
+                                console.log('   郵件 ID:', customerResult.messageId);
+                                
+                                console.log('📤 開始發送管理員通知郵件...');
+                                const adminResult = await transporter.sendMail(adminMailOptions);
                                 console.log('✅ 管理員通知郵件已發送');
+                                console.log('   郵件 ID:', adminResult.messageId);
                                 
                                 // 更新郵件狀態
+                                console.log('📝 更新郵件狀態...');
                                 await db.updateEmailStatus(bookingId, true, 'booking_confirmation');
-                                console.log('✅ 郵件狀態已更新');
+                                console.log('✅ 郵件狀態已更新為「訂房確認」');
                             } catch (emailError) {
                                 console.error('❌ 發送確認信失敗:', emailError.message);
                                 console.error('錯誤詳情:', emailError);
