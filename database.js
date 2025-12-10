@@ -2,12 +2,24 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+// 檢查 DATABASE_URL 是否存在
+if (!process.env.DATABASE_URL) {
+    console.error('❌ 錯誤：未設定 DATABASE_URL 環境變數');
+    console.error('請確認 Railway 已正確設定 PostgreSQL 資料庫');
+    throw new Error('DATABASE_URL 環境變數未設定');
+}
+
 // 建立 PostgreSQL 連接池
 // 判斷是否為本地連接（不需要 SSL）
 const isLocalConnection = process.env.DATABASE_URL && (
     process.env.DATABASE_URL.includes('localhost') || 
     process.env.DATABASE_URL.includes('127.0.0.1')
 );
+
+console.log('📊 資料庫連接資訊:');
+console.log(`   - DATABASE_URL: ${process.env.DATABASE_URL ? '已設定' : '未設定'}`);
+console.log(`   - 連接類型: ${isLocalConnection ? '本地' : '遠端'}`);
+console.log(`   - SSL: ${isLocalConnection ? '關閉' : '啟用'}`);
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -27,8 +39,12 @@ pool.on('error', (err) => {
 
 // 初始化資料庫（建立資料表）
 async function initDatabase() {
-    const client = await pool.connect();
+    let client;
     try {
+        console.log('🔄 正在連接資料庫...');
+        client = await pool.connect();
+        console.log('✅ 資料庫連接成功');
+        
         await client.query('BEGIN');
         
         // 建立訂房資料表
@@ -567,11 +583,20 @@ async function initDatabase() {
         
         await client.query('COMMIT');
     } catch (err) {
-        await client.query('ROLLBACK');
+        if (client) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (rollbackErr) {
+                console.error('❌ 回滾失敗:', rollbackErr);
+            }
+        }
         console.error('❌ 初始化資料庫失敗:', err.message);
+        console.error('錯誤詳情:', err);
         throw err;
     } finally {
-        client.release();
+        if (client) {
+            client.release();
+        }
     }
 }
 
@@ -1206,6 +1231,7 @@ async function getBookingsExpiredReservation() {
         
         return result.rows || [];
     } catch (err) {
+        console.error('❌ 查詢過期保留訂房失敗:', err);
         throw err;
     } finally {
         client.release();
