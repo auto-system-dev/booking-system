@@ -1022,19 +1022,85 @@ const handlePaymentResult = async (req, res) => {
                 console.warn('⚠️  測試環境：CheckMacValue 驗證失敗，但付款成功（RtnCode=1）');
                 console.warn('⚠️  正式環境請修正 CheckMacValue 計算方式');
                 
-                // 即使驗證失敗，如果付款成功也要更新狀態
+                // 即使驗證失敗，如果付款成功也要更新狀態並發送郵件
                 try {
                     const paymentResult = payment.parseReturnData(returnData);
                     if (paymentResult.rtnCode === '1') {
                         const bookingId = paymentResult.merchantTradeNo;
                         console.log('✅ 測試環境：付款成功，更新訂房記錄:', bookingId);
-                        await db.updateBooking(bookingId, {
-                            payment_status: 'paid'
-                        });
-                        console.log('✅ 付款狀態已更新為「已付款」');
+                        
+                        // 先取得訂房資料
+                        const booking = await db.getBookingById(bookingId);
+                        
+                        if (!booking) {
+                            console.error('❌ 找不到訂房記錄:', bookingId);
+                        } else {
+                            // 更新付款狀態為已付款，並確保訂房狀態為有效
+                            await db.updateBooking(bookingId, {
+                                payment_status: 'paid',
+                                status: 'active' // 線上刷卡付款成功，確保狀態為有效
+                            });
+                            console.log('✅ 付款狀態已更新為「已付款」，訂房狀態已更新為「有效」');
+                            
+                            // 發送確認信給客戶和管理員
+                            try {
+                                // 準備訂房資料
+                                const bookingData = {
+                                    bookingId: booking.booking_id,
+                                    checkInDate: booking.check_in_date,
+                                    checkOutDate: booking.check_out_date,
+                                    roomType: booking.room_type,
+                                    guestName: booking.guest_name,
+                                    guestPhone: booking.guest_phone,
+                                    guestEmail: booking.guest_email,
+                                    paymentAmount: booking.payment_amount,
+                                    paymentMethod: booking.payment_method,
+                                    pricePerNight: booking.price_per_night,
+                                    nights: booking.nights,
+                                    totalAmount: booking.total_amount,
+                                    finalAmount: booking.final_amount,
+                                    bookingDate: booking.booking_date,
+                                    depositPercentage: 30,
+                                    bankInfo: {},
+                                    paymentMethodCode: 'card',
+                                    daysReserved: 0,
+                                    paymentDeadline: ''
+                                };
+                                
+                                // 發送確認郵件給客戶
+                                const customerMailOptions = {
+                                    from: process.env.EMAIL_USER || 'your-email@gmail.com',
+                                    to: booking.guest_email,
+                                    subject: '【訂房確認】您的訂房已成功',
+                                    html: generateCustomerEmail(bookingData)
+                                };
+
+                                // 發送通知郵件給管理員
+                                const adminMailOptions = {
+                                    from: process.env.EMAIL_USER || 'your-email@gmail.com',
+                                    to: process.env.ADMIN_EMAIL || 'cheng701107@gmail.com',
+                                    subject: `【新訂房通知】${booking.guest_name} - ${booking.booking_id}`,
+                                    html: generateAdminEmail(bookingData)
+                                };
+
+                                await transporter.sendMail(customerMailOptions);
+                                console.log('✅ 客戶確認郵件已發送');
+                                
+                                await transporter.sendMail(adminMailOptions);
+                                console.log('✅ 管理員通知郵件已發送');
+                                
+                                // 更新郵件狀態
+                                await db.updateEmailStatus(bookingId, true, 'booking_confirmation');
+                                console.log('✅ 郵件狀態已更新');
+                            } catch (emailError) {
+                                console.error('❌ 發送確認信失敗:', emailError.message);
+                                console.error('錯誤詳情:', emailError);
+                            }
+                        }
                     }
                 } catch (updateError) {
                     console.error('❌ 更新付款狀態失敗:', updateError);
+                    console.error('錯誤詳情:', updateError);
                 }
                 
                 // 繼續處理（僅測試環境且付款成功時）
