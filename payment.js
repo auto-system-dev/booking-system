@@ -22,6 +22,17 @@ const ECPAY_CONFIG = {
 
 // 取得當前環境設定
 function getConfig() {
+    // 檢查 MerchantID 是否為測試環境的 ID
+    const merchantID = process.env.ECPAY_MERCHANT_ID || '2000132';
+    const isTestMerchantID = merchantID === '2000132';
+    
+    // 如果使用測試環境的 MerchantID，強制使用測試環境 API
+    // 即使 NODE_ENV 是 production，也要使用測試環境（避免在正式環境誤用測試 MerchantID）
+    if (isTestMerchantID) {
+        return ECPAY_CONFIG.test;
+    }
+    
+    // 否則根據 NODE_ENV 決定
     const env = process.env.NODE_ENV === 'production' ? 'production' : 'test';
     return ECPAY_CONFIG[env];
 }
@@ -77,12 +88,24 @@ function createCheckMacValue(params, hashKey, hashIV) {
 // 建立支付表單資料
 function createPaymentForm(bookingData, paymentInfo, customConfig = null) {
     // 如果提供了自訂設定，使用自訂設定；否則使用預設設定
-    const config = customConfig ? {
-        MerchantID: customConfig.MerchantID,
-        HashKey: customConfig.HashKey,
-        HashIV: customConfig.HashIV,
-        ActionUrl: getConfig().ActionUrl // ActionUrl 仍使用環境設定
-    } : getConfig();
+    let config;
+    if (customConfig) {
+        // 檢查 MerchantID 是否為測試環境的 ID
+        const isTestMerchantID = customConfig.MerchantID === '2000132';
+        // 根據 MerchantID 決定使用哪個 API 端點
+        const actionUrl = isTestMerchantID 
+            ? 'https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5'  // 測試環境
+            : 'https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5';        // 正式環境
+        
+        config = {
+            MerchantID: customConfig.MerchantID,
+            HashKey: customConfig.HashKey,
+            HashIV: customConfig.HashIV,
+            ActionUrl: actionUrl
+        };
+    } else {
+        config = getConfig();
+    }
     
     const { finalAmount, bookingId, guestName, guestEmail, guestPhone } = bookingData;
     
