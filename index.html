@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>線上訂房系統</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="booking-card">
+            <div class="card-header">
+                <h1>🏨 線上訂房系統</h1>
+                <p class="subtitle">預訂您的完美住宿體驗</p>
+            </div>
+
+            <form id="bookingForm" class="booking-form">
+                <!-- 日期選擇區 -->
+                <div class="form-section">
+                    <h2 class="section-title">📅 選擇日期</h2>
+                    <div class="date-picker-group">
+                        <div class="date-input-wrapper">
+                            <label for="checkInDate">入住日期</label>
+                            <input type="date" id="checkInDate" name="checkInDate" required>
+                        </div>
+                        <div class="date-input-wrapper">
+                            <label for="checkOutDate">退房日期</label>
+                            <input type="date" id="checkOutDate" name="checkOutDate" required>
+                        </div>
+                    </div>
+                    <div class="nights-display" id="nightsDisplay"></div>
+                </div>
+
+                <!-- 房型選擇區 -->
+                <div class="form-section">
+                    <h2 class="section-title">🛏️ 選擇房型</h2>
+                    <div class="room-type-grid" id="roomTypeGrid">
+                        <div class="loading">載入房型中...</div>
+                    </div>
+                </div>
+
+                <!-- 個人資訊區 -->
+                <div class="form-section">
+                    <h2 class="section-title">👤 聯絡資訊</h2>
+                    <div class="form-group">
+                        <label for="guestName">姓名 <span class="required">*</span></label>
+                        <input type="text" id="guestName" name="guestName" placeholder="請輸入您的姓名" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="guestPhone">手機 <span class="required">*</span></label>
+                            <input type="tel" id="guestPhone" name="guestPhone" placeholder="0912-345-678" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="guestEmail">Email <span class="required">*</span></label>
+                            <input type="email" id="guestEmail" name="guestEmail" placeholder="example@email.com" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 支付選項區 -->
+                <div class="form-section">
+                    <h2 class="section-title">💳 支付方式</h2>
+                    
+                    <div class="payment-amount-group">
+                        <label class="payment-label">支付金額</label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="paymentAmount" value="deposit" checked>
+                                <span id="depositLabel">支付訂金 (30%)</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="paymentAmount" value="full">
+                                <span>支付全額</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="payment-method-group">
+                        <label class="payment-label">付款方式</label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="paymentMethod" value="transfer" checked>
+                                <span>💸 匯款轉帳</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="paymentMethod" value="card">
+                                <span>💳 線上刷卡</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 價格摘要區 -->
+                <div class="form-section price-summary">
+                    <div class="summary-row">
+                        <span>房型單價</span>
+                        <span id="roomPricePerNight">NT$ 0</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>住宿天數</span>
+                        <span id="nightsCount">0 晚</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>總金額</span>
+                        <span id="totalAmount">NT$ 0</span>
+                    </div>
+                    <div class="summary-row payment-row">
+                        <span id="paymentTypeLabel">應付訂金 (30%)</span>
+                        <span id="paymentAmount" class="highlight">NT$ 0</span>
+                    </div>
+                </div>
+
+                <!-- 提交按鈕 -->
+                <button type="submit" class="submit-btn">
+                    <span>確認訂房</span>
+                </button>
+            </form>
+
+            <!-- 成功訊息 -->
+            <div id="successMessage" class="success-message hidden">
+                <div class="success-icon">✓</div>
+                <h3>訂房成功！</h3>
+                <p>我們已收到您的訂房申請，確認信已發送至您的 Email</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+

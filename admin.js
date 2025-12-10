@@ -1,0 +1,1901 @@
+// 管理後台 JavaScript
+
+let allBookings = [];
+let filteredBookings = [];
+let currentPage = 1;
+const itemsPerPage = 10;
+
+// Quill 編輯器實例
+let quillEditor = null;
+let isHtmlMode = false;
+
+// 初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 導航切換
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const section = this.dataset.section;
+            switchSection(section);
+        });
+    });
+
+    // 載入資料
+    loadBookings();
+    loadStatistics();
+    
+    // 如果切換到房型管理或系統設定，載入對應資料
+    const urlHash = window.location.hash;
+    if (urlHash === '#room-types') {
+        switchSection('room-types');
+        loadRoomTypes();
+    } else if (urlHash === '#settings') {
+        switchSection('settings');
+        loadSettings();
+    }
+
+    // 點擊模態框外部關閉
+    document.getElementById('bookingModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeModal();
+        }
+    });
+    
+    // 點擊郵件模板模態框外部關閉
+    const emailTemplateModal = document.getElementById('emailTemplateModal');
+    if (emailTemplateModal) {
+        emailTemplateModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeEmailTemplateModal();
+            }
+        });
+    }
+});
+
+// 切換區塊
+function switchSection(section) {
+    // 更新導航狀態
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    const navItem = document.querySelector(`[data-section="${section}"]`);
+    if (navItem) {
+        navItem.classList.add('active');
+    }
+
+    // 更新內容區
+    document.querySelectorAll('.content-section').forEach(sec => {
+        sec.classList.remove('active');
+    });
+    const contentSection = document.getElementById(`${section}-section`);
+    if (contentSection) {
+        contentSection.classList.add('active');
+    }
+    
+    // 根據區塊載入對應資料
+    if (section === 'room-types') {
+        loadRoomTypes();
+    } else if (section === 'settings') {
+        loadSettings();
+    } else if (section === 'email-templates') {
+        loadEmailTemplates();
+    } else if (section === 'statistics') {
+        loadStatistics();
+    } else if (section === 'bookings') {
+        loadBookings();
+    }
+}
+
+// 載入訂房記錄
+async function loadBookings() {
+    try {
+        const response = await fetch('/api/bookings');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        console.log('API 回應:', result);
+        
+        if (result.success) {
+            allBookings = result.data || [];
+            filteredBookings = [...allBookings];
+            currentPage = 1;
+            console.log('📊 載入的訂房記錄數量:', allBookings.length);
+            if (allBookings.length > 0) {
+                console.log('📊 第一筆記錄的金額:', {
+                    booking_id: allBookings[0].booking_id,
+                    total_amount: allBookings[0].total_amount,
+                    final_amount: allBookings[0].final_amount
+                });
+            }
+            renderBookings();
+        } else {
+            showError('載入訂房記錄失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('載入訂房記錄錯誤:', error);
+        showError('載入訂房記錄時發生錯誤：' + error.message);
+    }
+}
+
+// 渲染訂房記錄
+function renderBookings() {
+    const tbody = document.getElementById('bookingsTableBody');
+    
+    if (filteredBookings.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" class="loading">沒有找到訂房記錄</td></tr>';
+        return;
+    }
+
+    // 計算分頁
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    const pageBookings = filteredBookings.slice(start, end);
+
+    tbody.innerHTML = pageBookings.map(booking => {
+        const paymentStatus = booking.payment_status || 'pending';
+        const bookingStatus = booking.status || 'active';
+        const isCancelled = bookingStatus === 'cancelled';
+        
+        // 確保金額是數字類型並正確顯示
+        const totalAmount = parseInt(booking.total_amount) || 0;
+        const finalAmount = parseInt(booking.final_amount) || 0;
+        
+        return `
+        <tr ${isCancelled ? 'style="opacity: 0.6; background: #f8f8f8;"' : ''}>
+            <td>${booking.booking_id}</td>
+            <td>${booking.guest_name}</td>
+            <td>${booking.room_type}</td>
+            <td>${formatDate(booking.check_in_date)}</td>
+            <td>${booking.nights} 晚</td>
+            <td>NT$ ${totalAmount.toLocaleString()}</td>
+            <td>NT$ ${finalAmount.toLocaleString()}</td>
+            <td>${booking.payment_method}</td>
+            <td>
+                <span class="status-badge ${getPaymentStatusClass(paymentStatus)}">
+                    ${getPaymentStatusText(paymentStatus)}
+                </span>
+            </td>
+            <td>
+                <span class="status-badge ${getBookingStatusClass(bookingStatus)}">
+                    ${getBookingStatusText(bookingStatus)}
+                </span>
+            </td>
+            <td>
+                ${getEmailStatusDisplay(booking.email_sent)}
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-view" onclick="viewBookingDetail('${booking.booking_id}')">查看</button>
+                    ${!isCancelled ? `
+                        <button class="btn-edit" onclick="editBooking('${booking.booking_id}')">編輯</button>
+                        <button class="btn-cancel" onclick="cancelBooking('${booking.booking_id}')">取消</button>
+                    ` : `
+                        <button class="btn-delete" onclick="deleteBooking('${booking.booking_id}')">刪除</button>
+                    `}
+                </div>
+            </td>
+        </tr>
+    `;
+    }).join('');
+
+    // 渲染分頁
+    renderPagination();
+}
+
+// 渲染分頁
+function renderPagination() {
+    const totalPages = Math.ceil(filteredBookings.length / itemsPerPage);
+    const pagination = document.getElementById('pagination');
+    
+    if (totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+    
+    // 上一頁
+    html += `<button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一頁</button>`;
+    
+    // 頁碼
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            html += `<button onclick="changePage(${i})" ${i === currentPage ? 'style="background: #667eea; color: white;"' : ''}>${i}</button>`;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+            html += `<span class="page-info">...</span>`;
+        }
+    }
+    
+    // 下一頁
+    html += `<button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>下一頁</button>`;
+    
+    html += `<span class="page-info">共 ${filteredBookings.length} 筆，第 ${currentPage}/${totalPages} 頁</span>`;
+    
+    pagination.innerHTML = html;
+}
+
+// 切換頁碼
+function changePage(page) {
+    const totalPages = Math.ceil(filteredBookings.length / itemsPerPage);
+    if (page >= 1 && page <= totalPages) {
+        currentPage = page;
+        renderBookings();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+// 篩選訂房記錄
+function filterBookings() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const roomType = document.getElementById('roomTypeFilter').value;
+    
+    filteredBookings = allBookings.filter(booking => {
+        const matchSearch = !searchTerm || 
+            booking.booking_id.toLowerCase().includes(searchTerm) ||
+            booking.guest_name.toLowerCase().includes(searchTerm) ||
+            booking.guest_email.toLowerCase().includes(searchTerm) ||
+            booking.guest_phone.includes(searchTerm);
+        
+        const matchRoomType = !roomType || booking.room_type === roomType;
+        
+        return matchSearch && matchRoomType;
+    });
+    
+    currentPage = 1;
+    renderBookings();
+}
+
+// 查看訂房詳情
+async function viewBookingDetail(bookingId) {
+    try {
+        const response = await fetch(`/api/bookings/${bookingId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            showBookingModal(result.data);
+        } else {
+            showError('載入訂房詳情失敗');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showError('載入訂房詳情時發生錯誤');
+    }
+}
+
+// 顯示訂房詳情模態框
+function showBookingModal(booking) {
+    const modal = document.getElementById('bookingModal');
+    const modalBody = document.getElementById('modalBody');
+    
+    modalBody.innerHTML = `
+        <div class="detail-row">
+            <span class="detail-label">訂房編號</span>
+            <span class="detail-value">${booking.booking_id}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">客戶姓名</span>
+            <span class="detail-value">${booking.guest_name}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">聯絡電話</span>
+            <span class="detail-value">${booking.guest_phone}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Email</span>
+            <span class="detail-value">${booking.guest_email}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">房型</span>
+            <span class="detail-value">${booking.room_type}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">入住日期</span>
+            <span class="detail-value">${formatDate(booking.check_in_date)}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">退房日期</span>
+            <span class="detail-value">${formatDate(booking.check_out_date)}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">住宿天數</span>
+            <span class="detail-value">${booking.nights} 晚</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">每晚房價</span>
+            <span class="detail-value">NT$ ${booking.price_per_night.toLocaleString()}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">總金額</span>
+            <span class="detail-value">NT$ ${booking.total_amount.toLocaleString()}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">應付金額</span>
+            <span class="detail-value" style="color: #667eea; font-weight: 700; font-size: 18px;">NT$ ${booking.final_amount.toLocaleString()}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">支付方式</span>
+            <span class="detail-value">${booking.payment_amount} - ${booking.payment_method}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">付款狀態</span>
+            <span class="detail-value">
+                <span class="status-badge ${getPaymentStatusClass(booking.payment_status || 'pending')}">
+                    ${getPaymentStatusText(booking.payment_status || 'pending')}
+                </span>
+            </span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">訂房狀態</span>
+            <span class="detail-value">
+                <span class="status-badge ${getBookingStatusClass(booking.status || 'active')}">
+                    ${getBookingStatusText(booking.status || 'active')}
+                </span>
+            </span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">郵件狀態</span>
+            <span class="detail-value">
+                ${getEmailStatusDisplay(booking.email_sent)}
+            </span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">訂房時間</span>
+            <span class="detail-value">${formatDateTime(booking.created_at)}</span>
+        </div>
+    `;
+    
+    modal.classList.add('active');
+}
+
+// 關閉模態框
+function closeModal() {
+    document.getElementById('bookingModal').classList.remove('active');
+}
+
+// 載入統計資料
+async function loadStatistics() {
+    try {
+        const response = await fetch('/api/statistics');
+        const result = await response.json();
+        
+        if (result.success) {
+            const stats = result.data;
+            
+            document.getElementById('totalBookings').textContent = stats.totalBookings || 0;
+            document.getElementById('totalRevenue').textContent = `NT$ ${(stats.totalRevenue || 0).toLocaleString()}`;
+            document.getElementById('recentBookings').textContent = stats.recentBookings || 0;
+            
+            // 計算郵件已發送數量
+            const emailSentCount = allBookings.filter(b => b.email_sent).length;
+            document.getElementById('emailSent').textContent = `${emailSentCount}/${allBookings.length}`;
+            
+            // 渲染房型統計
+            renderRoomStats(stats.byRoomType || []);
+        } else {
+            showError('載入統計資料失敗');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showError('載入統計資料時發生錯誤');
+    }
+}
+
+// 渲染房型統計
+function renderRoomStats(roomStats) {
+    const container = document.getElementById('roomStatsList');
+    
+    if (roomStats.length === 0) {
+        container.innerHTML = '<div class="loading">沒有資料</div>';
+        return;
+    }
+    
+    container.innerHTML = roomStats.map(stat => `
+        <div class="room-stat-item">
+            <span class="room-stat-name">${stat.room_type}</span>
+            <span class="room-stat-count">${stat.count} 筆</span>
+        </div>
+    `).join('');
+}
+
+// 格式化日期
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('zh-TW', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+}
+
+// 格式化日期時間
+function formatDateTime(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleString('zh-TW', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// 顯示錯誤訊息
+function showError(message) {
+    alert(message);
+}
+
+function showSuccess(message) {
+    alert(message);
+}
+
+// 取得付款狀態樣式
+function getPaymentStatusClass(status) {
+    const statusMap = {
+        'paid': 'status-paid',
+        'pending': 'status-pending',
+        'failed': 'status-failed',
+        'refunded': 'status-refunded'
+    };
+    return statusMap[status] || 'status-pending';
+}
+
+// 取得付款狀態文字
+function getPaymentStatusText(status) {
+    const statusMap = {
+        'paid': '已付款',
+        'pending': '待付款',
+        'failed': '付款失敗',
+        'refunded': '已退款'
+    };
+    return statusMap[status] || '待付款';
+}
+
+// 取得訂房狀態文字
+function getBookingStatusText(status) {
+    const statusMap = {
+        'active': '有效',
+        'reserved': '保留',
+        'cancelled': '已取消'
+    };
+    return statusMap[status] || status;
+}
+
+// 取得訂房狀態樣式類別
+function getBookingStatusClass(status) {
+    const classMap = {
+        'active': 'status-active',
+        'reserved': 'status-reserved',
+        'cancelled': 'status-cancelled'
+    };
+    return classMap[status] || 'status-default';
+}
+
+// 取得郵件狀態顯示
+function getEmailStatusDisplay(emailSent) {
+    if (!emailSent || emailSent === '0' || emailSent === '') {
+        return '<span class="status-badge status-unsent">未發送</span>';
+    }
+    
+    // 處理舊格式（數字）
+    if (typeof emailSent === 'number') {
+        return emailSent === 1 
+            ? '<span class="status-badge status-sent">已發送</span>'
+            : '<span class="status-badge status-unsent">未發送</span>';
+    }
+    
+    // 處理新格式（逗號分隔的字串）
+    const emailTypes = emailSent.toString().split(',').filter(t => t.trim() !== '');
+    
+    if (emailTypes.length === 0) {
+        return '<span class="status-badge status-unsent">未發送</span>';
+    }
+    
+    // 郵件類型對照
+    const emailTypeMap = {
+        'booking_confirmation': '訂房確認',
+        'checkin_reminder': '入住提醒',
+        'feedback_request': '感謝入住',
+        'payment_reminder': '匯款提醒'
+    };
+    
+    // 定義郵件類型的顯示順序
+    const emailTypeOrder = ['booking_confirmation', 'checkin_reminder', 'feedback_request', 'payment_reminder'];
+    
+    // 只顯示已發送的郵件類型
+    const sentEmailTypes = emailTypes
+        .map(type => type.trim())
+        .filter(type => emailTypeOrder.includes(type))
+        .sort((a, b) => emailTypeOrder.indexOf(a) - emailTypeOrder.indexOf(b));
+    
+    if (sentEmailTypes.length === 0) {
+        return '<span class="status-badge status-unsent">未發送</span>';
+    }
+    
+    // 顯示已發送的郵件類型，每個一行
+    const badges = sentEmailTypes.map(type => {
+        const typeName = emailTypeMap[type] || type;
+        return `<div style="margin-bottom: 4px;"><span class="status-badge status-sent">${typeName}</span></div>`;
+    }).join('');
+    
+    return `<div style="text-align: left;">${badges}</div>`;
+}
+
+// 編輯訂房
+async function editBooking(bookingId) {
+    try {
+        console.log('載入訂房資料:', bookingId);
+        const response = await fetch(`/api/bookings/${bookingId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            showEditModal(result.data);
+        } else {
+            showError('載入訂房資料失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showError('載入訂房資料時發生錯誤：' + error.message);
+    }
+}
+
+// 房型價格對應表（動態載入）
+let roomPrices = {};
+let allRoomTypesForEdit = []; // 用於編輯表單
+let depositPercentage = 30;
+
+// 載入房型價格對應表
+async function loadRoomPrices() {
+    try {
+        const [roomTypesResponse, settingsResponse] = await Promise.all([
+            fetch('/api/admin/room-types'),
+            fetch('/api/settings')
+        ]);
+        
+        const roomTypesResult = await roomTypesResponse.json();
+        const settingsResult = await settingsResponse.json();
+        
+        if (roomTypesResult.success) {
+            roomPrices = {};
+            allRoomTypesForEdit = roomTypesResult.data || [];
+            roomTypesResult.data.forEach(room => {
+                roomPrices[room.display_name] = room.price;
+            });
+        }
+        
+        if (settingsResult.success && settingsResult.data.deposit_percentage) {
+            depositPercentage = parseInt(settingsResult.data.deposit_percentage) || 30;
+        }
+    } catch (error) {
+        console.error('載入房型價格錯誤:', error);
+    }
+}
+
+// 生成房型選項 HTML
+function generateRoomTypeOptions(selectedRoomType) {
+    if (allRoomTypesForEdit.length === 0) {
+        // 如果還沒載入，使用預設選項
+        return `
+            <option value="標準雙人房" data-price="2000" ${selectedRoomType === '標準雙人房' ? 'selected' : ''}>標準雙人房 (NT$ 2,000/晚)</option>
+            <option value="豪華雙人房" data-price="3500" ${selectedRoomType === '豪華雙人房' ? 'selected' : ''}>豪華雙人房 (NT$ 3,500/晚)</option>
+            <option value="尊爵套房" data-price="5000" ${selectedRoomType === '尊爵套房' ? 'selected' : ''}>尊爵套房 (NT$ 5,000/晚)</option>
+            <option value="家庭四人房" data-price="4500" ${selectedRoomType === '家庭四人房' ? 'selected' : ''}>家庭四人房 (NT$ 4,500/晚)</option>
+        `;
+    }
+    
+    return allRoomTypesForEdit.map(room => {
+        const isSelected = room.display_name === selectedRoomType;
+        return `<option value="${escapeHtml(room.display_name)}" data-price="${room.price}" ${isSelected ? 'selected' : ''}>${escapeHtml(room.display_name)} (NT$ ${room.price.toLocaleString()}/晚)</option>`;
+    }).join('');
+}
+
+
+// 初始化時載入
+loadRoomPrices();
+
+// 顯示編輯模態框
+async function showEditModal(booking) {
+    const modal = document.getElementById('bookingModal');
+    const modalBody = document.getElementById('modalBody');
+    
+    // 確保載入最新的系統設定（訂金%數）
+    try {
+        const settingsResponse = await fetch('/api/settings');
+        const settingsResult = await settingsResponse.json();
+        if (settingsResult.success && settingsResult.data.deposit_percentage) {
+            depositPercentage = parseInt(settingsResult.data.deposit_percentage) || 30;
+        }
+    } catch (error) {
+        console.error('載入系統設定錯誤:', error);
+    }
+    
+    // 計算初始價格
+    const pricePerNight = roomPrices[booking.room_type] || 2000;
+    const checkIn = new Date(booking.check_in_date);
+    const checkOut = new Date(booking.check_out_date);
+    const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+    const totalAmount = pricePerNight * nights;
+    // 根據原始付款方式計算應付金額（使用系統設定的訂金%數）
+    const originalFinalAmount = booking.final_amount || booking.total_amount;
+    const depositAmount = totalAmount * (depositPercentage / 100);
+    const isDeposit = originalFinalAmount < totalAmount * 0.5 && Math.abs(originalFinalAmount - depositAmount) < totalAmount * 0.1;
+    const finalAmount = isDeposit ? depositAmount : totalAmount;
+    
+    modalBody.innerHTML = `
+        <form id="editBookingForm" onsubmit="saveBookingEdit(event, '${booking.booking_id}')">
+            <div class="form-group">
+                <label>客戶姓名</label>
+                <input type="text" name="guest_name" value="${escapeHtml(booking.guest_name)}" required>
+            </div>
+            <div class="form-group">
+                <label>聯絡電話</label>
+                <input type="tel" name="guest_phone" value="${escapeHtml(booking.guest_phone)}" required>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="guest_email" value="${escapeHtml(booking.guest_email)}" required>
+            </div>
+            <div class="form-group">
+                <label>房型</label>
+                <select name="room_type" id="editRoomType" required onchange="checkEditRoomAvailability()">
+                    ${generateRoomTypeOptions(booking.room_type)}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>入住日期</label>
+                <input type="date" name="check_in_date" id="editCheckInDate" value="${booking.check_in_date}" required onchange="checkEditRoomAvailability()">
+            </div>
+            <div class="form-group">
+                <label>退房日期</label>
+                <input type="date" name="check_out_date" id="editCheckOutDate" value="${booking.check_out_date}" required onchange="checkEditRoomAvailability()">
+            </div>
+            <div id="editRoomAvailabilityWarning" style="display: none; padding: 12px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; margin-bottom: 15px; color: #856404;">
+                <strong>⚠️ 警告：</strong><span id="editRoomAvailabilityMessage">該日期範圍內已有訂房，可能造成重複訂房</span>
+            </div>
+            <div class="form-group">
+                <label>付款方式</label>
+                <select name="payment_method" id="editPaymentMethod" required onchange="calculateEditPrice()">
+                    <option value="匯款轉帳" ${booking.payment_method === '匯款轉帳' ? 'selected' : ''}>匯款轉帳</option>
+                    <option value="線上刷卡" ${booking.payment_method === '線上刷卡' ? 'selected' : ''}>線上刷卡</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>付款金額類型</label>
+                <select name="payment_amount_type" id="editPaymentAmountType" required onchange="calculateEditPrice()">
+                    <option value="deposit" ${isDeposit ? 'selected' : ''}>支付訂金 (${depositPercentage}%)</option>
+                    <option value="full" ${!isDeposit ? 'selected' : ''}>支付全額</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>付款狀態</label>
+                <select name="payment_status" required>
+                    <option value="pending" ${(booking.payment_status || 'pending') === 'pending' ? 'selected' : ''}>待付款</option>
+                    <option value="paid" ${(booking.payment_status || 'pending') === 'paid' ? 'selected' : ''}>已付款</option>
+                    <option value="failed" ${(booking.payment_status || 'pending') === 'failed' ? 'selected' : ''}>付款失敗</option>
+                    <option value="refunded" ${(booking.payment_status || 'pending') === 'refunded' ? 'selected' : ''}>已退款</option>
+                </select>
+            </div>
+            <div class="price-summary" style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                <h3 style="margin: 0 0 10px 0; font-size: 16px;">價格計算</h3>
+                <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                    <span>每晚價格：</span>
+                    <strong id="editPricePerNight">NT$ ${pricePerNight.toLocaleString()}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                    <span>住宿天數：</span>
+                    <strong id="editNights">${nights} 晚</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin: 5px 0; padding-top: 10px; border-top: 1px solid #ddd;">
+                    <span>總金額：</span>
+                    <strong id="editTotalAmount">NT$ ${totalAmount.toLocaleString()}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin: 5px 0; color: #e74c3c; font-size: 18px;">
+                    <span id="editPaymentTypeLabel">${isDeposit ? `應付訂金 (${depositPercentage}%)` : '應付全額'}：</span>
+                    <strong id="editFinalAmount">NT$ ${finalAmount.toLocaleString()}</strong>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn-save">儲存</button>
+                <button type="button" class="btn-cancel" onclick="closeModal()">取消</button>
+            </div>
+        </form>
+    `;
+    
+    modal.classList.add('active');
+    
+    // 初始化時檢查房間可用性
+    setTimeout(() => {
+        checkEditRoomAvailability();
+    }, 100);
+}
+
+// 檢查編輯表單的房間可用性
+async function checkEditRoomAvailability() {
+    try {
+        const checkInDate = document.getElementById('editCheckInDate');
+        const checkOutDate = document.getElementById('editCheckOutDate');
+        const roomTypeSelect = document.getElementById('editRoomType');
+        const warningDiv = document.getElementById('editRoomAvailabilityWarning');
+        const messageSpan = document.getElementById('editRoomAvailabilityMessage');
+        
+        if (!checkInDate || !checkOutDate || !roomTypeSelect) {
+            calculateEditPrice();
+            return;
+        }
+        
+        // 如果警告元素不存在，先計算價格（可能是表單還沒完全載入）
+        if (!warningDiv || !messageSpan) {
+            calculateEditPrice();
+            return;
+        }
+        
+        const startDate = checkInDate.value;
+        const endDate = checkOutDate.value;
+        
+        if (!startDate || !endDate) {
+            warningDiv.style.display = 'none';
+            calculateEditPrice();
+            return;
+        }
+        
+        console.log('🔍 檢查房間可用性:', { startDate, endDate });
+        
+        const response = await fetch(`/api/room-availability?startDate=${startDate}&endDate=${endDate}`);
+        
+        if (!response.ok) {
+            console.error('❌ API 請求失敗:', response.status, response.statusText);
+            calculateEditPrice();
+            return;
+        }
+        
+        const result = await response.json();
+        console.log('📥 房間可用性回應:', result);
+        
+        if (result.success) {
+            const availability = result.data || {};
+            const selectedOption = roomTypeSelect.options[roomTypeSelect.selectedIndex];
+            // 使用 value 而不是 textContent，因為 value 是 room.display_name，與資料庫返回的房型名稱一致
+            const selectedRoomType = selectedOption ? selectedOption.value : '';
+            const selectedRoomTypeText = selectedOption ? selectedOption.textContent.trim() : '';
+            
+            console.log('🏠 選擇的房型 (value):', selectedRoomType);
+            console.log('🏠 選擇的房型 (text):', selectedRoomTypeText);
+            console.log('📊 可用性資料:', availability);
+            
+            // 檢查該房型是否有訂房（排除當前編輯的訂房）
+            const bookingCount = availability[selectedRoomType] || 0;
+            const hasBooking = bookingCount > 0;
+            
+            console.log('🔢 該房型的訂房數量:', bookingCount);
+            
+            if (hasBooking) {
+                // 顯示警告（但允許編輯，因為可能是編輯現有訂房）
+                warningDiv.style.display = 'block';
+                messageSpan.textContent = `該日期範圍內，${selectedRoomType} 已有 ${bookingCount} 筆「有效」或「保留」的訂房記錄，請確認是否會造成重複訂房。`;
+                warningDiv.style.background = '#fff3cd';
+                warningDiv.style.borderColor = '#ffc107';
+                warningDiv.style.color = '#856404';
+                console.log('⚠️ 顯示滿房警告，訂房數量:', bookingCount);
+            } else {
+                warningDiv.style.display = 'none';
+                console.log('✅ 該日期範圍內沒有訂房');
+            }
+        }
+    } catch (error) {
+        console.error('❌ 檢查房間可用性錯誤:', error);
+        // 即使出錯，也要計算價格
+    }
+    
+    // 無論如何都計算價格
+    calculateEditPrice();
+}
+
+// 計算編輯表單的價格
+function calculateEditPrice() {
+    const roomTypeSelect = document.getElementById('editRoomType');
+    const checkInDate = document.getElementById('editCheckInDate');
+    const checkOutDate = document.getElementById('editCheckOutDate');
+    const paymentAmountType = document.getElementById('editPaymentAmountType');
+    
+    if (!roomTypeSelect || !checkInDate || !checkOutDate || !paymentAmountType) {
+        return;
+    }
+    
+    const selectedOption = roomTypeSelect.options[roomTypeSelect.selectedIndex];
+    const pricePerNight = parseInt(selectedOption.dataset.price) || 2000;
+    
+    const checkIn = new Date(checkInDate.value);
+    const checkOut = new Date(checkOutDate.value);
+    
+    if (checkIn && checkOut && checkOut > checkIn) {
+        const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+        const totalAmount = pricePerNight * nights;
+        const isDeposit = paymentAmountType.value === 'deposit';
+        const finalAmount = isDeposit ? totalAmount * (depositPercentage / 100) : totalAmount;
+        
+        // 更新顯示
+        document.getElementById('editPricePerNight').textContent = `NT$ ${pricePerNight.toLocaleString()}`;
+        document.getElementById('editNights').textContent = `${nights} 晚`;
+        document.getElementById('editTotalAmount').textContent = `NT$ ${totalAmount.toLocaleString()}`;
+        document.getElementById('editPaymentTypeLabel').textContent = `${isDeposit ? `應付訂金 (${depositPercentage}%)` : '應付全額'}：`;
+        document.getElementById('editFinalAmount').textContent = `NT$ ${finalAmount.toLocaleString()}`;
+    } else {
+        // 如果日期無效，顯示預設值
+        document.getElementById('editPricePerNight').textContent = `NT$ ${pricePerNight.toLocaleString()}`;
+        document.getElementById('editNights').textContent = '0 晚';
+        document.getElementById('editTotalAmount').textContent = 'NT$ 0';
+        document.getElementById('editFinalAmount').textContent = 'NT$ 0';
+    }
+}
+
+// 儲存編輯
+async function saveBookingEdit(event, bookingId) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const data = Object.fromEntries(formData);
+    
+    // 計算價格
+    const roomTypeSelect = document.getElementById('editRoomType');
+    const checkInDate = document.getElementById('editCheckInDate');
+    const checkOutDate = document.getElementById('editCheckOutDate');
+    const paymentAmountType = document.getElementById('editPaymentAmountType');
+    
+    const selectedOption = roomTypeSelect.options[roomTypeSelect.selectedIndex];
+    const pricePerNight = parseInt(selectedOption.dataset.price) || 2000;
+    
+    const checkIn = new Date(checkInDate.value);
+    const checkOut = new Date(checkOutDate.value);
+    const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+    const totalAmount = pricePerNight * nights;
+    const isDeposit = paymentAmountType.value === 'deposit';
+    const finalAmount = isDeposit ? totalAmount * 0.3 : totalAmount;
+    
+    // 設定付款金額文字
+    const paymentAmount = isDeposit ? `訂金 NT$ ${finalAmount.toLocaleString()}` : `全額 NT$ ${finalAmount.toLocaleString()}`;
+    
+    // 加入計算出的價格資料（確保為整數類型）
+    data.price_per_night = parseInt(pricePerNight);
+    data.nights = parseInt(nights);
+    data.total_amount = parseInt(totalAmount);
+    data.final_amount = parseInt(finalAmount);
+    data.payment_amount = paymentAmount;
+    
+    console.log('儲存編輯:', bookingId, data);
+    console.log('計算出的價格資料:', {
+        price_per_night: data.price_per_night,
+        nights: data.nights,
+        total_amount: data.total_amount,
+        final_amount: data.final_amount
+    });
+    
+    try {
+        const response = await fetch(`/api/bookings/${bookingId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        console.log('儲存結果:', result);
+        console.log('HTTP 狀態碼:', response.status);
+        
+        if (!response.ok) {
+            // 如果 HTTP 狀態碼不是 2xx，顯示錯誤
+            throw new Error(result.message || `HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        if (result.success) {
+            console.log('✅ 訂房資料更新成功，開始重新載入列表...');
+            closeModal();
+            // 強制重新載入列表，確保顯示最新資料
+            await loadBookings();
+            console.log('✅ 列表重新載入完成');
+        } else {
+            showError('更新失敗：' + (result.message || '請稍後再試'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        console.error('Error stack:', error.stack);
+        showError('更新時發生錯誤：' + error.message);
+    }
+}
+
+// 刪除訂房記錄（僅限已取消的訂房）
+async function deleteBooking(bookingId) {
+    if (!confirm('確定要刪除此訂房記錄嗎？此操作無法復原。')) {
+        return;
+    }
+    
+    try {
+        console.log('🗑️  發送刪除請求，訂房編號:', bookingId);
+        const response = await fetch(`/api/bookings/${bookingId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        console.log('📥 刪除回應狀態:', response.status);
+        const responseText = await response.text();
+        console.log('📥 刪除回應內容:', responseText);
+        
+        let result;
+        try {
+            result = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('❌ JSON 解析失敗:', parseError);
+            console.error('回應內容:', responseText);
+            showError('伺服器回應格式錯誤，請檢查伺服器日誌');
+            return;
+        }
+        
+        if (result.success) {
+            showSuccess('訂房記錄已刪除');
+            loadBookings();
+        } else {
+            showError(result.message || '刪除訂房記錄失敗');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        console.error('Error details:', error);
+        showError('刪除訂房記錄時發生錯誤：' + (error.message || '請檢查伺服器日誌'));
+    }
+}
+
+// 取消訂房
+async function cancelBooking(bookingId) {
+    if (!confirm('確定要取消這筆訂房嗎？此操作無法復原。')) {
+        return;
+    }
+    
+    console.log('取消訂房:', bookingId);
+    
+    try {
+        console.log('🚫 發送取消訂房請求，訂房編號:', bookingId);
+        const response = await fetch(`/api/bookings/${bookingId}/cancel`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        console.log('📥 取消回應狀態:', response.status);
+        const responseText = await response.text();
+        console.log('📥 取消回應內容:', responseText);
+        
+        let result;
+        try {
+            result = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('❌ JSON 解析失敗:', parseError);
+            console.error('回應內容:', responseText);
+            showError('伺服器回應格式錯誤，請檢查伺服器日誌');
+            return;
+        }
+        console.log('取消結果:', result);
+        
+        if (result.success) {
+            alert('訂房已取消');
+            loadBookings(); // 重新載入列表
+        } else {
+            showError('取消失敗：' + (result.message || '請稍後再試'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showError('取消時發生錯誤：' + error.message);
+    }
+}
+
+// HTML 轉義（防止 XSS）
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ==================== 房型管理 ====================
+
+let allRoomTypes = [];
+
+// 載入房型列表
+async function loadRoomTypes() {
+    try {
+        const response = await fetch('/api/admin/room-types');
+        const result = await response.json();
+        
+        if (result.success) {
+            allRoomTypes = result.data || [];
+            renderRoomTypes();
+        } else {
+            showError('載入房型列表失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('載入房型列表錯誤:', error);
+        showError('載入房型列表時發生錯誤：' + error.message);
+    }
+}
+
+// 渲染房型列表
+function renderRoomTypes() {
+    const tbody = document.getElementById('roomTypesTableBody');
+    
+    if (allRoomTypes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="loading">沒有房型資料</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = allRoomTypes.map(room => `
+        <tr ${room.is_active === 0 ? 'style="opacity: 0.6; background: #f8f8f8;"' : ''}>
+            <td>${room.display_order || 0}</td>
+            <td>${room.icon || '🏠'}</td>
+            <td>${room.name}</td>
+            <td>${room.display_name}</td>
+            <td>NT$ ${room.price.toLocaleString()}</td>
+            <td>
+                <span class="status-badge ${room.is_active === 1 ? 'status-sent' : 'status-unsent'}">
+                    ${room.is_active === 1 ? '啟用' : '停用'}
+                </span>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-edit" onclick="editRoomType(${room.id})">編輯</button>
+                    <button class="btn-cancel" onclick="deleteRoomType(${room.id})">刪除</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// 顯示新增房型模態框
+function showAddRoomTypeModal() {
+    showRoomTypeModal(null);
+}
+
+// 顯示編輯房型模態框
+async function editRoomType(id) {
+    try {
+        const room = allRoomTypes.find(r => r.id === id);
+        if (room) {
+            showRoomTypeModal(room);
+        } else {
+            showError('找不到該房型');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showError('載入房型資料時發生錯誤：' + error.message);
+    }
+}
+
+// 顯示房型編輯模態框
+function showRoomTypeModal(room) {
+    const modal = document.getElementById('bookingModal');
+    const modalBody = document.getElementById('modalBody');
+    const isEdit = room !== null;
+    
+    modalBody.innerHTML = `
+        <form id="roomTypeForm" onsubmit="saveRoomType(event, ${isEdit ? room.id : 'null'})">
+            <div class="form-group">
+                <label>房型代碼（英文）</label>
+                <input type="text" name="name" value="${isEdit ? escapeHtml(room.name) : ''}" required ${isEdit ? 'readonly' : ''}>
+                <small>用於系統內部識別，建立後無法修改</small>
+            </div>
+            <div class="form-group">
+                <label>顯示名稱</label>
+                <input type="text" name="display_name" value="${isEdit ? escapeHtml(room.display_name) : ''}" required>
+            </div>
+            <div class="form-group">
+                <label>價格（每晚）</label>
+                <input type="number" name="price" value="${isEdit ? room.price : ''}" min="0" step="1" required>
+            </div>
+            <div class="form-group">
+                <label>圖示（Emoji）</label>
+                <input type="text" name="icon" value="${isEdit ? escapeHtml(room.icon) : '🏠'}" maxlength="10">
+            </div>
+            <div class="form-group">
+                <label>顯示順序</label>
+                <input type="number" name="display_order" value="${isEdit ? room.display_order : 0}" min="0" step="1">
+            </div>
+            <div class="form-group">
+                <label>狀態</label>
+                <select name="is_active" required>
+                    <option value="1" ${isEdit && room.is_active === 1 ? 'selected' : ''}>啟用</option>
+                    <option value="0" ${isEdit && room.is_active === 0 ? 'selected' : ''}>停用</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn-save">儲存</button>
+                <button type="button" class="btn-cancel" onclick="closeModal()">取消</button>
+            </div>
+        </form>
+    `;
+    
+    modal.classList.add('active');
+}
+
+// 儲存房型
+async function saveRoomType(event, id) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const data = {
+        name: formData.get('name'),
+        display_name: formData.get('display_name'),
+        price: parseInt(formData.get('price')),
+        icon: formData.get('icon') || '🏠',
+        display_order: parseInt(formData.get('display_order')) || 0,
+        is_active: parseInt(formData.get('is_active'))
+    };
+    
+    try {
+        const url = id ? `/api/admin/room-types/${id}` : '/api/admin/room-types';
+        const method = id ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(id ? '房型已更新' : '房型已新增');
+            closeModal();
+            await loadRoomTypes();
+        } else {
+            showError('儲存失敗：' + (result.message || '請稍後再試'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showError('儲存時發生錯誤：' + error.message);
+    }
+}
+
+// 刪除房型
+async function deleteRoomType(id) {
+    if (!confirm('確定要刪除這個房型嗎？刪除後將無法在前台顯示。')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/admin/room-types/${id}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('房型已刪除');
+            await loadRoomTypes();
+        } else {
+            showError('刪除失敗：' + (result.message || '請稍後再試'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showError('刪除時發生錯誤：' + error.message);
+    }
+}
+
+// ==================== 系統設定 ====================
+
+// 載入系統設定
+async function loadSettings() {
+    try {
+        const response = await fetch('/api/settings');
+        const result = await response.json();
+        
+        if (result.success) {
+            const settings = result.data;
+            document.getElementById('depositPercentage').value = settings.deposit_percentage || '30';
+            document.getElementById('bankName').value = settings.bank_name || '';
+            document.getElementById('bankBranch').value = settings.bank_branch || '';
+            document.getElementById('bankAccount').value = settings.bank_account || '';
+            document.getElementById('accountName').value = settings.account_name || '';
+            
+            // 付款方式啟用狀態
+            document.getElementById('enableTransfer').checked = settings.enable_transfer === '1' || settings.enable_transfer === 'true';
+            document.getElementById('enableCard').checked = settings.enable_card === '1' || settings.enable_card === 'true';
+            
+            // 綠界設定
+            document.getElementById('ecpayMerchantID').value = settings.ecpay_merchant_id || '';
+            document.getElementById('ecpayHashKey').value = settings.ecpay_hash_key || '';
+            document.getElementById('ecpayHashIV').value = settings.ecpay_hash_iv || '';
+        } else {
+            showError('載入設定失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('載入設定錯誤:', error);
+        showError('載入設定時發生錯誤：' + error.message);
+    }
+}
+
+// 儲存系統設定
+async function saveSettings() {
+    const depositPercentage = document.getElementById('depositPercentage').value;
+    const bankName = document.getElementById('bankName').value;
+    const bankBranch = document.getElementById('bankBranch').value;
+    const bankAccount = document.getElementById('bankAccount').value;
+    const accountName = document.getElementById('accountName').value;
+    const enableTransfer = document.getElementById('enableTransfer').checked ? '1' : '0';
+    const enableCard = document.getElementById('enableCard').checked ? '1' : '0';
+    const ecpayMerchantID = document.getElementById('ecpayMerchantID').value;
+    const ecpayHashKey = document.getElementById('ecpayHashKey').value;
+    const ecpayHashIV = document.getElementById('ecpayHashIV').value;
+    
+    if (!depositPercentage || depositPercentage < 0 || depositPercentage > 100) {
+        showError('請輸入有效的訂金百分比（0-100）');
+        return;
+    }
+    
+    // 驗證：如果啟用線上刷卡，必須填寫綠界設定
+    if (enableCard === '1' && (!ecpayMerchantID || !ecpayHashKey || !ecpayHashIV)) {
+        showError('啟用線上刷卡時，必須填寫完整的綠界串接碼（MerchantID、HashKey、HashIV）');
+        return;
+    }
+    
+    try {
+        // 同時儲存所有設定
+        const [
+            depositResponse, bankNameResponse, bankBranchResponse, bankAccountResponse, accountNameResponse,
+            enableTransferResponse, enableCardResponse,
+            ecpayMerchantIDResponse, ecpayHashKeyResponse, ecpayHashIVResponse
+        ] = await Promise.all([
+            fetch('/api/admin/settings/deposit_percentage', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: depositPercentage,
+                    description: '訂金百分比（例如：30 表示 30%）'
+                })
+            }),
+            fetch('/api/admin/settings/bank_name', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: bankName,
+                    description: '銀行名稱（顯示在匯款轉帳確認郵件中）'
+                })
+            }),
+            fetch('/api/admin/settings/bank_branch', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: bankBranch,
+                    description: '分行名稱（顯示在匯款轉帳確認郵件中）'
+                })
+            }),
+            fetch('/api/admin/settings/bank_account', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: bankAccount,
+                    description: '匯款帳號（顯示在匯款轉帳確認郵件中）'
+                })
+            }),
+            fetch('/api/admin/settings/account_name', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: accountName,
+                    description: '帳戶戶名（顯示在匯款轉帳確認郵件中）'
+                })
+            }),
+            fetch('/api/admin/settings/enable_transfer', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: enableTransfer,
+                    description: '啟用匯款轉帳（1=啟用，0=停用）'
+                })
+            }),
+            fetch('/api/admin/settings/enable_card', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: enableCard,
+                    description: '啟用線上刷卡（1=啟用，0=停用）'
+                })
+            }),
+            fetch('/api/admin/settings/ecpay_merchant_id', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: ecpayMerchantID,
+                    description: '綠界商店代號（MerchantID）'
+                })
+            }),
+            fetch('/api/admin/settings/ecpay_hash_key', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: ecpayHashKey,
+                    description: '綠界金鑰（HashKey）'
+                })
+            }),
+            fetch('/api/admin/settings/ecpay_hash_iv', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: ecpayHashIV,
+                    description: '綠界向量（HashIV）'
+                })
+            })
+        ]);
+        
+        const results = await Promise.all([
+            depositResponse.json(),
+            bankNameResponse.json(),
+            bankBranchResponse.json(),
+            bankAccountResponse.json(),
+            accountNameResponse.json(),
+            enableTransferResponse.json(),
+            enableCardResponse.json(),
+            ecpayMerchantIDResponse.json(),
+            ecpayHashKeyResponse.json(),
+            ecpayHashIVResponse.json()
+        ]);
+        
+        const allSuccess = results.every(r => r.success);
+        
+        if (allSuccess) {
+            alert('設定已儲存');
+        } else {
+            const errorMsg = results.find(r => !r.success)?.message || '請稍後再試';
+            showError('儲存失敗：' + errorMsg);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showError('儲存時發生錯誤：' + error.message);
+    }
+}
+
+// 載入郵件模板列表
+async function loadEmailTemplates() {
+    try {
+        console.log('開始載入郵件模板...');
+        const response = await fetch('/api/email-templates');
+        console.log('API 回應狀態:', response.status);
+        
+        const result = await response.json();
+        console.log('API 回應結果:', result);
+        
+        if (result.success) {
+            const templates = result.data || [];
+            console.log('找到模板數量:', templates.length);
+            templates.forEach((t, i) => {
+                console.log(`模板 ${i + 1}: ${t.template_name} (${t.template_key}), 內容長度: ${t.content ? t.content.length : 0}`);
+            });
+            renderEmailTemplates(templates);
+        } else {
+            console.error('API 返回失敗:', result.message);
+            showError('載入郵件模板時發生錯誤：' + (result.message || '未知錯誤'));
+            document.getElementById('emailTemplatesList').innerHTML = '<div class="loading">載入失敗</div>';
+        }
+    } catch (error) {
+        console.error('載入郵件模板時發生錯誤:', error);
+        showError('載入郵件模板時發生錯誤：' + error.message);
+        document.getElementById('emailTemplatesList').innerHTML = '<div class="loading">載入失敗</div>';
+    }
+}
+
+// 渲染郵件模板列表
+function renderEmailTemplates(templates) {
+    const container = document.getElementById('emailTemplatesList');
+    
+    if (templates.length === 0) {
+        container.innerHTML = '<div class="loading">沒有郵件模板</div>';
+        return;
+    }
+    
+    const templateNames = {
+        'payment_reminder': '匯款期限提醒',
+        'checkin_reminder': '入住提醒',
+        'feedback_request': '回訪信'
+    };
+    
+    container.innerHTML = templates.map(template => `
+        <div class="template-card" style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                <div>
+                    <h3 style="margin: 0 0 5px 0; color: #333;">${template.template_name || templateNames[template.template_key] || template.template_key}</h3>
+                    <p style="margin: 0; color: #666; font-size: 14px;">模板代碼：${template.template_key}</p>
+                </div>
+                <div>
+                    <span class="status-badge ${template.is_enabled === 1 ? 'status-sent' : 'status-unsent'}" style="margin-right: 10px;">
+                        ${template.is_enabled === 1 ? '啟用' : '停用'}
+                    </span>
+                    <button class="btn-edit" onclick="showEmailTemplateModal('${template.template_key}')">編輯</button>
+                </div>
+            </div>
+            <div style="border-top: 1px solid #eee; padding-top: 15px;">
+                <div style="margin-bottom: 10px;">
+                    <strong style="color: #666;">主旨：</strong>
+                    <span style="color: #333;">${escapeHtml(template.subject)}</span>
+                </div>
+                <div style="max-height: 150px; overflow-y: auto; background: #f8f8f8; padding: 10px; border-radius: 4px; font-size: 12px; color: #666;">
+                    ${escapeHtml(template.content).substring(0, 500)}${template.content.length > 500 ? '...' : ''}
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 顯示郵件模板編輯模態框
+async function showEmailTemplateModal(templateKey) {
+    try {
+        console.log('📧 載入郵件模板:', templateKey);
+        const response = await fetch(`/api/email-templates/${templateKey}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log('📧 模板載入回應:', result);
+        
+        if (result.success) {
+            const template = result.data;
+            console.log('📧 模板資料:', {
+                template_key: template.template_key,
+                template_name: template.template_name,
+                content_length: template.content ? template.content.length : 0
+            });
+            const modal = document.getElementById('emailTemplateModal');
+            const title = document.getElementById('emailTemplateModalTitle');
+            const form = document.getElementById('emailTemplateForm');
+            const editorContainer = document.getElementById('emailTemplateEditor');
+            const textarea = document.getElementById('emailTemplateContent');
+            
+            title.textContent = `編輯郵件模板：${template.template_name || templateKey}`;
+            document.getElementById('emailTemplateName').value = template.template_name || '';
+            document.getElementById('emailTemplateSubject').value = template.subject || '';
+            document.getElementById('emailTemplateEnabled').checked = template.is_enabled === 1;
+            
+            // 顯示/隱藏設定區塊並載入設定值
+            const checkinSettings = document.getElementById('checkinReminderSettings');
+            const feedbackSettings = document.getElementById('feedbackRequestSettings');
+            const paymentSettings = document.getElementById('paymentReminderSettings');
+            
+            // 隱藏所有設定區塊
+            if (checkinSettings) checkinSettings.style.display = 'none';
+            if (feedbackSettings) feedbackSettings.style.display = 'none';
+            if (paymentSettings) paymentSettings.style.display = 'none';
+            
+            // 根據模板類型顯示對應的設定
+            if (templateKey === 'checkin_reminder' && checkinSettings) {
+                checkinSettings.style.display = 'block';
+                document.getElementById('daysBeforeCheckin').value = template.days_before_checkin !== null ? template.days_before_checkin : 1;
+                document.getElementById('sendHourCheckin').value = template.send_hour_checkin !== null ? template.send_hour_checkin : 10;
+            } else if (templateKey === 'feedback_request' && feedbackSettings) {
+                feedbackSettings.style.display = 'block';
+                document.getElementById('daysAfterCheckout').value = template.days_after_checkout !== null ? template.days_after_checkout : 1;
+                document.getElementById('sendHourFeedback').value = template.send_hour_feedback !== null ? template.send_hour_feedback : 11;
+            } else if (templateKey === 'payment_reminder' && paymentSettings) {
+                paymentSettings.style.display = 'block';
+                document.getElementById('daysReserved').value = template.days_reserved !== null ? template.days_reserved : 3;
+                document.getElementById('sendHourPaymentReminder').value = template.send_hour_payment_reminder !== null ? template.send_hour_payment_reminder : 9;
+            }
+            
+            // 初始化 Quill 編輯器（如果還沒有）
+            if (!quillEditor) {
+                quillEditor = new Quill('#emailTemplateEditor', {
+                    theme: 'snow',
+                    modules: {
+                        toolbar: [
+                            [{ 'header': [1, 2, 3, false] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ 'color': [] }, { 'background': [] }],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            [{ 'align': [] }],
+                            ['link', 'image'],
+                            ['clean']
+                        ]
+                    },
+                    placeholder: '開始編輯郵件內容...'
+                });
+            }
+            
+            // 重置為可視化模式
+            isHtmlMode = false;
+            editorContainer.style.display = 'block';
+            textarea.style.display = 'none';
+            const toggleBtn = document.getElementById('toggleEditorModeBtn');
+            if (toggleBtn) {
+                toggleBtn.textContent = '切換到 HTML 模式';
+                // 確保事件監聽器已綁定
+                toggleBtn.onclick = toggleEditorMode;
+            }
+            
+            // 將 HTML 內容載入到 Quill 編輯器
+            // 需要先提取 body 內容（因為模板可能包含完整的 HTML 結構）
+            let htmlContent = template.content || '';
+            
+            console.log('載入模板內容，原始長度:', htmlContent.length);
+            
+            // 如果是完整的 HTML 文檔，提取 body 內容
+            if (htmlContent.includes('<body>')) {
+                const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                if (bodyMatch) {
+                    htmlContent = bodyMatch[1];
+                    console.log('提取 body 內容後，長度:', htmlContent.length);
+                }
+            }
+            
+            // 確保 Quill 編輯器已初始化
+            if (!quillEditor) {
+                console.error('Quill 編輯器未初始化');
+                showError('編輯器初始化失敗，請重新整理頁面');
+                return;
+            }
+            
+            // 先顯示模態框，然後再載入內容
+            modal.classList.add('active');
+            
+            // 使用 setTimeout 確保模態框完全顯示後再載入內容
+            setTimeout(() => {
+                try {
+                    // 重要：先完全清空編輯器，避免顯示舊內容
+                    quillEditor.setText('');
+                    quillEditor.setContents([]);
+                    
+                    console.log('已清空編輯器，準備載入新內容');
+                    console.log('要載入的 HTML 內容長度:', htmlContent.length);
+                    console.log('要載入的 HTML 內容預覽:', htmlContent.substring(0, 200));
+                    
+                    // 方法 1: 使用 Quill 的 dangerouslyPasteHTML 方法
+                    // 先選擇全部內容（雖然已經清空，但確保範圍正確）
+                    quillEditor.setSelection(0, 0);
+                    
+                    // 使用 dangerouslyPasteHTML 插入 HTML
+                    quillEditor.clipboard.dangerouslyPasteHTML(0, htmlContent);
+                    
+                    // 等待一下讓 Quill 處理內容
+                    setTimeout(() => {
+                        const loadedContent = quillEditor.root.innerHTML;
+                        console.log('✅ 使用 pasteHTML 方法載入內容完成');
+                        console.log('編輯器內容長度:', loadedContent.length);
+                        console.log('編輯器內容預覽:', loadedContent.substring(0, 200));
+                        
+                        // 驗證內容是否正確載入
+                        if (loadedContent.trim() === '' || loadedContent === '<p><br></p>' || loadedContent.length < htmlContent.length * 0.5) {
+                            console.warn('⚠️ 內容可能未正確載入，嘗試方法 2');
+                            
+                            // 方法 2: 直接設置 innerHTML（fallback）
+                            quillEditor.root.innerHTML = htmlContent;
+                            
+                            // 手動觸發 Quill 的更新
+                            setTimeout(() => {
+                                quillEditor.update();
+                                console.log('✅ 使用直接設置 innerHTML 方法完成');
+                                console.log('最終編輯器內容長度:', quillEditor.root.innerHTML.length);
+                            }, 100);
+                        } else {
+                            console.log('✅ 內容已成功載入到編輯器');
+                        }
+                    }, 100);
+                } catch (error) {
+                    console.error('❌ 載入內容到 Quill 時發生錯誤:', error);
+                    // 方法 3: 最後的 fallback - 直接設置並忽略錯誤
+                    try {
+                        quillEditor.root.innerHTML = htmlContent;
+                        console.log('✅ 使用 fallback 方法（直接設置 innerHTML）');
+                    } catch (fallbackError) {
+                        console.error('❌ 所有載入方法都失敗:', fallbackError);
+                        // 即使有錯誤，也嘗試設置內容
+                        quillEditor.root.innerHTML = htmlContent;
+                    }
+                }
+            }, 500);
+            
+            // 同時更新 textarea（用於儲存）
+            textarea.value = template.content || '';
+            
+            // 儲存 templateKey 以便儲存時使用
+            form.dataset.templateKey = templateKey;
+        } else {
+            showError('載入郵件模板時發生錯誤：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showError('載入郵件模板時發生錯誤：' + error.message);
+    }
+}
+
+// 儲存郵件模板
+async function saveEmailTemplate(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const templateKey = form.dataset.templateKey;
+    
+    if (!templateKey) {
+        showError('找不到模板代碼');
+        return;
+    }
+    
+    // 根據當前模式獲取內容
+    let content = '';
+    if (isHtmlMode) {
+        // HTML 模式：直接從 textarea 獲取
+        content = document.getElementById('emailTemplateContent').value;
+    } else {
+        // 可視化模式：從 Quill 獲取 HTML，然後包裝成完整的 HTML 文檔
+        const quillHtml = quillEditor.root.innerHTML;
+        
+        // 獲取原始完整內容（用於保留 HTML 結構）
+        const originalContent = document.getElementById('emailTemplateContent').value;
+        
+        console.log('儲存時 - Quill HTML 長度:', quillHtml.length);
+        console.log('儲存時 - 原始內容長度:', originalContent.length);
+        
+        // 檢查原始內容是否包含完整的 HTML 結構
+        if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
+            // 如果原始內容是完整 HTML，替換 body 內容
+            if (originalContent.includes('<body>')) {
+                // 使用更精確的正則表達式來替換 body 內容
+                content = originalContent.replace(
+                    /<body[^>]*>[\s\S]*?<\/body>/i,
+                    `<body>${quillHtml}</body>`
+                );
+                console.log('使用原始 HTML 結構，替換 body 內容');
+            } else if (originalContent.includes('<html')) {
+                // 如果有 html 標籤但沒有 body，在 html 標籤內添加 body
+                content = originalContent.replace(
+                    /<html[^>]*>([\s\S]*?)<\/html>/i,
+                    (match, innerContent) => {
+                        if (innerContent.includes('<body>')) {
+                            return match.replace(/<body[^>]*>[\s\S]*?<\/body>/i, `<body>${quillHtml}</body>`);
+                        } else {
+                            return `<html${match.match(/<html([^>]*)>/)?.[1] || ''}>${innerContent}<body>${quillHtml}</body></html>`;
+                        }
+                    }
+                );
+                console.log('在 HTML 標籤內添加 body');
+            } else {
+                // 如果沒有 body，創建完整的 HTML 結構
+                content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+    </style>
+</head>
+<body>
+${quillHtml}
+</body>
+</html>`;
+                console.log('創建新的完整 HTML 結構');
+            }
+        } else {
+            // 如果原始內容不是完整 HTML，創建新的完整 HTML
+            content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+    </style>
+</head>
+<body>
+${quillHtml}
+</body>
+</html>`;
+            console.log('原始內容不是完整 HTML，創建新結構');
+        }
+        
+        console.log('最終儲存內容長度:', content.length);
+    }
+    
+    const data = {
+        template_name: document.getElementById('emailTemplateName').value,
+        subject: document.getElementById('emailTemplateSubject').value,
+        content: content,
+        is_enabled: document.getElementById('emailTemplateEnabled').checked ? 1 : 0
+    };
+    
+    // 根據模板類型添加設定欄位
+    if (templateKey === 'checkin_reminder') {
+        data.days_before_checkin = parseInt(document.getElementById('daysBeforeCheckin').value) || 1;
+        data.send_hour_checkin = parseInt(document.getElementById('sendHourCheckin').value) || 10;
+        data.days_after_checkout = null;
+        data.send_hour_feedback = null;
+        data.days_reserved = null;
+        data.send_hour_payment_reminder = null;
+    } else if (templateKey === 'feedback_request') {
+        data.days_after_checkout = parseInt(document.getElementById('daysAfterCheckout').value) || 1;
+        data.send_hour_feedback = parseInt(document.getElementById('sendHourFeedback').value) || 11;
+        data.days_before_checkin = null;
+        data.send_hour_checkin = null;
+        data.days_reserved = null;
+        data.send_hour_payment_reminder = null;
+    } else if (templateKey === 'payment_reminder') {
+        data.days_reserved = parseInt(document.getElementById('daysReserved').value) || 3;
+        data.send_hour_payment_reminder = parseInt(document.getElementById('sendHourPaymentReminder').value) || 9;
+        data.days_before_checkin = null;
+        data.send_hour_checkin = null;
+        data.days_after_checkout = null;
+        data.send_hour_feedback = null;
+    } else {
+        // 其他模板：設定為 null
+        data.days_before_checkin = null;
+        data.send_hour_checkin = null;
+        data.days_after_checkout = null;
+        data.send_hour_feedback = null;
+        data.days_reserved = null;
+        data.send_hour_payment_reminder = null;
+    }
+    
+    try {
+        console.log('準備儲存模板:', templateKey);
+        console.log('儲存資料:', {
+            template_name: data.template_name,
+            subject: data.subject,
+            content_length: data.content.length,
+            is_enabled: data.is_enabled
+        });
+        
+        const response = await fetch(`/api/email-templates/${templateKey}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        console.log('儲存回應:', result);
+        
+        if (result.success) {
+            console.log('✅ 儲存成功，開始重新載入模板列表...');
+            alert('郵件模板已儲存');
+            closeEmailTemplateModal();
+            // 重新載入模板列表以確保顯示最新內容
+            await loadEmailTemplates();
+            console.log('✅ 模板列表重新載入完成');
+        } else {
+            console.error('❌ 儲存失敗:', result);
+            showError('儲存失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('儲存時發生錯誤:', error);
+        showError('儲存時發生錯誤：' + error.message);
+    }
+}
+
+// 切換編輯模式（可視化 / HTML）
+function toggleEditorMode() {
+    const editorContainer = document.getElementById('emailTemplateEditor');
+    const textarea = document.getElementById('emailTemplateContent');
+    const toggleBtn = document.getElementById('toggleEditorModeBtn');
+    
+    if (!editorContainer || !textarea || !toggleBtn) {
+        console.error('找不到必要的 DOM 元素');
+        return;
+    }
+    
+    if (isHtmlMode) {
+        // 從 HTML 模式切換到可視化模式
+        isHtmlMode = false;
+        editorContainer.style.display = 'block';
+        textarea.style.display = 'none';
+        const toggleBtn = document.getElementById('toggleEditorModeBtn');
+        if (toggleBtn) {
+            toggleBtn.textContent = '切換到 HTML 模式';
+        }
+        
+        // 將 textarea 的內容載入到 Quill
+        let htmlContent = textarea.value;
+        if (htmlContent.includes('<body>')) {
+            const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+            if (bodyMatch) {
+                htmlContent = bodyMatch[1];
+            }
+        }
+        quillEditor.root.innerHTML = htmlContent;
+    } else {
+        // 從可視化模式切換到 HTML 模式
+        isHtmlMode = true;
+        editorContainer.style.display = 'none';
+        textarea.style.display = 'block';
+        const toggleBtn = document.getElementById('toggleEditorModeBtn');
+        if (toggleBtn) {
+            toggleBtn.textContent = '切換到可視化模式';
+        }
+        
+        // 將 Quill 的內容保存到 textarea
+        const quillHtml = quillEditor.root.innerHTML;
+        const originalContent = textarea.value;
+        
+        if (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html')) {
+            if (originalContent.includes('<body>')) {
+                textarea.value = originalContent.replace(
+                    /<body[^>]*>([\s\S]*?)<\/body>/i,
+                    `<body>${quillHtml}</body>`
+                );
+            } else {
+                textarea.value = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+    </style>
+</head>
+<body>
+${quillHtml}
+</body>
+</html>`;
+            }
+        } else {
+            textarea.value = quillHtml;
+        }
+    }
+}
+
+// 插入變數到編輯器
+function insertVariable(variable) {
+    if (isHtmlMode) {
+        // HTML 模式：插入到 textarea
+        const textarea = document.getElementById('emailTemplateContent');
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        textarea.value = text.substring(0, start) + variable + text.substring(end);
+        textarea.focus();
+        textarea.setSelectionRange(start + variable.length, start + variable.length);
+    } else {
+        // 可視化模式：插入到 Quill
+        const range = quillEditor.getSelection(true);
+        quillEditor.insertText(range.index, variable, 'user');
+        quillEditor.setSelection(range.index + variable.length);
+    }
+}
+
+// 關閉郵件模板模態框
+function closeEmailTemplateModal() {
+    document.getElementById('emailTemplateModal').classList.remove('active');
+    // 重置編輯模式
+    isHtmlMode = false;
+    const editorContainer = document.getElementById('emailTemplateEditor');
+    const textarea = document.getElementById('emailTemplateContent');
+    if (editorContainer && textarea) {
+        editorContainer.style.display = 'block';
+        textarea.style.display = 'none';
+        const toggleBtn = document.getElementById('toggleEditorMode');
+        if (toggleBtn) {
+            toggleBtn.textContent = '切換到 HTML 模式';
+        }
+    }
+}
+
