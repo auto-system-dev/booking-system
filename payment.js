@@ -123,6 +123,11 @@ function createPaymentForm(bookingData, paymentInfo, customConfig = null) {
         hour12: false
     }).replace(/\//g, '/').replace(/,/g, '');
     
+    // 取得基礎網址（Railway 或本地）
+    const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : (process.env.ECPAY_RETURN_URL ? new URL(process.env.ECPAY_RETURN_URL).origin : `http://localhost:${process.env.PORT || 3000}`);
+    
     // 建立參數物件
     const params = {
         MerchantID: config.MerchantID,
@@ -132,11 +137,11 @@ function createPaymentForm(bookingData, paymentInfo, customConfig = null) {
         TotalAmount: Math.round(finalAmount).toString(), // 金額（整數）
         TradeDesc: `訂房編號：${bookingId}`, // 交易描述
         ItemName: `住宿訂房-${bookingId}`, // 商品名稱
-        ReturnURL: process.env.ECPAY_RETURN_URL || `http://localhost:3000/api/payment/return`, // 付款完成回傳網址
-        OrderResultURL: process.env.ECPAY_ORDER_RESULT_URL || `http://localhost:3000/api/payment/result`, // 付款完成導向網址
+        ReturnURL: process.env.ECPAY_RETURN_URL || `${baseUrl}/api/payment/return`, // 付款完成回傳網址
+        OrderResultURL: process.env.ECPAY_ORDER_RESULT_URL || `${baseUrl}/api/payment/result`, // 付款完成導向網址
         ChoosePayment: 'Credit', // 選擇付款方式：Credit（信用卡）
         EncryptType: 1, // 加密類型：1
-        ClientBackURL: process.env.ECPAY_CLIENT_BACK_URL || `http://localhost:3000/?bookingId=${bookingId}`, // 返回商店網址
+        ClientBackURL: process.env.ECPAY_CLIENT_BACK_URL || `${baseUrl}/?bookingId=${bookingId}`, // 返回商店網址
         // 客戶資料（選填）
         CustomerName: guestName,
         CustomerEmail: guestEmail,

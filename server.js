@@ -13,6 +13,11 @@ const cron = require('node-cron');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// 取得基礎網址（Railway 或本地）
+const BASE_URL = process.env.RAILWAY_PUBLIC_DOMAIN 
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : (process.env.BASE_URL || `http://localhost:${PORT}`);
+
 // 中間件
 app.use(cors());
 app.use(bodyParser.json());
@@ -1044,6 +1049,10 @@ const handlePaymentResult = async (req, res) => {
                             
                             // 發送確認信給客戶和管理員
                             try {
+                                console.log('📧 準備發送確認郵件...');
+                                console.log('   訂房編號:', booking.booking_id);
+                                console.log('   客戶 Email:', booking.guest_email);
+                                
                                 // 準備訂房資料
                                 const bookingData = {
                                     bookingId: booking.booking_id,
@@ -1238,6 +1247,10 @@ const handlePaymentResult = async (req, res) => {
                             html: generateAdminEmail(bookingData)
                         };
 
+                        console.log('📧 準備發送確認郵件...');
+                        console.log('   客戶 Email:', booking.guest_email);
+                        console.log('   管理員 Email:', process.env.ADMIN_EMAIL || 'cheng701107@gmail.com');
+                        
                         await transporter.sendMail(customerMailOptions);
                         console.log('✅ 客戶確認郵件已發送');
                         
@@ -1246,9 +1259,12 @@ const handlePaymentResult = async (req, res) => {
                         
                         // 更新郵件狀態
                         await db.updateEmailStatus(bookingId, true, 'booking_confirmation');
-                        console.log('✅ 郵件狀態已更新');
+                        console.log('✅ 郵件狀態已更新為「訂房確認」');
                     } catch (emailError) {
-                        console.error('❌ 發送確認信失敗:', emailError.message);
+                        console.error('❌ 發送確認信失敗:');
+                        console.error('   錯誤訊息:', emailError.message);
+                        console.error('   錯誤堆疊:', emailError.stack);
+                        console.error('   完整錯誤:', emailError);
                         // 即使郵件發送失敗，也不影響付款成功的處理
                     }
                 }
@@ -1309,7 +1325,7 @@ const handlePaymentResult = async (req, res) => {
                             <p>交易編號：${paymentResult.tradeNo}</p>
                             <p>付款金額：NT$ ${paymentResult.tradeAmt.toLocaleString()}</p>
                             <p>付款時間：${paymentResult.paymentDate}</p>
-                            <a href="/" class="btn">返回首頁</a>
+                            <a href="${BASE_URL}" class="btn">返回首頁</a>
                         </div>
                     </body>
                 </html>
@@ -1364,7 +1380,7 @@ const handlePaymentResult = async (req, res) => {
                             <div class="error-icon">✗</div>
                             <h1>付款失敗</h1>
                             <p>${paymentResult.rtnMsg || '付款處理失敗'}</p>
-                            <a href="/" class="btn">返回首頁</a>
+                            <a href="${BASE_URL}" class="btn">返回首頁</a>
                         </div>
                     </body>
                 </html>
