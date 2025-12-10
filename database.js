@@ -1201,25 +1201,28 @@ async function getBookingsForFeedbackRequest(daysAfterCheckout = 1) {
 async function getRoomAvailability(startDate, endDate) {
     const client = await pool.connect();
     try {
+        // JOIN room_types 表以取得 display_name
         const result = await client.query(`
-            SELECT room_type, COUNT(*) as count
-            FROM bookings
-            WHERE status IN ('active', 'reserved')
+            SELECT rt.display_name, COUNT(*) as count
+            FROM bookings b
+            INNER JOIN room_types rt ON b.room_type = rt.name
+            WHERE b.status IN ('active', 'reserved')
             AND (
-                (check_in_date <= $1 AND check_out_date > $1) OR
-                (check_in_date < $2 AND check_out_date >= $2) OR
-                (check_in_date >= $1 AND check_out_date <= $2)
+                (b.check_in_date <= $1 AND b.check_out_date > $1) OR
+                (b.check_in_date < $2 AND b.check_out_date >= $2) OR
+                (b.check_in_date >= $1 AND b.check_out_date <= $2)
             )
-            GROUP BY room_type
+            GROUP BY rt.display_name
         `, [startDate, endDate]);
         
         const availability = {};
         result.rows.forEach(row => {
-            availability[row.room_type] = parseInt(row.count);
+            availability[row.display_name] = parseInt(row.count);
         });
         
         return availability;
     } catch (err) {
+        console.error('❌ 查詢房間可用性錯誤:', err);
         throw err;
     } finally {
         client.release();
