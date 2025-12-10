@@ -2,10 +2,18 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+// 調試：顯示所有環境變數（不顯示敏感值）
+console.log('🔍 環境變數檢查:');
+console.log(`   - DATABASE_URL 存在: ${!!process.env.DATABASE_URL}`);
+console.log(`   - DATABASE_URL 長度: ${process.env.DATABASE_URL ? process.env.DATABASE_URL.length : 0}`);
+console.log(`   - DATABASE_URL 前綴: ${process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 20) + '...' : 'N/A'}`);
+console.log(`   - 所有環境變數鍵: ${Object.keys(process.env).filter(k => k.includes('DATABASE')).join(', ')}`);
+
 // 檢查 DATABASE_URL 是否存在
 if (!process.env.DATABASE_URL) {
     console.error('❌ 錯誤：未設定 DATABASE_URL 環境變數');
     console.error('請確認 Railway 已正確設定 PostgreSQL 資料庫');
+    console.error('可用的環境變數:', Object.keys(process.env).filter(k => k.includes('DATABASE') || k.includes('POSTGRES')));
     throw new Error('DATABASE_URL 環境變數未設定');
 }
 
