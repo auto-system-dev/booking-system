@@ -64,18 +64,25 @@ if (useOAuth2) {
         try {
             // 如果 token 還在有效期內，直接返回
             if (accessTokenCache && tokenExpiry && Date.now() < tokenExpiry) {
+                console.log('✅ 使用快取的 Access Token');
                 return accessTokenCache;
             }
             
             // 取得新的 token
+            console.log('🔄 正在取得新的 Access Token...');
             const { token } = await oauth2Client.getAccessToken();
+            if (!token) {
+                throw new Error('無法取得 Access Token');
+            }
             accessTokenCache = token;
             // Token 通常有效期為 1 小時，提前 5 分鐘刷新
             tokenExpiry = Date.now() + (55 * 60 * 1000);
-            
+            console.log('✅ Access Token 已成功取得');
             return token;
         } catch (error) {
-            console.error('❌ 取得 Access Token 失敗:', error);
+            console.error('❌ 取得 Access Token 失敗:');
+            console.error('   錯誤訊息:', error.message);
+            console.error('   錯誤詳情:', error);
             throw error;
         }
     }
@@ -265,29 +272,69 @@ app.post('/api/booking', async (req, res) => {
         let emailSent = false;
         let emailErrorMsg = '';
         try {
-            console.log('正在發送郵件...');
-            console.log('發送給客戶:', guestEmail);
-            console.log('使用帳號:', process.env.EMAIL_USER || 'cheng701107@gmail.com');
+            console.log('📧 正在發送郵件...');
+            console.log('   發送給客戶:', guestEmail);
+            console.log('   使用帳號:', process.env.EMAIL_USER || 'cheng701107@gmail.com');
+            console.log('   認證方式:', useOAuth2 ? 'OAuth2' : '應用程式密碼');
             
-            await transporter.sendMail(customerMailOptions);
+            // 如果是 OAuth2，先測試取得 Access Token
+            if (useOAuth2) {
+                try {
+                    console.log('🔍 測試 OAuth2 Access Token...');
+                    const testToken = await getAccessToken();
+                    if (testToken) {
+                        console.log('✅ OAuth2 Access Token 測試成功');
+                    }
+                } catch (tokenError) {
+                    console.error('❌ OAuth2 Access Token 測試失敗:', tokenError.message);
+                    throw new Error('OAuth2 認證失敗: ' + tokenError.message);
+                }
+            }
+            
+            console.log('📤 發送客戶確認郵件...');
+            const customerResult = await transporter.sendMail(customerMailOptions);
             console.log('✅ 客戶確認郵件已發送');
+            if (customerResult && customerResult.messageId) {
+                console.log('   郵件 ID:', customerResult.messageId);
+            }
             
-            await transporter.sendMail(adminMailOptions);
+            console.log('📤 發送管理員通知郵件...');
+            const adminResult = await transporter.sendMail(adminMailOptions);
             console.log('✅ 管理員通知郵件已發送');
+            if (adminResult && adminResult.messageId) {
+                console.log('   郵件 ID:', adminResult.messageId);
+            }
             
             emailSent = true;
         } catch (emailError) {
             emailErrorMsg = emailError.message || '未知錯誤';
             console.error('❌ 郵件發送失敗:');
-            console.error('錯誤訊息:', emailErrorMsg);
-            console.error('完整錯誤:', emailError);
+            console.error('   錯誤訊息:', emailErrorMsg);
+            console.error('   錯誤代碼:', emailError.code);
+            console.error('   錯誤命令:', emailError.command);
+            console.error('   完整錯誤:', emailError);
             
             // 如果是認證錯誤，提供更詳細的說明
             if (emailError.code === 'EAUTH' || emailError.message.includes('Invalid login')) {
                 console.error('⚠️  認證失敗！請檢查：');
-                console.error('   1. Email 帳號是否正確');
-                console.error('   2. 是否使用應用程式密碼（Gmail 需要）');
-                console.error('   3. 是否啟用兩步驟驗證');
+                if (useOAuth2) {
+                    console.error('   1. GMAIL_CLIENT_ID 是否正確');
+                    console.error('   2. GMAIL_CLIENT_SECRET 是否正確');
+                    console.error('   3. GMAIL_REFRESH_TOKEN 是否有效');
+                    console.error('   4. Refresh Token 是否已過期或被撤銷');
+                } else {
+                    console.error('   1. Email 帳號是否正確');
+                    console.error('   2. 是否使用應用程式密碼（Gmail 需要）');
+                    console.error('   3. 是否啟用兩步驟驗證');
+                }
+            } else if (emailError.code === 'ETIMEDOUT') {
+                console.error('⚠️  連接超時！');
+                if (useOAuth2) {
+                    console.error('   這可能是 OAuth2 Access Token 取得失敗');
+                    console.error('   請檢查 Refresh Token 是否有效');
+                } else {
+                    console.error('   建議使用 OAuth2 認證以解決連接超時問題');
+                }
             }
         }
 
