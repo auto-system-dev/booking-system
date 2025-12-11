@@ -100,6 +100,11 @@ function createPaymentForm(bookingData, paymentInfo, customConfig = null) {
         hour12: false
     }).replace(/\//g, '/').replace(/,/g, '');
     
+    // 驗證必要參數
+    if (!config.MerchantID || !config.HashKey || !config.HashIV) {
+        throw new Error(`綠界設定不完整：MerchantID=${config.MerchantID ? '已設定' : '未設定'}, HashKey=${config.HashKey ? '已設定' : '未設定'}, HashIV=${config.HashIV ? '已設定' : '未設定'}`);
+    }
+    
     // 建立參數物件
     const params = {
         MerchantID: config.MerchantID,

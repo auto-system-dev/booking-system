@@ -536,6 +536,17 @@ app.post('/api/booking', async (req, res) => {
                     HashIV: ecpayHashIV ? '已設定' : '未設定'
                 });
                 
+                // 驗證必要參數
+                if (!ecpayMerchantID || !ecpayHashKey || !ecpayHashIV) {
+                    const missingParams = [];
+                    if (!ecpayMerchantID) missingParams.push('MerchantID');
+                    if (!ecpayHashKey) missingParams.push('HashKey');
+                    if (!ecpayHashIV) missingParams.push('HashIV');
+                    
+                    console.error('❌ 綠界設定不完整，缺少:', missingParams.join(', '));
+                    throw new Error(`綠界支付設定不完整，請設定：${missingParams.join(', ')}。${isProduction ? '正式環境請設定 ECPAY_MERCHANT_ID_PROD、ECPAY_HASH_KEY_PROD、ECPAY_HASH_IV_PROD' : '測試環境請設定 ECPAY_MERCHANT_ID、ECPAY_HASH_KEY、ECPAY_HASH_IV'}`);
+                }
+                
                 // 傳入綠界設定給 payment 模組
                 paymentData = payment.createPaymentForm(bookingData, {
                     amount: finalAmount,
@@ -546,7 +557,10 @@ app.post('/api/booking', async (req, res) => {
                     HashIV: ecpayHashIV
                 });
             } catch (paymentError) {
-                console.error('建立支付表單失敗:', paymentError);
+                console.error('❌ 建立支付表單失敗:', paymentError);
+                console.error('錯誤詳情:', paymentError.message);
+                // 不拋出錯誤，讓訂房流程繼續，但 paymentData 會是 null
+                // 前端會收到 paymentData: null，可以顯示錯誤訊息
             }
         }
         
