@@ -1441,9 +1441,29 @@ async function updateRoomType(id, roomData) {
 // 刪除房型（軟刪除）
 async function deleteRoomType(id) {
     try {
+        // 先檢查房型是否存在
+        const roomType = await queryOne(
+            usePostgreSQL
+                ? `SELECT id, is_active FROM room_types WHERE id = $1`
+                : `SELECT id, is_active FROM room_types WHERE id = ?`,
+            [id]
+        );
+        
+        if (!roomType) {
+            console.log(`⚠️ 找不到房型 ID: ${id}`);
+            return 0;
+        }
+        
+        // 如果已經被刪除（is_active = 0），返回 0
+        if (roomType.is_active === 0) {
+            console.log(`⚠️ 房型 ID: ${id} 已經被刪除`);
+            return 0;
+        }
+        
+        // 執行軟刪除
         const sql = usePostgreSQL
-            ? `UPDATE room_types SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = $1`
-            : `UPDATE room_types SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+            ? `UPDATE room_types SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND is_active = 1`
+            : `UPDATE room_types SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND is_active = 1`;
         
         const result = await query(sql, [id]);
         console.log(`✅ 房型已刪除 (影響行數: ${result.changes})`);

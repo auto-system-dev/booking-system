@@ -1035,6 +1035,20 @@ async function deleteRoomType(id) {
             method: 'DELETE'
         });
         
+        // 檢查 HTTP 狀態碼
+        if (!response.ok) {
+            // 如果狀態碼不是 2xx，嘗試解析錯誤訊息
+            let errorMessage = '刪除失敗';
+            try {
+                const errorResult = await response.json();
+                errorMessage = errorResult.message || `HTTP ${response.status}: ${response.statusText}`;
+            } catch (e) {
+                errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            }
+            showError(errorMessage);
+            return;
+        }
+        
         const result = await response.json();
         
         if (result.success) {
