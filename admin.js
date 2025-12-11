@@ -1383,6 +1383,23 @@ async function showEmailTemplateModal(templateKey) {
                     },
                     placeholder: '開始編輯郵件內容...'
                 });
+                
+                // 添加內容保護監聽器（防止內容被意外清空）
+                let lastValidContent = '';
+                quillEditor.on('text-change', function() {
+                    const currentContent = quillEditor.root.innerHTML;
+                    // 如果內容從有內容變成空，且不是用戶主動清空，則恢復
+                    if (lastValidContent && lastValidContent.length > 100 && 
+                        (currentContent.trim() === '' || currentContent === '<p><br></p>')) {
+                        console.warn('⚠️ 檢測到內容被意外清空，正在恢復...');
+                        setTimeout(() => {
+                            quillEditor.root.innerHTML = lastValidContent;
+                        }, 50);
+                    } else if (currentContent.length > 100) {
+                        // 更新最後有效內容
+                        lastValidContent = currentContent;
+                    }
+                });
             }
             
             // 將 HTML 內容載入到 Quill 編輯器
@@ -1440,12 +1457,18 @@ async function showEmailTemplateModal(templateKey) {
                     // 先清空編輯器
                     quillEditor.setText('');
                     
-                    // 方法：使用 Quill 的 dangerouslyPasteHTML，但先禁用事件監聽
-                    // 直接設置 innerHTML，然後手動觸發 Quill 的內部更新
+                    // 方法：直接設置 innerHTML，並保存為最後有效內容
                     try {
                         // 先設置 innerHTML
                         quillEditor.root.innerHTML = htmlContent;
                         console.log('✅ 直接設置 innerHTML');
+                        
+                        // 保存為最後有效內容（用於保護機制）
+                        if (quillEditor._lastValidContent === undefined) {
+                            quillEditor._lastValidContent = htmlContent;
+                        } else {
+                            quillEditor._lastValidContent = htmlContent;
+                        }
                         
                         // 立即同步到 textarea（作為備份）
                         textarea.value = template.content || '';
@@ -1460,32 +1483,36 @@ async function showEmailTemplateModal(templateKey) {
                             if (loadedContent.trim() === '' || loadedContent === '<p><br></p>' || loadedContent.length < htmlContent.length * 0.3) {
                                 console.warn('⚠️ 內容可能被清空，立即恢復');
                                 quillEditor.root.innerHTML = htmlContent;
+                                quillEditor._lastValidContent = htmlContent;
                                 
-                                // 再次驗證
-                                setTimeout(() => {
-                                    const restoredContent = quillEditor.root.innerHTML;
-                                    console.log('恢復後內容長度:', restoredContent.length);
-                                    if (restoredContent.trim() === '' || restoredContent === '<p><br></p>') {
-                                        console.warn('⚠️ 內容仍然為空，嘗試使用 convert 方法');
-                                        try {
-                                            const delta = quillEditor.clipboard.convert(htmlContent);
-                                            quillEditor.setContents(delta, 'silent');
-                                            console.log('✅ 使用 convert 方法完成');
-                                        } catch (convertError) {
-                                            console.error('❌ convert 方法失敗:', convertError);
-                                            // 最後嘗試：直接設置並保持
-                                            quillEditor.root.innerHTML = htmlContent;
-                                        }
+                                // 再次驗證並持續監控
+                                const checkInterval = setInterval(() => {
+                                    const currentContent = quillEditor.root.innerHTML;
+                                    if (currentContent.trim() === '' || currentContent === '<p><br></p>') {
+                                        console.warn('⚠️ 內容再次被清空，恢復中...');
+                                        quillEditor.root.innerHTML = htmlContent;
+                                        quillEditor._lastValidContent = htmlContent;
+                                    } else if (currentContent.length > htmlContent.length * 0.5) {
+                                        // 內容正常，停止監控
+                                        clearInterval(checkInterval);
+                                        console.log('✅ 內容已穩定載入');
                                     }
-                                }, 100);
+                                }, 200);
+                                
+                                // 5 秒後停止監控
+                                setTimeout(() => {
+                                    clearInterval(checkInterval);
+                                }, 5000);
                             } else {
                                 console.log('✅ 內容已成功載入到編輯器');
+                                quillEditor._lastValidContent = loadedContent;
                             }
                         }, 200);
                     } catch (error) {
                         console.error('❌ 載入內容時發生錯誤:', error);
                         // Fallback: 直接設置
                         quillEditor.root.innerHTML = htmlContent;
+                        quillEditor._lastValidContent = htmlContent;
                         textarea.value = template.content || '';
                     }
                 } catch (error) {
