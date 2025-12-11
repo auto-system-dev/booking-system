@@ -89,7 +89,10 @@ if (useOAuth2) {
     };
     
     transporter = nodemailer.createTransport({
-        service: 'gmail',
+        // 明確指定 SMTP 設定（Railway 環境需要）
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false, // true for 465, false for other ports
         auth: {
             type: 'OAuth2',
             user: emailUser,
@@ -106,6 +109,7 @@ if (useOAuth2) {
         maxConnections: 1,
         maxMessages: 3,
         // 啟用 TLS
+        requireTLS: true,
         tls: {
             rejectUnauthorized: false // Railway 環境可能需要
         }
