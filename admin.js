@@ -1440,42 +1440,60 @@ async function showEmailTemplateModal(templateKey) {
                     // 先清空編輯器
                     quillEditor.setText('');
                     
-                    // 方法：使用 Quill 的 clipboard.convert 來轉換 HTML
+                    // 方法：使用 Quill 的 dangerouslyPasteHTML，但先禁用事件監聽
+                    // 直接設置 innerHTML，然後手動觸發 Quill 的內部更新
                     try {
-                        const delta = quillEditor.clipboard.convert(htmlContent);
-                        quillEditor.setContents(delta, 'silent');
-                        console.log('✅ 使用 convert 方法載入內容');
+                        // 先設置 innerHTML
+                        quillEditor.root.innerHTML = htmlContent;
+                        console.log('✅ 直接設置 innerHTML');
+                        
+                        // 立即同步到 textarea（作為備份）
+                        textarea.value = template.content || '';
                         
                         // 驗證內容是否正確載入
                         setTimeout(() => {
                             const loadedContent = quillEditor.root.innerHTML;
                             console.log('編輯器內容長度:', loadedContent.length);
+                            console.log('內容預覽:', loadedContent.substring(0, 200));
                             
-                            // 如果載入失敗（內容太短或為空），嘗試直接設置 innerHTML
+                            // 如果內容被清空，立即恢復
                             if (loadedContent.trim() === '' || loadedContent === '<p><br></p>' || loadedContent.length < htmlContent.length * 0.3) {
-                                console.warn('⚠️ convert 方法可能未正確載入，嘗試直接設置 innerHTML');
+                                console.warn('⚠️ 內容可能被清空，立即恢復');
                                 quillEditor.root.innerHTML = htmlContent;
-                                // 觸發一次更新
+                                
+                                // 再次驗證
                                 setTimeout(() => {
-                                    quillEditor.update();
-                                }, 50);
+                                    const restoredContent = quillEditor.root.innerHTML;
+                                    console.log('恢復後內容長度:', restoredContent.length);
+                                    if (restoredContent.trim() === '' || restoredContent === '<p><br></p>') {
+                                        console.warn('⚠️ 內容仍然為空，嘗試使用 convert 方法');
+                                        try {
+                                            const delta = quillEditor.clipboard.convert(htmlContent);
+                                            quillEditor.setContents(delta, 'silent');
+                                            console.log('✅ 使用 convert 方法完成');
+                                        } catch (convertError) {
+                                            console.error('❌ convert 方法失敗:', convertError);
+                                            // 最後嘗試：直接設置並保持
+                                            quillEditor.root.innerHTML = htmlContent;
+                                        }
+                                    }
+                                }, 100);
                             } else {
                                 console.log('✅ 內容已成功載入到編輯器');
                             }
                         }, 200);
-                    } catch (convertError) {
-                        console.warn('⚠️ convert 方法失敗，使用直接設置 innerHTML:', convertError);
-                        // Fallback: 直接設置 innerHTML
+                    } catch (error) {
+                        console.error('❌ 載入內容時發生錯誤:', error);
+                        // Fallback: 直接設置
                         quillEditor.root.innerHTML = htmlContent;
-                        setTimeout(() => {
-                            quillEditor.update();
-                        }, 50);
+                        textarea.value = template.content || '';
                     }
                 } catch (error) {
                     console.error('❌ 載入內容到 Quill 時發生錯誤:', error);
                     // 最後的 fallback - 直接設置並忽略錯誤
                     try {
                         quillEditor.root.innerHTML = htmlContent;
+                        textarea.value = template.content || '';
                         console.log('✅ 使用 fallback 方法（直接設置 innerHTML）');
                     } catch (fallbackError) {
                         console.error('❌ 所有載入方法都失敗:', fallbackError);
