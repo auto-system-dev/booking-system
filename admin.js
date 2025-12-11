@@ -126,7 +126,7 @@ function renderBookings() {
     const tbody = document.getElementById('bookingsTableBody');
     
     if (filteredBookings.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="12" class="loading">沒有找到訂房記錄</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" class="loading">沒有找到訂房記錄</td></tr>';
         return;
     }
 
@@ -148,7 +148,6 @@ function renderBookings() {
         <tr ${isCancelled ? 'style="opacity: 0.6; background: #f8f8f8;"' : ''}>
             <td>${booking.booking_id}</td>
             <td>${booking.guest_name}</td>
-            <td>${booking.guest_phone}</td>
             <td>${booking.room_type}</td>
             <td>${formatDate(booking.check_in_date)}</td>
             <td>${booking.nights} 晚</td>
@@ -161,9 +160,12 @@ function renderBookings() {
                 </span>
             </td>
             <td>
-                <span class="status-badge ${booking.email_sent ? 'status-sent' : 'status-unsent'}">
-                    ${booking.email_sent ? '已發送' : '未發送'}
+                <span class="status-badge ${getBookingStatusClass(bookingStatus)}">
+                    ${getBookingStatusText(bookingStatus)}
                 </span>
+            </td>
+            <td>
+                ${getEmailStatusDisplay(booking.email_sent)}
             </td>
             <td>
                 <div class="action-buttons">
@@ -172,7 +174,7 @@ function renderBookings() {
                         <button class="btn-edit" onclick="editBooking('${booking.booking_id}')">編輯</button>
                         <button class="btn-cancel" onclick="cancelBooking('${booking.booking_id}')">取消</button>
                     ` : `
-                        <span class="status-badge" style="background: #6c757d; color: white;">已取消</span>
+                        <button class="btn-delete" onclick="deleteBooking('${booking.booking_id}')">刪除</button>
                     `}
                 </div>
             </td>
@@ -450,6 +452,58 @@ function getPaymentStatusText(status) {
         'refunded': '已退款'
     };
     return statusMap[status] || '待付款';
+}
+
+// 取得訂房狀態樣式
+function getBookingStatusClass(status) {
+    const statusMap = {
+        'active': 'status-paid',
+        'reserved': 'status-pending',
+        'cancelled': 'status-failed'
+    };
+    return statusMap[status] || 'status-paid';
+}
+
+// 取得訂房狀態文字
+function getBookingStatusText(status) {
+    const statusMap = {
+        'active': '有效',
+        'reserved': '保留',
+        'cancelled': '已取消'
+    };
+    return statusMap[status] || '有效';
+}
+
+// 取得郵件狀態顯示（顯示具體的郵件類型）
+function getEmailStatusDisplay(emailSent) {
+    if (!emailSent || emailSent === '0' || emailSent === 0) {
+        return '<span class="status-badge status-unsent">未發送</span>';
+    }
+    
+    // 如果 email_sent 是字串，解析郵件類型
+    if (typeof emailSent === 'string') {
+        const emailTypes = emailSent.split(',').filter(t => t.trim());
+        if (emailTypes.length === 0) {
+            return '<span class="status-badge status-unsent">未發送</span>';
+        }
+        
+        const emailTypeMap = {
+            'booking_confirmation': '訂房確認',
+            'checkin_reminder': '入住提醒',
+            'feedback_request': '感謝入住',
+            'payment_reminder': '匯款提醒'
+        };
+        
+        const badges = emailTypes.map(type => {
+            const typeName = emailTypeMap[type.trim()] || type.trim();
+            return `<span class="status-badge status-sent" style="display: block; margin: 2px 0;">${typeName}</span>`;
+        }).join('');
+        
+        return badges;
+    }
+    
+    // 舊格式：只顯示已發送/未發送
+    return '<span class="status-badge status-sent">已發送</span>';
 }
 
 // 編輯訂房
@@ -760,6 +814,37 @@ async function cancelBooking(bookingId) {
     } catch (error) {
         console.error('Error:', error);
         showError('取消時發生錯誤：' + error.message);
+    }
+}
+
+// 刪除訂房（僅限已取消的訂房）
+async function deleteBooking(bookingId) {
+    if (!confirm('確定要刪除這筆訂房嗎？此操作無法復原。')) {
+        return;
+    }
+    
+    console.log('刪除訂房:', bookingId);
+    
+    try {
+        const response = await fetch(`/api/bookings/${bookingId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        console.log('刪除結果:', result);
+        
+        if (result.success) {
+            alert('訂房已刪除');
+            loadBookings(); // 重新載入列表
+        } else {
+            showError('刪除失敗：' + (result.message || '請稍後再試'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showError('刪除時發生錯誤：' + error.message);
     }
 }
 
