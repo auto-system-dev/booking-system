@@ -42,6 +42,7 @@ const useOAuth2 = process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET
 
 let transporter;
 let getAccessToken = null; // 將函數聲明在外部作用域
+let sendEmailViaGmailAPI = null; // Gmail API 備用方案
 
 if (useOAuth2) {
     // 使用 OAuth2 認證（推薦，解決 Railway 連接超時問題）
@@ -88,11 +89,12 @@ if (useOAuth2) {
         }
     };
     
+    // 嘗試使用 SSL 端口 465（Railway 環境可能更穩定）
     transporter = nodemailer.createTransport({
         // 明確指定 SMTP 設定（Railway 環境需要）
         host: 'smtp.gmail.com',
-        port: 587,
-        secure: false, // true for 465, false for other ports
+        port: 465, // 使用 SSL 端口
+        secure: true, // SSL 連接
         auth: {
             type: 'OAuth2',
             user: emailUser,
@@ -102,14 +104,11 @@ if (useOAuth2) {
             accessToken: getAccessToken
         },
         // 增加超時時間和連接設定（Railway 環境需要）
-        connectionTimeout: 60000, // 60 秒
+        connectionTimeout: 90000, // 90 秒（增加超時時間）
         greetingTimeout: 30000, // 30 秒
-        socketTimeout: 60000, // 60 秒
-        pool: true, // 使用連接池
-        maxConnections: 1,
-        maxMessages: 3,
+        socketTimeout: 90000, // 90 秒
+        pool: false, // 不使用連接池（避免連接問題）
         // 啟用 TLS
-        requireTLS: true,
         tls: {
             rejectUnauthorized: false // Railway 環境可能需要
         }
@@ -118,6 +117,55 @@ if (useOAuth2) {
     console.log('📧 郵件服務已設定（OAuth2 認證）');
     console.log('   使用帳號:', emailUser);
     console.log('   認證方式: OAuth2');
+    
+    // Gmail API 備用方案（當 SMTP 連接失敗時使用）
+    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+    
+    // 使用 Gmail API 發送郵件的備用函數
+    sendEmailViaGmailAPI = async function(mailOptions) {
+        try {
+            console.log('📧 使用 Gmail API 發送郵件（SMTP 備用方案）...');
+            
+            // 構建 MIME 格式的郵件字符串
+            const boundary = '----=_Part_' + Date.now();
+            const mimeMessage = [
+                `From: ${mailOptions.from}`,
+                `To: ${mailOptions.to}`,
+                `Subject: =?UTF-8?B?${Buffer.from(mailOptions.subject, 'utf8').toString('base64')}?=`,
+                `MIME-Version: 1.0`,
+                `Content-Type: multipart/alternative; boundary="${boundary}"`,
+                ``,
+                `--${boundary}`,
+                `Content-Type: text/html; charset=UTF-8`,
+                `Content-Transfer-Encoding: base64`,
+                ``,
+                Buffer.from(mailOptions.html, 'utf8').toString('base64'),
+                ``,
+                `--${boundary}--`
+            ].join('\r\n');
+            
+            // 轉換為 base64url 格式
+            const messageBase64 = Buffer.from(mimeMessage, 'utf8')
+                .toString('base64')
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=+$/, '');
+            
+            // 使用 Gmail API 發送
+            const response = await gmail.users.messages.send({
+                userId: 'me',
+                requestBody: {
+                    raw: messageBase64
+                }
+            });
+            
+            console.log('✅ Gmail API 郵件已發送 (ID: ' + response.data.id + ')');
+            return { messageId: response.data.id, accepted: [mailOptions.to] };
+        } catch (error) {
+            console.error('❌ Gmail API 發送失敗:', error.message);
+            throw error;
+        }
+    };
 } else {
     // 使用應用程式密碼（備用方案）
     transporter = nodemailer.createTransport({
@@ -307,18 +355,42 @@ app.post('/api/booking', async (req, res) => {
                 }
             }
             
+            // 發送客戶確認郵件（SMTP 失敗時自動切換到 Gmail API）
             console.log('📤 發送客戶確認郵件...');
-            const customerResult = await transporter.sendMail(customerMailOptions);
-            console.log('✅ 客戶確認郵件已發送');
-            if (customerResult && customerResult.messageId) {
-                console.log('   郵件 ID:', customerResult.messageId);
+            let customerResult;
+            try {
+                customerResult = await transporter.sendMail(customerMailOptions);
+                console.log('✅ 客戶確認郵件已發送 (SMTP)');
+                if (customerResult && customerResult.messageId) {
+                    console.log('   郵件 ID:', customerResult.messageId);
+                }
+            } catch (smtpError) {
+                if (smtpError.code === 'ETIMEDOUT' && sendEmailViaGmailAPI) {
+                    console.log('⚠️  SMTP 連接超時，切換到 Gmail API...');
+                    customerResult = await sendEmailViaGmailAPI(customerMailOptions);
+                    console.log('✅ 客戶確認郵件已發送 (Gmail API)');
+                } else {
+                    throw smtpError;
+                }
             }
             
+            // 發送管理員通知郵件（SMTP 失敗時自動切換到 Gmail API）
             console.log('📤 發送管理員通知郵件...');
-            const adminResult = await transporter.sendMail(adminMailOptions);
-            console.log('✅ 管理員通知郵件已發送');
-            if (adminResult && adminResult.messageId) {
-                console.log('   郵件 ID:', adminResult.messageId);
+            let adminResult;
+            try {
+                adminResult = await transporter.sendMail(adminMailOptions);
+                console.log('✅ 管理員通知郵件已發送 (SMTP)');
+                if (adminResult && adminResult.messageId) {
+                    console.log('   郵件 ID:', adminResult.messageId);
+                }
+            } catch (smtpError) {
+                if (smtpError.code === 'ETIMEDOUT' && sendEmailViaGmailAPI) {
+                    console.log('⚠️  SMTP 連接超時，切換到 Gmail API...');
+                    adminResult = await sendEmailViaGmailAPI(adminMailOptions);
+                    console.log('✅ 管理員通知郵件已發送 (Gmail API)');
+                } else {
+                    throw smtpError;
+                }
             }
             
             emailSent = true;
