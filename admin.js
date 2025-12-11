@@ -886,16 +886,36 @@ async function loadRoomTypes() {
     }
 }
 
+// 篩選房型（根據狀態）
+let showOnlyActive = true; // 預設只顯示啟用的房型
+
+function toggleRoomTypeFilter() {
+    showOnlyActive = !showOnlyActive;
+    renderRoomTypes();
+    // 更新按鈕文字
+    const filterBtn = document.getElementById('roomTypeFilterBtn');
+    if (filterBtn) {
+        filterBtn.innerHTML = showOnlyActive 
+            ? '<span>🔍</span> 只顯示啟用房型' 
+            : '<span>📋</span> 顯示所有房型';
+    }
+}
+
 // 渲染房型列表
 function renderRoomTypes() {
     const tbody = document.getElementById('roomTypesTableBody');
     
-    if (allRoomTypes.length === 0) {
+    // 根據篩選條件過濾房型
+    const filteredRoomTypes = showOnlyActive 
+        ? allRoomTypes.filter(room => room.is_active === 1)
+        : allRoomTypes;
+    
+    if (filteredRoomTypes.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="loading">沒有房型資料</td></tr>';
         return;
     }
     
-    tbody.innerHTML = allRoomTypes.map(room => `
+    tbody.innerHTML = filteredRoomTypes.map(room => `
         <tr ${room.is_active === 0 ? 'style="opacity: 0.6; background: #f8f8f8;"' : ''}>
             <td>${room.display_order || 0}</td>
             <td>${room.icon || '🏠'}</td>
@@ -1026,7 +1046,7 @@ async function saveRoomType(event, id) {
 
 // 刪除房型
 async function deleteRoomType(id) {
-    if (!confirm('確定要刪除這個房型嗎？刪除後將無法在前台顯示。')) {
+    if (!confirm('確定要永久刪除這個房型嗎？\n\n⚠️ 注意：\n- 此操作無法復原\n- 如果該房型有訂房記錄，將無法刪除\n- 刪除後將完全從資料庫中移除')) {
         return;
     }
     
