@@ -1339,10 +1339,22 @@ async function getStatistics() {
 
 // ==================== 房型管理 ====================
 
-// 取得所有房型
+// 取得所有房型（只包含啟用的，供前台使用）
 async function getAllRoomTypes() {
     try {
         const sql = `SELECT * FROM room_types WHERE is_active = 1 ORDER BY display_order ASC, id ASC`;
+        const result = await query(sql);
+        return result.rows;
+    } catch (error) {
+        console.error('❌ 查詢房型失敗:', error.message);
+        throw error;
+    }
+}
+
+// 取得所有房型（包含已停用的，供管理後台使用）
+async function getAllRoomTypesAdmin() {
+    try {
+        const sql = `SELECT * FROM room_types ORDER BY display_order ASC, id ASC`;
         const result = await query(sql);
         return result.rows;
     } catch (error) {
@@ -1694,6 +1706,7 @@ module.exports = {
     getStatistics,
     // 房型管理
     getAllRoomTypes,
+    getAllRoomTypesAdmin,
     getRoomTypeById,
     createRoomType,
     updateRoomType,

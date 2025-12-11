@@ -1016,21 +1016,8 @@ app.get('/api/room-availability', async (req, res) => {
 // API: 取得所有房型（管理後台，包含已停用的）
 app.get('/api/admin/room-types', async (req, res) => {
     try {
-        const sqlite3 = require('sqlite3').verbose();
-        const db_conn = new sqlite3.Database('./bookings.db');
-        
-        const roomTypes = await new Promise((resolve, reject) => {
-            db_conn.all('SELECT * FROM room_types ORDER BY display_order ASC, id ASC', [], (err, rows) => {
-                if (err) {
-                    db_conn.close();
-                    reject(err);
-                } else {
-                    db_conn.close();
-                    resolve(rows || []);
-                }
-            });
-        });
-        
+        // 使用資料庫抽象層，支援 PostgreSQL 和 SQLite
+        const roomTypes = await db.getAllRoomTypesAdmin();
         res.json({
             success: true,
             data: roomTypes
