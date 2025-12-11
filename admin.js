@@ -1272,9 +1272,9 @@ function renderEmailTemplates(templates) {
     }
     
     const templateNames = {
-        'payment_reminder': '匯款期限提醒',
+        'payment_reminder': '匯款提醒',
         'checkin_reminder': '入住提醒',
-        'feedback_request': '回訪信'
+        'feedback_request': '感謝入住'
     };
     
     container.innerHTML = templates.map(template => `

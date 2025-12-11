@@ -198,7 +198,7 @@ function initDatabase() {
                                             const defaultTemplates = [
                                                 {
                                                     key: 'payment_reminder',
-                                                    name: '匯款期限提醒',
+                                                    name: '匯款提醒',
                                                     subject: '【重要提醒】匯款期限即將到期',
                                                     content: `<!DOCTYPE html>
 <html>
@@ -476,15 +476,42 @@ function initDatabase() {
                                             
                                             let templateCount = 0;
                                             defaultTemplates.forEach(template => {
-                                                db.run(`INSERT OR IGNORE INTO email_templates (template_key, template_name, subject, content, is_enabled) VALUES (?, ?, ?, ?, ?)`,
-                                                    [template.key, template.name, template.subject, template.content, template.enabled], (err) => {
-                                                    if (err) console.warn(`⚠️  插入郵件模板 ${template.key} 失敗:`, err.message);
-                                                    templateCount++;
-                                                    if (templateCount === defaultTemplates.length) {
-                                                        console.log('✅ 預設郵件模板已初始化');
-                                                        // 所有操作完成後才關閉連接
-                                                        db.close();
-                                                        resolve();
+                                                // 先檢查模板是否存在且內容為空
+                                                db.get(`SELECT content, template_name FROM email_templates WHERE template_key = ?`, [template.key], (err, row) => {
+                                                    if (err) {
+                                                        console.warn(`⚠️  查詢郵件模板 ${template.key} 失敗:`, err.message);
+                                                    }
+                                                    
+                                                    // 如果模板不存在、內容為空、或名稱需要更新，則插入或更新
+                                                    if (!row || !row.content || row.content.trim() === '' || row.template_name !== template.name) {
+                                                        db.run(`INSERT OR REPLACE INTO email_templates (template_key, template_name, subject, content, is_enabled) VALUES (?, ?, ?, ?, ?)`,
+                                                            [template.key, template.name, template.subject, template.content, template.enabled], (err) => {
+                                                            if (err) {
+                                                                console.warn(`⚠️  插入/更新郵件模板 ${template.key} 失敗:`, err.message);
+                                                            } else {
+                                                                if (row && (!row.content || row.content.trim() === '')) {
+                                                                    console.log(`✅ 已更新空的郵件模板 ${template.key}`);
+                                                                } else if (row && row.template_name !== template.name) {
+                                                                    console.log(`✅ 已更新郵件模板名稱 ${template.key}: ${row.template_name} -> ${template.name}`);
+                                                                }
+                                                            }
+                                                            templateCount++;
+                                                            if (templateCount === defaultTemplates.length) {
+                                                                console.log('✅ 預設郵件模板已初始化');
+                                                                // 所有操作完成後才關閉連接
+                                                                db.close();
+                                                                resolve();
+                                                            }
+                                                        });
+                                                    } else {
+                                                        // 模板已存在且內容不為空，跳過
+                                                        templateCount++;
+                                                        if (templateCount === defaultTemplates.length) {
+                                                            console.log('✅ 預設郵件模板已初始化');
+                                                            // 所有操作完成後才關閉連接
+                                                            db.close();
+                                                            resolve();
+                                                        }
                                                     }
                                                 });
                                             });
