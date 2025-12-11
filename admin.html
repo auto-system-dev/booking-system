@@ -85,6 +85,7 @@
                             <tr>
                                 <th>訂房編號</th>
                                 <th>客戶姓名</th>
+                                <th>聯絡電話</th>
                                 <th>房型</th>
                                 <th>入住日期</th>
                                 <th>住宿天數</th>
@@ -92,7 +93,6 @@
                                 <th>應付金額</th>
                                 <th>付款方式</th>
                                 <th>付款狀態</th>
-                                <th>訂房狀態</th>
                                 <th>郵件狀態</th>
                                 <th>操作</th>
                             </tr>
@@ -346,51 +346,6 @@
                             <input type="checkbox" id="emailTemplateEnabled" style="width: 20px; height: 20px;">
                             <span>啟用此模板</span>
                         </label>
-                    </div>
-                    
-                    <!-- 入住提醒設定 -->
-                    <div id="checkinReminderSettings" style="display: none; background: #f5f5f5; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                        <h4 style="margin: 0 0 15px 0; color: #333;">📅 入住提醒設定</h4>
-                        <div class="form-group" style="margin-bottom: 10px;">
-                            <label>入住前幾天發送</label>
-                            <input type="number" id="daysBeforeCheckin" min="0" max="30" value="1" style="width: 100px;">
-                            <small style="display: block; color: #666; margin-top: 5px;">例如：1 表示入住前 1 天發送</small>
-                        </div>
-                        <div class="form-group">
-                            <label>發送時間（小時）</label>
-                            <input type="number" id="sendHourCheckin" min="0" max="23" value="10" style="width: 100px;">
-                            <small style="display: block; color: #666; margin-top: 5px;">0-23，例如：10 表示上午 10:00</small>
-                        </div>
-                    </div>
-                    
-                    <!-- 感謝入住設定 -->
-                    <div id="feedbackRequestSettings" style="display: none; background: #f5f5f5; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                        <h4 style="margin: 0 0 15px 0; color: #333;">📅 感謝入住設定</h4>
-                        <div class="form-group" style="margin-bottom: 10px;">
-                            <label>退房後幾天發送</label>
-                            <input type="number" id="daysAfterCheckout" min="0" max="30" value="1" style="width: 100px;">
-                            <small style="display: block; color: #666; margin-top: 5px;">例如：1 表示退房後 1 天發送</small>
-                        </div>
-                        <div class="form-group">
-                            <label>發送時間（小時）</label>
-                            <input type="number" id="sendHourFeedback" min="0" max="23" value="11" style="width: 100px;">
-                            <small style="display: block; color: #666; margin-top: 5px;">0-23，例如：11 表示上午 11:00</small>
-                        </div>
-                    </div>
-                    
-                    <!-- 匯款提醒設定 -->
-                    <div id="paymentReminderSettings" style="display: none; background: #f5f5f5; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                        <h4 style="margin: 0 0 15px 0; color: #333;">💰 匯款提醒設定</h4>
-                        <div class="form-group" style="margin-bottom: 10px;">
-                            <label>保留天數</label>
-                            <input type="number" id="daysReserved" min="1" max="30" value="3" style="width: 100px;">
-                            <small style="display: block; color: #666; margin-top: 5px;">訂房後保留幾天，逾期自動取消</small>
-                        </div>
-                        <div class="form-group">
-                            <label>發送時間（小時）</label>
-                            <input type="number" id="sendHourPaymentReminder" min="0" max="23" value="9" style="width: 100px;">
-                            <small style="display: block; color: #666; margin-top: 5px;">0-23，例如：9 表示上午 9:00</small>
-                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">

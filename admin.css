@@ -224,8 +224,7 @@ body {
 
 .btn-view,
 .btn-edit,
-.btn-cancel,
-.btn-delete {
+.btn-cancel {
     padding: 6px 12px;
     border: none;
     border-radius: 6px;
@@ -258,15 +257,6 @@ body {
 }
 
 .btn-cancel:hover {
-    background: #c82333;
-}
-
-.btn-delete {
-    background: #dc3545;
-    color: white;
-}
-
-.btn-delete:hover {
     background: #c82333;
 }
 
@@ -306,21 +296,6 @@ body {
 .status-refunded {
     background: #e2e3e5;
     color: #383d41;
-}
-
-.status-active {
-    background: #d4edda;
-    color: #155724;
-}
-
-.status-reserved {
-    background: #fff3cd;
-    color: #856404;
-}
-
-.status-cancelled {
-    background: #f8d7da;
-    color: #721c24;
 }
 
 /* 統計卡片 */

@@ -1,7 +1,6 @@
 // 全域變數
 let roomTypes = [];
 let depositPercentage = 30; // 預設訂金百分比
-let roomAvailability = {}; // 房間可用性資料
 
 // 設定最小日期為今天
 const today = new Date().toISOString().split('T')[0];
@@ -54,30 +53,20 @@ function renderRoomTypes() {
         return;
     }
     
-    grid.innerHTML = roomTypes.map((room, index) => {
-        // 檢查該房型是否滿房
-        const isUnavailable = roomAvailability[room.display_name] > 0;
-        
-        return `
-        <div class="room-option ${isUnavailable ? 'room-unavailable' : ''}" data-room="${room.name}" data-price="${room.price}">
-            <input type="radio" id="room-${room.name}" name="roomType" value="${room.name}" required ${isUnavailable ? 'disabled' : ''}>
-            <label for="room-${room.name}" ${isUnavailable ? 'style="cursor: not-allowed;"' : ''}>
+    grid.innerHTML = roomTypes.map((room, index) => `
+        <div class="room-option" data-room="${room.name}" data-price="${room.price}">
+            <input type="radio" id="room-${room.name}" name="roomType" value="${room.name}" required>
+            <label for="room-${room.name}">
                 <div class="room-icon">${room.icon || '🏠'}</div>
                 <div class="room-name">${room.display_name}</div>
-                ${isUnavailable 
-                    ? '<div class="room-status-full">滿房</div>' 
-                    : `<div class="room-price">NT$ ${room.price.toLocaleString()}/晚</div>`
-                }
+                <div class="room-price">NT$ ${room.price.toLocaleString()}/晚</div>
             </label>
         </div>
-    `;
-    }).join('');
+    `).join('');
     
     // 重新綁定事件
     document.querySelectorAll('input[name="roomType"]').forEach(radio => {
-        if (!radio.disabled) {
-            radio.addEventListener('change', calculatePrice);
-        }
+        radio.addEventListener('change', calculatePrice);
     });
 }
 
@@ -186,38 +175,6 @@ function updatePriceDisplay(pricePerNight, nights, totalAmount, paymentType, fin
     document.getElementById('paymentAmount').textContent = `NT$ ${finalAmount.toLocaleString()}`;
 }
 
-// 檢查房間可用性
-async function checkRoomAvailability() {
-    const checkInDate = document.getElementById('checkInDate').value;
-    const checkOutDate = document.getElementById('checkOutDate').value;
-    
-    if (!checkInDate || !checkOutDate) {
-        // 如果沒有選擇日期，清空可用性資料並重新渲染
-        roomAvailability = {};
-        renderRoomTypes();
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/room-availability?startDate=${checkInDate}&endDate=${checkOutDate}`);
-        const result = await response.json();
-        
-        if (result.success) {
-            roomAvailability = result.data || {};
-            renderRoomTypes();
-            
-            // 如果當前選中的房型已滿房，取消選擇
-            const selectedRoom = document.querySelector('input[name="roomType"]:checked');
-            if (selectedRoom && selectedRoom.disabled) {
-                selectedRoom.checked = false;
-                calculatePrice();
-            }
-        }
-    } catch (error) {
-        console.error('檢查房間可用性錯誤:', error);
-    }
-}
-
 // 日期變更事件
 document.getElementById('checkInDate').addEventListener('change', function() {
     const checkIn = new Date(this.value);
@@ -238,13 +195,11 @@ document.getElementById('checkInDate').addEventListener('change', function() {
     
     calculateNights();
     calculatePrice();
-    checkRoomAvailability(); // 檢查房間可用性
 });
 
 document.getElementById('checkOutDate').addEventListener('change', function() {
     calculateNights();
     calculatePrice();
-    checkRoomAvailability(); // 檢查房間可用性
 });
 
 // 房型選擇事件
