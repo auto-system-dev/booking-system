@@ -1,23 +1,584 @@
 // 資料庫模組
 const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 const path = require('path');
 
-// 資料庫檔案路徑
+// 檢測使用哪種資料庫
+const usePostgreSQL = !!process.env.DATABASE_URL;
+
+// PostgreSQL 連接池（如果使用 PostgreSQL）
+let pgPool = null;
+if (usePostgreSQL) {
+    try {
+        pgPool = new Pool({
+            connectionString: process.env.DATABASE_URL,
+            ssl: process.env.DATABASE_URL.includes('railway') ? { rejectUnauthorized: false } : false
+        });
+        console.log('✅ PostgreSQL 連接池已建立');
+    } catch (error) {
+        console.error('❌ PostgreSQL 連接池建立失敗:', error.message);
+        throw error;
+    }
+}
+
+// SQLite 資料庫檔案路徑
 const DB_PATH = path.join(__dirname, 'bookings.db');
 
-// 建立資料庫連線
+// 建立資料庫連線（根據環境自動選擇）
 function getDatabase() {
-    return new sqlite3.Database(DB_PATH, (err) => {
-        if (err) {
-            console.error('❌ 資料庫連線失敗:', err.message);
+    if (usePostgreSQL) {
+        // PostgreSQL 使用連接池，不需要返回連接物件
+        // 但為了向後兼容，返回一個模擬物件
+        return {
+            isPostgreSQL: true,
+            pool: pgPool
+        };
+    } else {
+        // SQLite
+        return new sqlite3.Database(DB_PATH, (err) => {
+            if (err) {
+                console.error('❌ 資料庫連線失敗:', err.message);
+            } else {
+                console.log('✅ 已連接到 SQLite 資料庫');
+            }
+        });
+    }
+}
+
+// 執行 SQL 查詢（統一接口）
+async function query(sql, params = []) {
+    if (usePostgreSQL) {
+        // PostgreSQL 查詢
+        try {
+            const result = await pgPool.query(sql, params);
+            return {
+                rows: result.rows,
+                changes: result.rowCount || 0,
+                lastID: result.rows[0]?.id || null
+            };
+        } catch (error) {
+            console.error('❌ PostgreSQL 查詢錯誤:', error.message);
+            console.error('SQL:', sql);
+            console.error('參數:', params);
+            throw error;
+        }
+    } else {
+        // SQLite 查詢（使用 Promise 包裝）
+        return new Promise((resolve, reject) => {
+            const db = getDatabase();
+            // 判斷是 SELECT 還是其他操作
+            const isSelect = sql.trim().toUpperCase().startsWith('SELECT');
+            
+            if (isSelect) {
+                db.all(sql, params, (err, rows) => {
+                    db.close();
+                    if (err) {
+                        console.error('❌ SQLite 查詢錯誤:', err.message);
+                        console.error('SQL:', sql);
+                        console.error('參數:', params);
+                        reject(err);
+                    } else {
+                        resolve({
+                            rows: rows || [],
+                            changes: 0,
+                            lastID: null
+                        });
+                    }
+                });
+            } else {
+                db.run(sql, params, function(err) {
+                    db.close();
+                    if (err) {
+                        console.error('❌ SQLite 執行錯誤:', err.message);
+                        console.error('SQL:', sql);
+                        console.error('參數:', params);
+                        reject(err);
+                    } else {
+                        resolve({
+                            rows: [],
+                            changes: this.changes,
+                            lastID: this.lastID
+                        });
+                    }
+                });
+            }
+        });
+    }
+}
+
+// 執行單一查詢（返回單一結果）
+async function queryOne(sql, params = []) {
+    if (usePostgreSQL) {
+        try {
+            const result = await pgPool.query(sql, params);
+            return result.rows[0] || null;
+        } catch (error) {
+            console.error('❌ PostgreSQL 查詢錯誤:', error.message);
+            throw error;
+        }
+    } else {
+        return new Promise((resolve, reject) => {
+            const db = getDatabase();
+            db.get(sql, params, (err, row) => {
+                db.close();
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(row || null);
+                }
+            });
+        });
+    }
+}
+
+// 轉換 SQL 語法（SQLite -> PostgreSQL）
+function convertSQL(sql) {
+    if (!usePostgreSQL) return sql;
+    
+    // 轉換語法差異
+    return sql
+        .replace(/INTEGER PRIMARY KEY AUTOINCREMENT/g, 'SERIAL PRIMARY KEY')
+        .replace(/AUTOINCREMENT/g, 'SERIAL')
+        .replace(/TEXT/g, 'VARCHAR(255)')
+        .replace(/DATETIME/g, 'TIMESTAMP')
+        .replace(/INSERT OR REPLACE/g, 'INSERT')
+        .replace(/datetime\('now', '([^']+)'\)/g, "CURRENT_TIMESTAMP - INTERVAL '$1'")
+        .replace(/DATE\(([^)]+)\)/g, 'DATE($1)');
+}
+
+// 初始化資料庫（建立資料表）
+async function initDatabase() {
+    try {
+        if (usePostgreSQL) {
+            console.log('🗄️  使用 PostgreSQL 資料庫');
+            await initPostgreSQL();
         } else {
-            console.log('✅ 已連接到 SQLite 資料庫');
+            console.log('🗄️  使用 SQLite 資料庫');
+            await initSQLite();
+        }
+    } catch (error) {
+        console.error('❌ 資料庫初始化失敗:', error);
+        throw error;
+    }
+}
+
+// 初始化 PostgreSQL
+async function initPostgreSQL() {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // 建立訂房資料表
+            await query(`
+                CREATE TABLE IF NOT EXISTS bookings (
+                    id SERIAL PRIMARY KEY,
+                    booking_id VARCHAR(255) UNIQUE NOT NULL,
+                    check_in_date VARCHAR(255) NOT NULL,
+                    check_out_date VARCHAR(255) NOT NULL,
+                    room_type VARCHAR(255) NOT NULL,
+                    guest_name VARCHAR(255) NOT NULL,
+                    guest_phone VARCHAR(255) NOT NULL,
+                    guest_email VARCHAR(255) NOT NULL,
+                    payment_amount VARCHAR(255) NOT NULL,
+                    payment_method VARCHAR(255) NOT NULL,
+                    price_per_night INTEGER NOT NULL,
+                    nights INTEGER NOT NULL,
+                    total_amount INTEGER NOT NULL,
+                    final_amount INTEGER NOT NULL,
+                    booking_date VARCHAR(255) NOT NULL,
+                    email_sent INTEGER DEFAULT 0,
+                    payment_status VARCHAR(255) DEFAULT 'pending',
+                    status VARCHAR(255) DEFAULT 'active',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ 訂房資料表已準備就緒');
+            
+            // 檢查並新增欄位（如果不存在）
+            try {
+                await query(`ALTER TABLE bookings ADD COLUMN payment_status VARCHAR(255) DEFAULT 'pending'`);
+            } catch (err) {
+                if (!err.message.includes('duplicate column')) {
+                    console.warn('⚠️  新增 payment_status 欄位時發生錯誤:', err.message);
+                }
+            }
+            
+            try {
+                await query(`ALTER TABLE bookings ADD COLUMN status VARCHAR(255) DEFAULT 'active'`);
+                console.log('✅ 資料表欄位已更新');
+            } catch (err) {
+                if (!err.message.includes('duplicate column')) {
+                    console.warn('⚠️  新增 status 欄位時發生錯誤:', err.message);
+                }
+            }
+            
+            // 建立房型設定表
+            await query(`
+                CREATE TABLE IF NOT EXISTS room_types (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) UNIQUE NOT NULL,
+                    display_name VARCHAR(255) NOT NULL,
+                    price INTEGER NOT NULL,
+                    icon VARCHAR(255) DEFAULT '🏠',
+                    display_order INTEGER DEFAULT 0,
+                    is_active INTEGER DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ 房型設定表已準備就緒');
+            
+            // 初始化預設房型
+            const roomCount = await queryOne('SELECT COUNT(*) as count FROM room_types');
+            if (roomCount && parseInt(roomCount.count) === 0) {
+                const defaultRooms = [
+                    ['standard', '標準雙人房', 2000, '🏠', 1],
+                    ['deluxe', '豪華雙人房', 3500, '✨', 2],
+                    ['suite', '尊爵套房', 5000, '👑', 3],
+                    ['family', '家庭四人房', 4500, '👨‍👩‍👧‍👦', 4]
+                ];
+                
+                for (const room of defaultRooms) {
+                    await query(
+                        'INSERT INTO room_types (name, display_name, price, icon, display_order) VALUES ($1, $2, $3, $4, $5)',
+                        room
+                    );
+                }
+                console.log('✅ 預設房型已初始化');
+            }
+            
+            // 建立系統設定表
+            await query(`
+                CREATE TABLE IF NOT EXISTS settings (
+                    id SERIAL PRIMARY KEY,
+                    key VARCHAR(255) UNIQUE NOT NULL,
+                    value TEXT NOT NULL,
+                    description TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ 系統設定表已準備就緒');
+            
+            // 初始化預設設定
+            const defaultSettings = [
+                ['deposit_percentage', '30', '訂金百分比（例如：30 表示 30%）'],
+                ['bank_name', '', '銀行名稱'],
+                ['bank_branch', '', '分行名稱'],
+                ['bank_account', '', '匯款帳號'],
+                ['account_name', '', '帳戶戶名'],
+                ['enable_transfer', '1', '啟用匯款轉帳（1=啟用，0=停用）'],
+                ['enable_card', '1', '啟用線上刷卡（1=啟用，0=停用）'],
+                ['ecpay_merchant_id', '', '綠界商店代號（MerchantID）'],
+                ['ecpay_hash_key', '', '綠界金鑰（HashKey）'],
+                ['ecpay_hash_iv', '', '綠界向量（HashIV）']
+            ];
+            
+            for (const [key, value, description] of defaultSettings) {
+                const existing = await queryOne(
+                    usePostgreSQL 
+                        ? 'SELECT COUNT(*) as count FROM settings WHERE key = $1'
+                        : 'SELECT COUNT(*) as count FROM settings WHERE key = ?',
+                    [key]
+                );
+                if (!existing || parseInt(existing.count) === 0) {
+                    await query(
+                        usePostgreSQL
+                            ? 'INSERT INTO settings (key, value, description) VALUES ($1, $2, $3)'
+                            : 'INSERT INTO settings (key, value, description) VALUES (?, ?, ?)',
+                        [key, value, description]
+                    );
+                }
+            }
+            console.log('✅ 預設設定已初始化');
+            
+            // 建立郵件模板表
+            await query(`
+                CREATE TABLE IF NOT EXISTS email_templates (
+                    id SERIAL PRIMARY KEY,
+                    template_key VARCHAR(255) UNIQUE NOT NULL,
+                    template_name VARCHAR(255) NOT NULL,
+                    subject TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    is_enabled INTEGER DEFAULT 1,
+                    days_before_checkin INTEGER,
+                    send_hour_checkin INTEGER,
+                    days_after_checkout INTEGER,
+                    send_hour_feedback INTEGER,
+                    days_reserved INTEGER,
+                    send_hour_payment_reminder INTEGER,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ 郵件模板表已準備就緒');
+            
+            // 初始化預設郵件模板
+            await initEmailTemplates();
+            
+            resolve();
+        } catch (error) {
+            console.error('❌ PostgreSQL 初始化錯誤:', error);
+            reject(error);
         }
     });
 }
 
-// 初始化資料庫（建立資料表）
-function initDatabase() {
+// 初始化郵件模板（PostgreSQL 和 SQLite 共用）
+async function initEmailTemplates() {
+    const defaultTemplates = [
+        {
+            key: 'payment_reminder',
+            name: '匯款提醒',
+            subject: '【重要提醒】匯款期限即將到期',
+            content: `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #e74c3c; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⏰ 匯款期限提醒</h1>
+        </div>
+        <div class="content">
+            <p>親愛的 {{guestName}} 您好，</p>
+            <div class="highlight">
+                <h3 style="color: #856404; margin-top: 0;">⚠️ 重要提醒</h3>
+                <p style="color: #856404; font-weight: 600; font-size: 18px;">
+                    此訂房將為您保留 {{daysReserved}} 天，請於 <strong>{{paymentDeadline}}前</strong>完成匯款，逾期將自動取消訂房。
+                </p>
+            </div>
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3>訂房資訊</h3>
+                <div class="info-row">
+                    <span class="info-label">訂房編號</span>
+                    <span class="info-value"><strong>{{bookingId}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">入住日期</span>
+                    <span class="info-value">{{checkInDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">退房日期</span>
+                    <span class="info-value">{{checkOutDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">房型</span>
+                    <span class="info-value">{{roomType}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">應付金額</span>
+                    <span class="info-value" style="color: #e74c3c; font-weight: 700; font-size: 18px;">NT$ {{finalAmount}}</span>
+                </div>
+            </div>
+            <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h3 style="color: #856404; margin-top: 0;">💰 匯款資訊</h3>
+                <div style="background: white; padding: 15px; border-radius: 5px; margin-top: 15px;">
+                    <p style="margin: 5px 0; color: #333;"><strong>匯款資訊：</strong></p>
+                    <p style="margin: 5px 0; color: #333;">銀行：{{bankName}}{{bankBranch ? ' - ' + bankBranch : ''}}</p>
+                    <p style="margin: 5px 0; color: #333;">帳號：<span style="font-size: 18px; color: #e74c3c; font-weight: 700; letter-spacing: 2px;">{{bankAccount}}</span></p>
+                    <p style="margin: 5px 0; color: #333;">戶名：{{accountName}}</p>
+                    <p style="margin: 15px 0 5px 0; padding-top: 10px; border-top: 1px solid #ddd; color: #666; font-size: 14px;">請在匯款時備註訂房編號後5碼：<strong>{{bookingId}}</strong></p>
+                </div>
+            </div>
+            <p>如有任何問題，請隨時與我們聯繫。</p>
+            <p>感謝您的配合！</p>
+        </div>
+    </div>
+</body>
+</html>`,
+            enabled: 1,
+            days_reserved: 3,
+            send_hour_payment_reminder: 9
+        },
+        {
+            key: 'checkin_reminder',
+            name: '入住提醒',
+            subject: '【入住提醒】歡迎您明天入住',
+            content: `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #667eea; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏨 入住提醒</h1>
+        </div>
+        <div class="content">
+            <p>親愛的 {{guestName}} 您好，</p>
+            <p>感謝您選擇我們的住宿服務！我們期待您明天的到來。</p>
+            <div class="info-box">
+                <h3>📅 訂房資訊</h3>
+                <div class="info-row">
+                    <span class="info-label">訂房編號</span>
+                    <span class="info-value"><strong>{{bookingId}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">入住日期</span>
+                    <span class="info-value">{{checkInDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">退房日期</span>
+                    <span class="info-value">{{checkOutDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">房型</span>
+                    <span class="info-value">{{roomType}}</span>
+                </div>
+            </div>
+            <p>期待您的到來，祝您住宿愉快！</p>
+        </div>
+    </div>
+</body>
+</html>`,
+            enabled: 1,
+            days_before_checkin: 1,
+            send_hour_checkin: 9
+        },
+        {
+            key: 'feedback_request',
+            name: '感謝入住',
+            subject: '【感謝入住】分享您的住宿體驗',
+            content: `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⭐ 感謝您的入住</h1>
+        </div>
+        <div class="content">
+            <p>親愛的 {{guestName}} 您好，</p>
+            <p>感謝您選擇我們的住宿服務！希望您這次的住宿體驗愉快舒適。</p>
+            <div class="info-box">
+                <h3>📅 住宿資訊</h3>
+                <div class="info-row">
+                    <span class="info-label">訂房編號</span>
+                    <span class="info-value"><strong>{{bookingId}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">入住日期</span>
+                    <span class="info-value">{{checkInDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">退房日期</span>
+                    <span class="info-value">{{checkOutDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">房型</span>
+                    <span class="info-value">{{roomType}}</span>
+                </div>
+            </div>
+            <p>期待再次為您服務！</p>
+        </div>
+    </div>
+</body>
+</html>`,
+            enabled: 1,
+            days_after_checkout: 1,
+            send_hour_feedback: 10
+        }
+    ];
+    
+    for (const template of defaultTemplates) {
+        try {
+            const existing = await queryOne(
+                usePostgreSQL 
+                    ? 'SELECT content, template_name FROM email_templates WHERE template_key = $1'
+                    : 'SELECT content, template_name FROM email_templates WHERE template_key = ?',
+                [template.key]
+            );
+            
+            // 如果模板不存在、內容為空、或名稱需要更新，則插入或更新
+            if (!existing || !existing.content || existing.content.trim() === '' || existing.template_name !== template.name) {
+                if (usePostgreSQL) {
+                    await query(
+                        `INSERT INTO email_templates (template_key, template_name, subject, content, is_enabled, days_before_checkin, send_hour_checkin, days_after_checkout, send_hour_feedback, days_reserved, send_hour_payment_reminder)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                         ON CONFLICT (template_key) DO UPDATE SET
+                         template_name = EXCLUDED.template_name,
+                         subject = EXCLUDED.subject,
+                         content = EXCLUDED.content,
+                         is_enabled = EXCLUDED.is_enabled,
+                         days_before_checkin = EXCLUDED.days_before_checkin,
+                         send_hour_checkin = EXCLUDED.send_hour_checkin,
+                         days_after_checkout = EXCLUDED.days_after_checkout,
+                         send_hour_feedback = EXCLUDED.send_hour_feedback,
+                         days_reserved = EXCLUDED.days_reserved,
+                         send_hour_payment_reminder = EXCLUDED.send_hour_payment_reminder,
+                         updated_at = CURRENT_TIMESTAMP`,
+                        [
+                            template.key, template.name, template.subject, template.content, template.enabled,
+                            template.days_before_checkin || null,
+                            template.send_hour_checkin || null,
+                            template.days_after_checkout || null,
+                            template.send_hour_feedback || null,
+                            template.days_reserved || null,
+                            template.send_hour_payment_reminder || null
+                        ]
+                    );
+                } else {
+                    await query(
+                        'INSERT OR REPLACE INTO email_templates (template_key, template_name, subject, content, is_enabled, days_before_checkin, send_hour_checkin, days_after_checkout, send_hour_feedback, days_reserved, send_hour_payment_reminder) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [
+                            template.key, template.name, template.subject, template.content, template.enabled,
+                            template.days_before_checkin || null,
+                            template.send_hour_checkin || null,
+                            template.days_after_checkout || null,
+                            template.send_hour_feedback || null,
+                            template.days_reserved || null,
+                            template.send_hour_payment_reminder || null
+                        ]
+                    );
+                }
+                
+                if (existing && (!existing.content || existing.content.trim() === '')) {
+                    console.log(`✅ 已更新空的郵件模板 ${template.key}`);
+                } else if (existing && existing.template_name !== template.name) {
+                    console.log(`✅ 已更新郵件模板名稱 ${template.key}: ${existing.template_name} -> ${template.name}`);
+                }
+            }
+        } catch (error) {
+            console.warn(`⚠️  處理郵件模板 ${template.key} 失敗:`, error.message);
+        }
+    }
+    
+    console.log('✅ 預設郵件模板已初始化');
+}
+
+// 初始化 SQLite（保持原有邏輯）
+function initSQLite() {
     return new Promise((resolve, reject) => {
         const db = getDatabase();
         
@@ -181,6 +742,12 @@ function initDatabase() {
                                             subject TEXT NOT NULL,
                                             content TEXT NOT NULL,
                                             is_enabled INTEGER DEFAULT 1,
+                                            days_before_checkin INTEGER,
+                                            send_hour_checkin INTEGER,
+                                            days_after_checkout INTEGER,
+                                            send_hour_feedback INTEGER,
+                                            days_reserved INTEGER,
+                                            send_hour_payment_reminder INTEGER,
                                             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                                             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                                         )
@@ -200,6 +767,8 @@ function initDatabase() {
                                                     key: 'payment_reminder',
                                                     name: '匯款提醒',
                                                     subject: '【重要提醒】匯款期限即將到期',
+                                                    days_reserved: 3,
+                                                    send_hour_payment_reminder: 9,
                                                     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -283,6 +852,8 @@ function initDatabase() {
                                                     key: 'checkin_reminder',
                                                     name: '入住提醒',
                                                     subject: '【入住提醒】歡迎您明天入住',
+                                                    days_before_checkin: 1,
+                                                    send_hour_checkin: 9,
                                                     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -385,8 +956,10 @@ function initDatabase() {
                                                 },
                                                 {
                                                     key: 'feedback_request',
-                                                    name: '回訪信',
-                                                    subject: '【回訪邀請】分享您的住宿體驗',
+                                                    name: '感謝入住',
+                                                    subject: '【感謝入住】分享您的住宿體驗',
+                                                    days_after_checkout: 1,
+                                                    send_hour_feedback: 10,
                                                     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -484,8 +1057,8 @@ function initDatabase() {
                                                     
                                                     // 如果模板不存在、內容為空、或名稱需要更新，則插入或更新
                                                     if (!row || !row.content || row.content.trim() === '' || row.template_name !== template.name) {
-                                                        db.run(`INSERT OR REPLACE INTO email_templates (template_key, template_name, subject, content, is_enabled) VALUES (?, ?, ?, ?, ?)`,
-                                                            [template.key, template.name, template.subject, template.content, template.enabled], (err) => {
+                                                        db.run(`INSERT OR REPLACE INTO email_templates (template_key, template_name, subject, content, is_enabled, days_before_checkin, send_hour_checkin, days_after_checkout, send_hour_feedback, days_reserved, send_hour_payment_reminder) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                                            [template.key, template.name, template.subject, template.content, template.enabled, template.days_before_checkin || null, template.send_hour_checkin || null, template.days_after_checkout || null, template.send_hour_feedback || null, template.days_reserved || null, template.send_hour_payment_reminder || null], (err) => {
                                                             if (err) {
                                                                 console.warn(`⚠️  插入/更新郵件模板 ${template.key} 失敗:`, err.message);
                                                             } else {
@@ -539,11 +1112,18 @@ function initDatabase() {
 }
 
 // 儲存訂房資料
-function saveBooking(bookingData) {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
-        
-        const sql = `
+async function saveBooking(bookingData) {
+    try {
+        const sql = usePostgreSQL ? `
+            INSERT INTO bookings (
+                booking_id, check_in_date, check_out_date, room_type,
+                guest_name, guest_phone, guest_email,
+                payment_amount, payment_method,
+                price_per_night, nights, total_amount, final_amount,
+                booking_date, email_sent, payment_status, status
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            RETURNING id
+        ` : `
             INSERT INTO bookings (
                 booking_id, check_in_date, check_out_date, room_type,
                 guest_name, guest_phone, guest_email,
@@ -573,106 +1153,73 @@ function saveBooking(bookingData) {
             bookingData.status || 'active'
         ];
         
-        db.run(sql, values, function(err) {
-            if (err) {
-                console.error('❌ 儲存訂房資料失敗:', err.message);
-                reject(err);
-            } else {
-                console.log(`✅ 訂房資料已儲存 (ID: ${this.lastID})`);
-                resolve(this.lastID);
-            }
-        });
-        
-        db.close();
-    });
+        const result = await query(sql, values);
+        console.log(`✅ 訂房資料已儲存 (ID: ${result.lastID || result.rows[0]?.id})`);
+        return result.lastID || result.rows[0]?.id;
+    } catch (error) {
+        console.error('❌ 儲存訂房資料失敗:', error.message);
+        throw error;
+    }
 }
 
 // 更新郵件發送狀態
-function updateEmailStatus(bookingId, emailSent) {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
+async function updateEmailStatus(bookingId, emailSent) {
+    try {
+        const sql = usePostgreSQL 
+            ? `UPDATE bookings SET email_sent = $1 WHERE booking_id = $2`
+            : `UPDATE bookings SET email_sent = ? WHERE booking_id = ?`;
         
-        const sql = `UPDATE bookings SET email_sent = ? WHERE booking_id = ?`;
-        
-        db.run(sql, [emailSent ? 1 : 0, bookingId], function(err) {
-            if (err) {
-                console.error('❌ 更新郵件狀態失敗:', err.message);
-                reject(err);
-            } else {
-                console.log(`✅ 郵件狀態已更新 (影響行數: ${this.changes})`);
-                resolve(this.changes);
-            }
-        });
-        
-        db.close();
-    });
+        const result = await query(sql, [emailSent ? 1 : 0, bookingId]);
+        console.log(`✅ 郵件狀態已更新 (影響行數: ${result.changes})`);
+        return result.changes;
+    } catch (error) {
+        console.error('❌ 更新郵件狀態失敗:', error.message);
+        throw error;
+    }
 }
 
 // 查詢所有訂房記錄
-function getAllBookings() {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
-        
+async function getAllBookings() {
+    try {
         const sql = `SELECT * FROM bookings ORDER BY created_at DESC`;
-        
-        db.all(sql, [], (err, rows) => {
-            if (err) {
-                console.error('❌ 查詢訂房記錄失敗:', err.message);
-                reject(err);
-            } else {
-                resolve(rows);
-            }
-        });
-        
-        db.close();
-    });
+        const result = await query(sql);
+        return result.rows;
+    } catch (error) {
+        console.error('❌ 查詢訂房記錄失敗:', error.message);
+        throw error;
+    }
 }
 
 // 根據訂房編號查詢
-function getBookingById(bookingId) {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
-        
-        const sql = `SELECT * FROM bookings WHERE booking_id = ?`;
-        
-        db.get(sql, [bookingId], (err, row) => {
-            if (err) {
-                console.error('❌ 查詢訂房記錄失敗:', err.message);
-                reject(err);
-            } else {
-                resolve(row);
-            }
-        });
-        
-        db.close();
-    });
+async function getBookingById(bookingId) {
+    try {
+        const sql = usePostgreSQL 
+            ? `SELECT * FROM bookings WHERE booking_id = $1`
+            : `SELECT * FROM bookings WHERE booking_id = ?`;
+        return await queryOne(sql, [bookingId]);
+    } catch (error) {
+        console.error('❌ 查詢訂房記錄失敗:', error.message);
+        throw error;
+    }
 }
 
 // 根據 Email 查詢訂房記錄
-function getBookingsByEmail(email) {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
-        
-        const sql = `SELECT * FROM bookings WHERE guest_email = ? ORDER BY created_at DESC`;
-        
-        db.all(sql, [email], (err, rows) => {
-            if (err) {
-                console.error('❌ 查詢訂房記錄失敗:', err.message);
-                reject(err);
-            } else {
-                resolve(rows);
-            }
-        });
-        
-        db.close();
-    });
+async function getBookingsByEmail(email) {
+    try {
+        const sql = usePostgreSQL 
+            ? `SELECT * FROM bookings WHERE guest_email = $1 ORDER BY created_at DESC`
+            : `SELECT * FROM bookings WHERE guest_email = ? ORDER BY created_at DESC`;
+        const result = await query(sql, [email]);
+        return result.rows;
+    } catch (error) {
+        console.error('❌ 查詢訂房記錄失敗:', error.message);
+        throw error;
+    }
 }
 
 // 更新訂房資料
-function updateBooking(bookingId, updateData) {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
-        
+async function updateBooking(bookingId, updateData) {
+    try {
         const allowedFields = [
             'guest_name', 'guest_phone', 'guest_email', 'room_type',
             'check_in_date', 'check_out_date', 'payment_status',
@@ -682,16 +1229,17 @@ function updateBooking(bookingId, updateData) {
         
         const updates = [];
         const values = [];
+        let paramIndex = 1;
         
         allowedFields.forEach(field => {
             if (updateData[field] !== undefined && updateData[field] !== null) {
-                // 對於數字欄位，允許 0 值
                 const isNumericField = ['price_per_night', 'nights', 'total_amount', 'final_amount'].includes(field);
-                // 數字欄位：只要不是 undefined 或 null 就更新（允許 0）
-                // 非數字欄位：必須不是空字串
                 if (isNumericField || (updateData[field] !== '' && String(updateData[field]).trim() !== '')) {
-                    updates.push(`${field} = ?`);
-                    // 將數字欄位轉換為整數
+                    if (usePostgreSQL) {
+                        updates.push(`${field} = $${paramIndex++}`);
+                    } else {
+                        updates.push(`${field} = ?`);
+                    }
                     if (isNumericField) {
                         const numValue = parseInt(updateData[field]);
                         values.push(isNaN(numValue) ? 0 : numValue);
@@ -703,472 +1251,394 @@ function updateBooking(bookingId, updateData) {
         });
         
         if (updates.length === 0) {
-            db.close();
-            reject(new Error('沒有要更新的欄位'));
-            return;
+            throw new Error('沒有要更新的欄位');
         }
         
         values.push(bookingId);
-        const sql = `UPDATE bookings SET ${updates.join(', ')} WHERE booking_id = ?`;
+        const sql = usePostgreSQL
+            ? `UPDATE bookings SET ${updates.join(', ')} WHERE booking_id = $${paramIndex}`
+            : `UPDATE bookings SET ${updates.join(', ')} WHERE booking_id = ?`;
         
         console.log('執行 SQL:', sql);
         console.log('參數值:', values);
         
-        db.run(sql, values, function(err) {
-            if (err) {
-                console.error('❌ 更新訂房記錄失敗:', err.message);
-                console.error('SQL 錯誤詳情:', err);
-                db.close();
-                reject(err);
-            } else {
-                console.log(`✅ 訂房記錄已更新 (影響行數: ${this.changes})`);
-                if (this.changes === 0) {
-                    db.close();
-                    reject(new Error('找不到該訂房記錄或沒有資料被更新'));
-                } else {
-                    db.close();
-                    resolve(this.changes);
-                }
-            }
-        });
-    });
+        const result = await query(sql, values);
+        console.log(`✅ 訂房記錄已更新 (影響行數: ${result.changes})`);
+        
+        if (result.changes === 0) {
+            throw new Error('找不到該訂房記錄或沒有資料被更新');
+        }
+        
+        return result.changes;
+    } catch (error) {
+        console.error('❌ 更新訂房記錄失敗:', error.message);
+        throw error;
+    }
 }
 
 // 取消訂房
-function cancelBooking(bookingId) {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
+async function cancelBooking(bookingId) {
+    try {
+        // PostgreSQL 不需要檢查欄位，因為在 initDatabase 中已經建立
+        // SQLite 需要檢查，但我們在 initDatabase 中也已經處理了
         
-        // 先檢查 status 欄位是否存在，如果不存在則新增
-        db.get("PRAGMA table_info(bookings)", [], (err, rows) => {
-            if (err) {
-                console.error('❌ 檢查資料表結構失敗:', err.message);
-                reject(err);
-                db.close();
-                return;
-            }
-            
-            const hasStatusColumn = Array.isArray(rows) && rows.some(row => row.name === 'status');
-            
-            if (!hasStatusColumn) {
-                // 如果沒有 status 欄位，先新增
-                console.log('⚠️  資料表缺少 status 欄位，正在新增...');
-                db.run(`ALTER TABLE bookings ADD COLUMN status TEXT DEFAULT 'active'`, (alterErr) => {
-                    if (alterErr && !alterErr.message.includes('duplicate column')) {
-                        console.error('❌ 新增 status 欄位失敗:', alterErr.message);
-                        reject(alterErr);
-                        db.close();
-                        return;
-                    }
-                    // 欄位新增成功後，執行取消操作
-                    performCancel();
-                });
-            } else {
-                // 欄位已存在，直接執行取消操作
-                performCancel();
-            }
-            
-            function performCancel() {
-                const sql = `UPDATE bookings SET status = 'cancelled' WHERE booking_id = ?`;
-                
-                db.run(sql, [bookingId], function(err) {
-                    if (err) {
-                        console.error('❌ 取消訂房失敗:', err.message);
-                        reject(err);
-                    } else {
-                        console.log(`✅ 訂房已取消 (影響行數: ${this.changes})`);
-                        resolve(this.changes);
-                    }
-                    db.close();
-                });
-            }
-        });
-    });
+        const sql = usePostgreSQL
+            ? `UPDATE bookings SET status = 'cancelled' WHERE booking_id = $1`
+            : `UPDATE bookings SET status = 'cancelled' WHERE booking_id = ?`;
+        
+        const result = await query(sql, [bookingId]);
+        console.log(`✅ 訂房已取消 (影響行數: ${result.changes})`);
+        return result.changes;
+    } catch (error) {
+        console.error('❌ 取消訂房失敗:', error.message);
+        throw error;
+    }
 }
 
 // 刪除訂房記錄（可選功能）
-function deleteBooking(bookingId) {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
+async function deleteBooking(bookingId) {
+    try {
+        const sql = usePostgreSQL
+            ? `DELETE FROM bookings WHERE booking_id = $1`
+            : `DELETE FROM bookings WHERE booking_id = ?`;
         
-        const sql = `DELETE FROM bookings WHERE booking_id = ?`;
-        
-        db.run(sql, [bookingId], function(err) {
-            if (err) {
-                console.error('❌ 刪除訂房記錄失敗:', err.message);
-                reject(err);
-            } else {
-                console.log(`✅ 訂房記錄已刪除 (影響行數: ${this.changes})`);
-                resolve(this.changes);
-            }
-        });
-        
-        db.close();
-    });
+        const result = await query(sql, [bookingId]);
+        console.log(`✅ 訂房記錄已刪除 (影響行數: ${result.changes})`);
+        return result.changes;
+    } catch (error) {
+        console.error('❌ 刪除訂房記錄失敗:', error.message);
+        throw error;
+    }
 }
 
 // 統計資料
-function getStatistics() {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
+async function getStatistics() {
+    try {
+        const recentBookingsSQL = usePostgreSQL
+            ? `SELECT COUNT(*) as count FROM bookings WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '7 days'`
+            : `SELECT COUNT(*) as count FROM bookings WHERE created_at >= datetime('now', '-7 days')`;
         
-        const queries = {
-            total: `SELECT COUNT(*) as count FROM bookings`,
-            totalRevenue: `SELECT SUM(final_amount) as total FROM bookings`,
-            byRoomType: `SELECT room_type, COUNT(*) as count FROM bookings GROUP BY room_type`,
-            recentBookings: `SELECT COUNT(*) as count FROM bookings WHERE created_at >= datetime('now', '-7 days')`
+        const [totalResult, revenueResult, byRoomTypeResult, recentResult] = await Promise.all([
+            queryOne('SELECT COUNT(*) as count FROM bookings'),
+            queryOne('SELECT SUM(final_amount) as total FROM bookings'),
+            query('SELECT room_type, COUNT(*) as count FROM bookings GROUP BY room_type'),
+            queryOne(recentBookingsSQL)
+        ]);
+        
+        return {
+            totalBookings: parseInt(totalResult?.count || 0),
+            totalRevenue: parseInt(revenueResult?.total || 0),
+            byRoomType: byRoomTypeResult.rows || [],
+            recentBookings: parseInt(recentResult?.count || 0)
         };
-        
-        Promise.all([
-            new Promise((res, rej) => {
-                db.get(queries.total, [], (err, row) => {
-                    if (err) rej(err);
-                    else res(row.count);
-                });
-            }),
-            new Promise((res, rej) => {
-                db.get(queries.totalRevenue, [], (err, row) => {
-                    if (err) rej(err);
-                    else res(row.total || 0);
-                });
-            }),
-            new Promise((res, rej) => {
-                db.all(queries.byRoomType, [], (err, rows) => {
-                    if (err) rej(err);
-                    else res(rows);
-                });
-            }),
-            new Promise((res, rej) => {
-                db.get(queries.recentBookings, [], (err, row) => {
-                    if (err) rej(err);
-                    else res(row.count);
-                });
-            })
-        ]).then(([total, revenue, byRoomType, recent]) => {
-            resolve({
-                totalBookings: total,
-                totalRevenue: revenue,
-                byRoomType: byRoomType,
-                recentBookings: recent
-            });
-        }).catch(reject);
-        
-        db.close();
-    });
+    } catch (error) {
+        console.error('❌ 查詢統計資料失敗:', error.message);
+        throw error;
+    }
 }
 
 // ==================== 房型管理 ====================
 
 // 取得所有房型
-function getAllRoomTypes() {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
+async function getAllRoomTypes() {
+    try {
         const sql = `SELECT * FROM room_types WHERE is_active = 1 ORDER BY display_order ASC, id ASC`;
-        
-        db.all(sql, [], (err, rows) => {
-            if (err) {
-                console.error('❌ 查詢房型失敗:', err.message);
-                reject(err);
-            } else {
-                resolve(rows);
-            }
-            db.close();
-        });
-    });
+        const result = await query(sql);
+        return result.rows;
+    } catch (error) {
+        console.error('❌ 查詢房型失敗:', error.message);
+        throw error;
+    }
 }
 
 // 取得單一房型
-function getRoomTypeById(id) {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
-        const sql = `SELECT * FROM room_types WHERE id = ?`;
-        
-        db.get(sql, [id], (err, row) => {
-            if (err) {
-                console.error('❌ 查詢房型失敗:', err.message);
-                reject(err);
-            } else {
-                resolve(row);
-            }
-            db.close();
-        });
-    });
+async function getRoomTypeById(id) {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT * FROM room_types WHERE id = $1`
+            : `SELECT * FROM room_types WHERE id = ?`;
+        return await queryOne(sql, [id]);
+    } catch (error) {
+        console.error('❌ 查詢房型失敗:', error.message);
+        throw error;
+    }
 }
 
 // 新增房型
-function createRoomType(roomData) {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
-        const sql = `INSERT INTO room_types (name, display_name, price, icon, display_order, is_active) 
-                     VALUES (?, ?, ?, ?, ?, ?)`;
+async function createRoomType(roomData) {
+    try {
+        const sql = usePostgreSQL ? `
+            INSERT INTO room_types (name, display_name, price, icon, display_order, is_active) 
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING id
+        ` : `
+            INSERT INTO room_types (name, display_name, price, icon, display_order, is_active) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        `;
         
-        db.run(sql, [
+        const values = [
             roomData.name,
             roomData.display_name,
             roomData.price,
             roomData.icon || '🏠',
             roomData.display_order || 0,
             roomData.is_active !== undefined ? roomData.is_active : 1
-        ], function(err) {
-            if (err) {
-                console.error('❌ 新增房型失敗:', err.message);
-                reject(err);
-            } else {
-                console.log(`✅ 房型已新增 (ID: ${this.lastID})`);
-                resolve(this.lastID);
-            }
-            db.close();
-        });
-    });
+        ];
+        
+        const result = await query(sql, values);
+        const newId = result.lastID || result.rows[0]?.id;
+        console.log(`✅ 房型已新增 (ID: ${newId})`);
+        return newId;
+    } catch (error) {
+        console.error('❌ 新增房型失敗:', error.message);
+        throw error;
+    }
 }
 
 // 更新房型
-function updateRoomType(id, roomData) {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
-        const sql = `UPDATE room_types 
-                     SET display_name = ?, price = ?, icon = ?, display_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
-                     WHERE id = ?`;
+async function updateRoomType(id, roomData) {
+    try {
+        const sql = usePostgreSQL ? `
+            UPDATE room_types 
+            SET display_name = $1, price = $2, icon = $3, display_order = $4, is_active = $5, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $6
+        ` : `
+            UPDATE room_types 
+            SET display_name = ?, price = ?, icon = ?, display_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        `;
         
-        db.run(sql, [
+        const values = [
             roomData.display_name,
             roomData.price,
             roomData.icon || '🏠',
             roomData.display_order || 0,
             roomData.is_active !== undefined ? roomData.is_active : 1,
             id
-        ], function(err) {
-            if (err) {
-                console.error('❌ 更新房型失敗:', err.message);
-                reject(err);
-            } else {
-                console.log(`✅ 房型已更新 (影響行數: ${this.changes})`);
-                resolve(this.changes);
-            }
-            db.close();
-        });
-    });
+        ];
+        
+        const result = await query(sql, values);
+        console.log(`✅ 房型已更新 (影響行數: ${result.changes})`);
+        return result.changes;
+    } catch (error) {
+        console.error('❌ 更新房型失敗:', error.message);
+        throw error;
+    }
 }
 
 // 刪除房型（軟刪除）
-function deleteRoomType(id) {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
-        const sql = `UPDATE room_types SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+async function deleteRoomType(id) {
+    try {
+        const sql = usePostgreSQL
+            ? `UPDATE room_types SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = $1`
+            : `UPDATE room_types SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
         
-        db.run(sql, [id], function(err) {
-            if (err) {
-                console.error('❌ 刪除房型失敗:', err.message);
-                reject(err);
-            } else {
-                console.log(`✅ 房型已刪除 (影響行數: ${this.changes})`);
-                resolve(this.changes);
-            }
-            db.close();
-        });
-    });
+        const result = await query(sql, [id]);
+        console.log(`✅ 房型已刪除 (影響行數: ${result.changes})`);
+        return result.changes;
+    } catch (error) {
+        console.error('❌ 刪除房型失敗:', error.message);
+        throw error;
+    }
 }
 
 // ==================== 系統設定管理 ====================
 
 // 取得設定值
-function getSetting(key) {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
-        const sql = `SELECT value FROM settings WHERE key = ?`;
-        
-        db.get(sql, [key], (err, row) => {
-            if (err) {
-                console.error('❌ 查詢設定失敗:', err.message);
-                reject(err);
-            } else {
-                resolve(row ? row.value : null);
-            }
-            db.close();
-        });
-    });
+async function getSetting(key) {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT value FROM settings WHERE key = $1`
+            : `SELECT value FROM settings WHERE key = ?`;
+        const row = await queryOne(sql, [key]);
+        return row ? row.value : null;
+    } catch (error) {
+        console.error('❌ 查詢設定失敗:', error.message);
+        throw error;
+    }
 }
 
 // 取得所有設定
-function getAllSettings() {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
+async function getAllSettings() {
+    try {
         const sql = `SELECT * FROM settings ORDER BY key ASC`;
-        
-        db.all(sql, [], (err, rows) => {
-            if (err) {
-                console.error('❌ 查詢設定失敗:', err.message);
-                reject(err);
-            } else {
-                resolve(rows);
-            }
-            db.close();
-        });
-    });
+        const result = await query(sql);
+        return result.rows;
+    } catch (error) {
+        console.error('❌ 查詢設定失敗:', error.message);
+        throw error;
+    }
 }
 
 // 更新設定
-function updateSetting(key, value, description = null) {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
-        // 使用 INSERT OR REPLACE 來更新或新增
-        const sql = `INSERT OR REPLACE INTO settings (key, value, description, updated_at) 
-                     VALUES (?, ?, ?, CURRENT_TIMESTAMP)`;
+async function updateSetting(key, value, description = null) {
+    try {
+        const sql = usePostgreSQL ? `
+            INSERT INTO settings (key, value, description, updated_at) 
+            VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+            ON CONFLICT (key) DO UPDATE SET
+            value = EXCLUDED.value,
+            description = EXCLUDED.description,
+            updated_at = CURRENT_TIMESTAMP
+        ` : `
+            INSERT OR REPLACE INTO settings (key, value, description, updated_at) 
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+        `;
         
-        db.run(sql, [key, value, description], function(err) {
-            if (err) {
-                console.error('❌ 更新設定失敗:', err.message);
-                reject(err);
-            } else {
-                console.log(`✅ 設定已更新 (key: ${key})`);
-                resolve(this.changes);
-            }
-            db.close();
-        });
-    });
+        const result = await query(sql, [key, value, description]);
+        console.log(`✅ 設定已更新 (key: ${key})`);
+        return result.changes;
+    } catch (error) {
+        console.error('❌ 更新設定失敗:', error.message);
+        throw error;
+    }
 }
 
 // ==================== 郵件模板相關函數 ====================
 
-function getAllEmailTemplates() {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
-        db.all('SELECT * FROM email_templates ORDER BY template_key', [], (err, rows) => {
-            if (err) {
-                db.close();
-                reject(err);
-            } else {
-                db.close();
-                resolve(rows || []);
-            }
-        });
-    });
+async function getAllEmailTemplates() {
+    try {
+        const sql = `SELECT * FROM email_templates ORDER BY template_key`;
+        const result = await query(sql);
+        return result.rows || [];
+    } catch (error) {
+        console.error('❌ 查詢郵件模板失敗:', error.message);
+        throw error;
+    }
 }
 
-function getEmailTemplateByKey(templateKey) {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
-        db.get('SELECT * FROM email_templates WHERE template_key = ?', [templateKey], (err, row) => {
-            if (err) {
-                db.close();
-                reject(err);
-            } else {
-                db.close();
-                resolve(row);
-            }
-        });
-    });
+async function getEmailTemplateByKey(templateKey) {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT * FROM email_templates WHERE template_key = $1`
+            : `SELECT * FROM email_templates WHERE template_key = ?`;
+        return await queryOne(sql, [templateKey]);
+    } catch (error) {
+        console.error('❌ 查詢郵件模板失敗:', error.message);
+        throw error;
+    }
 }
 
-function updateEmailTemplate(templateKey, data) {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
-        const { template_name, subject, content, is_enabled } = data;
-        db.run(
-            'UPDATE email_templates SET template_name = ?, subject = ?, content = ?, is_enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE template_key = ?',
-            [template_name, subject, content, is_enabled ? 1 : 0, templateKey],
-            function(err) {
-                db.close();
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve({ changes: this.changes });
-                }
-            }
-        );
-    });
+async function updateEmailTemplate(templateKey, data) {
+    try {
+        const { template_name, subject, content, is_enabled, days_before_checkin, send_hour_checkin, days_after_checkout, send_hour_feedback, days_reserved, send_hour_payment_reminder } = data;
+        
+        const sql = usePostgreSQL ? `
+            UPDATE email_templates 
+            SET template_name = $1, subject = $2, content = $3, is_enabled = $4,
+                days_before_checkin = $5, send_hour_checkin = $6,
+                days_after_checkout = $7, send_hour_feedback = $8,
+                days_reserved = $9, send_hour_payment_reminder = $10,
+                updated_at = CURRENT_TIMESTAMP 
+            WHERE template_key = $11
+        ` : `
+            UPDATE email_templates 
+            SET template_name = ?, subject = ?, content = ?, is_enabled = ?,
+                days_before_checkin = ?, send_hour_checkin = ?,
+                days_after_checkout = ?, send_hour_feedback = ?,
+                days_reserved = ?, send_hour_payment_reminder = ?,
+                updated_at = CURRENT_TIMESTAMP 
+            WHERE template_key = ?
+        `;
+        
+        const values = [
+            template_name, subject, content, is_enabled ? 1 : 0,
+            days_before_checkin || null, send_hour_checkin || null,
+            days_after_checkout || null, send_hour_feedback || null,
+            days_reserved || null, send_hour_payment_reminder || null,
+            templateKey
+        ];
+        
+        const result = await query(sql, values);
+        return { changes: result.changes };
+    } catch (error) {
+        console.error('❌ 更新郵件模板失敗:', error.message);
+        throw error;
+    }
 }
 
 // 取得需要發送匯款提醒的訂房（匯款期限最後一天）
-function getBookingsForPaymentReminder() {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
-        // 計算3天前的日期（假設訂房後3天內要匯款）
+async function getBookingsForPaymentReminder() {
+    try {
         const threeDaysAgo = new Date();
         threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
         const threeDaysAgoStr = threeDaysAgo.toISOString().split('T')[0];
         
-        // 查詢：付款方式為匯款轉帳、付款狀態為待付款、訂房日期為3天前、狀態為active
-        db.all(`
+        const sql = usePostgreSQL ? `
+            SELECT * FROM bookings 
+            WHERE payment_method LIKE '%匯款%' 
+            AND payment_status = 'pending' 
+            AND status = 'active'
+            AND DATE(created_at) = DATE($1)
+            AND email_sent = 1
+        ` : `
             SELECT * FROM bookings 
             WHERE payment_method LIKE '%匯款%' 
             AND payment_status = 'pending' 
             AND status = 'active'
             AND DATE(created_at) = DATE(?)
             AND email_sent = 1
-        `, [threeDaysAgoStr], (err, rows) => {
-            if (err) {
-                db.close();
-                reject(err);
-            } else {
-                db.close();
-                resolve(rows || []);
-            }
-        });
-    });
+        `;
+        
+        const result = await query(sql, [threeDaysAgoStr]);
+        return result.rows || [];
+    } catch (error) {
+        console.error('❌ 查詢匯款提醒訂房失敗:', error.message);
+        throw error;
+    }
 }
 
 // 取得需要發送入住提醒的訂房（入住前一天）
-function getBookingsForCheckinReminder() {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
+async function getBookingsForCheckinReminder() {
+    try {
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         const tomorrowStr = tomorrow.toISOString().split('T')[0];
         
-        db.all(`
-            SELECT * FROM bookings 
-            WHERE check_in_date = ?
-            AND status = 'active'
-            AND payment_status = 'paid'
-        `, [tomorrowStr], (err, rows) => {
-            if (err) {
-                db.close();
-                reject(err);
-            } else {
-                db.close();
-                resolve(rows || []);
-            }
-        });
-    });
+        const sql = usePostgreSQL
+            ? `SELECT * FROM bookings WHERE check_in_date = $1 AND status = 'active' AND payment_status = 'paid'`
+            : `SELECT * FROM bookings WHERE check_in_date = ? AND status = 'active' AND payment_status = 'paid'`;
+        
+        const result = await query(sql, [tomorrowStr]);
+        return result.rows || [];
+    } catch (error) {
+        console.error('❌ 查詢入住提醒訂房失敗:', error.message);
+        throw error;
+    }
 }
 
 // 取得需要發送回訪信的訂房（退房後隔天）
-function getBookingsForFeedbackRequest() {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
+async function getBookingsForFeedbackRequest() {
+    try {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayStr = yesterday.toISOString().split('T')[0];
         
-        db.all(`
-            SELECT * FROM bookings 
-            WHERE check_out_date = ?
-            AND status = 'active'
-        `, [yesterdayStr], (err, rows) => {
-            if (err) {
-                db.close();
-                reject(err);
-            } else {
-                db.close();
-                resolve(rows || []);
-            }
-        });
-    });
+        const sql = usePostgreSQL
+            ? `SELECT * FROM bookings WHERE check_out_date = $1 AND status = 'active'`
+            : `SELECT * FROM bookings WHERE check_out_date = ? AND status = 'active'`;
+        
+        const result = await query(sql, [yesterdayStr]);
+        return result.rows || [];
+    } catch (error) {
+        console.error('❌ 查詢回訪信訂房失敗:', error.message);
+        throw error;
+    }
 }
 
 // 檢查房間可用性（檢查指定日期範圍內是否有有效或保留的訂房）
-function getRoomAvailability(checkInDate, checkOutDate) {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
-        
-        // 查詢在指定日期範圍內有重疊的有效或保留訂房
-        // 訂房日期範圍與查詢日期範圍有重疊的條件：
-        // 1. 訂房的入住日期 < 查詢的退房日期
-        // 2. 訂房的退房日期 > 查詢的入住日期
-        // 3. 訂房狀態為 'active' 或 'reserved'
-        // 注意：bookings.room_type 儲存的是 display_name，需要轉換為 room_types.name
-        db.all(`
+async function getRoomAvailability(checkInDate, checkOutDate) {
+    try {
+        const sql = usePostgreSQL ? `
+            SELECT DISTINCT rt.name
+            FROM bookings b
+            INNER JOIN room_types rt ON b.room_type = rt.display_name
+            WHERE (
+                b.check_in_date < $1 
+                AND b.check_out_date > $2
+                AND b.status IN ('active', 'reserved')
+            )
+        ` : `
             SELECT DISTINCT rt.name
             FROM bookings b
             INNER JOIN room_types rt ON b.room_type = rt.display_name
@@ -1177,43 +1647,38 @@ function getRoomAvailability(checkInDate, checkOutDate) {
                 AND b.check_out_date > ?
                 AND b.status IN ('active', 'reserved')
             )
-        `, [checkOutDate, checkInDate], (err, rows) => {
-            if (err) {
-                db.close();
-                reject(err);
-            } else {
-                db.close();
-                // 返回已滿房的房型 name 列表（前端使用 name 來比較）
-                const unavailableRooms = rows.map(row => row.name);
-                resolve(unavailableRooms || []);
-            }
-        });
-    });
+        `;
+        
+        const result = await query(sql, [checkOutDate, checkInDate]);
+        const unavailableRooms = result.rows.map(row => row.name);
+        return unavailableRooms || [];
+    } catch (error) {
+        console.error('❌ 查詢房間可用性失敗:', error.message);
+        throw error;
+    }
 }
 
 // 取得已過期保留期限的訂房（需要自動取消）
-function getBookingsExpiredReservation() {
-    return new Promise((resolve, reject) => {
-        const db = getDatabase();
-        
-        // 取得匯款提醒模板的保留天數（預設3天）
-        // 查詢：付款方式為匯款轉帳、狀態為保留、付款狀態為待付款、創建日期超過保留天數
-        // 由於 SQLite 不支援動態查詢模板設定，我們先查詢所有保留狀態的訂房，然後在應用層過濾
-        db.all(`
+async function getBookingsExpiredReservation() {
+    try {
+        const sql = usePostgreSQL ? `
             SELECT * FROM bookings 
             WHERE payment_method LIKE '%匯款%' 
             AND status = 'reserved' 
             AND payment_status = 'pending'
-        `, [], (err, rows) => {
-            if (err) {
-                db.close();
-                reject(err);
-            } else {
-                db.close();
-                resolve(rows || []);
-            }
-        });
-    });
+        ` : `
+            SELECT * FROM bookings 
+            WHERE payment_method LIKE '%匯款%' 
+            AND status = 'reserved' 
+            AND payment_status = 'pending'
+        `;
+        
+        const result = await query(sql);
+        return result.rows || [];
+    } catch (error) {
+        console.error('❌ 查詢過期保留訂房失敗:', error.message);
+        throw error;
+    }
 }
 
 module.exports = {
