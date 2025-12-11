@@ -206,6 +206,14 @@ const paymentMethods = {
     card: '線上刷卡'
 };
 
+// 生成短訂房編號（格式：BK + 時間戳記後8位，總共10位）
+function generateShortBookingId() {
+    // 時間戳記後8位（確保唯一性）
+    const timeSuffix = Date.now().toString().slice(-8);
+    
+    return `BK${timeSuffix}`;
+}
+
 // 訂房 API
 app.post('/api/booking', async (req, res) => {
     console.log('\n========================================');
@@ -310,7 +318,7 @@ app.post('/api/booking', async (req, res) => {
             totalAmount,
             finalAmount,
             bookingDate: new Date().toISOString(),
-            bookingId: 'BK' + Date.now(),
+            bookingId: generateShortBookingId(),
             depositPercentage: depositPercentage, // 傳給郵件生成函數使用
             bankInfo: bankInfo, // 匯款資訊（包含銀行、分行、帳號、戶名）
             paymentMethodCode: paymentMethod // 原始付款方式代碼（transfer 或 card）
