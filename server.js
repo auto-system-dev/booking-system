@@ -1091,6 +1091,16 @@ app.delete('/api/admin/room-types/:id', async (req, res) => {
     try {
         const { id } = req.params;
         
+        // 先檢查房型是否存在
+        const roomType = await db.getRoomTypeById(id);
+        if (!roomType) {
+            return res.status(404).json({
+                success: false,
+                message: '找不到該房型'
+            });
+        }
+        
+        // 執行刪除（軟刪除）
         const result = await db.deleteRoomType(id);
         
         if (result > 0) {
@@ -1099,9 +1109,11 @@ app.delete('/api/admin/room-types/:id', async (req, res) => {
                 message: '房型已刪除'
             });
         } else {
-            res.status(404).json({
-                success: false,
-                message: '找不到該房型'
+            // 如果房型存在但更新失敗，可能是已經被刪除
+            // 仍然返回成功，因為目標狀態（停用）已經達成
+            res.json({
+                success: true,
+                message: '房型已刪除（該房型原本已停用）'
             });
         }
     } catch (error) {

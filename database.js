@@ -1454,16 +1454,16 @@ async function deleteRoomType(id) {
             return 0;
         }
         
-        // 如果已經被刪除（is_active = 0），返回 0
+        // 如果已經被刪除（is_active = 0），仍然執行更新以確保狀態正確
+        // 這樣可以避免重複刪除的問題，同時確保資料一致性
         if (roomType.is_active === 0) {
-            console.log(`⚠️ 房型 ID: ${id} 已經被刪除`);
-            return 0;
+            console.log(`⚠️ 房型 ID: ${id} 已經被停用，但繼續執行更新以確保狀態正確`);
         }
         
-        // 執行軟刪除
+        // 執行軟刪除（無論當前狀態如何，都設為停用）
         const sql = usePostgreSQL
-            ? `UPDATE room_types SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND is_active = 1`
-            : `UPDATE room_types SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND is_active = 1`;
+            ? `UPDATE room_types SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = $1`
+            : `UPDATE room_types SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
         
         const result = await query(sql, [id]);
         console.log(`✅ 房型已刪除 (影響行數: ${result.changes})`);
