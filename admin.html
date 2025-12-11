@@ -347,6 +347,52 @@
                             <span>啟用此模板</span>
                         </label>
                     </div>
+                    
+                    <!-- 入住提醒設定 -->
+                    <div id="checkinReminderSettings" class="form-group" style="display: none; background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 15px;">
+                        <h3 style="margin-top: 0; font-size: 16px; color: #333;">發送時間設定</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <label>入住前幾天發送</label>
+                                <input type="number" id="daysBeforeCheckin" min="0" max="30" value="1" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <div>
+                                <label>發送時間（24小時制）</label>
+                                <input type="number" id="sendHourCheckin" min="0" max="23" value="9" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 感謝入住設定 -->
+                    <div id="feedbackRequestSettings" class="form-group" style="display: none; background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 15px;">
+                        <h3 style="margin-top: 0; font-size: 16px; color: #333;">發送時間設定</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <label>退房後幾天發送</label>
+                                <input type="number" id="daysAfterCheckout" min="0" max="30" value="1" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <div>
+                                <label>發送時間（24小時制）</label>
+                                <input type="number" id="sendHourFeedback" min="0" max="23" value="10" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 匯款提醒設定 -->
+                    <div id="paymentReminderSettings" class="form-group" style="display: none; background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 15px;">
+                        <h3 style="margin-top: 0; font-size: 16px; color: #333;">發送時間設定</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <label>訂房後幾天發送（保留天數）</label>
+                                <input type="number" id="daysReserved" min="1" max="30" value="3" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <small style="color: #666; display: block; margin-top: 5px;">超過此天數未付款，訂房狀態將自動改為「已取消」</small>
+                            </div>
+                            <div>
+                                <label>發送時間（24小時制）</label>
+                                <input type="number" id="sendHourPaymentReminder" min="0" max="23" value="9" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn-primary">儲存</button>

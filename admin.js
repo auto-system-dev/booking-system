@@ -1335,6 +1335,37 @@ async function showEmailTemplateModal(templateKey) {
             document.getElementById('emailTemplateSubject').value = template.subject || '';
             document.getElementById('emailTemplateEnabled').checked = template.is_enabled === 1;
             
+            // 根據模板類型顯示/隱藏設定欄位
+            const checkinSettings = document.getElementById('checkinReminderSettings');
+            const feedbackSettings = document.getElementById('feedbackRequestSettings');
+            const paymentSettings = document.getElementById('paymentReminderSettings');
+            
+            // 隱藏所有設定欄位
+            if (checkinSettings) checkinSettings.style.display = 'none';
+            if (feedbackSettings) feedbackSettings.style.display = 'none';
+            if (paymentSettings) paymentSettings.style.display = 'none';
+            
+            // 根據模板類型顯示對應的設定欄位
+            if (templateKey === 'checkin_reminder') {
+                if (checkinSettings) {
+                    checkinSettings.style.display = 'block';
+                    document.getElementById('daysBeforeCheckin').value = template.days_before_checkin || 1;
+                    document.getElementById('sendHourCheckin').value = template.send_hour_checkin || 9;
+                }
+            } else if (templateKey === 'feedback_request') {
+                if (feedbackSettings) {
+                    feedbackSettings.style.display = 'block';
+                    document.getElementById('daysAfterCheckout').value = template.days_after_checkout || 1;
+                    document.getElementById('sendHourFeedback').value = template.send_hour_feedback || 10;
+                }
+            } else if (templateKey === 'payment_reminder') {
+                if (paymentSettings) {
+                    paymentSettings.style.display = 'block';
+                    document.getElementById('daysReserved').value = template.days_reserved || 3;
+                    document.getElementById('sendHourPaymentReminder').value = template.send_hour_payment_reminder || 9;
+                }
+            }
+            
             // 初始化 Quill 編輯器（如果還沒有）
             if (!quillEditor) {
                 quillEditor = new Quill('#emailTemplateEditor', {
@@ -1390,6 +1421,9 @@ async function showEmailTemplateModal(templateKey) {
             // 先顯示模態框，然後再載入內容
             modal.classList.add('active');
             
+            // 先顯示模態框
+            modal.classList.add('active');
+            
             // 使用 setTimeout 確保模態框完全顯示後再載入內容
             setTimeout(() => {
                 try {
@@ -1399,52 +1433,45 @@ async function showEmailTemplateModal(templateKey) {
                     
                     console.log('已清空編輯器，準備載入新內容');
                     console.log('要載入的 HTML 內容長度:', htmlContent.length);
-                    console.log('要載入的 HTML 內容預覽:', htmlContent.substring(0, 200));
                     
-                    // 方法 1: 使用 Quill 的 dangerouslyPasteHTML 方法
-                    // 先選擇全部內容（雖然已經清空，但確保範圍正確）
-                    quillEditor.setSelection(0, 0);
+                    // 如果內容為空，直接返回
+                    if (!htmlContent || htmlContent.trim() === '') {
+                        console.log('內容為空，跳過載入');
+                        return;
+                    }
                     
-                    // 使用 dangerouslyPasteHTML 插入 HTML
-                    quillEditor.clipboard.dangerouslyPasteHTML(0, htmlContent);
+                    // 直接設置 innerHTML（最可靠的方法）
+                    quillEditor.root.innerHTML = htmlContent;
                     
                     // 等待一下讓 Quill 處理內容
                     setTimeout(() => {
+                        quillEditor.update();
                         const loadedContent = quillEditor.root.innerHTML;
-                        console.log('✅ 使用 pasteHTML 方法載入內容完成');
+                        console.log('✅ 內容已載入到編輯器');
                         console.log('編輯器內容長度:', loadedContent.length);
-                        console.log('編輯器內容預覽:', loadedContent.substring(0, 200));
                         
-                        // 驗證內容是否正確載入
-                        if (loadedContent.trim() === '' || loadedContent === '<p><br></p>' || loadedContent.length < htmlContent.length * 0.5) {
-                            console.warn('⚠️ 內容可能未正確載入，嘗試方法 2');
-                            
-                            // 方法 2: 直接設置 innerHTML（fallback）
-                            quillEditor.root.innerHTML = htmlContent;
-                            
-                            // 手動觸發 Quill 的更新
-                            setTimeout(() => {
-                                quillEditor.update();
-                                console.log('✅ 使用直接設置 innerHTML 方法完成');
-                                console.log('最終編輯器內容長度:', quillEditor.root.innerHTML.length);
-                            }, 100);
-                        } else {
-                            console.log('✅ 內容已成功載入到編輯器');
+                        // 如果載入失敗，嘗試使用 pasteHTML 方法
+                        if (loadedContent.trim() === '' || loadedContent === '<p><br></p>') {
+                            console.warn('⚠️ 內容可能未正確載入，嘗試 pasteHTML 方法');
+                            try {
+                                quillEditor.clipboard.dangerouslyPasteHTML(0, htmlContent);
+                                console.log('✅ 使用 pasteHTML 方法完成');
+                            } catch (pasteError) {
+                                console.error('❌ pasteHTML 方法失敗:', pasteError);
+                            }
                         }
                     }, 100);
                 } catch (error) {
                     console.error('❌ 載入內容到 Quill 時發生錯誤:', error);
-                    // 方法 3: 最後的 fallback - 直接設置並忽略錯誤
+                    // 最後的 fallback - 直接設置並忽略錯誤
                     try {
                         quillEditor.root.innerHTML = htmlContent;
                         console.log('✅ 使用 fallback 方法（直接設置 innerHTML）');
                     } catch (fallbackError) {
                         console.error('❌ 所有載入方法都失敗:', fallbackError);
-                        // 即使有錯誤，也嘗試設置內容
-                        quillEditor.root.innerHTML = htmlContent;
                     }
                 }
-            }, 500);
+            }, 300);
             
             // 同時更新 textarea（用於儲存）
             textarea.value = template.content || '';
@@ -1552,6 +1579,18 @@ ${quillHtml}
         content: content,
         is_enabled: document.getElementById('emailTemplateEnabled').checked ? 1 : 0
     };
+    
+    // 根據模板類型添加對應的設定值
+    if (templateKey === 'checkin_reminder') {
+        data.days_before_checkin = parseInt(document.getElementById('daysBeforeCheckin').value) || 1;
+        data.send_hour_checkin = parseInt(document.getElementById('sendHourCheckin').value) || 9;
+    } else if (templateKey === 'feedback_request') {
+        data.days_after_checkout = parseInt(document.getElementById('daysAfterCheckout').value) || 1;
+        data.send_hour_feedback = parseInt(document.getElementById('sendHourFeedback').value) || 10;
+    } else if (templateKey === 'payment_reminder') {
+        data.days_reserved = parseInt(document.getElementById('daysReserved').value) || 3;
+        data.send_hour_payment_reminder = parseInt(document.getElementById('sendHourPaymentReminder').value) || 9;
+    }
     
     try {
         console.log('準備儲存模板:', templateKey);
