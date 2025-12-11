@@ -883,6 +883,49 @@ app.post('/api/bookings/:bookingId/cancel', async (req, res) => {
     }
 });
 
+// API: 刪除訂房（僅限已取消的訂房）
+app.delete('/api/bookings/:bookingId', async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+        
+        // 先檢查訂房狀態，只允許刪除已取消的訂房
+        const booking = await db.getBookingById(bookingId);
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: '找不到該訂房記錄'
+            });
+        }
+        
+        if (booking.status !== 'cancelled') {
+            return res.status(400).json({
+                success: false,
+                message: '只能刪除已取消的訂房'
+            });
+        }
+        
+        const result = await db.deleteBooking(bookingId);
+        
+        if (result > 0) {
+            res.json({
+                success: true,
+                message: '訂房已刪除'
+            });
+        } else {
+            res.status(404).json({
+                success: false,
+                message: '找不到該訂房記錄'
+            });
+        }
+    } catch (error) {
+        console.error('刪除訂房錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '刪除訂房失敗: ' + error.message
+        });
+    }
+});
+
 // ==================== 房型管理 API ====================
 
 // API: 取得所有房型（公開，供前台使用）

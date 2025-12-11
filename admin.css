@@ -224,7 +224,8 @@ body {
 
 .btn-view,
 .btn-edit,
-.btn-cancel {
+.btn-cancel,
+.btn-delete {
     padding: 6px 12px;
     border: none;
     border-radius: 6px;
@@ -257,6 +258,15 @@ body {
 }
 
 .btn-cancel:hover {
+    background: #c82333;
+}
+
+.btn-delete {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-delete:hover {
     background: #c82333;
 }
 

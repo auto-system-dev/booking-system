@@ -833,6 +833,15 @@ async function deleteBooking(bookingId) {
             }
         });
         
+        // 檢查回應是否為 JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('伺服器返回非 JSON 回應:', text.substring(0, 200));
+            showError('刪除失敗：伺服器回應格式錯誤');
+            return;
+        }
+        
         const result = await response.json();
         console.log('刪除結果:', result);
         
