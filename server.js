@@ -41,6 +41,7 @@ const emailPass = process.env.EMAIL_PASS || 'vtik qvij ravh lirg';
 const useOAuth2 = process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET && process.env.GMAIL_REFRESH_TOKEN;
 
 let transporter;
+let getAccessToken = null; // 將函數聲明在外部作用域
 
 if (useOAuth2) {
     // 使用 OAuth2 認證（推薦，解決 Railway 連接超時問題）
@@ -60,7 +61,7 @@ if (useOAuth2) {
     let accessTokenCache = null;
     let tokenExpiry = null;
     
-    async function getAccessToken() {
+    getAccessToken = async function() {
         try {
             // 如果 token 還在有效期內，直接返回
             if (accessTokenCache && tokenExpiry && Date.now() < tokenExpiry) {
@@ -85,7 +86,7 @@ if (useOAuth2) {
             console.error('   錯誤詳情:', error);
             throw error;
         }
-    }
+    };
     
     transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -278,7 +279,7 @@ app.post('/api/booking', async (req, res) => {
             console.log('   認證方式:', useOAuth2 ? 'OAuth2' : '應用程式密碼');
             
             // 如果是 OAuth2，先測試取得 Access Token
-            if (useOAuth2) {
+            if (useOAuth2 && getAccessToken) {
                 try {
                     console.log('🔍 測試 OAuth2 Access Token...');
                     const testToken = await getAccessToken();
