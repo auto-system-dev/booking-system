@@ -503,10 +503,38 @@ app.post('/api/booking', async (req, res) => {
         if (paymentMethod === 'card') {
             // 線上刷卡：建立支付表單
             try {
-                // 從資料庫取得綠界設定
-                const ecpayMerchantID = await db.getSetting('ecpay_merchant_id') || process.env.ECPAY_MERCHANT_ID || '2000132';
-                const ecpayHashKey = await db.getSetting('ecpay_hash_key') || process.env.ECPAY_HASH_KEY || '5294y06JbISpM5x9';
-                const ecpayHashIV = await db.getSetting('ecpay_hash_iv') || process.env.ECPAY_HASH_IV || 'v77hoKGq4kWxNNIS';
+                // 判斷環境（正式環境或測試環境）
+                const isProduction = process.env.NODE_ENV === 'production';
+                console.log('🌍 當前環境:', isProduction ? '正式環境 (Production)' : '測試環境 (Test)');
+                
+                // 根據環境取得綠界設定
+                let ecpayMerchantID, ecpayHashKey, ecpayHashIV;
+                
+                if (isProduction) {
+                    // 正式環境：優先使用正式環境變數，其次使用資料庫設定
+                    ecpayMerchantID = process.env.ECPAY_MERCHANT_ID_PROD || await db.getSetting('ecpay_merchant_id_prod') || await db.getSetting('ecpay_merchant_id');
+                    ecpayHashKey = process.env.ECPAY_HASH_KEY_PROD || await db.getSetting('ecpay_hash_key_prod') || await db.getSetting('ecpay_hash_key');
+                    ecpayHashIV = process.env.ECPAY_HASH_IV_PROD || await db.getSetting('ecpay_hash_iv_prod') || await db.getSetting('ecpay_hash_iv');
+                    
+                    console.log('💰 使用正式環境設定');
+                    if (!ecpayMerchantID || ecpayMerchantID === '2000132') {
+                        console.warn('⚠️  警告：正式環境仍在使用測試環境的 MerchantID！');
+                        console.warn('   請設定 ECPAY_MERCHANT_ID_PROD 環境變數或在資料庫中設定 ecpay_merchant_id_prod');
+                    }
+                } else {
+                    // 測試環境：使用測試環境設定
+                    ecpayMerchantID = await db.getSetting('ecpay_merchant_id') || process.env.ECPAY_MERCHANT_ID || '2000132';
+                    ecpayHashKey = await db.getSetting('ecpay_hash_key') || process.env.ECPAY_HASH_KEY || '5294y06JbISpM5x9';
+                    ecpayHashIV = await db.getSetting('ecpay_hash_iv') || process.env.ECPAY_HASH_IV || 'v77hoKGq4kWxNNIS';
+                    
+                    console.log('🧪 使用測試環境設定');
+                }
+                
+                console.log('📋 綠界設定:', {
+                    MerchantID: ecpayMerchantID ? ecpayMerchantID.substring(0, 4) + '****' : '未設定',
+                    HashKey: ecpayHashKey ? '已設定' : '未設定',
+                    HashIV: ecpayHashIV ? '已設定' : '未設定'
+                });
                 
                 // 傳入綠界設定給 payment 模組
                 paymentData = payment.createPaymentForm(bookingData, {
