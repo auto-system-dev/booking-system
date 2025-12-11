@@ -103,10 +103,10 @@ if (useOAuth2) {
             refreshToken: process.env.GMAIL_REFRESH_TOKEN,
             accessToken: getAccessToken
         },
-        // 增加超時時間和連接設定（Railway 環境需要）
-        connectionTimeout: 90000, // 90 秒（增加超時時間）
-        greetingTimeout: 30000, // 30 秒
-        socketTimeout: 90000, // 90 秒
+        // 縮短超時時間，快速切換到 Gmail API（Railway 環境 SMTP 連接不穩定）
+        connectionTimeout: 10000, // 10 秒（快速失敗，切換到 Gmail API）
+        greetingTimeout: 5000, // 5 秒
+        socketTimeout: 10000, // 10 秒
         pool: false, // 不使用連接池（避免連接問題）
         // 啟用 TLS
         tls: {
@@ -355,42 +355,58 @@ app.post('/api/booking', async (req, res) => {
                 }
             }
             
-            // 發送客戶確認郵件（SMTP 失敗時自動切換到 Gmail API）
+            // 發送客戶確認郵件（優先使用 Gmail API，更快更穩定）
             console.log('📤 發送客戶確認郵件...');
             let customerResult;
-            try {
-                customerResult = await transporter.sendMail(customerMailOptions);
-                console.log('✅ 客戶確認郵件已發送 (SMTP)');
-                if (customerResult && customerResult.messageId) {
-                    console.log('   郵件 ID:', customerResult.messageId);
-                }
-            } catch (smtpError) {
-                if (smtpError.code === 'ETIMEDOUT' && sendEmailViaGmailAPI) {
-                    console.log('⚠️  SMTP 連接超時，切換到 Gmail API...');
+            if (sendEmailViaGmailAPI) {
+                // 直接使用 Gmail API（Railway 環境更穩定）
+                try {
                     customerResult = await sendEmailViaGmailAPI(customerMailOptions);
                     console.log('✅ 客戶確認郵件已發送 (Gmail API)');
-                } else {
-                    throw smtpError;
+                } catch (gmailError) {
+                    // Gmail API 失敗時，嘗試 SMTP
+                    console.log('⚠️  Gmail API 失敗，嘗試 SMTP...');
+                    try {
+                        customerResult = await transporter.sendMail(customerMailOptions);
+                        console.log('✅ 客戶確認郵件已發送 (SMTP)');
+                    } catch (smtpError) {
+                        throw gmailError; // 拋出原始 Gmail API 錯誤
+                    }
                 }
+            } else {
+                // 沒有 Gmail API，使用 SMTP
+                customerResult = await transporter.sendMail(customerMailOptions);
+                console.log('✅ 客戶確認郵件已發送 (SMTP)');
+            }
+            if (customerResult && customerResult.messageId) {
+                console.log('   郵件 ID:', customerResult.messageId);
             }
             
-            // 發送管理員通知郵件（SMTP 失敗時自動切換到 Gmail API）
+            // 發送管理員通知郵件（優先使用 Gmail API，更快更穩定）
             console.log('📤 發送管理員通知郵件...');
             let adminResult;
-            try {
-                adminResult = await transporter.sendMail(adminMailOptions);
-                console.log('✅ 管理員通知郵件已發送 (SMTP)');
-                if (adminResult && adminResult.messageId) {
-                    console.log('   郵件 ID:', adminResult.messageId);
-                }
-            } catch (smtpError) {
-                if (smtpError.code === 'ETIMEDOUT' && sendEmailViaGmailAPI) {
-                    console.log('⚠️  SMTP 連接超時，切換到 Gmail API...');
+            if (sendEmailViaGmailAPI) {
+                // 直接使用 Gmail API（Railway 環境更穩定）
+                try {
                     adminResult = await sendEmailViaGmailAPI(adminMailOptions);
                     console.log('✅ 管理員通知郵件已發送 (Gmail API)');
-                } else {
-                    throw smtpError;
+                } catch (gmailError) {
+                    // Gmail API 失敗時，嘗試 SMTP
+                    console.log('⚠️  Gmail API 失敗，嘗試 SMTP...');
+                    try {
+                        adminResult = await transporter.sendMail(adminMailOptions);
+                        console.log('✅ 管理員通知郵件已發送 (SMTP)');
+                    } catch (smtpError) {
+                        throw gmailError; // 拋出原始 Gmail API 錯誤
+                    }
                 }
+            } else {
+                // 沒有 Gmail API，使用 SMTP
+                adminResult = await transporter.sendMail(adminMailOptions);
+                console.log('✅ 管理員通知郵件已發送 (SMTP)');
+            }
+            if (adminResult && adminResult.messageId) {
+                console.log('   郵件 ID:', adminResult.messageId);
             }
             
             emailSent = true;
