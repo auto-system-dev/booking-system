@@ -506,9 +506,9 @@ app.post('/api/booking', async (req, res) => {
                 status: bookingStatus
             });
             
-            // 如果郵件發送狀態改變，更新資料庫
-            if (emailSent) {
-                await db.updateEmailStatus(bookingData.bookingId, true);
+            // 如果郵件發送狀態改變，更新資料庫（匯款轉帳發送確認信）
+            if (emailSent && paymentMethod === 'transfer') {
+                await db.updateEmailStatus(bookingData.bookingId, 'booking_confirmation');
             }
         } catch (dbError) {
             console.error('⚠️  資料庫儲存錯誤（不影響訂房）:', dbError.message);
@@ -1377,7 +1377,7 @@ const handlePaymentResult = async (req, res) => {
                                     }
                                     
                                     if (emailSent) {
-                                        await db.updateEmailStatus(bookingId, true);
+                                        await db.updateEmailStatus(bookingId, 'booking_confirmation');
                                         console.log('✅ 確認郵件已發送，郵件狀態已更新');
                                     }
                                 } catch (emailError) {
@@ -1531,7 +1531,7 @@ const handlePaymentResult = async (req, res) => {
                         
                         // 更新郵件狀態
                         if (emailSent) {
-                            await db.updateEmailStatus(bookingId, true);
+                            await db.updateEmailStatus(bookingId, 'booking_confirmation');
                             console.log('✅ 郵件狀態已更新');
                         }
                     } catch (emailError) {

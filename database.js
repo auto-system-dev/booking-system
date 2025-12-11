@@ -1163,14 +1163,32 @@ async function saveBooking(bookingData) {
 }
 
 // 更新郵件發送狀態
+// emailSent 可以是：
+// - 布林值：true/false（轉換為 1/0，向後兼容）
+// - 字串：郵件類型，例如 'booking_confirmation' 或 'booking_confirmation,checkin_reminder'
 async function updateEmailStatus(bookingId, emailSent) {
     try {
+        let value;
+        
+        // 如果是布林值，轉換為整數（向後兼容）
+        if (typeof emailSent === 'boolean') {
+            value = emailSent ? 1 : 0;
+        }
+        // 如果是字串，直接使用（新格式：郵件類型）
+        else if (typeof emailSent === 'string') {
+            value = emailSent;
+        }
+        // 如果是數字，直接使用
+        else {
+            value = emailSent ? 1 : 0;
+        }
+        
         const sql = usePostgreSQL 
             ? `UPDATE bookings SET email_sent = $1 WHERE booking_id = $2`
             : `UPDATE bookings SET email_sent = ? WHERE booking_id = ?`;
         
-        const result = await query(sql, [emailSent ? 1 : 0, bookingId]);
-        console.log(`✅ 郵件狀態已更新 (影響行數: ${result.changes})`);
+        const result = await query(sql, [value, bookingId]);
+        console.log(`✅ 郵件狀態已更新 (影響行數: ${result.changes}, 值: ${value})`);
         return result.changes;
     } catch (error) {
         console.error('❌ 更新郵件狀態失敗:', error.message);
