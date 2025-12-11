@@ -1835,6 +1835,13 @@ async function sendPaymentReminderEmails() {
                 });
                 
                 console.log(`✅ 已發送匯款提醒給 ${booking.guest_name} (${booking.booking_id})`);
+                
+                // 更新郵件狀態（追加繳款信）
+                try {
+                    await db.updateEmailStatus(booking.booking_id, 'payment_reminder', true);
+                } catch (updateError) {
+                    console.error(`❌ 更新郵件狀態失敗 (${booking.booking_id}):`, updateError.message);
+                }
             } catch (error) {
                 console.error(`❌ 發送匯款提醒失敗 (${booking.booking_id}):`, error.message);
             }
@@ -1914,6 +1921,13 @@ async function sendCheckinReminderEmails() {
                 });
                 
                 console.log(`✅ 已發送入住提醒給 ${booking.guest_name} (${booking.booking_id})`);
+                
+                // 更新郵件狀態（追加入住信）
+                try {
+                    await db.updateEmailStatus(booking.booking_id, 'checkin_reminder', true);
+                } catch (updateError) {
+                    console.error(`❌ 更新郵件狀態失敗 (${booking.booking_id}):`, updateError.message);
+                }
             } catch (error) {
                 console.error(`❌ 發送入住提醒失敗 (${booking.booking_id}):`, error.message);
             }
@@ -1948,6 +1962,13 @@ async function sendFeedbackRequestEmails() {
                 });
                 
                 console.log(`✅ 已發送回訪信給 ${booking.guest_name} (${booking.booking_id})`);
+                
+                // 更新郵件狀態（追加退房信）
+                try {
+                    await db.updateEmailStatus(booking.booking_id, 'feedback_request', true);
+                } catch (updateError) {
+                    console.error(`❌ 更新郵件狀態失敗 (${booking.booking_id}):`, updateError.message);
+                }
             } catch (error) {
                 console.error(`❌ 發送回訪信失敗 (${booking.booking_id}):`, error.message);
             }

@@ -331,17 +331,15 @@ function showBookingModal(booking) {
         <div class="detail-row">
             <span class="detail-label">訂房狀態</span>
             <span class="detail-value">
-                <span class="status-badge ${(booking.status || 'active') === 'cancelled' ? 'status-refunded' : 'status-paid'}">
-                    ${(booking.status || 'active') === 'cancelled' ? '已取消' : '有效'}
+                <span class="status-badge ${getBookingStatusClass(booking.status || 'active')}">
+                    ${getBookingStatusText(booking.status || 'active')}
                 </span>
             </span>
         </div>
         <div class="detail-row">
             <span class="detail-label">郵件狀態</span>
             <span class="detail-value">
-                <span class="status-badge ${booking.email_sent ? 'status-sent' : 'status-unsent'}">
-                    ${booking.email_sent ? '已發送' : '未發送'}
-                </span>
+                ${getEmailStatusDisplay(booking.email_sent)}
             </span>
         </div>
         <div class="detail-row">
@@ -480,19 +478,21 @@ function getEmailStatusDisplay(emailSent) {
         return '<span class="status-badge status-unsent">未發送</span>';
     }
     
+    const emailTypeMap = {
+        'booking_confirmation': '確認信',
+        'checkin_reminder': '入住信',
+        'feedback_request': '退房信',
+        'payment_reminder': '繳款信',
+        '1': '確認信',  // 舊格式：數字 1 表示已發送確認信
+        '0': '未發送'   // 舊格式：數字 0 表示未發送
+    };
+    
     // 如果 email_sent 是字串，解析郵件類型（只顯示最後一個）
     if (typeof emailSent === 'string') {
         const emailTypes = emailSent.split(',').filter(t => t.trim());
         if (emailTypes.length === 0) {
             return '<span class="status-badge status-unsent">未發送</span>';
         }
-        
-        const emailTypeMap = {
-            'booking_confirmation': '確認信',
-            'checkin_reminder': '入住信',
-            'feedback_request': '退房信',
-            'payment_reminder': '繳款信'
-        };
         
         // 只顯示最後一個郵件類型
         const lastType = emailTypes[emailTypes.length - 1].trim();
@@ -501,7 +501,12 @@ function getEmailStatusDisplay(emailSent) {
         return `<span class="status-badge status-sent">${typeName}</span>`;
     }
     
-    // 舊格式：只顯示已發送/未發送
+    // 舊格式：數字 1 表示已發送確認信
+    if (emailSent === 1 || emailSent === '1') {
+        return '<span class="status-badge status-sent">確認信</span>';
+    }
+    
+    // 其他情況：顯示已發送
     return '<span class="status-badge status-sent">已發送</span>';
 }
 

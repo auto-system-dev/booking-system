@@ -184,7 +184,7 @@ async function initPostgreSQL() {
                     total_amount INTEGER NOT NULL,
                     final_amount INTEGER NOT NULL,
                     booking_date VARCHAR(255) NOT NULL,
-                    email_sent INTEGER DEFAULT 0,
+                    email_sent VARCHAR(255) DEFAULT '0',
                     payment_status VARCHAR(255) DEFAULT 'pending',
                     status VARCHAR(255) DEFAULT 'active',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -207,6 +207,39 @@ async function initPostgreSQL() {
             } catch (err) {
                 if (!err.message.includes('duplicate column')) {
                     console.warn('⚠️  新增 status 欄位時發生錯誤:', err.message);
+                }
+            }
+            
+            // 修改 email_sent 欄位類型（如果已經是 INTEGER，改為 VARCHAR）
+            try {
+                // 檢查欄位類型
+                const columnInfo = await query(`
+                    SELECT data_type 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'bookings' 
+                    AND column_name = 'email_sent'
+                `);
+                
+                if (columnInfo.rows && columnInfo.rows.length > 0) {
+                    const dataType = columnInfo.rows[0].data_type;
+                    if (dataType === 'integer') {
+                        // 直接修改欄位類型，使用 USING 子句轉換現有資料
+                        await query(`
+                            ALTER TABLE bookings 
+                            ALTER COLUMN email_sent TYPE VARCHAR(255) 
+                            USING CASE 
+                                WHEN email_sent = 0 THEN '0'
+                                WHEN email_sent = 1 THEN '1'
+                                ELSE email_sent::VARCHAR
+                            END
+                        `);
+                        console.log('✅ email_sent 欄位類型已從 INTEGER 改為 VARCHAR');
+                    }
+                }
+            } catch (err) {
+                // 如果欄位不存在或已經是 VARCHAR，忽略錯誤
+                if (!err.message.includes('does not exist') && !err.message.includes('already') && !err.message.includes('duplicate')) {
+                    console.warn('⚠️  修改 email_sent 欄位類型時發生錯誤:', err.message);
                 }
             }
             
@@ -601,7 +634,7 @@ function initSQLite() {
                     total_amount INTEGER NOT NULL,
                     final_amount INTEGER NOT NULL,
                     booking_date TEXT NOT NULL,
-                    email_sent INTEGER DEFAULT 0,
+                    email_sent VARCHAR(255) DEFAULT '0',
                     payment_status TEXT DEFAULT 'pending',
                     status TEXT DEFAULT 'active',
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -1148,7 +1181,7 @@ async function saveBooking(bookingData) {
             bookingData.totalAmount,
             bookingData.finalAmount,
             bookingData.bookingDate,
-            bookingData.emailSent ? 1 : 0,
+            bookingData.emailSent || '0',  // 支援字串格式（郵件類型）或 '0'（未發送）
             bookingData.paymentStatus || 'pending',
             bookingData.status || 'active'
         ];
@@ -1166,12 +1199,40 @@ async function saveBooking(bookingData) {
 // emailSent 可以是：
 // - 布林值：true/false（轉換為 1/0，向後兼容）
 // - 字串：郵件類型，例如 'booking_confirmation' 或 'booking_confirmation,checkin_reminder'
-async function updateEmailStatus(bookingId, emailSent) {
+// - 如果 append 為 true，則追加郵件類型而不是覆蓋
+async function updateEmailStatus(bookingId, emailSent, append = false) {
     try {
         let value;
         
+        // 如果需要追加郵件類型
+        if (append && typeof emailSent === 'string') {
+            // 先取得現有的郵件狀態
+            const booking = await queryOne(
+                usePostgreSQL 
+                    ? `SELECT email_sent FROM bookings WHERE booking_id = $1`
+                    : `SELECT email_sent FROM bookings WHERE booking_id = ?`,
+                [bookingId]
+            );
+            if (booking && booking.email_sent) {
+                const existingTypes = typeof booking.email_sent === 'string' 
+                    ? booking.email_sent.split(',').filter(t => t.trim())
+                    : (booking.email_sent === 1 || booking.email_sent === '1' ? ['booking_confirmation'] : []);
+                
+                // 如果新類型不存在，則追加
+                if (!existingTypes.includes(emailSent)) {
+                    existingTypes.push(emailSent);
+                    value = existingTypes.join(',');
+                } else {
+                    // 如果已存在，不重複追加
+                    value = existingTypes.join(',');
+                }
+            } else {
+                // 如果沒有現有狀態，直接使用新類型
+                value = emailSent;
+            }
+        }
         // 如果是布林值，轉換為整數（向後兼容）
-        if (typeof emailSent === 'boolean') {
+        else if (typeof emailSent === 'boolean') {
             value = emailSent ? 1 : 0;
         }
         // 如果是字串，直接使用（新格式：郵件類型）
