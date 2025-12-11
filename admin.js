@@ -474,13 +474,13 @@ function getBookingStatusText(status) {
     return statusMap[status] || '有效';
 }
 
-// 取得郵件狀態顯示（顯示具體的郵件類型）
+// 取得郵件狀態顯示（只顯示最後寄出的信）
 function getEmailStatusDisplay(emailSent) {
     if (!emailSent || emailSent === '0' || emailSent === 0) {
         return '<span class="status-badge status-unsent">未發送</span>';
     }
     
-    // 如果 email_sent 是字串，解析郵件類型
+    // 如果 email_sent 是字串，解析郵件類型（只顯示最後一個）
     if (typeof emailSent === 'string') {
         const emailTypes = emailSent.split(',').filter(t => t.trim());
         if (emailTypes.length === 0) {
@@ -488,18 +488,17 @@ function getEmailStatusDisplay(emailSent) {
         }
         
         const emailTypeMap = {
-            'booking_confirmation': '訂房確認',
-            'checkin_reminder': '入住提醒',
-            'feedback_request': '感謝入住',
-            'payment_reminder': '匯款提醒'
+            'booking_confirmation': '確認信',
+            'checkin_reminder': '入住信',
+            'feedback_request': '退房信',
+            'payment_reminder': '繳款信'
         };
         
-        const badges = emailTypes.map(type => {
-            const typeName = emailTypeMap[type.trim()] || type.trim();
-            return `<span class="status-badge status-sent" style="display: block; margin: 2px 0;">${typeName}</span>`;
-        }).join('');
+        // 只顯示最後一個郵件類型
+        const lastType = emailTypes[emailTypes.length - 1].trim();
+        const typeName = emailTypeMap[lastType] || lastType;
         
-        return badges;
+        return `<span class="status-badge status-sent">${typeName}</span>`;
     }
     
     // 舊格式：只顯示已發送/未發送

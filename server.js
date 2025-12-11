@@ -350,15 +350,7 @@ app.post('/api/booking', async (req, res) => {
         // 確保 bankInfo 被加入到 bookingData（即使不是匯款轉帳）
         bookingData.bankInfo = bankInfo;
         
-        // 發送確認郵件給客戶
-        const customerMailOptions = {
-            from: process.env.EMAIL_USER || 'your-email@gmail.com',
-            to: guestEmail,
-            subject: '【訂房確認】您的訂房已成功',
-            html: generateCustomerEmail(bookingData)
-        };
-
-        // 發送通知郵件給管理員
+        // 發送通知郵件給管理員（所有付款方式都需要）
         const adminMailOptions = {
             from: process.env.EMAIL_USER || 'your-email@gmail.com',
             to: process.env.ADMIN_EMAIL || 'cheng701107@gmail.com', // 管理員 Email
@@ -369,111 +361,128 @@ app.post('/api/booking', async (req, res) => {
         // 發送郵件
         let emailSent = false;
         let emailErrorMsg = '';
-        try {
-            console.log('📧 正在發送郵件...');
-            console.log('   發送給客戶:', guestEmail);
-            console.log('   使用帳號:', process.env.EMAIL_USER || 'cheng701107@gmail.com');
-            console.log('   認證方式:', useOAuth2 ? 'OAuth2' : '應用程式密碼');
+        
+        // 只有匯款轉帳才在建立訂房時發送確認郵件給客戶
+        // 線上刷卡要等付款完成後才發送確認郵件
+        if (paymentMethod === 'transfer') {
+            // 發送確認郵件給客戶（匯款轉帳）
+            const customerMailOptions = {
+                from: process.env.EMAIL_USER || 'your-email@gmail.com',
+                to: guestEmail,
+                subject: '【訂房確認】您的訂房已成功',
+                html: generateCustomerEmail(bookingData)
+            };
             
-            // 如果是 OAuth2，先測試取得 Access Token
-            if (useOAuth2 && getAccessToken) {
-                try {
-                    console.log('🔍 測試 OAuth2 Access Token...');
-                    const testToken = await getAccessToken();
-                    if (testToken) {
-                        console.log('✅ OAuth2 Access Token 測試成功');
-                    }
-                } catch (tokenError) {
-                    console.error('❌ OAuth2 Access Token 測試失敗:', tokenError.message);
-                    throw new Error('OAuth2 認證失敗: ' + tokenError.message);
-                }
-            }
-            
-            // 發送客戶確認郵件（優先使用 Gmail API，更快更穩定）
-            console.log('📤 發送客戶確認郵件...');
-            let customerResult;
-            if (sendEmailViaGmailAPI) {
-                // 直接使用 Gmail API（Railway 環境更穩定）
-                try {
-                    customerResult = await sendEmailViaGmailAPI(customerMailOptions);
-                    console.log('✅ 客戶確認郵件已發送 (Gmail API)');
-                } catch (gmailError) {
-                    // Gmail API 失敗時，嘗試 SMTP
-                    console.log('⚠️  Gmail API 失敗，嘗試 SMTP...');
+            try {
+                console.log('📧 正在發送郵件（匯款轉帳）...');
+                console.log('   發送給客戶:', guestEmail);
+                console.log('   使用帳號:', process.env.EMAIL_USER || 'cheng701107@gmail.com');
+                console.log('   認證方式:', useOAuth2 ? 'OAuth2' : '應用程式密碼');
+                
+                // 如果是 OAuth2，先測試取得 Access Token
+                if (useOAuth2 && getAccessToken) {
                     try {
-                        customerResult = await transporter.sendMail(customerMailOptions);
-                        console.log('✅ 客戶確認郵件已發送 (SMTP)');
-                    } catch (smtpError) {
-                        throw gmailError; // 拋出原始 Gmail API 錯誤
+                        console.log('🔍 測試 OAuth2 Access Token...');
+                        const testToken = await getAccessToken();
+                        if (testToken) {
+                            console.log('✅ OAuth2 Access Token 測試成功');
+                        }
+                    } catch (tokenError) {
+                        console.error('❌ OAuth2 Access Token 測試失敗:', tokenError.message);
+                        throw new Error('OAuth2 認證失敗: ' + tokenError.message);
                     }
                 }
-            } else {
-                // 沒有 Gmail API，使用 SMTP
-                customerResult = await transporter.sendMail(customerMailOptions);
-                console.log('✅ 客戶確認郵件已發送 (SMTP)');
+                
+                // 發送客戶確認郵件（優先使用 Gmail API，更快更穩定）
+                console.log('📤 發送客戶確認郵件...');
+                let customerResult;
+                if (sendEmailViaGmailAPI) {
+                    // 直接使用 Gmail API（Railway 環境更穩定）
+                    try {
+                        customerResult = await sendEmailViaGmailAPI(customerMailOptions);
+                        console.log('✅ 客戶確認郵件已發送 (Gmail API)');
+                    } catch (gmailError) {
+                        // Gmail API 失敗時，嘗試 SMTP
+                        console.log('⚠️  Gmail API 失敗，嘗試 SMTP...');
+                        try {
+                            customerResult = await transporter.sendMail(customerMailOptions);
+                            console.log('✅ 客戶確認郵件已發送 (SMTP)');
+                        } catch (smtpError) {
+                            throw gmailError; // 拋出原始 Gmail API 錯誤
+                        }
+                    }
+                } else {
+                    // 沒有 Gmail API，使用 SMTP
+                    customerResult = await transporter.sendMail(customerMailOptions);
+                    console.log('✅ 客戶確認郵件已發送 (SMTP)');
+                }
+                if (customerResult && customerResult.messageId) {
+                    console.log('   郵件 ID:', customerResult.messageId);
+                }
+                
+                emailSent = true;
+            } catch (emailError) {
+                emailErrorMsg = emailError.message || '未知錯誤';
+                console.error('❌ 郵件發送失敗:');
+                console.error('   錯誤訊息:', emailErrorMsg);
+                console.error('   錯誤代碼:', emailError.code);
+                console.error('   錯誤命令:', emailError.command);
+                console.error('   完整錯誤:', emailError);
+                
+                // 如果是認證錯誤，提供更詳細的說明
+                if (emailError.code === 'EAUTH' || emailError.message.includes('Invalid login')) {
+                    console.error('⚠️  認證失敗！請檢查：');
+                    if (useOAuth2) {
+                        console.error('   1. GMAIL_CLIENT_ID 是否正確');
+                        console.error('   2. GMAIL_CLIENT_SECRET 是否正確');
+                        console.error('   3. GMAIL_REFRESH_TOKEN 是否有效');
+                        console.error('   4. Refresh Token 是否已過期或被撤銷');
+                    } else {
+                        console.error('   1. Email 帳號是否正確');
+                        console.error('   2. 是否使用應用程式密碼（Gmail 需要）');
+                        console.error('   3. 是否啟用兩步驟驗證');
+                    }
+                } else if (emailError.code === 'ETIMEDOUT') {
+                    console.error('⚠️  連接超時！');
+                    if (useOAuth2) {
+                        console.error('   這可能是 OAuth2 Access Token 取得失敗');
+                        console.error('   請檢查 Refresh Token 是否有效');
+                    } else {
+                        console.error('   建議使用 OAuth2 認證以解決連接超時問題');
+                    }
+                }
             }
-            if (customerResult && customerResult.messageId) {
-                console.log('   郵件 ID:', customerResult.messageId);
-            }
-            
-            // 發送管理員通知郵件（優先使用 Gmail API，更快更穩定）
+        } else {
+            console.log('📧 線上刷卡：確認郵件將於付款完成後發送');
+        }
+        
+        // 發送管理員通知郵件（所有付款方式都需要）
+        try {
             console.log('📤 發送管理員通知郵件...');
             let adminResult;
             if (sendEmailViaGmailAPI) {
-                // 直接使用 Gmail API（Railway 環境更穩定）
                 try {
                     adminResult = await sendEmailViaGmailAPI(adminMailOptions);
                     console.log('✅ 管理員通知郵件已發送 (Gmail API)');
                 } catch (gmailError) {
-                    // Gmail API 失敗時，嘗試 SMTP
                     console.log('⚠️  Gmail API 失敗，嘗試 SMTP...');
                     try {
                         adminResult = await transporter.sendMail(adminMailOptions);
                         console.log('✅ 管理員通知郵件已發送 (SMTP)');
                     } catch (smtpError) {
-                        throw gmailError; // 拋出原始 Gmail API 錯誤
+                        console.error('❌ 管理員通知郵件發送失敗:', smtpError.message);
                     }
                 }
             } else {
-                // 沒有 Gmail API，使用 SMTP
                 adminResult = await transporter.sendMail(adminMailOptions);
                 console.log('✅ 管理員通知郵件已發送 (SMTP)');
             }
             if (adminResult && adminResult.messageId) {
                 console.log('   郵件 ID:', adminResult.messageId);
             }
-            
-            emailSent = true;
-        } catch (emailError) {
-            emailErrorMsg = emailError.message || '未知錯誤';
-            console.error('❌ 郵件發送失敗:');
-            console.error('   錯誤訊息:', emailErrorMsg);
-            console.error('   錯誤代碼:', emailError.code);
-            console.error('   錯誤命令:', emailError.command);
-            console.error('   完整錯誤:', emailError);
-            
-            // 如果是認證錯誤，提供更詳細的說明
-            if (emailError.code === 'EAUTH' || emailError.message.includes('Invalid login')) {
-                console.error('⚠️  認證失敗！請檢查：');
-                if (useOAuth2) {
-                    console.error('   1. GMAIL_CLIENT_ID 是否正確');
-                    console.error('   2. GMAIL_CLIENT_SECRET 是否正確');
-                    console.error('   3. GMAIL_REFRESH_TOKEN 是否有效');
-                    console.error('   4. Refresh Token 是否已過期或被撤銷');
-                } else {
-                    console.error('   1. Email 帳號是否正確');
-                    console.error('   2. 是否使用應用程式密碼（Gmail 需要）');
-                    console.error('   3. 是否啟用兩步驟驗證');
-                }
-            } else if (emailError.code === 'ETIMEDOUT') {
-                console.error('⚠️  連接超時！');
-                if (useOAuth2) {
-                    console.error('   這可能是 OAuth2 Access Token 取得失敗');
-                    console.error('   請檢查 Refresh Token 是否有效');
-                } else {
-                    console.error('   建議使用 OAuth2 認證以解決連接超時問題');
-                }
-            }
+        } catch (adminEmailError) {
+            console.error('❌ 管理員通知郵件發送失敗:', adminEmailError.message);
+            // 管理員郵件失敗不影響訂房流程
         }
 
         // 儲存訂房資料到資料庫
@@ -1304,11 +1313,78 @@ const handlePaymentResult = async (req, res) => {
                     if (paymentResult.rtnCode === '1') {
                         const bookingId = paymentResult.merchantTradeNo;
                         console.log('✅ 測試環境：付款成功，更新訂房記錄:', bookingId);
-                        await db.updateBooking(bookingId, {
-                            payment_status: 'paid',
-                            status: 'active'
-                        });
-                        console.log('✅ 付款狀態已更新為「已付款」，訂房狀態已更新為「有效」');
+                        
+                        // 取得訂房資料
+                        const booking = await db.getBookingById(bookingId);
+                        if (booking) {
+                            // 更新付款狀態為已付款，並將訂房狀態改為有效
+                            await db.updateBooking(bookingId, {
+                                payment_status: 'paid',
+                                status: 'active'
+                            });
+                            console.log('✅ 付款狀態已更新為「已付款」，訂房狀態已更新為「有效」');
+                            
+                            // 線上刷卡付款完成後，發送確認郵件
+                            if (booking.payment_method && booking.payment_method.includes('刷卡')) {
+                                console.log('📧 測試環境：線上刷卡付款完成，發送確認郵件...');
+                                try {
+                                    const bookingData = {
+                                        bookingId: booking.booking_id,
+                                        guestName: booking.guest_name,
+                                        guestEmail: booking.guest_email,
+                                        guestPhone: booking.guest_phone,
+                                        checkInDate: booking.check_in_date,
+                                        checkOutDate: booking.check_out_date,
+                                        roomType: booking.room_type,
+                                        pricePerNight: booking.price_per_night,
+                                        nights: booking.nights,
+                                        totalAmount: booking.total_amount,
+                                        finalAmount: booking.final_amount,
+                                        paymentAmount: booking.payment_amount,
+                                        paymentMethod: booking.payment_method,
+                                        paymentMethodCode: 'card',
+                                        bookingDate: booking.booking_date,
+                                        bankInfo: null
+                                    };
+                                    
+                                    const customerMailOptions = {
+                                        from: process.env.EMAIL_USER || 'your-email@gmail.com',
+                                        to: booking.guest_email,
+                                        subject: '【訂房確認】您的訂房已成功',
+                                        html: generateCustomerEmail(bookingData)
+                                    };
+                                    
+                                    let emailSent = false;
+                                    if (sendEmailViaGmailAPI) {
+                                        try {
+                                            await sendEmailViaGmailAPI(customerMailOptions);
+                                            emailSent = true;
+                                        } catch (gmailError) {
+                                            try {
+                                                await transporter.sendMail(customerMailOptions);
+                                                emailSent = true;
+                                            } catch (smtpError) {
+                                                console.error('❌ 確認郵件發送失敗:', smtpError.message);
+                                            }
+                                        }
+                                    } else {
+                                        try {
+                                            await transporter.sendMail(customerMailOptions);
+                                            emailSent = true;
+                                        } catch (smtpError) {
+                                            console.error('❌ 確認郵件發送失敗:', smtpError.message);
+                                        }
+                                    }
+                                    
+                                    if (emailSent) {
+                                        await db.updateEmailStatus(bookingId, true);
+                                        console.log('✅ 確認郵件已發送，郵件狀態已更新');
+                                    }
+                                } catch (emailError) {
+                                    console.error('❌ 發送確認郵件失敗:', emailError.message);
+                                }
+                            }
+                        }
                     }
                 } catch (updateError) {
                     console.error('❌ 更新付款狀態失敗:', updateError);
@@ -1382,6 +1458,12 @@ const handlePaymentResult = async (req, res) => {
                 const bookingId = paymentResult.merchantTradeNo; // 訂房編號
                 console.log('✅ 付款成功，更新訂房記錄:', bookingId);
                 
+                // 取得訂房資料
+                const booking = await db.getBookingById(bookingId);
+                if (!booking) {
+                    throw new Error('找不到訂房記錄');
+                }
+                
                 // 更新付款狀態為已付款，並將訂房狀態改為有效
                 await db.updateBooking(bookingId, {
                     payment_status: 'paid',
@@ -1389,6 +1471,74 @@ const handlePaymentResult = async (req, res) => {
                 });
                 
                 console.log('✅ 付款狀態已更新為「已付款」，訂房狀態已更新為「有效」');
+                
+                // 線上刷卡付款完成後，發送確認郵件
+                if (booking.payment_method && booking.payment_method.includes('刷卡')) {
+                    console.log('📧 線上刷卡付款完成，發送確認郵件...');
+                    try {
+                        // 構建 bookingData 物件
+                        const bookingData = {
+                            bookingId: booking.booking_id,
+                            guestName: booking.guest_name,
+                            guestEmail: booking.guest_email,
+                            guestPhone: booking.guest_phone,
+                            checkInDate: booking.check_in_date,
+                            checkOutDate: booking.check_out_date,
+                            roomType: booking.room_type,
+                            pricePerNight: booking.price_per_night,
+                            nights: booking.nights,
+                            totalAmount: booking.total_amount,
+                            finalAmount: booking.final_amount,
+                            paymentAmount: booking.payment_amount,
+                            paymentMethod: booking.payment_method,
+                            paymentMethodCode: 'card',
+                            bookingDate: booking.booking_date,
+                            bankInfo: null // 線上刷卡不需要匯款資訊
+                        };
+                        
+                        // 發送確認郵件
+                        const customerMailOptions = {
+                            from: process.env.EMAIL_USER || 'your-email@gmail.com',
+                            to: booking.guest_email,
+                            subject: '【訂房確認】您的訂房已成功',
+                            html: generateCustomerEmail(bookingData)
+                        };
+                        
+                        let emailSent = false;
+                        if (sendEmailViaGmailAPI) {
+                            try {
+                                await sendEmailViaGmailAPI(customerMailOptions);
+                                console.log('✅ 確認郵件已發送 (Gmail API)');
+                                emailSent = true;
+                            } catch (gmailError) {
+                                try {
+                                    await transporter.sendMail(customerMailOptions);
+                                    console.log('✅ 確認郵件已發送 (SMTP)');
+                                    emailSent = true;
+                                } catch (smtpError) {
+                                    console.error('❌ 確認郵件發送失敗:', smtpError.message);
+                                }
+                            }
+                        } else {
+                            try {
+                                await transporter.sendMail(customerMailOptions);
+                                console.log('✅ 確認郵件已發送 (SMTP)');
+                                emailSent = true;
+                            } catch (smtpError) {
+                                console.error('❌ 確認郵件發送失敗:', smtpError.message);
+                            }
+                        }
+                        
+                        // 更新郵件狀態
+                        if (emailSent) {
+                            await db.updateEmailStatus(bookingId, true);
+                            console.log('✅ 郵件狀態已更新');
+                        }
+                    } catch (emailError) {
+                        console.error('❌ 發送確認郵件失敗:', emailError.message);
+                        // 郵件發送失敗不影響付款流程
+                    }
+                }
             } catch (updateError) {
                 console.error('❌ 更新付款狀態失敗:', updateError);
                 // 即使更新失敗，也繼續顯示成功頁面
