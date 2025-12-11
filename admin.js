@@ -1368,6 +1368,16 @@ async function showEmailTemplateModal(templateKey) {
             
             // 初始化 Quill 編輯器（如果還沒有）
             if (!quillEditor) {
+                // 自定義 Clipboard 模組，允許更多 HTML 標籤
+                const Block = Quill.import('blots/block');
+                const Inline = Quill.import('blots/inline');
+                
+                // 註冊自定義標籤（允許 div、span 等）
+                class DivBlot extends Block {
+                    static tagName = 'div';
+                }
+                Quill.register(DivBlot);
+                
                 quillEditor = new Quill('#emailTemplateEditor', {
                     theme: 'snow',
                     modules: {
@@ -1379,26 +1389,16 @@ async function showEmailTemplateModal(templateKey) {
                             [{ 'align': [] }],
                             ['link', 'image'],
                             ['clean']
-                        ]
+                        ],
+                        clipboard: {
+                            // 允許更多 HTML 標籤和屬性
+                            matchVisual: false
+                        }
                     },
-                    placeholder: '開始編輯郵件內容...'
-                });
-                
-                // 添加內容保護監聽器（防止內容被意外清空）
-                let lastValidContent = '';
-                quillEditor.on('text-change', function() {
-                    const currentContent = quillEditor.root.innerHTML;
-                    // 如果內容從有內容變成空，且不是用戶主動清空，則恢復
-                    if (lastValidContent && lastValidContent.length > 100 && 
-                        (currentContent.trim() === '' || currentContent === '<p><br></p>')) {
-                        console.warn('⚠️ 檢測到內容被意外清空，正在恢復...');
-                        setTimeout(() => {
-                            quillEditor.root.innerHTML = lastValidContent;
-                        }, 50);
-                    } else if (currentContent.length > 100) {
-                        // 更新最後有效內容
-                        lastValidContent = currentContent;
-                    }
+                    placeholder: '開始編輯郵件內容...',
+                    // 允許更多 HTML 標籤
+                    formats: ['bold', 'italic', 'underline', 'strike', 'color', 'background', 
+                             'header', 'list', 'align', 'link', 'image', 'blockquote', 'code-block']
                 });
             }
             
@@ -1430,102 +1430,91 @@ async function showEmailTemplateModal(templateKey) {
             // 先顯示模態框
             modal.classList.add('active');
             
-            // 檢查內容是否為複雜 HTML（包含完整的 HTML 結構或樣式）
-            const isComplexHtml = htmlContent.includes('<div') || htmlContent.includes('<style') || 
-                                 htmlContent.includes('<!DOCTYPE') || htmlContent.length > 500;
-            
-            // 如果是複雜 HTML，預設使用 HTML 模式（避免 Quill 清理內容）
-            if (isComplexHtml) {
-                console.log('檢測到複雜 HTML，預設使用 HTML 模式');
-                isHtmlMode = true;
-                editorContainer.style.display = 'none';
-                textarea.style.display = 'block';
-                const toggleBtn = document.getElementById('toggleEditorModeBtn');
-                if (toggleBtn) {
-                    toggleBtn.textContent = '切換到可視化模式';
-                    toggleBtn.onclick = toggleEditorMode;
-                }
-                // 直接設置 textarea 的內容（完整內容，不提取 body）
-                textarea.value = template.content || '';
-            } else {
-                // 簡單內容，使用可視化模式
-                isHtmlMode = false;
-                editorContainer.style.display = 'block';
-                textarea.style.display = 'none';
-                const toggleBtn = document.getElementById('toggleEditorModeBtn');
-                if (toggleBtn) {
-                    toggleBtn.textContent = '切換到 HTML 模式';
-                    toggleBtn.onclick = toggleEditorMode;
-                }
-                
-                // 先設置 textarea（作為備份）
-                textarea.value = template.content || '';
-                
-                // 使用 setTimeout 確保模態框完全顯示後再載入內容
-                setTimeout(() => {
-                    try {
-                        console.log('開始載入內容到編輯器');
-                        console.log('要載入的 HTML 內容長度:', htmlContent.length);
-                        
-                        // 如果內容為空，直接返回
-                        if (!htmlContent || htmlContent.trim() === '') {
-                            console.log('⚠️ 內容為空，跳過載入');
-                            quillEditor.setText('郵件內容為空，請編輯內容...');
-                            return;
-                        }
-                        
-                        // 先清空編輯器
-                        quillEditor.setText('');
-                        
-                        // 使用 Quill 的 clipboard.convert 方法
-                        try {
-                            const delta = quillEditor.clipboard.convert(htmlContent);
-                            quillEditor.setContents(delta, 'silent');
-                            console.log('✅ 使用 convert 方法載入內容');
-                            
-                            // 驗證內容
-                            setTimeout(() => {
-                                const loadedContent = quillEditor.root.innerHTML;
-                                console.log('編輯器內容長度:', loadedContent.length);
-                                
-                                if (loadedContent.trim() === '' || loadedContent === '<p><br></p>' || loadedContent.length < htmlContent.length * 0.3) {
-                                    console.warn('⚠️ convert 方法可能未正確載入，切換到 HTML 模式');
-                                    // 如果載入失敗，切換到 HTML 模式
-                                    isHtmlMode = true;
-                                    editorContainer.style.display = 'none';
-                                    textarea.style.display = 'block';
-                                    const toggleBtn = document.getElementById('toggleEditorModeBtn');
-                                    if (toggleBtn) {
-                                        toggleBtn.textContent = '切換到可視化模式';
-                                    }
-                                } else {
-                                    console.log('✅ 內容已成功載入到編輯器');
-                                }
-                            }, 200);
-                        } catch (convertError) {
-                            console.warn('⚠️ convert 方法失敗，切換到 HTML 模式:', convertError);
-                            // 如果失敗，切換到 HTML 模式
-                            isHtmlMode = true;
-                            editorContainer.style.display = 'none';
-                            textarea.style.display = 'block';
-                            const toggleBtn = document.getElementById('toggleEditorModeBtn');
-                            if (toggleBtn) {
-                                toggleBtn.textContent = '切換到可視化模式';
-                            }
-                        }
-                    } catch (error) {
-                        console.error('❌ 載入內容到 Quill 時發生錯誤:', error);
-                        // 如果出錯，切換到 HTML 模式
-                        isHtmlMode = true;
-                        editorContainer.style.display = 'none';
-                        textarea.style.display = 'block';
-                        const toggleBtn = document.getElementById('toggleEditorModeBtn');
-                        if (toggleBtn) {
-                            toggleBtn.textContent = '切換到可視化模式';
-                        }
-                    }
-                }, 500);
+            // 預設使用可視化模式（用戶要求）
+            isHtmlMode = false;
+            editorContainer.style.display = 'block';
+            textarea.style.display = 'none';
+            const toggleBtn = document.getElementById('toggleEditorModeBtn');
+            if (toggleBtn) {
+                toggleBtn.textContent = '切換到 HTML 模式';
+                toggleBtn.onclick = toggleEditorMode;
             }
+            
+            // 先設置 textarea（作為備份）
+            textarea.value = template.content || '';
+            
+            // 使用 setTimeout 確保模態框完全顯示後再載入內容
+            setTimeout(() => {
+                try {
+                    console.log('開始載入內容到編輯器');
+                    console.log('要載入的 HTML 內容長度:', htmlContent.length);
+                    
+                    // 如果內容為空，直接返回
+                    if (!htmlContent || htmlContent.trim() === '') {
+                        console.log('⚠️ 內容為空，跳過載入');
+                        quillEditor.setText('郵件內容為空，請編輯內容...');
+                        return;
+                    }
+                    
+                    // 先清空編輯器
+                    quillEditor.setText('');
+                    
+                    // 方法：使用 dangerouslyPasteHTML 方法（最可靠，不會被清理）
+                    try {
+                        // 先選擇全部（雖然已經清空）
+                        quillEditor.setSelection(0, 0);
+                        
+                        // 使用 dangerouslyPasteHTML 插入 HTML（這個方法不會被 Quill 清理）
+                        quillEditor.clipboard.dangerouslyPasteHTML(0, htmlContent);
+                        console.log('✅ 使用 dangerouslyPasteHTML 方法載入內容');
+                        
+                        // 驗證內容是否正確載入
+                        setTimeout(() => {
+                            const loadedContent = quillEditor.root.innerHTML;
+                            console.log('編輯器內容長度:', loadedContent.length);
+                            console.log('內容預覽:', loadedContent.substring(0, 300));
+                            
+                            // 如果內容被清理了，嘗試直接設置 innerHTML
+                            if (loadedContent.trim() === '' || loadedContent === '<p><br></p>' || loadedContent.length < htmlContent.length * 0.3) {
+                                console.warn('⚠️ dangerouslyPasteHTML 可能未正確載入，嘗試直接設置 innerHTML');
+                                // 直接設置 innerHTML（繞過 Quill 的轉換）
+                                quillEditor.root.innerHTML = htmlContent;
+                                
+                                // 手動觸發一次更新（但使用 silent 模式避免清理）
+                                setTimeout(() => {
+                                    // 嘗試使用 convert 來處理，但保持原始結構
+                                    try {
+                                        const delta = quillEditor.clipboard.convert(htmlContent);
+                                        // 只在內容確實被清理時才使用 convert
+                                        const currentContent = quillEditor.root.innerHTML;
+                                        if (currentContent.length < htmlContent.length * 0.5) {
+                                            quillEditor.setContents(delta, 'silent');
+                                        }
+                                    } catch (e) {
+                                        // 如果 convert 失敗，保持直接設置的內容
+                                        console.log('保持直接設置的內容');
+                                    }
+                                }, 50);
+                            } else {
+                                console.log('✅ 內容已成功載入到編輯器');
+                            }
+                        }, 200);
+                    } catch (error) {
+                        console.error('❌ 載入內容時發生錯誤:', error);
+                        // Fallback: 直接設置 innerHTML
+                        quillEditor.root.innerHTML = htmlContent;
+                    }
+                } catch (error) {
+                    console.error('❌ 載入內容到 Quill 時發生錯誤:', error);
+                    // 最後的 fallback - 直接設置並忽略錯誤
+                    try {
+                        quillEditor.root.innerHTML = htmlContent;
+                        console.log('✅ 使用 fallback 方法（直接設置 innerHTML）');
+                    } catch (fallbackError) {
+                        console.error('❌ 所有載入方法都失敗:', fallbackError);
+                    }
+                }
+            }, 500);
             
             // 儲存 templateKey 以便儲存時使用
             form.dataset.templateKey = templateKey;
