@@ -1,6 +1,7 @@
 // 全域變數
 let roomTypes = [];
 let depositPercentage = 30; // 預設訂金百分比
+let unavailableRooms = []; // 已滿房的房型列表
 
 // 設定最小日期為今天
 const today = new Date().toISOString().split('T')[0];
@@ -53,16 +54,28 @@ function renderRoomTypes() {
         return;
     }
     
-    grid.innerHTML = roomTypes.map((room, index) => `
-        <div class="room-option" data-room="${room.name}" data-price="${room.price}">
-            <input type="radio" id="room-${room.name}" name="roomType" value="${room.name}" required>
+    const checkInDate = document.getElementById('checkInDate').value;
+    const checkOutDate = document.getElementById('checkOutDate').value;
+    const hasDates = checkInDate && checkOutDate;
+    
+    grid.innerHTML = roomTypes.map((room, index) => {
+        const isUnavailable = hasDates && unavailableRooms.includes(room.name);
+        const roomOptionClass = isUnavailable ? 'room-option unavailable' : 'room-option';
+        const disabledAttr = isUnavailable ? 'disabled' : '';
+        
+        return `
+        <div class="${roomOptionClass}" data-room="${room.name}" data-price="${room.price}">
+            <input type="radio" id="room-${room.name}" name="roomType" value="${room.name}" ${disabledAttr} ${isUnavailable ? '' : 'required'}>
             <label for="room-${room.name}">
                 <div class="room-icon">${room.icon || '🏠'}</div>
                 <div class="room-name">${room.display_name}</div>
-                <div class="room-price">NT$ ${room.price.toLocaleString()}/晚</div>
+                <div class="room-price ${isUnavailable ? 'unavailable-price' : ''}">
+                    ${isUnavailable ? '<span style="color: #e74c3c; font-weight: bold;">滿房</span>' : `NT$ ${room.price.toLocaleString()}/晚`}
+                </div>
             </label>
         </div>
-    `).join('');
+    `;
+    }).join('');
     
     // 重新綁定事件
     document.querySelectorAll('input[name="roomType"]').forEach(radio => {
@@ -72,6 +85,18 @@ function renderRoomTypes() {
 
 // 頁面載入時執行
 loadRoomTypesAndSettings();
+
+// 頁面載入後，如果有日期，檢查房間可用性
+document.addEventListener('DOMContentLoaded', function() {
+    // 延遲一下，確保日期輸入框已初始化
+    setTimeout(() => {
+        const checkInDate = document.getElementById('checkInDate').value;
+        const checkOutDate = document.getElementById('checkOutDate').value;
+        if (checkInDate && checkOutDate) {
+            checkRoomAvailability();
+        }
+    }, 500);
+});
 
 // 計算住宿天數
 function calculateNights() {
@@ -175,6 +200,36 @@ function updatePriceDisplay(pricePerNight, nights, totalAmount, paymentType, fin
     document.getElementById('paymentAmount').textContent = `NT$ ${finalAmount.toLocaleString()}`;
 }
 
+// 檢查房間可用性
+async function checkRoomAvailability() {
+    const checkInDate = document.getElementById('checkInDate').value;
+    const checkOutDate = document.getElementById('checkOutDate').value;
+    
+    if (!checkInDate || !checkOutDate) {
+        unavailableRooms = [];
+        renderRoomTypes();
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/room-availability?checkInDate=${checkInDate}&checkOutDate=${checkOutDate}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            unavailableRooms = result.data || [];
+            renderRoomTypes();
+        } else {
+            console.error('檢查房間可用性失敗:', result.message);
+            unavailableRooms = [];
+            renderRoomTypes();
+        }
+    } catch (error) {
+        console.error('檢查房間可用性錯誤:', error);
+        unavailableRooms = [];
+        renderRoomTypes();
+    }
+}
+
 // 日期變更事件
 document.getElementById('checkInDate').addEventListener('change', function() {
     const checkIn = new Date(this.value);
@@ -195,11 +250,13 @@ document.getElementById('checkInDate').addEventListener('change', function() {
     
     calculateNights();
     calculatePrice();
+    checkRoomAvailability(); // 檢查房間可用性
 });
 
 document.getElementById('checkOutDate').addEventListener('change', function() {
     calculateNights();
     calculatePrice();
+    checkRoomAvailability(); // 檢查房間可用性
 });
 
 // 房型選擇事件

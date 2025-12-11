@@ -316,6 +316,25 @@ app.post('/api/booking', async (req, res) => {
             paymentMethodCode: paymentMethod // 原始付款方式代碼（transfer 或 card）
         };
 
+        // 取得匯款提醒模板的保留天數（用於計算到期日期）
+        let daysReserved = 3; // 預設值
+        if (paymentMethod === 'transfer') {
+            try {
+                const paymentTemplate = await db.getEmailTemplateByKey('payment_reminder');
+                if (paymentTemplate && paymentTemplate.days_reserved) {
+                    daysReserved = parseInt(paymentTemplate.days_reserved) || 3;
+                }
+            } catch (err) {
+                console.warn('取得匯款提醒模板失敗，使用預設值:', err.message);
+            }
+        }
+        
+        // 計算匯款到期日期
+        const paymentDeadline = new Date();
+        paymentDeadline.setDate(paymentDeadline.getDate() + daysReserved);
+        bookingData.daysReserved = daysReserved;
+        bookingData.paymentDeadline = paymentDeadline.toLocaleDateString('zh-TW');
+        
         // 發送確認郵件給客戶
         const customerMailOptions = {
             from: process.env.EMAIL_USER || 'your-email@gmail.com',
@@ -444,19 +463,23 @@ app.post('/api/booking', async (req, res) => {
 
         // 儲存訂房資料到資料庫
         try {
-            // 判斷付款狀態
+            // 判斷付款狀態和訂房狀態
             let paymentStatus = 'pending';
+            let bookingStatus = 'active';
+            
             if (paymentMethod === 'card') {
                 paymentStatus = 'pending'; // 刷卡需要等待付款完成
+                bookingStatus = 'reserved'; // 線上刷卡先設為保留
             } else if (paymentMethod === 'transfer') {
                 paymentStatus = 'pending'; // 匯款也需要等待確認
+                bookingStatus = 'reserved'; // 匯款轉帳先設為保留（保留3天）
             }
             
             await db.saveBooking({
                 ...bookingData,
                 emailSent: emailSent,
                 paymentStatus: paymentStatus,
-                status: 'active'
+                status: bookingStatus
             });
             
             // 如果郵件發送狀態改變，更新資料庫
@@ -582,7 +605,7 @@ function generateCustomerEmail(data) {
                 <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
                     <h3 style="color: #856404; margin-top: 0;">💰 匯款提醒</h3>
                     <p style="color: #856404; font-weight: 600; margin: 10px 0;">
-                        ⏰ 此訂房將為您保留 <strong>3 天</strong>，請於 <strong>3 天內</strong>完成匯款，逾期將自動取消訂房。
+                        ⏰ 此訂房將為您保留 <strong>${data.daysReserved || 3} 天</strong>，請於 <strong>${data.paymentDeadline || '3 天內'}</strong>完成匯款，逾期將自動取消訂房。
                     </p>
                     <div style="background: white; padding: 15px; border-radius: 5px; margin-top: 15px;">
                         <p style="margin: 8px 0; color: #333;"><strong>匯款資訊：</strong></p>
@@ -860,6 +883,32 @@ app.get('/api/room-types', async (req, res) => {
         res.status(500).json({
             success: false,
             message: '取得房型列表失敗'
+        });
+    }
+});
+
+// API: 檢查房間可用性
+app.get('/api/room-availability', async (req, res) => {
+    try {
+        const { checkInDate, checkOutDate } = req.query;
+        
+        if (!checkInDate || !checkOutDate) {
+            return res.status(400).json({
+                success: false,
+                message: '請提供入住日期和退房日期'
+            });
+        }
+        
+        const availability = await db.getRoomAvailability(checkInDate, checkOutDate);
+        res.json({
+            success: true,
+            data: availability
+        });
+    } catch (error) {
+        console.error('檢查房間可用性錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '檢查房間可用性失敗：' + error.message
         });
     }
 });
@@ -1447,6 +1496,16 @@ function replaceTemplateVariables(template, booking, bankInfo = null) {
     const checkInDate = new Date(booking.check_in_date).toLocaleDateString('zh-TW');
     const checkOutDate = new Date(booking.check_out_date).toLocaleDateString('zh-TW');
     
+    // 計算匯款到期日期（如果模板有保留天數設定）
+    let paymentDeadline = '';
+    let daysReserved = template.days_reserved || 3;
+    if (booking.created_at) {
+        const bookingDate = new Date(booking.created_at);
+        const deadline = new Date(bookingDate);
+        deadline.setDate(deadline.getDate() + daysReserved);
+        paymentDeadline = deadline.toLocaleDateString('zh-TW');
+    }
+    
     const variables = {
         '{{guestName}}': booking.guest_name,
         '{{bookingId}}': booking.booking_id,
@@ -1458,7 +1517,9 @@ function replaceTemplateVariables(template, booking, bankInfo = null) {
         '{{bankName}}': bankInfo ? bankInfo.bankName : 'XXX銀行',
         '{{bankBranch}}': bankInfo ? bankInfo.bankBranch : 'XXX分行',
         '{{bankAccount}}': bankInfo ? bankInfo.account : '1234567890123',
-        '{{accountName}}': bankInfo ? bankInfo.accountName : 'XXX'
+        '{{accountName}}': bankInfo ? bankInfo.accountName : 'XXX',
+        '{{daysReserved}}': daysReserved.toString(),
+        '{{paymentDeadline}}': paymentDeadline
     };
     
     Object.keys(variables).forEach(key => {
@@ -1512,6 +1573,51 @@ async function sendPaymentReminderEmails() {
         }
     } catch (error) {
         console.error('❌ 匯款提醒任務錯誤:', error);
+    }
+}
+
+// 自動取消過期保留訂房
+async function cancelExpiredReservations() {
+    try {
+        console.log('\n[定時任務] 開始檢查過期保留訂房...');
+        const bookings = await db.getBookingsExpiredReservation();
+        console.log(`找到 ${bookings.length} 筆保留狀態的訂房`);
+        
+        // 取得匯款提醒模板的保留天數（預設3天）
+        let daysReserved = 3;
+        try {
+            const paymentTemplate = await db.getEmailTemplateByKey('payment_reminder');
+            if (paymentTemplate && paymentTemplate.days_reserved) {
+                daysReserved = parseInt(paymentTemplate.days_reserved) || 3;
+            }
+        } catch (err) {
+            console.warn('取得匯款提醒模板失敗，使用預設值:', err.message);
+        }
+        
+        const now = new Date();
+        let cancelledCount = 0;
+        
+        for (const booking of bookings) {
+            try {
+                // 計算保留到期日期
+                const bookingDate = new Date(booking.created_at);
+                const deadline = new Date(bookingDate);
+                deadline.setDate(deadline.getDate() + daysReserved);
+                
+                // 如果當前時間超過保留期限，自動取消
+                if (now > deadline) {
+                    await db.cancelBooking(booking.booking_id);
+                    console.log(`✅ 已自動取消過期保留訂房: ${booking.booking_id} (${booking.guest_name})`);
+                    cancelledCount++;
+                }
+            } catch (error) {
+                console.error(`❌ 取消過期保留訂房失敗 (${booking.booking_id}):`, error.message);
+            }
+        }
+        
+        console.log(`✅ 共取消 ${cancelledCount} 筆過期保留訂房`);
+    } catch (error) {
+        console.error('❌ 自動取消過期保留訂房任務錯誤:', error);
     }
 }
 
@@ -1613,6 +1719,10 @@ async function startServer() {
             // 每天上午 11:00 執行回訪信檢查
             cron.schedule('0 11 * * *', sendFeedbackRequestEmails);
             console.log('✅ 回訪信定時任務已啟動（每天 11:00）');
+            
+            // 每天凌晨 1:00 執行自動取消過期保留訂房
+            cron.schedule('0 1 * * *', cancelExpiredReservations);
+            console.log('✅ 自動取消過期保留訂房定時任務已啟動（每天 01:00）');
         });
     } catch (error) {
         console.error('❌ 伺服器啟動失敗:', error);

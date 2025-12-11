@@ -1157,6 +1157,65 @@ function getBookingsForFeedbackRequest() {
     });
 }
 
+// 檢查房間可用性（檢查指定日期範圍內是否有有效或保留的訂房）
+function getRoomAvailability(checkInDate, checkOutDate) {
+    return new Promise((resolve, reject) => {
+        const db = getDatabase();
+        
+        // 查詢在指定日期範圍內有重疊的有效或保留訂房
+        // 訂房日期範圍與查詢日期範圍有重疊的條件：
+        // 1. 訂房的入住日期 < 查詢的退房日期
+        // 2. 訂房的退房日期 > 查詢的入住日期
+        // 3. 訂房狀態為 'active' 或 'reserved'
+        // 注意：bookings.room_type 儲存的是 display_name，需要轉換為 room_types.name
+        db.all(`
+            SELECT DISTINCT rt.name
+            FROM bookings b
+            INNER JOIN room_types rt ON b.room_type = rt.display_name
+            WHERE (
+                b.check_in_date < ? 
+                AND b.check_out_date > ?
+                AND b.status IN ('active', 'reserved')
+            )
+        `, [checkOutDate, checkInDate], (err, rows) => {
+            if (err) {
+                db.close();
+                reject(err);
+            } else {
+                db.close();
+                // 返回已滿房的房型 name 列表（前端使用 name 來比較）
+                const unavailableRooms = rows.map(row => row.name);
+                resolve(unavailableRooms || []);
+            }
+        });
+    });
+}
+
+// 取得已過期保留期限的訂房（需要自動取消）
+function getBookingsExpiredReservation() {
+    return new Promise((resolve, reject) => {
+        const db = getDatabase();
+        
+        // 取得匯款提醒模板的保留天數（預設3天）
+        // 查詢：付款方式為匯款轉帳、狀態為保留、付款狀態為待付款、創建日期超過保留天數
+        // 由於 SQLite 不支援動態查詢模板設定，我們先查詢所有保留狀態的訂房，然後在應用層過濾
+        db.all(`
+            SELECT * FROM bookings 
+            WHERE payment_method LIKE '%匯款%' 
+            AND status = 'reserved' 
+            AND payment_status = 'pending'
+        `, [], (err, rows) => {
+            if (err) {
+                db.close();
+                reject(err);
+            } else {
+                db.close();
+                resolve(rows || []);
+            }
+        });
+    });
+}
+
 module.exports = {
     initDatabase,
     saveBooking,
@@ -1185,6 +1244,10 @@ module.exports = {
     // 自動郵件查詢
     getBookingsForPaymentReminder,
     getBookingsForCheckinReminder,
-    getBookingsForFeedbackRequest
+    getBookingsForFeedbackRequest,
+    // 房間可用性
+    getRoomAvailability,
+    // 過期保留訂房
+    getBookingsExpiredReservation
 };
 
