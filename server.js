@@ -97,6 +97,17 @@ if (useOAuth2) {
             clientSecret: process.env.GMAIL_CLIENT_SECRET,
             refreshToken: process.env.GMAIL_REFRESH_TOKEN,
             accessToken: getAccessToken
+        },
+        // 增加超時時間和連接設定（Railway 環境需要）
+        connectionTimeout: 60000, // 60 秒
+        greetingTimeout: 30000, // 30 秒
+        socketTimeout: 60000, // 60 秒
+        pool: true, // 使用連接池
+        maxConnections: 1,
+        maxMessages: 3,
+        // 啟用 TLS
+        tls: {
+            rejectUnauthorized: false // Railway 環境可能需要
         }
     });
     
