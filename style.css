@@ -185,17 +185,19 @@ body {
 /* 滿房狀態 */
 .room-option.unavailable {
     opacity: 1;
+    cursor: not-allowed !important;
 }
 
 .room-option.unavailable label {
-    cursor: not-allowed;
+    cursor: not-allowed !important;
     border-color: #e74c3c;
     background: #fff;
     position: relative;
+    pointer-events: none;
 }
 
 .room-option.unavailable input[type="radio"]:disabled + label {
-    cursor: not-allowed;
+    cursor: not-allowed !important;
     pointer-events: none;
 }
 
@@ -205,7 +207,11 @@ body {
 }
 
 .room-option.unavailable input[type="radio"]:disabled {
-    cursor: not-allowed;
+    cursor: not-allowed !important;
+}
+
+.room-option.unavailable * {
+    cursor: not-allowed !important;
 }
 
 /* 表單輸入 */

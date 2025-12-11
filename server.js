@@ -329,11 +329,18 @@ app.post('/api/booking', async (req, res) => {
             }
         }
         
-        // 計算匯款到期日期
-        const paymentDeadline = new Date();
-        paymentDeadline.setDate(paymentDeadline.getDate() + daysReserved);
-        bookingData.daysReserved = daysReserved;
-        bookingData.paymentDeadline = paymentDeadline.toLocaleDateString('zh-TW');
+        // 計算匯款到期日期（如果是匯款轉帳）
+        if (paymentMethod === 'transfer') {
+            const paymentDeadline = new Date();
+            paymentDeadline.setDate(paymentDeadline.getDate() + daysReserved);
+            bookingData.daysReserved = daysReserved;
+            bookingData.paymentDeadline = paymentDeadline.toLocaleDateString('zh-TW');
+            console.log('📅 匯款保留天數:', daysReserved, '到期日期:', bookingData.paymentDeadline);
+            console.log('💰 匯款資訊:', JSON.stringify(bankInfo, null, 2));
+        }
+        
+        // 確保 bankInfo 被加入到 bookingData（即使不是匯款轉帳）
+        bookingData.bankInfo = bankInfo;
         
         // 發送確認郵件給客戶
         const customerMailOptions = {
@@ -535,6 +542,12 @@ app.post('/api/booking', async (req, res) => {
 
 // 生成客戶確認郵件
 function generateCustomerEmail(data) {
+    console.log('📧 生成客戶郵件，資料:', {
+        paymentMethodCode: data.paymentMethodCode,
+        daysReserved: data.daysReserved,
+        paymentDeadline: data.paymentDeadline,
+        bankInfo: data.bankInfo
+    });
     return `
     <!DOCTYPE html>
     <html>
@@ -601,19 +614,21 @@ function generateCustomerEmail(data) {
                     </div>
                 </div>
 
-                ${data.paymentMethodCode === 'transfer' && data.bankInfo && data.bankInfo.account ? `
+                ${data.paymentMethodCode === 'transfer' ? `
                 <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
                     <h3 style="color: #856404; margin-top: 0;">💰 匯款提醒</h3>
                     <p style="color: #856404; font-weight: 600; margin: 10px 0;">
-                        ⏰ 此訂房將為您保留 <strong>${data.daysReserved || 3} 天</strong>，請於 <strong>${data.paymentDeadline || '3 天內'}</strong>完成匯款，逾期將自動取消訂房。
+                        ⏰ 此訂房將為您保留 <strong>${data.daysReserved || 3} 天</strong>，請於 <strong>${data.paymentDeadline ? data.paymentDeadline + '前' : (data.daysReserved || 3) + '天內'}</strong>完成匯款，逾期將自動取消訂房。
                     </p>
+                    ${data.bankInfo && data.bankInfo.account ? `
                     <div style="background: white; padding: 15px; border-radius: 5px; margin-top: 15px;">
                         <p style="margin: 8px 0; color: #333;"><strong>匯款資訊：</strong></p>
                         ${data.bankInfo.bankName ? `<p style="margin: 5px 0; color: #333;">銀行：${data.bankInfo.bankName}${data.bankInfo.bankBranch ? ' - ' + data.bankInfo.bankBranch : ''}</p>` : ''}
                         <p style="margin: 5px 0; color: #333;">帳號：<span style="font-size: 18px; color: #e74c3c; font-weight: 700; letter-spacing: 2px;">${data.bankInfo.account}</span></p>
                         ${data.bankInfo.accountName ? `<p style="margin: 5px 0; color: #333;">戶名：${data.bankInfo.accountName}</p>` : ''}
-                        <p style="margin: 15px 0 5px 0; padding-top: 10px; border-top: 1px solid #ddd; color: #666; font-size: 14px;">請在匯款時備註訂房編號後5碼：<strong>${data.bookingId}</strong></p>
+                        <p style="margin: 15px 0 5px 0; padding-top: 10px; border-top: 1px solid #ddd; color: #666; font-size: 14px;">請在匯款時備註訂房編號後5碼：<strong>${data.bookingId ? data.bookingId.slice(-5) : ''}</strong></p>
                     </div>
+                    ` : '<p style="color: #856404; margin: 10px 0;">⚠️ 匯款資訊尚未設定，請聯繫客服取得匯款帳號。</p>'}
                 </div>
                 ` : ''}
                 
