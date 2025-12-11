@@ -882,6 +882,15 @@ app.put('/api/bookings/:bookingId', async (req, res) => {
         const { bookingId } = req.params;
         const updateData = req.body;
         
+        // 如果付款狀態更新為已付款，且訂房狀態為保留，自動改為有效
+        if (updateData.payment_status === 'paid') {
+            const booking = await db.getBookingById(bookingId);
+            if (booking && booking.status === 'reserved') {
+                updateData.status = 'active';
+                console.log(`✅ 付款狀態更新為已付款，自動將訂房狀態從「保留」改為「有效」`);
+            }
+        }
+        
         const result = await db.updateBooking(bookingId, updateData);
         
         if (result > 0) {
@@ -1296,9 +1305,10 @@ const handlePaymentResult = async (req, res) => {
                         const bookingId = paymentResult.merchantTradeNo;
                         console.log('✅ 測試環境：付款成功，更新訂房記錄:', bookingId);
                         await db.updateBooking(bookingId, {
-                            payment_status: 'paid'
+                            payment_status: 'paid',
+                            status: 'active'
                         });
-                        console.log('✅ 付款狀態已更新為「已付款」');
+                        console.log('✅ 付款狀態已更新為「已付款」，訂房狀態已更新為「有效」');
                     }
                 } catch (updateError) {
                     console.error('❌ 更新付款狀態失敗:', updateError);
@@ -1372,12 +1382,13 @@ const handlePaymentResult = async (req, res) => {
                 const bookingId = paymentResult.merchantTradeNo; // 訂房編號
                 console.log('✅ 付款成功，更新訂房記錄:', bookingId);
                 
-                // 更新付款狀態為已付款
+                // 更新付款狀態為已付款，並將訂房狀態改為有效
                 await db.updateBooking(bookingId, {
-                    payment_status: 'paid'
+                    payment_status: 'paid',
+                    status: 'active'
                 });
                 
-                console.log('✅ 付款狀態已更新為「已付款」');
+                console.log('✅ 付款狀態已更新為「已付款」，訂房狀態已更新為「有效」');
             } catch (updateError) {
                 console.error('❌ 更新付款狀態失敗:', updateError);
                 // 即使更新失敗，也繼續顯示成功頁面

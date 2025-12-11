@@ -1224,7 +1224,7 @@ async function updateBooking(bookingId, updateData) {
             'guest_name', 'guest_phone', 'guest_email', 'room_type',
             'check_in_date', 'check_out_date', 'payment_status',
             'payment_method', 'payment_amount', 'price_per_night',
-            'nights', 'total_amount', 'final_amount'
+            'nights', 'total_amount', 'final_amount', 'status'
         ];
         
         const updates = [];

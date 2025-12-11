@@ -631,7 +631,7 @@ function showEditModal(booking) {
             <div class="form-group">
                 <label>付款金額類型</label>
                 <select name="payment_amount_type" id="editPaymentAmountType" required onchange="calculateEditPrice()">
-                    <option value="deposit" ${isDeposit ? 'selected' : ''}>支付訂金 (30%)</option>
+                    <option value="deposit" ${isDeposit ? 'selected' : ''}>支付訂金 (${depositPercentage}%)</option>
                     <option value="full" ${!isDeposit ? 'selected' : ''}>支付全額</option>
                 </select>
             </div>
@@ -694,7 +694,7 @@ function calculateEditPrice() {
         const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
         const totalAmount = pricePerNight * nights;
         const isDeposit = paymentAmountType.value === 'deposit';
-        const finalAmount = isDeposit ? totalAmount * 0.3 : totalAmount;
+        const finalAmount = isDeposit ? Math.round(totalAmount * depositPercentage / 100) : totalAmount;
         
         // 更新顯示
         document.getElementById('editPricePerNight').textContent = `NT$ ${pricePerNight.toLocaleString()}`;
