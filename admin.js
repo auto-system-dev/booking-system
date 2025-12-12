@@ -1685,8 +1685,15 @@ ${quillHtml}
             template_name: data.template_name,
             subject: data.subject,
             content_length: data.content.length,
-            is_enabled: data.is_enabled
+            is_enabled: data.is_enabled,
+            days_before_checkin: data.days_before_checkin,
+            send_hour_checkin: data.send_hour_checkin,
+            days_after_checkout: data.days_after_checkout,
+            send_hour_feedback: data.send_hour_feedback,
+            days_reserved: data.days_reserved,
+            send_hour_payment_reminder: data.send_hour_payment_reminder
         });
+        console.log('完整資料物件:', data);
         
         const response = await fetch(`/api/email-templates/${templateKey}`, {
             method: 'PUT',

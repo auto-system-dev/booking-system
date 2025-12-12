@@ -1643,6 +1643,16 @@ async function updateEmailTemplate(templateKey, data) {
     try {
         const { template_name, subject, content, is_enabled, days_before_checkin, send_hour_checkin, days_after_checkout, send_hour_feedback, days_reserved, send_hour_payment_reminder } = data;
         
+        console.log(`📝 資料庫更新郵件模板: ${templateKey}`);
+        console.log(`   接收到的設定值:`, {
+            days_before_checkin,
+            send_hour_checkin,
+            days_after_checkout,
+            send_hour_feedback,
+            days_reserved,
+            send_hour_payment_reminder
+        });
+        
         const sql = usePostgreSQL ? `
             UPDATE email_templates 
             SET template_name = $1, subject = $2, content = $3, is_enabled = $4,
@@ -1661,16 +1671,23 @@ async function updateEmailTemplate(templateKey, data) {
             WHERE template_key = ?
         `;
         
+        // 處理數值：如果是 undefined 或 null，設為 null；否則保持原值（包括 0）
         const values = [
             template_name, subject, content, is_enabled ? 1 : 0,
-            days_before_checkin || null, send_hour_checkin || null,
-            days_after_checkout || null, send_hour_feedback || null,
-            days_reserved || null, send_hour_payment_reminder || null,
+            days_before_checkin !== undefined ? days_before_checkin : null,
+            send_hour_checkin !== undefined ? send_hour_checkin : null,
+            days_after_checkout !== undefined ? days_after_checkout : null,
+            send_hour_feedback !== undefined ? send_hour_feedback : null,
+            days_reserved !== undefined ? days_reserved : null,
+            send_hour_payment_reminder !== undefined ? send_hour_payment_reminder : null,
             templateKey
         ];
         
+        console.log(`   準備更新的值:`, values);
+        
         const result = await query(sql, values);
-        return { changes: result.changes };
+        console.log(`✅ 資料庫更新成功，影響行數: ${result.changes || result.rowCount}`);
+        return { changes: result.changes || result.rowCount };
     } catch (error) {
         console.error('❌ 更新郵件模板失敗:', error.message);
         throw error;
