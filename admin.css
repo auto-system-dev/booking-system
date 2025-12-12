@@ -18,7 +18,7 @@ body {
 /* 側邊欄 */
 .sidebar {
     width: 250px;
-    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+    background: #262A33;
     color: white;
     padding: 20px 0;
     position: fixed;
