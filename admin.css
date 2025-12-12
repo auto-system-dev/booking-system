@@ -353,6 +353,8 @@ body {
 .stat-icon {
     font-size: 40px;
     margin-bottom: 15px;
+    filter: brightness(0) invert(1);
+    opacity: 0.8;
 }
 
 .stat-value {
