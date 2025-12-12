@@ -6,7 +6,11 @@
 
 body {
     font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+    background-image: url('Background image.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     min-height: 100vh;
     padding: 20px;
     display: flex;
