@@ -1718,13 +1718,32 @@ app.get('/api/email-templates/:key', async (req, res) => {
 app.put('/api/email-templates/:key', async (req, res) => {
     try {
         const { key } = req.params;
-        const { template_name, subject, content, is_enabled } = req.body;
+        const { 
+            template_name, 
+            subject, 
+            content, 
+            is_enabled,
+            days_before_checkin,
+            send_hour_checkin,
+            days_after_checkout,
+            send_hour_feedback,
+            days_reserved,
+            send_hour_payment_reminder
+        } = req.body;
         
         console.log(`📝 更新郵件模板: ${key}`);
         console.log(`   模板名稱: ${template_name}`);
         console.log(`   主旨: ${subject}`);
         console.log(`   內容長度: ${content ? content.length : 0}`);
         console.log(`   啟用狀態: ${is_enabled}`);
+        console.log(`   設定值:`, {
+            days_before_checkin,
+            send_hour_checkin,
+            days_after_checkout,
+            send_hour_feedback,
+            days_reserved,
+            send_hour_payment_reminder
+        });
         
         if (!template_name || !subject || !content) {
             console.error('❌ 缺少必填欄位');
@@ -1738,7 +1757,13 @@ app.put('/api/email-templates/:key', async (req, res) => {
             template_name,
             subject,
             content,
-            is_enabled: is_enabled !== false
+            is_enabled: is_enabled !== false,
+            days_before_checkin,
+            send_hour_checkin,
+            days_after_checkout,
+            send_hour_feedback,
+            days_reserved,
+            send_hour_payment_reminder
         });
         
         console.log(`✅ 郵件模板已更新，影響行數: ${result.changes}`);
