@@ -65,23 +65,14 @@ function renderRoomTypes() {
         
         const holidaySurcharge = room.holiday_surcharge || 0;
         const holidayPrice = room.price + holidaySurcharge;
+        // 如果有假日加價，顯示假日價格；否則顯示平日價格
+        const displayPrice = holidaySurcharge !== 0 ? holidayPrice : room.price;
         let priceDisplay = '';
         
         if (isUnavailable) {
             priceDisplay = '<span style="color: #e74c3c; font-weight: bold;">滿房</span>';
-        } else if (holidaySurcharge !== 0) {
-            // 如果有假日加價，顯示假日價格（平日價格用刪除線）
-            priceDisplay = `
-                <div style="line-height: 1.4;">
-                    <div style="text-decoration: line-through; color: #999; font-size: 0.9em;">NT$ ${room.price.toLocaleString()}/晚</div>
-                    <div style="color: #667eea; font-weight: 600;">
-                        假日 NT$ ${holidayPrice.toLocaleString()}/晚 (NT$ ${holidaySurcharge.toLocaleString()})
-                    </div>
-                </div>
-            `;
         } else {
-            // 如果沒有假日加價，只顯示平日價格
-            priceDisplay = `NT$ ${room.price.toLocaleString()}/晚`;
+            priceDisplay = `NT$ ${displayPrice.toLocaleString()}/晚`;
         }
         
         return `
