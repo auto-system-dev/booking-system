@@ -1415,8 +1415,16 @@ async function showEmailTemplateModal(templateKey) {
             } else if (templateKey === 'payment_reminder') {
                 if (paymentSettings) {
                     paymentSettings.style.display = 'block';
-                    document.getElementById('daysReserved').value = template.days_reserved || 3;
-                    document.getElementById('sendHourPaymentReminder').value = template.send_hour_payment_reminder || 9;
+                    const daysReservedValue = template.days_reserved !== null && template.days_reserved !== undefined ? template.days_reserved : 3;
+                    const sendHourValue = template.send_hour_payment_reminder !== null && template.send_hour_payment_reminder !== undefined ? template.send_hour_payment_reminder : 9;
+                    console.log('📧 載入匯款提醒設定值:', { 
+                        days_reserved: template.days_reserved, 
+                        send_hour_payment_reminder: template.send_hour_payment_reminder,
+                        daysReservedValue,
+                        sendHourValue
+                    });
+                    document.getElementById('daysReserved').value = daysReservedValue;
+                    document.getElementById('sendHourPaymentReminder').value = sendHourValue;
                 }
             }
             
