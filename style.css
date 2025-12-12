@@ -354,7 +354,7 @@ body {
 .submit-btn {
     width: 100%;
     padding: 16px;
-    background: #2C8EC4;
+    background: #262A33;
     color: white;
     border: none;
     border-radius: 12px;
@@ -367,9 +367,9 @@ body {
 }
 
 .submit-btn:hover {
-    background: #2474a0;
+    background: #1a1d23;
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(44, 142, 196, 0.4);
+    box-shadow: 0 8px 20px rgba(38, 42, 51, 0.4);
 }
 
 .submit-btn:active {
