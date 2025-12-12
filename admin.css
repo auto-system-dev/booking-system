@@ -96,7 +96,7 @@ body {
 
 .btn-refresh {
     padding: 10px 20px;
-    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+    background: linear-gradient(135deg, #3498db 0%, #5dade2 100%);
     color: white;
     border: none;
     border-radius: 8px;
@@ -534,7 +534,7 @@ body {
 
 .btn-save {
     padding: 12px 24px;
-    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+    background: linear-gradient(135deg, #3498db 0%, #5dade2 100%);
     color: white;
     border: none;
     border-radius: 8px;
@@ -552,7 +552,7 @@ body {
 /* 主要按鈕 */
 .btn-primary {
     padding: 10px 20px;
-    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+    background: linear-gradient(135deg, #3498db 0%, #5dade2 100%);
     color: white;
     border: none;
     border-radius: 8px;
