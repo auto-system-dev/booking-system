@@ -1932,15 +1932,22 @@ async function cancelExpiredReservations() {
 // 發送入住提醒郵件
 async function sendCheckinReminderEmails() {
     try {
-        console.log('\n[定時任務] 開始檢查入住提醒...');
+        const now = new Date();
+        console.log(`\n[定時任務] 開始檢查入住提醒... (${now.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })})`);
+        
         const bookings = await db.getBookingsForCheckinReminder();
         console.log(`找到 ${bookings.length} 筆需要發送入住提醒的訂房`);
         
         const template = await db.getEmailTemplateByKey('checkin_reminder');
-        if (!template || !template.is_enabled) {
-            console.log('入住提醒模板未啟用，跳過發送');
+        if (!template) {
+            console.log('❌ 找不到入住提醒模板');
             return;
         }
+        if (!template.is_enabled) {
+            console.log('⚠️ 入住提醒模板未啟用，跳過發送');
+            return;
+        }
+        console.log(`✅ 入住提醒模板已啟用 (days_before_checkin: ${template.days_before_checkin || 1}, send_hour_checkin: ${template.send_hour_checkin || 9})`);
         
         for (const booking of bookings) {
             try {
@@ -2029,22 +2036,32 @@ async function startServer() {
             console.log('========================================\n');
             console.log('等待請求中...\n');
             
-            // 啟動定時任務
-            // 每天上午 9:00 執行匯款提醒檢查
-            cron.schedule('0 9 * * *', sendPaymentReminderEmails);
-            console.log('✅ 匯款提醒定時任務已啟動（每天 09:00）');
+            // 啟動定時任務（使用台灣時區 Asia/Taipei）
+            const timezone = 'Asia/Taipei';
             
-            // 每天上午 10:00 執行入住提醒檢查
-            cron.schedule('0 10 * * *', sendCheckinReminderEmails);
-            console.log('✅ 入住提醒定時任務已啟動（每天 10:00）');
+            // 每天上午 9:00 執行匯款提醒檢查（台灣時間）
+            cron.schedule('0 9 * * *', sendPaymentReminderEmails, {
+                timezone: timezone
+            });
+            console.log('✅ 匯款提醒定時任務已啟動（每天 09:00 台灣時間）');
             
-            // 每天上午 11:00 執行回訪信檢查
-            cron.schedule('0 11 * * *', sendFeedbackRequestEmails);
-            console.log('✅ 回訪信定時任務已啟動（每天 11:00）');
+            // 每天上午 10:00 執行入住提醒檢查（台灣時間）
+            cron.schedule('0 10 * * *', sendCheckinReminderEmails, {
+                timezone: timezone
+            });
+            console.log('✅ 入住提醒定時任務已啟動（每天 10:00 台灣時間）');
             
-            // 每天凌晨 1:00 執行自動取消過期保留訂房
-            cron.schedule('0 1 * * *', cancelExpiredReservations);
-            console.log('✅ 自動取消過期保留訂房定時任務已啟動（每天 01:00）');
+            // 每天上午 11:00 執行回訪信檢查（台灣時間）
+            cron.schedule('0 11 * * *', sendFeedbackRequestEmails, {
+                timezone: timezone
+            });
+            console.log('✅ 回訪信定時任務已啟動（每天 11:00 台灣時間）');
+            
+            // 每天凌晨 1:00 執行自動取消過期保留訂房（台灣時間）
+            cron.schedule('0 1 * * *', cancelExpiredReservations, {
+                timezone: timezone
+            });
+            console.log('✅ 自動取消過期保留訂房定時任務已啟動（每天 01:00 台灣時間）');
         });
     } catch (error) {
         console.error('❌ 伺服器啟動失敗:', error);

@@ -1823,15 +1823,31 @@ async function getBookingsForPaymentReminder() {
 // 取得需要發送入住提醒的訂房（入住前一天）
 async function getBookingsForCheckinReminder() {
     try {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+        // 使用本地時區計算明天的日期
+        const now = new Date();
+        const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        
+        // 格式化為 YYYY-MM-DD（使用本地時區）
+        const year = tomorrow.getFullYear();
+        const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+        const day = String(tomorrow.getDate()).padStart(2, '0');
+        const tomorrowStr = `${year}-${month}-${day}`;
+        
+        console.log(`📅 查詢入住提醒訂房 - 目標日期: ${tomorrowStr} (明天)`);
+        console.log(`   當前時間: ${now.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}`);
         
         const sql = usePostgreSQL
             ? `SELECT * FROM bookings WHERE check_in_date = $1 AND status = 'active' AND payment_status = 'paid'`
             : `SELECT * FROM bookings WHERE check_in_date = ? AND status = 'active' AND payment_status = 'paid'`;
         
         const result = await query(sql, [tomorrowStr]);
+        console.log(`   找到 ${result.rows ? result.rows.length : 0} 筆符合條件的訂房`);
+        if (result.rows && result.rows.length > 0) {
+            result.rows.forEach(booking => {
+                console.log(`   - ${booking.booking_id}: ${booking.guest_name}, 入住日期: ${booking.check_in_date}, 狀態: ${booking.status}, 付款狀態: ${booking.payment_status}`);
+            });
+        }
+        
         return result.rows || [];
     } catch (error) {
         console.error('❌ 查詢入住提醒訂房失敗:', error.message);
