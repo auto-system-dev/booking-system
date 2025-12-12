@@ -449,6 +449,7 @@ async function initEmailTemplates() {
         .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
         .info-label { font-weight: 600; color: #666; }
         .info-value { color: #333; }
+        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
     </style>
 </head>
 <body>
@@ -459,6 +460,7 @@ async function initEmailTemplates() {
         <div class="content">
             <p>親愛的 {{guestName}} 您好，</p>
             <p>感謝您選擇我們的住宿服務！我們期待您明天的到來。</p>
+            
             <div class="info-box">
                 <h3>📅 訂房資訊</h3>
                 <div class="info-row">
@@ -478,6 +480,55 @@ async function initEmailTemplates() {
                     <span class="info-value">{{roomType}}</span>
                 </div>
             </div>
+            
+            <div class="info-box">
+                <h3>📍 交通路線</h3>
+                <p><strong>地址：</strong>台北市信義區信義路五段7號</p>
+                <p><strong>大眾運輸：</strong></p>
+                <ul>
+                    <li>捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
+                    <li>公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>
+                </ul>
+                <p><strong>自行開車：</strong></p>
+                <ul>
+                    <li>國道一號：下「信義交流道」，沿信義路直行約3公里</li>
+                    <li>國道三號：下「木柵交流道」，接信義快速道路</li>
+                </ul>
+            </div>
+            
+            <div class="info-box">
+                <h3>🅿️ 停車資訊</h3>
+                <p><strong>停車場位置：</strong>B1-B3 地下停車場</p>
+                <p><strong>停車費用：</strong></p>
+                <ul>
+                    <li>住宿客人：每日 NT$ 200（可無限次進出）</li>
+                    <li>臨時停車：每小時 NT$ 50</li>
+                </ul>
+                <p><strong>停車場開放時間：</strong>24 小時</p>
+                <p><strong>注意事項：</strong>停車位有限，建議提前預約</p>
+            </div>
+            
+            <div class="highlight">
+                <h3 style="color: #856404; margin-top: 0;">⚠️ 入住注意事項</h3>
+                <ul style="color: #856404;">
+                    <li>入住時間：下午 3:00 後</li>
+                    <li>退房時間：上午 11:00 前</li>
+                    <li>請攜帶身分證件辦理入住手續</li>
+                    <li>房間內禁止吸菸，違者將收取清潔費 NT$ 3,000</li>
+                    <li>請保持安靜，避免影響其他住客</li>
+                    <li>貴重物品請妥善保管，建議使用房間保險箱</li>
+                    <li>如需延遲退房，請提前告知櫃檯</li>
+                </ul>
+            </div>
+            
+            <div class="info-box">
+                <h3>📞 聯絡資訊</h3>
+                <p>如有任何問題，歡迎隨時聯繫我們：</p>
+                <p><strong>電話：</strong>02-1234-5678</p>
+                <p><strong>Email：</strong>service@hotel.com</p>
+                <p><strong>服務時間：</strong>24 小時</p>
+            </div>
+            
             <p>期待您的到來，祝您住宿愉快！</p>
         </div>
     </div>
@@ -504,6 +555,9 @@ async function initEmailTemplates() {
         .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
         .info-label { font-weight: 600; color: #666; }
         .info-value { color: #333; }
+        .btn { display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 8px; margin: 10px 5px; }
+        .rating { text-align: center; margin: 20px 0; }
+        .star { font-size: 40px; color: #ffc107; margin: 0 5px; }
     </style>
 </head>
 <body>
@@ -514,6 +568,7 @@ async function initEmailTemplates() {
         <div class="content">
             <p>親愛的 {{guestName}} 您好，</p>
             <p>感謝您選擇我們的住宿服務！希望您這次的住宿體驗愉快舒適。</p>
+            
             <div class="info-box">
                 <h3>📅 住宿資訊</h3>
                 <div class="info-row">
@@ -533,7 +588,39 @@ async function initEmailTemplates() {
                     <span class="info-value">{{roomType}}</span>
                 </div>
             </div>
+            
+            <div class="rating">
+                <h3>您的寶貴意見對我們非常重要！</h3>
+                <p>請為我們的服務評分：</p>
+                <div>
+                    <span class="star">⭐</span>
+                    <span class="star">⭐</span>
+                    <span class="star">⭐</span>
+                    <span class="star">⭐</span>
+                    <span class="star">⭐</span>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="https://www.google.com/maps/place/your-hotel" class="btn">在 Google 上給我們評價</a>
+                <a href="https://www.booking.com/your-hotel" class="btn">在 Booking.com 上評價</a>
+            </div>
+            
+            <div class="info-box">
+                <h3>💬 意見回饋</h3>
+                <p>如果您有任何建議或意見，歡迎透過以下方式與我們聯繫：</p>
+                <p><strong>Email：</strong>feedback@hotel.com</p>
+                <p><strong>電話：</strong>02-1234-5678</p>
+                <p>您的意見將幫助我們持續改進服務品質！</p>
+            </div>
+            
+            <div class="info-box" style="background: #e8f5e9; border-left: 4px solid #4caf50;">
+                <h3 style="color: #2e7d32;">🎁 再次入住優惠</h3>
+                <p>感謝您的支持！再次預訂可享有 <strong>9 折優惠</strong>，歡迎隨時與我們聯繫。</p>
+            </div>
+            
             <p>期待再次為您服務！</p>
+            <p>祝您 身體健康，萬事如意</p>
         </div>
     </div>
 </body>
@@ -553,8 +640,12 @@ async function initEmailTemplates() {
                 [template.key]
             );
             
-            // 如果模板不存在、內容為空、或名稱需要更新，則插入或更新
-            if (!existing || !existing.content || existing.content.trim() === '' || existing.template_name !== template.name) {
+            // 如果模板不存在、內容為空、內容過短（可能是被誤刪）、或名稱需要更新，則插入或更新
+            // 檢查內容長度：如果現有內容長度小於預設內容的 50%，視為內容過短，需要還原
+            const isContentTooShort = existing && existing.content && existing.content.trim() !== '' 
+                && existing.content.length < template.content.length * 0.5;
+            
+            if (!existing || !existing.content || existing.content.trim() === '' || existing.template_name !== template.name || isContentTooShort) {
                 if (usePostgreSQL) {
                     await query(
                         `INSERT INTO email_templates (template_key, template_name, subject, content, is_enabled, days_before_checkin, send_hour_checkin, days_after_checkout, send_hour_feedback, days_reserved, send_hour_payment_reminder)
@@ -600,6 +691,10 @@ async function initEmailTemplates() {
                     console.log(`✅ 已更新空的郵件模板 ${template.key}`);
                 } else if (existing && existing.template_name !== template.name) {
                     console.log(`✅ 已更新郵件模板名稱 ${template.key}: ${existing.template_name} -> ${template.name}`);
+                } else if (isContentTooShort) {
+                    console.log(`✅ 已還原郵件模板 ${template.key} 的完整內容（原內容長度: ${existing.content.length}, 新內容長度: ${template.content.length}）`);
+                } else if (!existing) {
+                    console.log(`✅ 已建立新的郵件模板 ${template.key}`);
                 }
             }
         } catch (error) {
