@@ -18,7 +18,7 @@ body {
 /* 側邊欄 */
 .sidebar {
     width: 250px;
-    background: linear-gradient(135deg, #3498db 0%, #5dade2 100%);
+    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
     color: white;
     padding: 20px 0;
     position: fixed;
@@ -96,7 +96,7 @@ body {
 
 .btn-refresh {
     padding: 10px 20px;
-    background: linear-gradient(135deg, #3498db 0%, #5dade2 100%);
+    background: #2C8EC4;
     color: white;
     border: none;
     border-radius: 8px;
@@ -107,8 +107,9 @@ body {
 }
 
 .btn-refresh:hover {
+    background: #2474a0;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+    box-shadow: 0 4px 12px rgba(44, 142, 196, 0.4);
 }
 
 /* 搜尋和篩選 */
@@ -136,8 +137,8 @@ body {
 
 .search-box input:focus {
     outline: none;
-    border-color: #3498db;
-    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    border-color: #2C8EC4;
+    box-shadow: 0 0 0 3px rgba(44, 142, 196, 0.1);
 }
 
 .search-icon {
@@ -165,7 +166,7 @@ body {
 
 .filter-group select:focus {
     outline: none;
-    border-color: #3498db;
+    border-color: #2C8EC4;
 }
 
 /* 表格 */
@@ -246,12 +247,12 @@ body {
 }
 
 .btn-view {
-    background: #3498db;
+    background: #2C8EC4;
     color: white;
 }
 
 .btn-view:hover {
-    background: #2980b9;
+    background: #2474a0;
 }
 
 .btn-edit {
@@ -349,7 +350,7 @@ body {
 .stat-value {
     font-size: 32px;
     font-weight: 700;
-    color: #3498db;
+    color: #2C8EC4;
     margin-bottom: 8px;
 }
 
@@ -395,7 +396,7 @@ body {
 .room-stat-count {
     font-size: 18px;
     font-weight: 700;
-    color: #3498db;
+    color: #2C8EC4;
 }
 
 /* 模態框 */
@@ -519,8 +520,8 @@ body {
 .form-group input:focus,
 .form-group select:focus {
     outline: none;
-    border-color: #3498db;
-    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    border-color: #2C8EC4;
+    box-shadow: 0 0 0 3px rgba(44, 142, 196, 0.1);
 }
 
 .form-actions {
@@ -534,7 +535,7 @@ body {
 
 .btn-save {
     padding: 12px 24px;
-    background: linear-gradient(135deg, #3498db 0%, #5dade2 100%);
+    background: #2C8EC4;
     color: white;
     border: none;
     border-radius: 8px;
@@ -545,14 +546,15 @@ body {
 }
 
 .btn-save:hover {
+    background: #2474a0;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+    box-shadow: 0 4px 12px rgba(44, 142, 196, 0.4);
 }
 
 /* 主要按鈕 */
 .btn-primary {
     padding: 10px 20px;
-    background: linear-gradient(135deg, #3498db 0%, #5dade2 100%);
+    background: #2C8EC4;
     color: white;
     border: none;
     border-radius: 8px;
@@ -566,8 +568,9 @@ body {
 }
 
 .btn-primary:hover {
+    background: #2474a0;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+    box-shadow: 0 4px 12px rgba(44, 142, 196, 0.4);
 }
 
 /* 分頁 */
@@ -589,9 +592,9 @@ body {
 }
 
 .pagination button:hover:not(:disabled) {
-    background: #3498db;
+    background: #2C8EC4;
     color: white;
-    border-color: #3498db;
+    border-color: #2C8EC4;
 }
 
 .pagination button:disabled {
@@ -663,7 +666,7 @@ body {
 .template-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    border-color: #3498db;
+    border-color: #2C8EC4;
 }
 
 .template-icon {
@@ -701,7 +704,7 @@ body {
 .btn-var {
     padding: 4px 10px;
     font-size: 11px;
-    background: #3498db;
+    background: #2C8EC4;
     color: white;
     border: none;
     border-radius: 4px;
@@ -710,11 +713,11 @@ body {
 }
 
 .btn-var:hover {
-    background: #2980b9;
+    background: #2474a0;
 }
 
 .btn-var:active {
-    background: #1f5f8b;
+    background: #1d5d7d;
 }
 
 /* Quill 編輯器自定義樣式 */
