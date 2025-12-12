@@ -1668,15 +1668,38 @@ ${quillHtml}
     };
     
     // 根據模板類型添加對應的設定值
+    console.log('🔍 檢查模板類型:', templateKey);
     if (templateKey === 'checkin_reminder') {
-        data.days_before_checkin = parseInt(document.getElementById('daysBeforeCheckin').value) || 1;
-        data.send_hour_checkin = parseInt(document.getElementById('sendHourCheckin').value) || 9;
+        const daysBeforeCheckinEl = document.getElementById('daysBeforeCheckin');
+        const sendHourCheckinEl = document.getElementById('sendHourCheckin');
+        console.log('🔍 入住提醒元素:', { daysBeforeCheckinEl, sendHourCheckinEl });
+        if (daysBeforeCheckinEl && sendHourCheckinEl) {
+            data.days_before_checkin = parseInt(daysBeforeCheckinEl.value) || 1;
+            data.send_hour_checkin = parseInt(sendHourCheckinEl.value) || 9;
+            console.log('✅ 已添加入住提醒設定:', { days_before_checkin: data.days_before_checkin, send_hour_checkin: data.send_hour_checkin });
+        }
     } else if (templateKey === 'feedback_request') {
-        data.days_after_checkout = parseInt(document.getElementById('daysAfterCheckout').value) || 1;
-        data.send_hour_feedback = parseInt(document.getElementById('sendHourFeedback').value) || 10;
+        const daysAfterCheckoutEl = document.getElementById('daysAfterCheckout');
+        const sendHourFeedbackEl = document.getElementById('sendHourFeedback');
+        console.log('🔍 感謝入住元素:', { daysAfterCheckoutEl, sendHourFeedbackEl });
+        if (daysAfterCheckoutEl && sendHourFeedbackEl) {
+            data.days_after_checkout = parseInt(daysAfterCheckoutEl.value) || 1;
+            data.send_hour_feedback = parseInt(sendHourFeedbackEl.value) || 10;
+            console.log('✅ 已添加感謝入住設定:', { days_after_checkout: data.days_after_checkout, send_hour_feedback: data.send_hour_feedback });
+        }
     } else if (templateKey === 'payment_reminder') {
-        data.days_reserved = parseInt(document.getElementById('daysReserved').value) || 3;
-        data.send_hour_payment_reminder = parseInt(document.getElementById('sendHourPaymentReminder').value) || 9;
+        const daysReservedEl = document.getElementById('daysReserved');
+        const sendHourPaymentReminderEl = document.getElementById('sendHourPaymentReminder');
+        console.log('🔍 匯款提醒元素:', { daysReservedEl, sendHourPaymentReminderEl });
+        if (daysReservedEl && sendHourPaymentReminderEl) {
+            data.days_reserved = parseInt(daysReservedEl.value) || 3;
+            data.send_hour_payment_reminder = parseInt(sendHourPaymentReminderEl.value) || 9;
+            console.log('✅ 已添加匯款提醒設定:', { days_reserved: data.days_reserved, send_hour_payment_reminder: data.send_hour_payment_reminder });
+        } else {
+            console.error('❌ 找不到匯款提醒設定元素！');
+        }
+    } else {
+        console.warn('⚠️ 未知的模板類型:', templateKey);
     }
     
     try {
