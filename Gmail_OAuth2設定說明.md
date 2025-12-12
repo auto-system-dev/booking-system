@@ -272,6 +272,115 @@ GMAIL_REFRESH_TOKEN=1//abcdefghijklmnopqrstuvwxyz-abcdefghijklmnopqrstuvwxyz
 
 ---
 
+### 錯誤：400: redirect_uri_mismatch
+
+**錯誤訊息：**
+- "Access blocked: Invalid request for this application"
+- "已封鎖存取權: 這個應用程式的要求無效"
+- "發生錯誤 400: redirect_uri_mismatch"
+
+**原因說明：**
+這個錯誤表示應用程式在請求 OAuth2 授權時使用的 `redirect_uri`（重新導向 URI）與 Google Cloud Console 中設定的「已授權的重新導向 URI」不匹配。
+
+**解決方法：**
+
+#### 方法 1：使用 OAuth2 Playground（推薦，最簡單）
+
+如果您使用 OAuth2 Playground 來取得 Refresh Token，請確保：
+
+1. **在 Google Cloud Console 中設定正確的 redirect_uri**
+   - 前往 Google Cloud Console → API 和服務 → 憑證
+   - 點擊您建立的 OAuth 用戶端 ID
+   - 在「已授權的重新導向 URI」區塊中，**必須包含**：
+     ```
+     https://developers.google.com/oauthplayground
+     ```
+   - 點擊「儲存」
+   - **重要**：如果沒有這個 URI，OAuth2 Playground 無法正常工作
+
+2. **確認程式碼中的 redirect_uri 設定**
+   - 在 `server.js` 中，redirect_uri 應該設定為：
+     ```javascript
+     'https://developers.google.com/oauthplayground'
+     ```
+   - 這是系統預設的設定，通常不需要修改
+
+3. **重新在 OAuth2 Playground 中授權**
+   - 清除瀏覽器快取
+   - 重新開啟 OAuth2 Playground
+   - 重新輸入 Client ID 和 Client Secret
+   - 重新點擊「Authorize APIs」
+
+#### 方法 2：使用自己的應用程式 URL（進階）
+
+如果您想要使用自己的應用程式 URL 作為 redirect_uri：
+
+1. **在 Google Cloud Console 中新增 redirect_uri**
+   - 前往 Google Cloud Console → API 和服務 → 憑證
+   - 點擊您建立的 OAuth 用戶端 ID
+   - 在「已授權的重新導向 URI」區塊中，新增：
+     - **本地測試**：`http://localhost:3000/auth/google/callback`
+     - **Railway 部署**：`https://your-app.railway.app/auth/google/callback`
+     - **注意**：可以同時新增多個 URI，每個一行
+   - 點擊「儲存」
+
+2. **修改程式碼中的 redirect_uri**
+   - 在 `server.js` 中，修改 redirect_uri 為您的應用程式 URL：
+     ```javascript
+     const oauth2Client = new google.auth.OAuth2(
+         process.env.GMAIL_CLIENT_ID,
+         process.env.GMAIL_CLIENT_SECRET,
+         'https://your-app.railway.app/auth/google/callback' // 改為您的 URL
+     );
+     ```
+   - **注意**：如果使用自己的 URL，需要實作 OAuth2 回調處理邏輯
+
+**常見錯誤：**
+
+1. **忘記在 Google Cloud Console 中新增 redirect_uri**
+   - 解決：前往憑證頁面，確認已新增正確的 URI
+
+2. **redirect_uri 格式錯誤**
+   - ❌ 錯誤：`https://developers.google.com/oauthplayground/`（多了一個斜線）
+   - ✅ 正確：`https://developers.google.com/oauthplayground`
+   - ❌ 錯誤：`http://developers.google.com/oauthplayground`（使用 http 而非 https）
+   - ✅ 正確：`https://developers.google.com/oauthplayground`
+
+3. **使用不同的 OAuth 客戶端**
+   - 確認在 OAuth2 Playground 中使用的 Client ID 和 Client Secret 與 Google Cloud Console 中顯示的一致
+
+4. **Railway URL 改變**
+   - 如果 Railway 的 URL 改變了，需要更新 Google Cloud Console 中的 redirect_uri
+   - 或者使用 OAuth2 Playground 方法（不需要設定 Railway URL）
+
+**排查步驟：**
+
+1. 檢查 Google Cloud Console 設定：
+   ```
+   ✅ 已建立 OAuth 用戶端 ID（類型：網頁應用程式）
+   ✅ 在「已授權的重新導向 URI」中已新增：https://developers.google.com/oauthplayground
+   ✅ 已複製正確的 Client ID 和 Client Secret
+   ```
+
+2. 檢查程式碼設定：
+   ```
+   ✅ server.js 中的 redirect_uri 設定為：https://developers.google.com/oauthplayground
+   ✅ 環境變數 GMAIL_CLIENT_ID 和 GMAIL_CLIENT_SECRET 已正確設定
+   ```
+
+3. 重新授權：
+   - 清除瀏覽器快取
+   - 重新開啟 OAuth2 Playground
+   - 重新輸入 Client ID 和 Client Secret
+   - 重新點擊「Authorize APIs」
+
+**推薦做法：**
+- 使用 OAuth2 Playground 方法（最簡單，不需要設定應用程式 URL）
+- 在 Google Cloud Console 中只新增 `https://developers.google.com/oauthplayground`
+- 這樣可以避免 Railway URL 改變時需要更新設定的問題
+
+---
+
 ### 錯誤：403: access_denied
 
 **錯誤訊息：**
