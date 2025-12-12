@@ -358,7 +358,7 @@ body {
 .stat-value {
     font-size: 32px;
     font-weight: 700;
-    color: #667eea;
+    color: #3498db;
     margin-bottom: 8px;
 }
 
@@ -404,7 +404,7 @@ body {
 .room-stat-count {
     font-size: 18px;
     font-weight: 700;
-    color: #667eea;
+    color: #3498db;
 }
 
 /* 模態框 */
@@ -712,7 +712,7 @@ body {
 .btn-var {
     padding: 4px 10px;
     font-size: 11px;
-    background: #667eea;
+    background: #3498db;
     color: white;
     border: none;
     border-radius: 4px;
