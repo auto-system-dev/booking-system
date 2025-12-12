@@ -1838,15 +1838,42 @@ function replaceTemplateVariables(template, booking, bankInfo = null) {
 // 發送匯款期限提醒郵件
 async function sendPaymentReminderEmails() {
     try {
-        console.log('\n[定時任務] 開始檢查匯款期限提醒...');
-        const bookings = await db.getBookingsForPaymentReminder();
-        console.log(`找到 ${bookings.length} 筆需要發送匯款提醒的訂房`);
+        const now = new Date();
+        console.log(`\n[定時任務] 開始檢查匯款期限提醒... (${now.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })})`);
         
+        // 先取得模板以取得保留天數
         const template = await db.getEmailTemplateByKey('payment_reminder');
-        if (!template || !template.is_enabled) {
-            console.log('匯款提醒模板未啟用，跳過發送');
+        if (!template) {
+            console.log('❌ 找不到匯款提醒模板');
             return;
         }
+        if (!template.is_enabled) {
+            console.log('⚠️ 匯款提醒模板未啟用，跳過發送');
+            return;
+        }
+        
+        const daysReserved = parseInt(template.days_reserved) || 3;
+        console.log(`✅ 匯款提醒模板已啟用 (days_reserved: ${daysReserved}, send_hour_payment_reminder: ${template.send_hour_payment_reminder || 9})`);
+        
+        // 取得所有可能的訂房
+        const allBookings = await db.getBookingsForPaymentReminder();
+        console.log(`初步查詢找到 ${allBookings.length} 筆可能的訂房`);
+        
+        // 過濾出匯款期限最後一天的訂房
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const bookings = allBookings.filter(booking => {
+            const bookingDate = new Date(booking.created_at);
+            const deadline = new Date(bookingDate);
+            deadline.setDate(deadline.getDate() + daysReserved);
+            
+            // 計算截止日期的開始時間（00:00:00）
+            const deadlineStart = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate());
+            
+            // 如果今天是截止日期，則需要發送提醒
+            return deadlineStart.getTime() === today.getTime();
+        });
+        
+        console.log(`找到 ${bookings.length} 筆需要發送匯款提醒的訂房（匯款期限最後一天）`);
         
         // 取得匯款資訊
         const bankInfo = {
@@ -1980,15 +2007,22 @@ async function sendCheckinReminderEmails() {
 // 發送回訪信
 async function sendFeedbackRequestEmails() {
     try {
-        console.log('\n[定時任務] 開始檢查回訪信...');
+        const now = new Date();
+        console.log(`\n[定時任務] 開始檢查回訪信... (${now.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })})`);
+        
         const bookings = await db.getBookingsForFeedbackRequest();
         console.log(`找到 ${bookings.length} 筆需要發送回訪信的訂房`);
         
         const template = await db.getEmailTemplateByKey('feedback_request');
-        if (!template || !template.is_enabled) {
-            console.log('回訪信模板未啟用，跳過發送');
+        if (!template) {
+            console.log('❌ 找不到回訪信模板');
             return;
         }
+        if (!template.is_enabled) {
+            console.log('⚠️ 回訪信模板未啟用，跳過發送');
+            return;
+        }
+        console.log(`✅ 回訪信模板已啟用 (days_after_checkout: ${template.days_after_checkout || 1}, send_hour_feedback: ${template.send_hour_feedback || 10})`);
         
         for (const booking of bookings) {
             try {

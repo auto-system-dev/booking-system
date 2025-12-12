@@ -1792,27 +1792,47 @@ async function updateEmailTemplate(templateKey, data) {
 // 取得需要發送匯款提醒的訂房（匯款期限最後一天）
 async function getBookingsForPaymentReminder() {
     try {
-        const threeDaysAgo = new Date();
-        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-        const threeDaysAgoStr = threeDaysAgo.toISOString().split('T')[0];
+        // 使用本地時區計算今天的日期
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         
+        // 格式化為 YYYY-MM-DD（使用本地時區）
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${day}`;
+        
+        console.log(`📅 查詢匯款提醒訂房 - 目標日期: ${todayStr} (今天)`);
+        console.log(`   當前時間: ${now.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}`);
+        console.log(`   查詢條件: 匯款轉帳 + 待付款 + 有效狀態 + 匯款期限最後一天`);
+        
+        // 查詢匯款期限最後一天的訂房
+        // 條件：訂房建立日期 + days_reserved = 今天
+        // 注意：這裡需要從模板取得 days_reserved，但為了簡化，我們查詢所有符合條件的訂房
+        // 實際的 days_reserved 檢查會在 server.js 中進行
         const sql = usePostgreSQL ? `
             SELECT * FROM bookings 
             WHERE payment_method LIKE '%匯款%' 
             AND payment_status = 'pending' 
-            AND status = 'active'
-            AND DATE(created_at) = DATE($1)
-            AND email_sent = 1
+            AND status IN ('active', 'reserved')
+            AND DATE(created_at) <= DATE($1)
         ` : `
             SELECT * FROM bookings 
             WHERE payment_method LIKE '%匯款%' 
             AND payment_status = 'pending' 
-            AND status = 'active'
-            AND DATE(created_at) = DATE(?)
-            AND email_sent = 1
+            AND status IN ('active', 'reserved')
+            AND DATE(created_at) <= DATE(?)
         `;
         
-        const result = await query(sql, [threeDaysAgoStr]);
+        const result = await query(sql, [todayStr]);
+        console.log(`   找到 ${result.rows ? result.rows.length : 0} 筆符合條件的訂房`);
+        if (result.rows && result.rows.length > 0) {
+            result.rows.forEach(booking => {
+                const bookingDate = new Date(booking.created_at);
+                console.log(`   - ${booking.booking_id}: ${booking.guest_name}, 建立日期: ${booking.created_at}, 狀態: ${booking.status}, 付款狀態: ${booking.payment_status}`);
+            });
+        }
+        
         return result.rows || [];
     } catch (error) {
         console.error('❌ 查詢匯款提醒訂房失敗:', error.message);
@@ -1858,15 +1878,31 @@ async function getBookingsForCheckinReminder() {
 // 取得需要發送回訪信的訂房（退房後隔天）
 async function getBookingsForFeedbackRequest() {
     try {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        // 使用本地時區計算昨天的日期
+        const now = new Date();
+        const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        
+        // 格式化為 YYYY-MM-DD（使用本地時區）
+        const year = yesterday.getFullYear();
+        const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+        const day = String(yesterday.getDate()).padStart(2, '0');
+        const yesterdayStr = `${year}-${month}-${day}`;
+        
+        console.log(`📅 查詢回訪信訂房 - 目標日期: ${yesterdayStr} (昨天退房)`);
+        console.log(`   當前時間: ${now.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}`);
         
         const sql = usePostgreSQL
             ? `SELECT * FROM bookings WHERE check_out_date = $1 AND status = 'active'`
             : `SELECT * FROM bookings WHERE check_out_date = ? AND status = 'active'`;
         
         const result = await query(sql, [yesterdayStr]);
+        console.log(`   找到 ${result.rows ? result.rows.length : 0} 筆符合條件的訂房`);
+        if (result.rows && result.rows.length > 0) {
+            result.rows.forEach(booking => {
+                console.log(`   - ${booking.booking_id}: ${booking.guest_name}, 退房日期: ${booking.check_out_date}, 狀態: ${booking.status}`);
+            });
+        }
+        
         return result.rows || [];
     } catch (error) {
         console.error('❌ 查詢回訪信訂房失敗:', error.message);
