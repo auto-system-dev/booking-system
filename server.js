@@ -1112,6 +1112,180 @@ app.put('/api/admin/room-types/:id', async (req, res) => {
     }
 });
 
+// ==================== 假日管理 API ====================
+
+// API: 取得所有假日
+app.get('/api/admin/holidays', async (req, res) => {
+    try {
+        const holidays = await db.getAllHolidays();
+        res.json({
+            success: true,
+            data: holidays
+        });
+    } catch (error) {
+        console.error('取得假日列表錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '取得假日列表失敗: ' + error.message
+        });
+    }
+});
+
+// API: 新增假日
+app.post('/api/admin/holidays', async (req, res) => {
+    try {
+        const { holidayDate, holidayName, startDate, endDate } = req.body;
+        
+        if (!holidayDate && (!startDate || !endDate)) {
+            return res.status(400).json({
+                success: false,
+                message: '請提供假日日期或日期範圍'
+            });
+        }
+        
+        let addedCount = 0;
+        
+        if (startDate && endDate) {
+            // 新增連續假期
+            addedCount = await db.addHolidayRange(startDate, endDate, holidayName);
+        } else {
+            // 新增單一假日
+            addedCount = await db.addHoliday(holidayDate, holidayName);
+        }
+        
+        res.json({
+            success: true,
+            message: `已新增 ${addedCount} 個假日`,
+            data: { addedCount }
+        });
+    } catch (error) {
+        console.error('新增假日錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '新增假日失敗: ' + error.message
+        });
+    }
+});
+
+// API: 刪除假日
+app.delete('/api/admin/holidays/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+        const result = await db.deleteHoliday(date);
+        
+        if (result > 0) {
+            res.json({
+                success: true,
+                message: '假日已刪除'
+            });
+        } else {
+            res.status(404).json({
+                success: false,
+                message: '找不到該假日'
+            });
+        }
+    } catch (error) {
+        console.error('刪除假日錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '刪除假日失敗: ' + error.message
+        });
+    }
+});
+
+// API: 檢查日期是否為假日
+app.get('/api/check-holiday', async (req, res) => {
+    try {
+        const { date } = req.query;
+        
+        if (!date) {
+            return res.status(400).json({
+                success: false,
+                message: '請提供日期'
+            });
+        }
+        
+        const isHoliday = await db.isHolidayOrWeekend(date, true);
+        res.json({
+            success: true,
+            data: { isHoliday, date }
+        });
+    } catch (error) {
+        console.error('檢查假日錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '檢查假日失敗: ' + error.message
+        });
+    }
+});
+
+// API: 計算訂房價格（考慮平日/假日）
+app.get('/api/calculate-price', async (req, res) => {
+    try {
+        const { checkInDate, checkOutDate, roomTypeName } = req.query;
+        
+        if (!checkInDate || !checkOutDate || !roomTypeName) {
+            return res.status(400).json({
+                success: false,
+                message: '請提供入住日期、退房日期和房型名稱'
+            });
+        }
+        
+        // 取得房型資訊
+        const allRoomTypes = await db.getAllRoomTypes();
+        const roomType = allRoomTypes.find(r => r.display_name === roomTypeName || r.name === roomTypeName);
+        
+        if (!roomType) {
+            return res.status(404).json({
+                success: false,
+                message: '找不到該房型'
+            });
+        }
+        
+        const basePrice = roomType.price || 0;
+        const holidaySurcharge = roomType.holiday_surcharge || 0;
+        
+        // 計算每日價格
+        const startDate = new Date(checkInDate);
+        const endDate = new Date(checkOutDate);
+        let totalAmount = 0;
+        const dailyPrices = [];
+        
+        for (let date = new Date(startDate); date < endDate; date.setDate(date.getDate() + 1)) {
+            const dateString = date.toISOString().split('T')[0];
+            const isHoliday = await db.isHolidayOrWeekend(dateString, true);
+            const dailyPrice = isHoliday ? basePrice + holidaySurcharge : basePrice;
+            totalAmount += dailyPrice;
+            dailyPrices.push({
+                date: dateString,
+                isHoliday,
+                price: dailyPrice
+            });
+        }
+        
+        const nights = dailyPrices.length;
+        const averagePricePerNight = nights > 0 ? Math.round(totalAmount / nights) : basePrice;
+        
+        res.json({
+            success: true,
+            data: {
+                basePrice,
+                holidaySurcharge,
+                nights,
+                totalAmount,
+                averagePricePerNight,
+                dailyPrices
+            }
+        });
+    } catch (error) {
+        console.error('計算價格錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '計算價格失敗: ' + error.message
+        });
+    }
+});
+
 // API: 刪除房型
 app.delete('/api/admin/room-types/:id', async (req, res) => {
     try {

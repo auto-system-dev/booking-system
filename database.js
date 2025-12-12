@@ -250,6 +250,7 @@ async function initPostgreSQL() {
                     name VARCHAR(255) UNIQUE NOT NULL,
                     display_name VARCHAR(255) NOT NULL,
                     price INTEGER NOT NULL,
+                    holiday_surcharge INTEGER DEFAULT 0,
                     icon VARCHAR(255) DEFAULT '🏠',
                     display_order INTEGER DEFAULT 0,
                     is_active INTEGER DEFAULT 1,
@@ -258,6 +259,30 @@ async function initPostgreSQL() {
                 )
             `);
             console.log('✅ 房型設定表已準備就緒');
+            
+            // 檢查並添加 holiday_surcharge 欄位（如果不存在）
+            try {
+                await query('ALTER TABLE room_types ADD COLUMN holiday_surcharge INTEGER DEFAULT 0');
+                console.log('✅ 已添加 holiday_surcharge 欄位');
+            } catch (err) {
+                if (err.message && err.message.includes('already exists')) {
+                    console.log('✅ holiday_surcharge 欄位已存在');
+                } else {
+                    console.warn('⚠️  添加 holiday_surcharge 欄位時發生錯誤:', err.message);
+                }
+            }
+            
+            // 建立假日日期表
+            await query(`
+                CREATE TABLE IF NOT EXISTS holidays (
+                    id SERIAL PRIMARY KEY,
+                    holiday_date DATE NOT NULL UNIQUE,
+                    holiday_name VARCHAR(255),
+                    is_weekend INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ 假日日期表已準備就緒');
             
             // 初始化預設房型
             const roomCount = await queryOne('SELECT COUNT(*) as count FROM room_types');
@@ -766,6 +791,7 @@ function initSQLite() {
                                 name TEXT UNIQUE NOT NULL,
                                 display_name TEXT NOT NULL,
                                 price INTEGER NOT NULL,
+                                holiday_surcharge INTEGER DEFAULT 0,
                                 icon TEXT DEFAULT '🏠',
                                 display_order INTEGER DEFAULT 0,
                                 is_active INTEGER DEFAULT 1,
@@ -777,6 +803,32 @@ function initSQLite() {
                                 console.warn('⚠️  建立 room_types 表時發生錯誤:', err.message);
                             } else {
                                 console.log('✅ 房型設定表已準備就緒');
+                                
+                                // 檢查並添加 holiday_surcharge 欄位（如果不存在）
+                                db.run(`ALTER TABLE room_types ADD COLUMN holiday_surcharge INTEGER DEFAULT 0`, (err) => {
+                                    if (err && !err.message.includes('duplicate column')) {
+                                        console.warn('⚠️  添加 holiday_surcharge 欄位時發生錯誤:', err.message);
+                                    } else {
+                                        console.log('✅ 已添加 holiday_surcharge 欄位');
+                                    }
+                                    
+                                    // 建立假日日期表
+                                    db.run(`
+                                        CREATE TABLE IF NOT EXISTS holidays (
+                                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                            holiday_date TEXT NOT NULL UNIQUE,
+                                            holiday_name TEXT,
+                                            is_weekend INTEGER DEFAULT 0,
+                                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                                        )
+                                    `, (err) => {
+                                        if (err) {
+                                            console.warn('⚠️  建立 holidays 表時發生錯誤:', err.message);
+                                        } else {
+                                            console.log('✅ 假日日期表已準備就緒');
+                                        }
+                                    });
+                                });
                                 
                                 // 初始化預設房型（如果表是空的）
                                 db.get('SELECT COUNT(*) as count FROM room_types', [], (err, row) => {
@@ -1511,6 +1563,117 @@ async function getStatistics() {
     }
 }
 
+// ==================== 假日管理 ====================
+
+// 取得所有假日
+async function getAllHolidays() {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT * FROM holidays ORDER BY holiday_date ASC`
+            : `SELECT * FROM holidays ORDER BY holiday_date ASC`;
+        
+        const result = await query(sql);
+        return result.rows || [];
+    } catch (error) {
+        console.error('❌ 查詢假日列表失敗:', error.message);
+        throw error;
+    }
+}
+
+// 檢查日期是否為假日
+async function isHoliday(dateString) {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT * FROM holidays WHERE holiday_date = $1`
+            : `SELECT * FROM holidays WHERE holiday_date = ?`;
+        
+        const result = await queryOne(sql, [dateString]);
+        return result !== null;
+    } catch (error) {
+        console.error('❌ 檢查假日失敗:', error.message);
+        return false;
+    }
+}
+
+// 檢查日期是否為週末（週六或週日）
+function isWeekend(dateString) {
+    const date = new Date(dateString);
+    const day = date.getDay();
+    return day === 0 || day === 6; // 0 = 週日, 6 = 週六
+}
+
+// 檢查日期是否為假日（包括週末和手動設定的假日）
+async function isHolidayOrWeekend(dateString, includeWeekend = true) {
+    // 先檢查是否為手動設定的假日
+    const isManualHoliday = await isHoliday(dateString);
+    if (isManualHoliday) {
+        return true;
+    }
+    
+    // 如果包含週末，檢查是否為週末
+    if (includeWeekend) {
+        return isWeekend(dateString);
+    }
+    
+    return false;
+}
+
+// 新增假日
+async function addHoliday(holidayDate, holidayName = null) {
+    try {
+        const sql = usePostgreSQL
+            ? `INSERT INTO holidays (holiday_date, holiday_name, is_weekend) VALUES ($1, $2, 0) ON CONFLICT (holiday_date) DO NOTHING`
+            : `INSERT OR IGNORE INTO holidays (holiday_date, holiday_name, is_weekend) VALUES (?, ?, 0)`;
+        
+        const result = await query(sql, [holidayDate, holidayName]);
+        return result.changes || 0;
+    } catch (error) {
+        console.error('❌ 新增假日失敗:', error.message);
+        throw error;
+    }
+}
+
+// 新增連續假期
+async function addHolidayRange(startDate, endDate, holidayName = null) {
+    try {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        let addedCount = 0;
+        
+        // 遍歷日期範圍內的每一天
+        for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+            const dateString = date.toISOString().split('T')[0];
+            try {
+                await addHoliday(dateString, holidayName);
+                addedCount++;
+            } catch (err) {
+                // 忽略重複的日期
+                console.warn(`⚠️  日期 ${dateString} 已存在，跳過`);
+            }
+        }
+        
+        return addedCount;
+    } catch (error) {
+        console.error('❌ 新增連續假期失敗:', error.message);
+        throw error;
+    }
+}
+
+// 刪除假日
+async function deleteHoliday(holidayDate) {
+    try {
+        const sql = usePostgreSQL
+            ? `DELETE FROM holidays WHERE holiday_date = $1 AND is_weekend = 0`
+            : `DELETE FROM holidays WHERE holiday_date = ? AND is_weekend = 0`;
+        
+        const result = await query(sql, [holidayDate]);
+        return result.changes || 0;
+    } catch (error) {
+        console.error('❌ 刪除假日失敗:', error.message);
+        throw error;
+    }
+}
+
 // ==================== 房型管理 ====================
 
 // 取得所有房型（只包含啟用的，供前台使用）
@@ -1608,6 +1771,117 @@ async function updateRoomType(id, roomData) {
         return result.changes;
     } catch (error) {
         console.error('❌ 更新房型失敗:', error.message);
+        throw error;
+    }
+}
+
+// ==================== 假日管理 ====================
+
+// 取得所有假日
+async function getAllHolidays() {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT * FROM holidays ORDER BY holiday_date ASC`
+            : `SELECT * FROM holidays ORDER BY holiday_date ASC`;
+        
+        const result = await query(sql);
+        return result.rows || [];
+    } catch (error) {
+        console.error('❌ 查詢假日列表失敗:', error.message);
+        throw error;
+    }
+}
+
+// 檢查日期是否為假日
+async function isHoliday(dateString) {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT * FROM holidays WHERE holiday_date = $1`
+            : `SELECT * FROM holidays WHERE holiday_date = ?`;
+        
+        const result = await queryOne(sql, [dateString]);
+        return result !== null;
+    } catch (error) {
+        console.error('❌ 檢查假日失敗:', error.message);
+        return false;
+    }
+}
+
+// 檢查日期是否為週末（週六或週日）
+function isWeekend(dateString) {
+    const date = new Date(dateString);
+    const day = date.getDay();
+    return day === 0 || day === 6; // 0 = 週日, 6 = 週六
+}
+
+// 檢查日期是否為假日（包括週末和手動設定的假日）
+async function isHolidayOrWeekend(dateString, includeWeekend = true) {
+    // 先檢查是否為手動設定的假日
+    const isManualHoliday = await isHoliday(dateString);
+    if (isManualHoliday) {
+        return true;
+    }
+    
+    // 如果包含週末，檢查是否為週末
+    if (includeWeekend) {
+        return isWeekend(dateString);
+    }
+    
+    return false;
+}
+
+// 新增假日
+async function addHoliday(holidayDate, holidayName = null) {
+    try {
+        const sql = usePostgreSQL
+            ? `INSERT INTO holidays (holiday_date, holiday_name, is_weekend) VALUES ($1, $2, 0) ON CONFLICT (holiday_date) DO NOTHING`
+            : `INSERT OR IGNORE INTO holidays (holiday_date, holiday_name, is_weekend) VALUES (?, ?, 0)`;
+        
+        const result = await query(sql, [holidayDate, holidayName]);
+        return result.changes || 0;
+    } catch (error) {
+        console.error('❌ 新增假日失敗:', error.message);
+        throw error;
+    }
+}
+
+// 新增連續假期
+async function addHolidayRange(startDate, endDate, holidayName = null) {
+    try {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        let addedCount = 0;
+        
+        // 遍歷日期範圍內的每一天
+        for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+            const dateString = date.toISOString().split('T')[0];
+            try {
+                await addHoliday(dateString, holidayName);
+                addedCount++;
+            } catch (err) {
+                // 忽略重複的日期
+                console.warn(`⚠️  日期 ${dateString} 已存在，跳過`);
+            }
+        }
+        
+        return addedCount;
+    } catch (error) {
+        console.error('❌ 新增連續假期失敗:', error.message);
+        throw error;
+    }
+}
+
+// 刪除假日
+async function deleteHoliday(holidayDate) {
+    try {
+        const sql = usePostgreSQL
+            ? `DELETE FROM holidays WHERE holiday_date = $1 AND is_weekend = 0`
+            : `DELETE FROM holidays WHERE holiday_date = ? AND is_weekend = 0`;
+        
+        const result = await query(sql, [holidayDate]);
+        return result.changes || 0;
+    } catch (error) {
+        console.error('❌ 刪除假日失敗:', error.message);
         throw error;
     }
 }
@@ -1983,6 +2257,14 @@ module.exports = {
     createRoomType,
     updateRoomType,
     deleteRoomType,
+    // 假日管理
+    getAllHolidays,
+    isHoliday,
+    isWeekend,
+    isHolidayOrWeekend,
+    addHoliday,
+    addHolidayRange,
+    deleteHoliday,
     // 系統設定
     getSetting,
     getAllSettings,
