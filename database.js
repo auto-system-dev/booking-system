@@ -1717,18 +1717,19 @@ async function getRoomTypeById(id) {
 async function createRoomType(roomData) {
     try {
         const sql = usePostgreSQL ? `
-            INSERT INTO room_types (name, display_name, price, icon, display_order, is_active) 
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO room_types (name, display_name, price, holiday_surcharge, icon, display_order, is_active) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING id
         ` : `
-            INSERT INTO room_types (name, display_name, price, icon, display_order, is_active) 
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO room_types (name, display_name, price, holiday_surcharge, icon, display_order, is_active) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         `;
         
         const values = [
             roomData.name,
             roomData.display_name,
             roomData.price,
+            roomData.holiday_surcharge !== undefined ? roomData.holiday_surcharge : 0,
             roomData.icon || '🏠',
             roomData.display_order || 0,
             roomData.is_active !== undefined ? roomData.is_active : 1
@@ -1749,17 +1750,18 @@ async function updateRoomType(id, roomData) {
     try {
         const sql = usePostgreSQL ? `
             UPDATE room_types 
-            SET display_name = $1, price = $2, icon = $3, display_order = $4, is_active = $5, updated_at = CURRENT_TIMESTAMP
-            WHERE id = $6
+            SET display_name = $1, price = $2, holiday_surcharge = $3, icon = $4, display_order = $5, is_active = $6, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $7
         ` : `
             UPDATE room_types 
-            SET display_name = ?, price = ?, icon = ?, display_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
+            SET display_name = ?, price = ?, holiday_surcharge = ?, icon = ?, display_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         `;
         
         const values = [
             roomData.display_name,
             roomData.price,
+            roomData.holiday_surcharge !== undefined ? roomData.holiday_surcharge : 0,
             roomData.icon || '🏠',
             roomData.display_order || 0,
             roomData.is_active !== undefined ? roomData.is_active : 1,
