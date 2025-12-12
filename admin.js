@@ -26,6 +26,11 @@ document.addEventListener('DOMContentLoaded', function() {
     loadBookings();
     loadStatistics();
     
+    // 如果切換到系統設定，載入假日列表
+    if (urlHash === '#settings') {
+        loadHolidays();
+    }
+    
     // 如果切換到房型管理或系統設定，載入對應資料
     const urlHash = window.location.hash;
     if (urlHash === '#room-types') {
@@ -79,6 +84,7 @@ function switchSection(section) {
         loadRoomTypes();
     } else if (section === 'settings') {
         loadSettings();
+        loadHolidays();
     } else if (section === 'email-templates') {
         loadEmailTemplates();
     } else if (section === 'statistics') {
@@ -992,6 +998,7 @@ function renderRoomTypes() {
             <td>${room.name}</td>
             <td>${room.display_name}</td>
             <td>NT$ ${room.price.toLocaleString()}</td>
+            <td>${room.holiday_surcharge ? (room.holiday_surcharge > 0 ? '+' : '') + 'NT$ ' + room.holiday_surcharge.toLocaleString() : 'NT$ 0'}</td>
             <td>
                 <span class="status-badge ${room.is_active === 1 ? 'status-sent' : 'status-unsent'}">
                     ${room.is_active === 1 ? '啟用' : '停用'}
@@ -1045,8 +1052,14 @@ function showRoomTypeModal(room) {
                 <input type="text" name="display_name" value="${isEdit ? escapeHtml(room.display_name) : ''}" required>
             </div>
             <div class="form-group">
-                <label>價格（每晚）</label>
+                <label>平日價格（每晚）</label>
                 <input type="number" name="price" value="${isEdit ? room.price : ''}" min="0" step="1" required>
+                <small>平日（週一至週五）的基礎價格</small>
+            </div>
+            <div class="form-group">
+                <label>假日加價（每晚）</label>
+                <input type="number" name="holiday_surcharge" value="${isEdit ? (room.holiday_surcharge || 0) : 0}" min="-999999" step="1">
+                <small>假日（週六、週日及手動設定的假日）的加價金額。可為正數（加價）或負數（折扣），0 表示假日價格與平日相同</small>
             </div>
             <div class="form-group">
                 <label>圖示（Emoji）</label>
@@ -1082,6 +1095,7 @@ async function saveRoomType(event, id) {
         name: formData.get('name'),
         display_name: formData.get('display_name'),
         price: parseInt(formData.get('price')),
+        holiday_surcharge: parseInt(formData.get('holiday_surcharge')) || 0,
         icon: formData.get('icon') || '🏠',
         display_order: parseInt(formData.get('display_order')) || 0,
         is_active: parseInt(formData.get('is_active'))
@@ -1958,5 +1972,202 @@ function closeEmailTemplateModal() {
             toggleBtn.textContent = '切換到 HTML 模式';
         }
     }
+}
+
+// ==================== 假日管理 ====================
+
+// 載入假日列表
+async function loadHolidays() {
+    try {
+        const response = await fetch('/api/admin/holidays');
+        const result = await response.json();
+        
+        if (result.success) {
+            renderHolidays(result.data || []);
+        } else {
+            const container = document.getElementById('holidaysList');
+            if (container) {
+                container.innerHTML = '<div class="error">載入假日列表失敗</div>';
+            }
+        }
+    } catch (error) {
+        console.error('載入假日列表錯誤:', error);
+        const container = document.getElementById('holidaysList');
+        if (container) {
+            container.innerHTML = '<div class="error">載入假日列表時發生錯誤</div>';
+        }
+    }
+}
+
+// 渲染假日列表
+function renderHolidays(holidays) {
+    const container = document.getElementById('holidaysList');
+    if (!container) return;
+    
+    if (holidays.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">目前沒有設定假日</div>';
+        return;
+    }
+    
+    // 按日期排序
+    holidays.sort((a, b) => new Date(a.holiday_date) - new Date(b.holiday_date));
+    
+    container.innerHTML = holidays.map(holiday => {
+        const date = new Date(holiday.holiday_date);
+        const dateStr = date.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        const dayOfWeek = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'][date.getDay()];
+        const isWeekend = holiday.is_weekend === 1;
+        
+        return `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee;">
+                <div>
+                    <strong>${dateStr}</strong> (${dayOfWeek})
+                    ${holiday.holiday_name ? `<span style="color: #667eea; margin-left: 10px;">${escapeHtml(holiday.holiday_name)}</span>` : ''}
+                    ${isWeekend ? '<span style="color: #999; margin-left: 10px; font-size: 12px;">(自動週末)</span>' : ''}
+                </div>
+                ${!isWeekend ? `<button class="btn-cancel" onclick="deleteHoliday('${holiday.holiday_date}')" style="padding: 5px 10px; font-size: 12px;">刪除</button>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+// 新增單一假日
+async function addHoliday() {
+    const holidayDate = document.getElementById('holidayDate').value;
+    const holidayName = document.getElementById('holidayName').value.trim();
+    
+    if (!holidayDate) {
+        showError('請選擇假日日期');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/admin/holidays', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                holidayDate,
+                holidayName: holidayName || null
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 清空表單
+            document.getElementById('holidayDate').value = '';
+            document.getElementById('holidayName').value = '';
+            
+            // 重新載入假日列表
+            await loadHolidays();
+            
+            showSuccess('假日已新增');
+        } else {
+            showError('新增假日失敗: ' + result.message);
+        }
+    } catch (error) {
+        console.error('新增假日錯誤:', error);
+        showError('新增假日時發生錯誤: ' + error.message);
+    }
+}
+
+// 新增連續假期
+async function addHolidayRange() {
+    const startDate = document.getElementById('holidayStartDate').value;
+    const endDate = document.getElementById('holidayEndDate').value;
+    const holidayName = document.getElementById('holidayRangeName').value.trim();
+    
+    if (!startDate || !endDate) {
+        showError('請選擇開始日期和結束日期');
+        return;
+    }
+    
+    if (new Date(startDate) > new Date(endDate)) {
+        showError('開始日期不能晚於結束日期');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/admin/holidays', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                startDate,
+                endDate,
+                holidayName: holidayName || null
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 清空表單
+            document.getElementById('holidayStartDate').value = '';
+            document.getElementById('holidayEndDate').value = '';
+            document.getElementById('holidayRangeName').value = '';
+            
+            // 重新載入假日列表
+            await loadHolidays();
+            
+            showSuccess(`已新增 ${result.data.addedCount} 個假日`);
+        } else {
+            showError('新增連續假期失敗: ' + result.message);
+        }
+    } catch (error) {
+        console.error('新增連續假期錯誤:', error);
+        showError('新增連續假期時發生錯誤: ' + error.message);
+    }
+}
+
+// 刪除假日
+async function deleteHoliday(holidayDate) {
+    if (!confirm('確定要刪除這個假日嗎？')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/admin/holidays/${holidayDate}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 重新載入假日列表
+            await loadHolidays();
+            showSuccess('假日已刪除');
+        } else {
+            showError('刪除假日失敗: ' + result.message);
+        }
+    } catch (error) {
+        console.error('刪除假日錯誤:', error);
+        showError('刪除假日時發生錯誤: ' + error.message);
+    }
+}
+
+// 顯示成功訊息
+function showSuccess(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error';
+    errorDiv.style.background = '#4caf50';
+    errorDiv.style.color = 'white';
+    errorDiv.textContent = message;
+    errorDiv.style.position = 'fixed';
+    errorDiv.style.top = '20px';
+    errorDiv.style.right = '20px';
+    errorDiv.style.padding = '15px 20px';
+    errorDiv.style.borderRadius = '8px';
+    errorDiv.style.zIndex = '10000';
+    errorDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    
+    document.body.appendChild(errorDiv);
+    
+    setTimeout(() => {
+        errorDiv.remove();
+    }, 3000);
 }
 

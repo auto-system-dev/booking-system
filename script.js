@@ -113,25 +113,78 @@ function calculateNights() {
     }
 }
 
-// 計算價格
-function calculatePrice() {
+// 計算價格（考慮平日/假日）
+async function calculatePrice() {
     const selectedRoom = document.querySelector('input[name="roomType"]:checked');
     if (!selectedRoom) {
         updatePriceDisplay(0, 0, 0, 'deposit');
         return;
     }
 
-    const roomOption = selectedRoom.closest('.room-option');
-    const pricePerNight = parseInt(roomOption.dataset.price);
-    const nights = calculateNights();
-    const totalAmount = pricePerNight * nights;
+    const checkInDate = document.getElementById('checkInDate').value;
+    const checkOutDate = document.getElementById('checkOutDate').value;
     
-    const paymentAmount = document.querySelector('input[name="paymentAmount"]:checked').value;
-    const depositRate = depositPercentage / 100; // 轉換為小數（例如：30% -> 0.3）
-    const paymentType = paymentAmount === 'deposit' ? depositRate : 1;
-    const finalAmount = totalAmount * paymentType;
+    if (!checkInDate || !checkOutDate) {
+        // 如果沒有選擇日期，使用舊的計算方式（不考慮假日）
+        const roomOption = selectedRoom.closest('.room-option');
+        const pricePerNight = parseInt(roomOption.dataset.price);
+        const nights = calculateNights();
+        const totalAmount = pricePerNight * nights;
+        
+        const paymentAmount = document.querySelector('input[name="paymentAmount"]:checked').value;
+        const depositRate = depositPercentage / 100;
+        const paymentType = paymentAmount === 'deposit' ? depositRate : 1;
+        const finalAmount = totalAmount * paymentType;
 
-    updatePriceDisplay(pricePerNight, nights, totalAmount, paymentAmount, finalAmount);
+        updatePriceDisplay(pricePerNight, nights, totalAmount, paymentAmount, finalAmount);
+        return;
+    }
+
+    // 使用新的 API 計算價格（考慮假日）
+    try {
+        const roomTypeName = selectedRoom.closest('.room-option').querySelector('.room-name').textContent.trim();
+        const response = await fetch(`/api/calculate-price?checkInDate=${checkInDate}&checkOutDate=${checkOutDate}&roomTypeName=${encodeURIComponent(roomTypeName)}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const { totalAmount, averagePricePerNight, nights } = result.data;
+            
+            const paymentAmount = document.querySelector('input[name="paymentAmount"]:checked').value;
+            const depositRate = depositPercentage / 100;
+            const paymentType = paymentAmount === 'deposit' ? depositRate : 1;
+            const finalAmount = totalAmount * paymentType;
+
+            updatePriceDisplay(averagePricePerNight, nights, totalAmount, paymentAmount, finalAmount);
+        } else {
+            console.error('計算價格失敗:', result.message);
+            // 如果 API 失敗，使用舊的計算方式
+            const roomOption = selectedRoom.closest('.room-option');
+            const pricePerNight = parseInt(roomOption.dataset.price);
+            const nights = calculateNights();
+            const totalAmount = pricePerNight * nights;
+            
+            const paymentAmount = document.querySelector('input[name="paymentAmount"]:checked').value;
+            const depositRate = depositPercentage / 100;
+            const paymentType = paymentAmount === 'deposit' ? depositRate : 1;
+            const finalAmount = totalAmount * paymentType;
+
+            updatePriceDisplay(pricePerNight, nights, totalAmount, paymentAmount, finalAmount);
+        }
+    } catch (error) {
+        console.error('計算價格錯誤:', error);
+        // 如果發生錯誤，使用舊的計算方式
+        const roomOption = selectedRoom.closest('.room-option');
+        const pricePerNight = parseInt(roomOption.dataset.price);
+        const nights = calculateNights();
+        const totalAmount = pricePerNight * nights;
+        
+        const paymentAmount = document.querySelector('input[name="paymentAmount"]:checked').value;
+        const depositRate = depositPercentage / 100;
+        const paymentType = paymentAmount === 'deposit' ? depositRate : 1;
+        const finalAmount = totalAmount * paymentType;
+
+        updatePriceDisplay(pricePerNight, nights, totalAmount, paymentAmount, finalAmount);
+    }
 }
 
 // 更新訂金標籤
