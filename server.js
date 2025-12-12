@@ -1694,6 +1694,14 @@ app.get('/api/email-templates/:key', async (req, res) => {
         const template = await db.getEmailTemplateByKey(key);
         if (template) {
             console.log(`✅ 找到模板: ${template.template_name}, 內容長度: ${template.content ? template.content.length : 0}`);
+            console.log(`   設定值:`, {
+                days_reserved: template.days_reserved,
+                send_hour_payment_reminder: template.send_hour_payment_reminder,
+                days_before_checkin: template.days_before_checkin,
+                send_hour_checkin: template.send_hour_checkin,
+                days_after_checkout: template.days_after_checkout,
+                send_hour_feedback: template.send_hour_feedback
+            });
             res.json({
                 success: true,
                 data: template

@@ -1369,8 +1369,15 @@ async function showEmailTemplateModal(templateKey) {
             console.log('📧 模板資料:', {
                 template_key: template.template_key,
                 template_name: template.template_name,
-                content_length: template.content ? template.content.length : 0
+                content_length: template.content ? template.content.length : 0,
+                days_reserved: template.days_reserved,
+                send_hour_payment_reminder: template.send_hour_payment_reminder,
+                days_before_checkin: template.days_before_checkin,
+                send_hour_checkin: template.send_hour_checkin,
+                days_after_checkout: template.days_after_checkout,
+                send_hour_feedback: template.send_hour_feedback
             });
+            console.log('📧 完整模板物件:', template);
             const modal = document.getElementById('emailTemplateModal');
             const title = document.getElementById('emailTemplateModalTitle');
             const form = document.getElementById('emailTemplateForm');
