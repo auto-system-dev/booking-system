@@ -764,10 +764,33 @@ body {
     font-family: 'Microsoft JhengHei', 'Noto Sans TC', Arial, sans-serif;
     font-size: 14px;
     min-height: 350px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
 }
 
 #emailTemplateEditor .ql-editor {
     min-height: 350px;
+    color: #ffffff;
+}
+
+#emailTemplateEditor .ql-toolbar {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px 6px 0 0;
+}
+
+#emailTemplateEditor .ql-toolbar .ql-stroke {
+    stroke: rgba(255, 255, 255, 0.8);
+}
+
+#emailTemplateEditor .ql-toolbar .ql-fill {
+    fill: rgba(255, 255, 255, 0.8);
+}
+
+#emailTemplateEditor .ql-toolbar button:hover,
+#emailTemplateEditor .ql-toolbar button.ql-active {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 #emailTemplateEditor .ql-editor.ql-blank::before {
