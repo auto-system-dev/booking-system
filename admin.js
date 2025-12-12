@@ -154,7 +154,7 @@ function renderBookings() {
         const finalAmount = parseInt(booking.final_amount) || 0;
         
         return `
-        <tr ${isCancelled ? 'style="opacity: 0.6; background: #f8f8f8;"' : ''}>
+        <tr ${isCancelled ? 'style="opacity: 0.6; background: rgba(255, 255, 255, 0.03);"' : ''}>
             <td>${booking.booking_id}</td>
             <td>${booking.guest_name}</td>
             <td>${booking.room_type}</td>
