@@ -45,8 +45,16 @@ async function loadRoomTypesAndSettings() {
     }
 }
 
+// 檢查日期是否為假日（週末）
+function isWeekend(dateString) {
+    if (!dateString) return false;
+    const date = new Date(dateString);
+    const day = date.getDay();
+    return day === 0 || day === 6; // 0 = 週日, 6 = 週六
+}
+
 // 渲染房型選項
-function renderRoomTypes() {
+async function renderRoomTypes() {
     const grid = document.getElementById('roomTypeGrid');
     
     if (roomTypes.length === 0) {
@@ -58,15 +66,34 @@ function renderRoomTypes() {
     const checkOutDate = document.getElementById('checkOutDate').value;
     const hasDates = checkInDate && checkOutDate;
     
+    // 檢查入住日期是否為假日（先檢查是否為手動設定的假日，再檢查是否為週末）
+    let isCheckInHoliday = false;
+    if (checkInDate) {
+        try {
+            const response = await fetch(`/api/check-holiday?date=${checkInDate}`);
+            const result = await response.json();
+            if (result.success) {
+                isCheckInHoliday = result.data.isHoliday;
+            } else {
+                // 如果 API 失敗，使用週末判斷
+                isCheckInHoliday = isWeekend(checkInDate);
+            }
+        } catch (error) {
+            // 如果發生錯誤，使用週末判斷
+            isCheckInHoliday = isWeekend(checkInDate);
+        }
+    }
+    
     grid.innerHTML = roomTypes.map((room, index) => {
         const isUnavailable = hasDates && unavailableRooms.includes(room.name);
         const roomOptionClass = isUnavailable ? 'room-option unavailable' : 'room-option';
         const disabledAttr = isUnavailable ? 'disabled' : '';
         
         const holidaySurcharge = room.holiday_surcharge || 0;
-        const holidayPrice = room.price + holidaySurcharge;
-        // 如果有假日加價，顯示假日價格；否則顯示平日價格
-        const displayPrice = holidaySurcharge !== 0 ? holidayPrice : room.price;
+        // 根據入住日期判斷顯示平日價格還是假日價格
+        const displayPrice = (checkInDate && isCheckInHoliday && holidaySurcharge !== 0) 
+            ? (room.price + holidaySurcharge) 
+            : room.price;
         let priceDisplay = '';
         
         if (isUnavailable) {
@@ -322,6 +349,7 @@ document.getElementById('checkOutDate').addEventListener('change', function() {
     calculateNights();
     calculatePrice();
     checkRoomAvailability(); // 檢查房間可用性
+    renderRoomTypes(); // 重新渲染房型（更新價格顯示）
 });
 
 // 房型選擇事件
