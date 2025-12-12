@@ -343,6 +343,7 @@ document.getElementById('checkInDate').addEventListener('change', function() {
     calculateNights();
     calculatePrice();
     checkRoomAvailability(); // 檢查房間可用性
+    renderRoomTypes(); // 重新渲染房型（更新價格顯示）
 });
 
 document.getElementById('checkOutDate').addEventListener('change', function() {
