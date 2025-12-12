@@ -56,6 +56,8 @@ body::before {
 .container {
     width: 100%;
     max-width: 800px;
+    position: relative;
+    z-index: 1;
 }
 
 .booking-card {
