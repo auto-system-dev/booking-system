@@ -6,7 +6,7 @@
 
 body {
     font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background-image: url('Background image.jpg');
+    background-image: url('Background%20image.jpg');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
