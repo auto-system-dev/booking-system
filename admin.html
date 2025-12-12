@@ -77,6 +77,7 @@
                             <option value="failed">付款失敗</option>
                             <option value="refunded">已退款</option>
                         </select>
+                        <input type="date" id="checkInDateFilter" onchange="filterBookings()" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;" placeholder="入住日期">
                     </div>
                 </div>
 
@@ -88,7 +89,10 @@
                                 <th>訂房編號</th>
                                 <th>客戶姓名</th>
                                 <th>房型</th>
-                                <th>入住日期</th>
+                                <th onclick="sortByCheckInDate()" style="cursor: pointer; user-select: none;">
+                                    入住日期 
+                                    <span id="checkInDateSortIcon" style="font-size: 12px; color: #667eea;">⇅</span>
+                                </th>
                                 <th>住宿天數</th>
                                 <th>總金額</th>
                                 <th>應付金額</th>

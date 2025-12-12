@@ -4,6 +4,8 @@ let allBookings = [];
 let filteredBookings = [];
 let currentPage = 1;
 const itemsPerPage = 10;
+let sortColumn = null; // 當前排序欄位
+let sortDirection = 'asc'; // 排序方向：'asc' 或 'desc'
 
 // Quill 編輯器實例
 let quillEditor = null;
@@ -101,7 +103,6 @@ async function loadBookings() {
         
         if (result.success) {
             allBookings = result.data || [];
-            filteredBookings = [...allBookings];
             currentPage = 1;
             console.log('📊 載入的訂房記錄數量:', allBookings.length);
             if (allBookings.length > 0) {
@@ -111,7 +112,8 @@ async function loadBookings() {
                     final_amount: allBookings[0].final_amount
                 });
             }
-            renderBookings();
+            // 應用篩選和排序
+            applyFiltersAndSort();
         } else {
             showError('載入訂房記錄失敗：' + (result.message || '未知錯誤'));
         }
@@ -229,12 +231,14 @@ function changePage(page) {
 }
 
 // 篩選訂房記錄
-function filterBookings() {
+// 應用篩選和排序
+function applyFiltersAndSort() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const roomType = document.getElementById('roomTypeFilter').value;
     const paymentStatus = document.getElementById('statusFilter').value;
+    const checkInDate = document.getElementById('checkInDateFilter').value;
     
-    console.log('🔍 篩選條件:', { searchTerm, roomType, paymentStatus });
+    console.log('🔍 篩選條件:', { searchTerm, roomType, paymentStatus, checkInDate });
     
     filteredBookings = allBookings.filter(booking => {
         const matchSearch = !searchTerm || 
@@ -247,12 +251,68 @@ function filterBookings() {
         
         const matchPaymentStatus = !paymentStatus || (booking.payment_status || 'pending') === paymentStatus;
         
-        return matchSearch && matchRoomType && matchPaymentStatus;
+        const matchCheckInDate = !checkInDate || booking.check_in_date === checkInDate;
+        
+        return matchSearch && matchRoomType && matchPaymentStatus && matchCheckInDate;
     });
+    
+    // 如果有排序，應用排序
+    if (sortColumn === 'check_in_date') {
+        applySort();
+    }
     
     console.log(`✅ 篩選結果: ${filteredBookings.length} 筆訂房記錄`);
     currentPage = 1;
+    updateSortIcon();
     renderBookings();
+}
+
+function filterBookings() {
+    applyFiltersAndSort();
+}
+
+// 按入住日期排序
+function sortByCheckInDate() {
+    if (sortColumn === 'check_in_date') {
+        // 切換排序方向
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        // 第一次點擊，設為升序
+        sortColumn = 'check_in_date';
+        sortDirection = 'asc';
+    }
+    
+    applyFiltersAndSort();
+}
+
+// 應用排序
+function applySort() {
+    if (sortColumn === 'check_in_date') {
+        filteredBookings.sort((a, b) => {
+            const dateA = new Date(a.check_in_date);
+            const dateB = new Date(b.check_in_date);
+            
+            if (sortDirection === 'asc') {
+                return dateA - dateB;
+            } else {
+                return dateB - dateA;
+            }
+        });
+    }
+}
+
+// 更新排序圖示
+function updateSortIcon() {
+    const icon = document.getElementById('checkInDateSortIcon');
+    if (icon) {
+        if (sortColumn === 'check_in_date') {
+            icon.textContent = sortDirection === 'asc' ? '↑' : '↓';
+            icon.style.color = '#667eea';
+        } else {
+            icon.textContent = '⇅';
+            icon.style.color = '#999';
+        }
+    }
 }
 
 // 查看訂房詳情

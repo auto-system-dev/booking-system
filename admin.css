@@ -188,12 +188,23 @@ body {
 }
 
 .bookings-table th {
+    position: relative;
     padding: 15px;
     text-align: left;
     font-weight: 600;
     color: #333;
     font-size: 14px;
     border-bottom: 2px solid #e0e0e0;
+}
+
+.bookings-table th[onclick] {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+.bookings-table th[onclick]:hover {
+    background-color: #e9ecef;
 }
 
 .bookings-table td {
