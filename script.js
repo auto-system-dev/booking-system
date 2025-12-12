@@ -63,14 +63,36 @@ function renderRoomTypes() {
         const roomOptionClass = isUnavailable ? 'room-option unavailable' : 'room-option';
         const disabledAttr = isUnavailable ? 'disabled' : '';
         
+        const holidaySurcharge = room.holiday_surcharge || 0;
+        const holidayPrice = room.price + holidaySurcharge;
+        let priceDisplay = '';
+        
+        if (isUnavailable) {
+            priceDisplay = '<span style="color: #e74c3c; font-weight: bold;">滿房</span>';
+        } else if (holidaySurcharge !== 0) {
+            // 如果有假日加價，顯示平日價格和假日價格
+            priceDisplay = `
+                <div style="line-height: 1.4;">
+                    <div>平日 NT$ ${room.price.toLocaleString()}/晚</div>
+                    <div style="color: #667eea; font-size: 0.9em;">
+                        假日 NT$ ${holidayPrice.toLocaleString()}/晚
+                        ${holidaySurcharge > 0 ? `(+NT$ ${holidaySurcharge.toLocaleString()})` : `(NT$ ${holidaySurcharge.toLocaleString()})`}
+                    </div>
+                </div>
+            `;
+        } else {
+            // 如果沒有假日加價，只顯示平日價格
+            priceDisplay = `NT$ ${room.price.toLocaleString()}/晚`;
+        }
+        
         return `
-        <div class="${roomOptionClass}" data-room="${room.name}" data-price="${room.price}">
+        <div class="${roomOptionClass}" data-room="${room.name}" data-price="${room.price}" data-holiday-surcharge="${holidaySurcharge}">
             <input type="radio" id="room-${room.name}" name="roomType" value="${room.name}" ${disabledAttr} ${isUnavailable ? '' : 'required'}>
             <label for="room-${room.name}">
                 <div class="room-icon">${room.icon || '🏠'}</div>
                 <div class="room-name">${room.display_name}</div>
                 <div class="room-price ${isUnavailable ? 'unavailable-price' : ''}">
-                    ${isUnavailable ? '<span style="color: #e74c3c; font-weight: bold;">滿房</span>' : `NT$ ${room.price.toLocaleString()}/晚`}
+                    ${priceDisplay}
                 </div>
             </label>
         </div>
