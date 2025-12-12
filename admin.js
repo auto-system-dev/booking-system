@@ -232,6 +232,9 @@ function changePage(page) {
 function filterBookings() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const roomType = document.getElementById('roomTypeFilter').value;
+    const paymentStatus = document.getElementById('statusFilter').value;
+    
+    console.log('🔍 篩選條件:', { searchTerm, roomType, paymentStatus });
     
     filteredBookings = allBookings.filter(booking => {
         const matchSearch = !searchTerm || 
@@ -242,9 +245,12 @@ function filterBookings() {
         
         const matchRoomType = !roomType || booking.room_type === roomType;
         
-        return matchSearch && matchRoomType;
+        const matchPaymentStatus = !paymentStatus || (booking.payment_status || 'pending') === paymentStatus;
+        
+        return matchSearch && matchRoomType && matchPaymentStatus;
     });
     
+    console.log(`✅ 篩選結果: ${filteredBookings.length} 筆訂房記錄`);
     currentPage = 1;
     renderBookings();
 }
