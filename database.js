@@ -1804,7 +1804,7 @@ async function getBookingsForPaymentReminder() {
         
         console.log(`📅 查詢匯款提醒訂房 - 目標日期: ${todayStr} (今天)`);
         console.log(`   當前時間: ${now.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}`);
-        console.log(`   查詢條件: 匯款轉帳 + 待付款 + 有效狀態 + 匯款期限最後一天`);
+        console.log(`   查詢條件: 匯款轉帳 + 待付款 + 保留狀態 + 匯款期限最後一天`);
         
         // 查詢匯款期限最後一天的訂房
         // 條件：訂房建立日期 + days_reserved = 今天
@@ -1814,13 +1814,13 @@ async function getBookingsForPaymentReminder() {
             SELECT * FROM bookings 
             WHERE payment_method LIKE '%匯款%' 
             AND payment_status = 'pending' 
-            AND status IN ('active', 'reserved')
+            AND status = 'reserved'
             AND DATE(created_at) <= DATE($1)
         ` : `
             SELECT * FROM bookings 
             WHERE payment_method LIKE '%匯款%' 
             AND payment_status = 'pending' 
-            AND status IN ('active', 'reserved')
+            AND status = 'reserved'
             AND DATE(created_at) <= DATE(?)
         `;
         
