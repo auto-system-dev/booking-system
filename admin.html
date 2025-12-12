@@ -21,15 +21,15 @@
             </div>
             <nav class="sidebar-nav">
                 <a href="#bookings" class="nav-item active" data-section="bookings">
-                    <span class="nav-icon">📋</span>
+                    <span class="nav-icon">📄</span>
                     <span>訂房記錄</span>
                 </a>
                 <a href="#statistics" class="nav-item" data-section="statistics">
-                    <span class="nav-icon">📊</span>
+                    <span class="nav-icon">📈</span>
                     <span>統計資料</span>
                 </a>
                 <a href="#room-types" class="nav-item" data-section="room-types">
-                    <span class="nav-icon">🛏️</span>
+                    <span class="nav-icon">🛏</span>
                     <span>房型管理</span>
                 </a>
                 <a href="#holidays" class="nav-item" data-section="holidays">
@@ -37,11 +37,11 @@
                     <span>假日管理</span>
                 </a>
                 <a href="#settings" class="nav-item" data-section="settings">
-                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-icon">⚙</span>
                     <span>系統設定</span>
                 </a>
                 <a href="#email-templates" class="nav-item" data-section="email-templates">
-                    <span class="nav-icon">📧</span>
+                    <span class="nav-icon">✉</span>
                     <span>郵件模板</span>
                 </a>
             </nav>
@@ -52,7 +52,7 @@
             <!-- 訂房記錄區 -->
             <section id="bookings-section" class="content-section active">
                 <div class="section-header">
-                    <h2>📋 訂房記錄管理</h2>
+                    <h2>📄 訂房記錄管理</h2>
                     <div class="header-actions">
                         <button class="btn-refresh" onclick="loadBookings()">
                             <span>🔄</span> 重新整理
@@ -130,7 +130,7 @@
 
                 <div class="stats-grid" id="statsGrid">
                     <div class="stat-card">
-                        <div class="stat-icon">📋</div>
+                        <div class="stat-icon">📄</div>
                         <div class="stat-value" id="totalBookings">-</div>
                         <div class="stat-label">總訂房數</div>
                     </div>
@@ -145,7 +145,7 @@
                         <div class="stat-label">近7天訂房</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon">📧</div>
+                        <div class="stat-icon">✉</div>
                         <div class="stat-value" id="emailSent">-</div>
                         <div class="stat-label">郵件已發送</div>
                     </div>
@@ -163,13 +163,13 @@
             <!-- 房型管理區 -->
             <section id="room-types-section" class="content-section">
                 <div class="section-header">
-                    <h2>🛏️ 房型管理</h2>
+                    <h2>🛏 房型管理</h2>
                     <div class="header-actions">
                         <button class="btn-primary" onclick="showAddRoomTypeModal()">
                             <span>➕</span> 新增房型
                         </button>
                         <button class="btn-refresh" id="roomTypeFilterBtn" onclick="toggleRoomTypeFilter()">
-                            <span>📋</span> 顯示所有房型
+                            <span>📄</span> 顯示所有房型
                         </button>
                         <button class="btn-refresh" onclick="loadRoomTypes()">
                             <span>🔄</span> 重新整理
@@ -252,7 +252,7 @@
             <!-- 系統設定區 -->
             <section id="settings-section" class="content-section">
                 <div class="section-header">
-                    <h2>⚙️ 系統設定</h2>
+                    <h2>⚙ 系統設定</h2>
                     <button class="btn-refresh" onclick="loadSettings()">
                         <span>🔄</span> 重新整理
                     </button>
@@ -334,7 +334,7 @@
             <!-- 郵件模板區 -->
             <section id="email-templates-section" class="content-section">
                 <div class="section-header">
-                    <h2>📧 郵件模板管理</h2>
+                    <h2>✉ 郵件模板管理</h2>
                     <button class="btn-refresh" onclick="loadEmailTemplates()">
                         <span>🔄</span> 重新整理
                     </button>
