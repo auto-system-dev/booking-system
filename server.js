@@ -2166,20 +2166,46 @@ async function sendCheckinReminderEmails() {
             try {
                 const { subject, content } = replaceTemplateVariables(template, booking);
                 
-                await transporter.sendMail({
+                const mailOptions = {
                     from: process.env.EMAIL_USER || 'your-email@gmail.com',
                     to: booking.guest_email,
                     subject: subject,
                     html: content
-                });
+                };
                 
-                console.log(`✅ 已發送入住提醒給 ${booking.guest_name} (${booking.booking_id})`);
+                let emailSent = false;
                 
-                // 更新郵件狀態（追加入住信）
-                try {
-                    await db.updateEmailStatus(booking.booking_id, 'checkin_reminder', true);
-                } catch (updateError) {
-                    console.error(`❌ 更新郵件狀態失敗 (${booking.booking_id}):`, updateError.message);
+                // 優先使用 Gmail API（Railway 環境更穩定）
+                if (sendEmailViaGmailAPI) {
+                    try {
+                        await sendEmailViaGmailAPI(mailOptions);
+                        console.log(`✅ 已發送入住提醒給 ${booking.guest_name} (${booking.booking_id}) - Gmail API`);
+                        emailSent = true;
+                    } catch (gmailError) {
+                        // Gmail API 失敗時，嘗試 SMTP
+                        console.log(`⚠️  Gmail API 失敗，嘗試 SMTP... (${booking.booking_id})`);
+                        try {
+                            await transporter.sendMail(mailOptions);
+                            console.log(`✅ 已發送入住提醒給 ${booking.guest_name} (${booking.booking_id}) - SMTP`);
+                            emailSent = true;
+                        } catch (smtpError) {
+                            throw gmailError; // 拋出原始 Gmail API 錯誤
+                        }
+                    }
+                } else {
+                    // 沒有 Gmail API，使用 SMTP
+                    await transporter.sendMail(mailOptions);
+                    console.log(`✅ 已發送入住提醒給 ${booking.guest_name} (${booking.booking_id}) - SMTP`);
+                    emailSent = true;
+                }
+                
+                // 只有成功發送才更新郵件狀態
+                if (emailSent) {
+                    try {
+                        await db.updateEmailStatus(booking.booking_id, 'checkin_reminder', true);
+                    } catch (updateError) {
+                        console.error(`❌ 更新郵件狀態失敗 (${booking.booking_id}):`, updateError.message);
+                    }
                 }
             } catch (error) {
                 console.error(`❌ 發送入住提醒失敗 (${booking.booking_id}):`, error.message);
@@ -2214,20 +2240,46 @@ async function sendFeedbackRequestEmails() {
             try {
                 const { subject, content } = replaceTemplateVariables(template, booking);
                 
-                await transporter.sendMail({
+                const mailOptions = {
                     from: process.env.EMAIL_USER || 'your-email@gmail.com',
                     to: booking.guest_email,
                     subject: subject,
                     html: content
-                });
+                };
                 
-                console.log(`✅ 已發送回訪信給 ${booking.guest_name} (${booking.booking_id})`);
+                let emailSent = false;
                 
-                // 更新郵件狀態（追加退房信）
-                try {
-                    await db.updateEmailStatus(booking.booking_id, 'feedback_request', true);
-                } catch (updateError) {
-                    console.error(`❌ 更新郵件狀態失敗 (${booking.booking_id}):`, updateError.message);
+                // 優先使用 Gmail API（Railway 環境更穩定）
+                if (sendEmailViaGmailAPI) {
+                    try {
+                        await sendEmailViaGmailAPI(mailOptions);
+                        console.log(`✅ 已發送回訪信給 ${booking.guest_name} (${booking.booking_id}) - Gmail API`);
+                        emailSent = true;
+                    } catch (gmailError) {
+                        // Gmail API 失敗時，嘗試 SMTP
+                        console.log(`⚠️  Gmail API 失敗，嘗試 SMTP... (${booking.booking_id})`);
+                        try {
+                            await transporter.sendMail(mailOptions);
+                            console.log(`✅ 已發送回訪信給 ${booking.guest_name} (${booking.booking_id}) - SMTP`);
+                            emailSent = true;
+                        } catch (smtpError) {
+                            throw gmailError; // 拋出原始 Gmail API 錯誤
+                        }
+                    }
+                } else {
+                    // 沒有 Gmail API，使用 SMTP
+                    await transporter.sendMail(mailOptions);
+                    console.log(`✅ 已發送回訪信給 ${booking.guest_name} (${booking.booking_id}) - SMTP`);
+                    emailSent = true;
+                }
+                
+                // 只有成功發送才更新郵件狀態
+                if (emailSent) {
+                    try {
+                        await db.updateEmailStatus(booking.booking_id, 'feedback_request', true);
+                    } catch (updateError) {
+                        console.error(`❌ 更新郵件狀態失敗 (${booking.booking_id}):`, updateError.message);
+                    }
                 }
             } catch (error) {
                 console.error(`❌ 發送回訪信失敗 (${booking.booking_id}):`, error.message);
