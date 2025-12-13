@@ -2136,9 +2136,6 @@ async function sendCheckinReminderEmails() {
         const now = new Date();
         console.log(`\n[定時任務] 開始檢查入住提醒... (${now.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })})`);
         
-        const bookings = await db.getBookingsForCheckinReminder();
-        console.log(`找到 ${bookings.length} 筆需要發送入住提醒的訂房`);
-        
         const template = await db.getEmailTemplateByKey('checkin_reminder');
         if (!template) {
             console.log('❌ 找不到入住提醒模板');
@@ -2148,7 +2145,22 @@ async function sendCheckinReminderEmails() {
             console.log('⚠️ 入住提醒模板未啟用，跳過發送');
             return;
         }
-        console.log(`✅ 入住提醒模板已啟用 (days_before_checkin: ${template.days_before_checkin || 1}, send_hour_checkin: ${template.send_hour_checkin || 9})`);
+        
+        const daysBeforeCheckin = parseInt(template.days_before_checkin) || 1;
+        const sendHour = parseInt(template.send_hour_checkin) || 9;
+        
+        console.log(`✅ 入住提醒模板已啟用 (days_before_checkin: ${daysBeforeCheckin}, send_hour_checkin: ${sendHour})`);
+        
+        // 檢查當前時間是否符合發送時間
+        const currentHour = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', hour12: false });
+        const currentHourNum = parseInt(currentHour);
+        if (currentHourNum !== sendHour) {
+            console.log(`⏰ 當前時間 ${currentHourNum}:00 不符合發送時間 ${sendHour}:00，跳過`);
+            return;
+        }
+        
+        const bookings = await db.getBookingsForCheckinReminder(daysBeforeCheckin);
+        console.log(`找到 ${bookings.length} 筆需要發送入住提醒的訂房`);
         
         for (const booking of bookings) {
             try {
@@ -2253,11 +2265,11 @@ async function startServer() {
             });
             console.log('✅ 匯款提醒定時任務已啟動（每天 09:00 台灣時間）');
             
-            // 每天上午 10:00 執行入住提醒檢查（台灣時間）
-            cron.schedule('0 10 * * *', sendCheckinReminderEmails, {
+            // 入住提醒定時任務 - 每小時檢查一次，在設定的時間發送
+            cron.schedule('0 * * * *', sendCheckinReminderEmails, {
                 timezone: timezone
             });
-            console.log('✅ 入住提醒定時任務已啟動（每天 10:00 台灣時間）');
+            console.log('✅ 入住提醒定時任務已啟動（每小時檢查，根據模板設定時間發送）');
             
             // 每天上午 11:00 執行回訪信檢查（台灣時間）
             cron.schedule('0 11 * * *', sendFeedbackRequestEmails, {
