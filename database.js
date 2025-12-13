@@ -2117,26 +2117,26 @@ async function getBookingsForPaymentReminder() {
 }
 
 // 取得需要發送入住提醒的訂房（入住前一天）
-async function getBookingsForCheckinReminder() {
+async function getBookingsForCheckinReminder(daysBeforeCheckin = 1) {
     try {
-        // 使用本地時區計算明天的日期
+        // 使用本地時區計算目標日期（入住日期前 N 天）
         const now = new Date();
-        const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysBeforeCheckin);
         
         // 格式化為 YYYY-MM-DD（使用本地時區）
-        const year = tomorrow.getFullYear();
-        const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
-        const day = String(tomorrow.getDate()).padStart(2, '0');
-        const tomorrowStr = `${year}-${month}-${day}`;
+        const year = targetDate.getFullYear();
+        const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+        const day = String(targetDate.getDate()).padStart(2, '0');
+        const targetDateStr = `${year}-${month}-${day}`;
         
-        console.log(`📅 查詢入住提醒訂房 - 目標日期: ${tomorrowStr} (明天)`);
+        console.log(`📅 查詢入住提醒訂房 - 目標日期: ${targetDateStr} (入住日期前 ${daysBeforeCheckin} 天)`);
         console.log(`   當前時間: ${now.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}`);
         
         const sql = usePostgreSQL
             ? `SELECT * FROM bookings WHERE check_in_date = $1 AND status = 'active' AND payment_status = 'paid'`
             : `SELECT * FROM bookings WHERE check_in_date = ? AND status = 'active' AND payment_status = 'paid'`;
         
-        const result = await query(sql, [tomorrowStr]);
+        const result = await query(sql, [targetDateStr]);
         console.log(`   找到 ${result.rows ? result.rows.length : 0} 筆符合條件的訂房`);
         if (result.rows && result.rows.length > 0) {
             result.rows.forEach(booking => {
