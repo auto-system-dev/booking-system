@@ -649,8 +649,24 @@ app.post('/api/booking', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('訂房處理錯誤:', error);
-        res.status(500).json({ message: '伺服器錯誤，請稍後再試' });
+        console.error('❌ 訂房處理錯誤:', error);
+        console.error('   錯誤訊息:', error.message);
+        console.error('   錯誤堆疊:', error.stack);
+        
+        // 如果是資料庫錯誤，返回更明確的錯誤訊息
+        if (error.message && error.message.includes('訂房資料儲存失敗')) {
+            res.status(500).json({ 
+                success: false,
+                message: '訂房資料儲存失敗，請聯繫客服確認訂房狀態',
+                error: error.message
+            });
+        } else {
+            res.status(500).json({ 
+                success: false,
+                message: '伺服器錯誤，請稍後再試',
+                error: error.message
+            });
+        }
     }
 });
 
