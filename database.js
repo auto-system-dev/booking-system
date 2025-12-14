@@ -441,7 +441,7 @@ async function initEmailTemplates() {
                 <h3 style="color: #856404; margin-top: 0;">💰 匯款資訊</h3>
                 <div style="background: white; padding: 15px; border-radius: 5px; margin-top: 15px;">
                     <p style="margin: 5px 0; color: #333;"><strong>匯款資訊：</strong></p>
-                    <p style="margin: 5px 0; color: #333;">銀行：{{bankName}}{{bankBranch ? ' - ' + bankBranch : ''}}</p>
+                    <p style="margin: 5px 0; color: #333;">銀行：{{bankName}}{{bankBranch}}</p>
                     <p style="margin: 5px 0; color: #333;">帳號：<span style="font-size: 18px; color: #e74c3c; font-weight: 700; letter-spacing: 2px;">{{bankAccount}}</span></p>
                     <p style="margin: 5px 0; color: #333;">戶名：{{accountName}}</p>
                     <p style="margin: 15px 0 5px 0; padding-top: 10px; border-top: 1px solid #ddd; color: #666; font-size: 14px;">請在匯款時備註訂房編號後5碼：<strong>{{bookingId}}</strong></p>

@@ -1981,6 +1981,9 @@ function replaceTemplateVariables(template, booking, bankInfo = null) {
         paymentDeadline = deadline.toLocaleDateString('zh-TW');
     }
     
+    // 處理銀行分行顯示（如果有分行則顯示 " - 分行名"，否則為空）
+    const bankBranchDisplay = bankInfo && bankInfo.bankBranch ? ' - ' + bankInfo.bankBranch : '';
+    
     const variables = {
         '{{guestName}}': booking.guest_name,
         '{{bookingId}}': booking.booking_id,
@@ -1991,6 +1994,7 @@ function replaceTemplateVariables(template, booking, bankInfo = null) {
         '{{finalAmount}}': booking.final_amount ? booking.final_amount.toLocaleString() : '0',
         '{{bankName}}': bankInfo ? bankInfo.bankName : 'XXX銀行',
         '{{bankBranch}}': bankInfo ? bankInfo.bankBranch : 'XXX分行',
+        '{{bankBranchDisplay}}': bankBranchDisplay,
         '{{bankAccount}}': bankInfo ? bankInfo.account : '1234567890123',
         '{{accountName}}': bankInfo ? bankInfo.accountName : 'XXX',
         '{{daysReserved}}': daysReserved.toString(),
