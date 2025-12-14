@@ -284,6 +284,47 @@ async function initPostgreSQL() {
             `);
             console.log('✅ 假日日期表已準備就緒');
             
+            // 建立加購商品表
+            await query(`
+                CREATE TABLE IF NOT EXISTS addons (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) UNIQUE NOT NULL,
+                    display_name VARCHAR(255) NOT NULL,
+                    price INTEGER NOT NULL,
+                    icon VARCHAR(255) DEFAULT '➕',
+                    display_order INTEGER DEFAULT 0,
+                    is_active INTEGER DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ 加購商品表已準備就緒');
+            
+            // 初始化預設加購商品
+            const defaultAddons = [
+                ['extra_bed', '加床', 500, '🛏️', 1],
+                ['breakfast', '早餐', 200, '🍳', 2],
+                ['afternoon_tea', '下午茶', 300, '☕', 3],
+                ['dinner', '晚餐', 600, '🍽️', 4],
+                ['bbq', '烤肉', 800, '🔥', 5],
+                ['spa', 'SPA', 1000, '💆', 6]
+            ];
+            
+            for (const [name, displayName, price, icon, displayOrder] of defaultAddons) {
+                try {
+                    const existing = await queryOne('SELECT id FROM addons WHERE name = $1', [name]);
+                    if (!existing) {
+                        await query(
+                            'INSERT INTO addons (name, display_name, price, icon, display_order) VALUES ($1, $2, $3, $4, $5)',
+                            [name, displayName, price, icon, displayOrder]
+                        );
+                    }
+                } catch (err) {
+                    console.warn(`⚠️  初始化加購商品 ${name} 失敗:`, err.message);
+                }
+            }
+            console.log('✅ 預設加購商品已初始化');
+            
             // 初始化預設房型
             const roomCount = await queryOne('SELECT COUNT(*) as count FROM room_types');
             if (roomCount && parseInt(roomCount.count) === 0) {
@@ -838,6 +879,67 @@ function initSQLite() {
                                         } else {
                                             console.log('✅ 假日日期表已準備就緒');
                                         }
+                                        
+                                        // 建立加購商品表
+                                        db.run(`
+                                            CREATE TABLE IF NOT EXISTS addons (
+                                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                name TEXT UNIQUE NOT NULL,
+                                                display_name TEXT NOT NULL,
+                                                price INTEGER NOT NULL,
+                                                icon TEXT DEFAULT '➕',
+                                                display_order INTEGER DEFAULT 0,
+                                                is_active INTEGER DEFAULT 1,
+                                                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                                            )
+                                        `, (err) => {
+                                            if (err) {
+                                                console.warn('⚠️  建立 addons 表時發生錯誤:', err.message);
+                                            } else {
+                                                console.log('✅ 加購商品表已準備就緒');
+                                                
+                                                // 初始化預設加購商品
+                                                const defaultAddons = [
+                                                    ['extra_bed', '加床', 500, '🛏️', 1],
+                                                    ['breakfast', '早餐', 200, '🍳', 2],
+                                                    ['afternoon_tea', '下午茶', 300, '☕', 3],
+                                                    ['dinner', '晚餐', 600, '🍽️', 4],
+                                                    ['bbq', '烤肉', 800, '🔥', 5],
+                                                    ['spa', 'SPA', 1000, '💆', 6]
+                                                ];
+                                                
+                                                let addonCount = 0;
+                                                defaultAddons.forEach(([name, displayName, price, icon, displayOrder]) => {
+                                                    db.get('SELECT id FROM addons WHERE name = ?', [name], (err, row) => {
+                                                        if (!err && !row) {
+                                                            db.run('INSERT INTO addons (name, display_name, price, icon, display_order) VALUES (?, ?, ?, ?, ?)',
+                                                                [name, displayName, price, icon, displayOrder], (err) => {
+                                                                if (!err) {
+                                                                    addonCount++;
+                                                                    if (addonCount === defaultAddons.length) {
+                                                                        console.log('✅ 預設加購商品已初始化');
+                                                                    }
+                                                                }
+                                                            });
+                                                        }
+                                                    });
+                                                });
+                                            }
+                                            
+                                            // 繼續後續初始化
+                                            db.run(`ALTER TABLE bookings ADD COLUMN addons TEXT`, (err) => {
+                                                if (err && !err.message.includes('duplicate column')) {
+                                                    console.warn('⚠️  新增 addons 欄位時發生錯誤:', err.message);
+                                                }
+                                                
+                                                db.run(`ALTER TABLE bookings ADD COLUMN addons_total INTEGER DEFAULT 0`, (err) => {
+                                                    if (err && !err.message.includes('duplicate column')) {
+                                                        console.warn('⚠️  新增 addons_total 欄位時發生錯誤:', err.message);
+                                                    }
+                                                });
+                                            });
+                                        });
                                     });
                                 });
                                 
@@ -1315,8 +1417,8 @@ async function saveBooking(bookingData) {
                 guest_name, guest_phone, guest_email,
                 payment_amount, payment_method,
                 price_per_night, nights, total_amount, final_amount,
-                booking_date, email_sent, payment_status, status
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+                booking_date, email_sent, payment_status, status, addons, addons_total
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
             RETURNING id
         ` : `
             INSERT INTO bookings (
@@ -1324,9 +1426,12 @@ async function saveBooking(bookingData) {
                 guest_name, guest_phone, guest_email,
                 payment_amount, payment_method,
                 price_per_night, nights, total_amount, final_amount,
-                booking_date, email_sent, payment_status, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                booking_date, email_sent, payment_status, status, addons, addons_total
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
+        
+        const addonsJson = bookingData.addons ? JSON.stringify(bookingData.addons) : null;
+        const addonsTotal = bookingData.addonsTotal || 0;
         
         const values = [
             bookingData.bookingId,
@@ -1345,7 +1450,9 @@ async function saveBooking(bookingData) {
             bookingData.bookingDate,
             bookingData.emailSent || '0',  // 支援字串格式（郵件類型）或 '0'（未發送）
             bookingData.paymentStatus || 'pending',
-            bookingData.status || 'active'
+            bookingData.status || 'active',
+            bookingData.addons ? JSON.stringify(bookingData.addons) : null,
+            bookingData.addonsTotal || 0
         ];
         
         const result = await query(sql, values);
@@ -2197,6 +2304,110 @@ async function getBookingsForFeedbackRequest(daysAfterCheckout = 1) {
         return result.rows || [];
     } catch (error) {
         console.error('❌ 查詢回訪信訂房失敗:', error.message);
+        throw error;
+    }
+}
+
+// ==================== 加購商品管理 ====================
+
+// 取得所有加購商品
+async function getAllAddons() {
+    try {
+        const sql = `SELECT * FROM addons WHERE is_active = 1 ORDER BY display_order ASC, id ASC`;
+        const result = await query(sql);
+        return result.rows;
+    } catch (error) {
+        console.error('❌ 查詢加購商品失敗:', error.message);
+        throw error;
+    }
+}
+
+// 取得所有加購商品（包含已停用的，供管理後台使用）
+async function getAllAddonsAdmin() {
+    try {
+        const sql = `SELECT * FROM addons ORDER BY display_order ASC, id ASC`;
+        const result = await query(sql);
+        return result.rows;
+    } catch (error) {
+        console.error('❌ 查詢加購商品失敗:', error.message);
+        throw error;
+    }
+}
+
+// 取得單一加購商品
+async function getAddonById(id) {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT * FROM addons WHERE id = $1`
+            : `SELECT * FROM addons WHERE id = ?`;
+        return await queryOne(sql, [id]);
+    } catch (error) {
+        console.error('❌ 查詢加購商品失敗:', error.message);
+        throw error;
+    }
+}
+
+// 新增加購商品
+async function createAddon(addonData) {
+    try {
+        const sql = usePostgreSQL
+            ? `INSERT INTO addons (name, display_name, price, icon, display_order, is_active) 
+               VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
+            : `INSERT INTO addons (name, display_name, price, icon, display_order, is_active) 
+               VALUES (?, ?, ?, ?, ?, ?)`;
+        
+        const values = [
+            addonData.name,
+            addonData.display_name,
+            addonData.price,
+            addonData.icon || '➕',
+            addonData.display_order || 0,
+            addonData.is_active !== undefined ? addonData.is_active : 1
+        ];
+        
+        const result = await query(sql, values);
+        return result.lastID || result.rows[0]?.id;
+    } catch (error) {
+        console.error('❌ 新增加購商品失敗:', error.message);
+        throw error;
+    }
+}
+
+// 更新加購商品
+async function updateAddon(id, addonData) {
+    try {
+        const sql = usePostgreSQL
+            ? `UPDATE addons SET display_name = $1, price = $2, icon = $3, display_order = $4, is_active = $5, updated_at = CURRENT_TIMESTAMP WHERE id = $6`
+            : `UPDATE addons SET display_name = ?, price = ?, icon = ?, display_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+        
+        const values = [
+            addonData.display_name,
+            addonData.price,
+            addonData.icon || '➕',
+            addonData.display_order || 0,
+            addonData.is_active !== undefined ? addonData.is_active : 1,
+            id
+        ];
+        
+        await query(sql, values);
+        return true;
+    } catch (error) {
+        console.error('❌ 更新加購商品失敗:', error.message);
+        throw error;
+    }
+}
+
+// 刪除加購商品
+async function deleteAddon(id) {
+    try {
+        const sql = usePostgreSQL
+            ? `DELETE FROM addons WHERE id = $1`
+            : `DELETE FROM addons WHERE id = ?`;
+        
+        const result = await query(sql, [id]);
+        return result.changes > 0;
+    } catch (error) {
+        console.error('❌ 刪除加購商品失敗:', error.message);
         throw error;
     }
 }

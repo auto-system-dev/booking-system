@@ -140,6 +140,27 @@ body {
     gap: 15px;
 }
 
+.addons-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.addon-option {
+    transition: all 0.3s ease;
+}
+
+.addon-option.selected label {
+    border-color: #2C8EC4 !important;
+    background: #f0f8ff !important;
+}
+
+@media (max-width: 768px) {
+    .addons-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .room-option {
     position: relative;
 }

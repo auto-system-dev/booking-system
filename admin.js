@@ -988,31 +988,100 @@ function renderRoomTypes() {
         : allRoomTypes;
     
     if (filteredRoomTypes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="loading">沒有房型資料</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="loading">沒有房型資料</td></tr>';
         return;
     }
     
-    tbody.innerHTML = filteredRoomTypes.map(room => `
-        <tr ${room.is_active === 0 ? 'style="opacity: 0.6; background: #f8f8f8;"' : ''}>
-            <td>${room.display_order || 0}</td>
-            <td>${room.icon || '🏠'}</td>
-            <td>${room.name}</td>
-            <td>${room.display_name}</td>
-            <td>NT$ ${room.price.toLocaleString()}</td>
-            <td>${room.holiday_surcharge ? (room.holiday_surcharge > 0 ? '+' : '') + 'NT$ ' + room.holiday_surcharge.toLocaleString() : 'NT$ 0'}</td>
-            <td>
-                <span class="status-badge ${room.is_active === 1 ? 'status-sent' : 'status-unsent'}">
-                    ${room.is_active === 1 ? '啟用' : '停用'}
-                </span>
-            </td>
-            <td>
-                <div class="action-buttons">
-                    <button class="btn-edit" onclick="editRoomType(${room.id})">編輯</button>
-                    <button class="btn-cancel" onclick="deleteRoomType(${room.id})">刪除</button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
+    // 載入加購商品列表（用於顯示）
+    fetch('/api/addons')
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                const addons = result.data || [];
+                const addonsMap = {};
+                addons.forEach(addon => {
+                    addonsMap[addon.name] = addon.display_name;
+                });
+                
+                tbody.innerHTML = filteredRoomTypes.map(room => {
+                    // 這裡暫時顯示所有加購商品（實際應該根據房型關聯顯示）
+                    const addonsList = addons.map(a => a.display_name).join('、') || '無';
+                    
+                    return `
+                        <tr ${room.is_active === 0 ? 'style="opacity: 0.6; background: #f8f8f8;"' : ''}>
+                            <td>${room.display_order || 0}</td>
+                            <td>${room.icon || '🏠'}</td>
+                            <td>${room.name}</td>
+                            <td>${room.display_name}</td>
+                            <td>NT$ ${room.price.toLocaleString()}</td>
+                            <td>${room.holiday_surcharge ? (room.holiday_surcharge > 0 ? '+' : '') + 'NT$ ' + room.holiday_surcharge.toLocaleString() : 'NT$ 0'}</td>
+                            <td>${addonsList}</td>
+                            <td>
+                                <span class="status-badge ${room.is_active === 1 ? 'status-sent' : 'status-unsent'}">
+                                    ${room.is_active === 1 ? '啟用' : '停用'}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="btn-edit" onclick="editRoomType(${room.id})">編輯</button>
+                                    <button class="btn-cancel" onclick="deleteRoomType(${room.id})">刪除</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } else {
+                // 如果載入加購商品失敗，顯示不包含加購商品欄位的版本
+                tbody.innerHTML = filteredRoomTypes.map(room => `
+                    <tr ${room.is_active === 0 ? 'style="opacity: 0.6; background: #f8f8f8;"' : ''}>
+                        <td>${room.display_order || 0}</td>
+                        <td>${room.icon || '🏠'}</td>
+                        <td>${room.name}</td>
+                        <td>${room.display_name}</td>
+                        <td>NT$ ${room.price.toLocaleString()}</td>
+                        <td>${room.holiday_surcharge ? (room.holiday_surcharge > 0 ? '+' : '') + 'NT$ ' + room.holiday_surcharge.toLocaleString() : 'NT$ 0'}</td>
+                        <td>-</td>
+                        <td>
+                            <span class="status-badge ${room.is_active === 1 ? 'status-sent' : 'status-unsent'}">
+                                ${room.is_active === 1 ? '啟用' : '停用'}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-edit" onclick="editRoomType(${room.id})">編輯</button>
+                                <button class="btn-cancel" onclick="deleteRoomType(${room.id})">刪除</button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        })
+        .catch(error => {
+            console.error('載入加購商品失敗:', error);
+            // 顯示不包含加購商品欄位的版本
+            tbody.innerHTML = filteredRoomTypes.map(room => `
+                <tr ${room.is_active === 0 ? 'style="opacity: 0.6; background: #f8f8f8;"' : ''}>
+                    <td>${room.display_order || 0}</td>
+                    <td>${room.icon || '🏠'}</td>
+                    <td>${room.name}</td>
+                    <td>${room.display_name}</td>
+                    <td>NT$ ${room.price.toLocaleString()}</td>
+                    <td>${room.holiday_surcharge ? (room.holiday_surcharge > 0 ? '+' : '') + 'NT$ ' + room.holiday_surcharge.toLocaleString() : 'NT$ 0'}</td>
+                    <td>-</td>
+                    <td>
+                        <span class="status-badge ${room.is_active === 1 ? 'status-sent' : 'status-unsent'}">
+                            ${room.is_active === 1 ? '啟用' : '停用'}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-edit" onclick="editRoomType(${room.id})">編輯</button>
+                            <button class="btn-cancel" onclick="deleteRoomType(${room.id})">刪除</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        });
 }
 
 // 顯示新增房型模態框

@@ -235,7 +235,9 @@ app.post('/api/booking', async (req, res) => {
             pricePerNight,
             nights,
             totalAmount,
-            finalAmount
+            finalAmount,
+            addons,
+            addonsTotal
         } = req.body;
 
         // 驗證必填欄位
@@ -321,7 +323,9 @@ app.post('/api/booking', async (req, res) => {
             bookingId: generateShortBookingId(),
             depositPercentage: depositPercentage, // 傳給郵件生成函數使用
             bankInfo: bankInfo, // 匯款資訊（包含銀行、分行、帳號、戶名）
-            paymentMethodCode: paymentMethod // 原始付款方式代碼（transfer 或 card）
+            paymentMethodCode: paymentMethod, // 原始付款方式代碼（transfer 或 card）
+            addons: addons || null, // 加購商品陣列
+            addonsTotal: addonsTotal || 0 // 加購商品總金額
         };
 
         // 取得匯款提醒模板的保留天數（用於計算到期日期）
@@ -1370,6 +1374,134 @@ app.delete('/api/admin/room-types/:id', async (req, res) => {
         res.status(500).json({
             success: false,
             message: '刪除房型失敗: ' + error.message
+        });
+    }
+});
+
+// ==================== 加購商品管理 API ====================
+
+// API: 取得所有加購商品（公開，供前台使用）
+app.get('/api/addons', async (req, res) => {
+    try {
+        const addons = await db.getAllAddons();
+        res.json({
+            success: true,
+            data: addons
+        });
+    } catch (error) {
+        console.error('取得加購商品列表錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '取得加購商品列表失敗'
+        });
+    }
+});
+
+// API: 取得所有加購商品（管理後台，包含已停用的）
+app.get('/api/admin/addons', async (req, res) => {
+    try {
+        const addons = await db.getAllAddonsAdmin();
+        res.json({
+            success: true,
+            data: addons
+        });
+    } catch (error) {
+        console.error('取得加購商品列表錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '取得加購商品列表失敗: ' + error.message
+        });
+    }
+});
+
+// API: 新增加購商品
+app.post('/api/admin/addons', async (req, res) => {
+    try {
+        const addonData = req.body;
+        
+        if (!addonData.name || !addonData.display_name || addonData.price === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: '請提供完整的加購商品資料（名稱、顯示名稱、價格）'
+            });
+        }
+        
+        const id = await db.createAddon(addonData);
+        res.json({
+            success: true,
+            message: '加購商品已新增',
+            data: { id }
+        });
+    } catch (error) {
+        console.error('新增加購商品錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '新增加購商品失敗: ' + error.message
+        });
+    }
+});
+
+// API: 更新加購商品
+app.put('/api/admin/addons/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const addonData = req.body;
+        
+        const result = await db.updateAddon(id, addonData);
+        
+        if (result) {
+            res.json({
+                success: true,
+                message: '加購商品已更新'
+            });
+        } else {
+            res.status(404).json({
+                success: false,
+                message: '找不到該加購商品'
+            });
+        }
+    } catch (error) {
+        console.error('更新加購商品錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '更新加購商品失敗: ' + error.message
+        });
+    }
+});
+
+// API: 刪除加購商品
+app.delete('/api/admin/addons/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // 先檢查加購商品是否存在
+        const addon = await db.getAddonById(id);
+        if (!addon) {
+            return res.status(404).json({
+                success: false,
+                message: '找不到該加購商品'
+            });
+        }
+        
+        // 執行刪除
+        const result = await db.deleteAddon(id);
+        
+        if (result) {
+            res.json({
+                success: true,
+                message: '加購商品已刪除'
+            });
+        } else {
+            res.status(404).json({
+                success: false,
+                message: '刪除加購商品失敗'
+            });
+        }
+    } catch (error) {
+        console.error('刪除加購商品錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '刪除加購商品失敗: ' + error.message
         });
     }
 });

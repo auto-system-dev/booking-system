@@ -1,5 +1,7 @@
 // 全域變數
 let roomTypes = [];
+let addons = []; // 加購商品列表
+let selectedAddons = []; // 已選擇的加購商品
 let depositPercentage = 30; // 預設訂金百分比
 let unavailableRooms = []; // 已滿房的房型列表
 
@@ -11,18 +13,25 @@ document.getElementById('checkOutDate').setAttribute('min', today);
 // 載入房型資料和系統設定
 async function loadRoomTypesAndSettings() {
     try {
-        // 同時載入房型和設定
-        const [roomTypesResponse, settingsResponse] = await Promise.all([
+        // 同時載入房型、加購商品和設定
+        const [roomTypesResponse, addonsResponse, settingsResponse] = await Promise.all([
             fetch('/api/room-types'),
+            fetch('/api/addons'),
             fetch('/api/settings')
         ]);
         
         const roomTypesResult = await roomTypesResponse.json();
+        const addonsResult = await addonsResponse.json();
         const settingsResult = await settingsResponse.json();
         
         if (roomTypesResult.success) {
             roomTypes = roomTypesResult.data || [];
             renderRoomTypes();
+        }
+        
+        if (addonsResult.success) {
+            addons = addonsResult.data || [];
+            renderAddons();
         }
         
         if (settingsResult.success && settingsResult.data.deposit_percentage) {
@@ -43,6 +52,58 @@ async function loadRoomTypesAndSettings() {
         console.error('載入房型和設定錯誤:', error);
         document.getElementById('roomTypeGrid').innerHTML = '<div class="error">載入房型失敗，請重新整理頁面</div>';
     }
+}
+
+// 渲染加購商品
+function renderAddons() {
+    const grid = document.getElementById('addonsGrid');
+    
+    if (!grid) return;
+    
+    if (addons.length === 0) {
+        grid.innerHTML = '<div class="loading">暫無加購商品</div>';
+        return;
+    }
+    
+    grid.innerHTML = addons.map(addon => {
+        const isSelected = selectedAddons.some(a => a.name === addon.name);
+        return `
+            <div class="addon-option ${isSelected ? 'selected' : ''}" data-addon="${addon.name}" data-price="${addon.price}">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 15px; border: 2px solid ${isSelected ? '#2C8EC4' : '#ddd'}; border-radius: 8px; background: ${isSelected ? '#f0f8ff' : '#fff'}; transition: all 0.3s;">
+                    <input type="checkbox" name="addon" value="${addon.name}" data-price="${addon.price}" ${isSelected ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer;">
+                    <span style="font-size: 24px;">${addon.icon || '➕'}</span>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; font-size: 16px; margin-bottom: 5px;">${addon.display_name}</div>
+                        <div style="color: #2C8EC4; font-weight: 600;">NT$ ${addon.price.toLocaleString()}</div>
+                    </div>
+                </label>
+            </div>
+        `;
+    }).join('');
+    
+    // 綁定事件
+    document.querySelectorAll('input[name="addon"]').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const addonName = this.value;
+            const addonPrice = parseInt(this.dataset.price);
+            
+            if (this.checked) {
+                selectedAddons.push({ name: addonName, price: addonPrice });
+            } else {
+                selectedAddons = selectedAddons.filter(a => a.name !== addonName);
+            }
+            
+            // 更新視覺效果
+            const addonOption = this.closest('.addon-option');
+            if (this.checked) {
+                addonOption.classList.add('selected');
+            } else {
+                addonOption.classList.remove('selected');
+            }
+            
+            calculatePrice();
+        });
+    });
 }
 
 // 檢查日期是否為假日（週末）
@@ -156,26 +217,30 @@ function calculateNights() {
 async function calculatePrice() {
     const selectedRoom = document.querySelector('input[name="roomType"]:checked');
     if (!selectedRoom) {
-        updatePriceDisplay(0, 0, 0, 'deposit');
+        updatePriceDisplay(0, 0, 0, 'deposit', 0, 0);
         return;
     }
 
     const checkInDate = document.getElementById('checkInDate').value;
     const checkOutDate = document.getElementById('checkOutDate').value;
     
+    // 計算加購商品總金額
+    const addonsTotal = selectedAddons.reduce((sum, addon) => sum + addon.price, 0);
+    
     if (!checkInDate || !checkOutDate) {
         // 如果沒有選擇日期，使用舊的計算方式（不考慮假日）
         const roomOption = selectedRoom.closest('.room-option');
         const pricePerNight = parseInt(roomOption.dataset.price);
         const nights = calculateNights();
-        const totalAmount = pricePerNight * nights;
+        const roomTotal = pricePerNight * nights;
+        const totalAmount = roomTotal + addonsTotal;
         
         const paymentAmount = document.querySelector('input[name="paymentAmount"]:checked').value;
         const depositRate = depositPercentage / 100;
         const paymentType = paymentAmount === 'deposit' ? depositRate : 1;
         const finalAmount = totalAmount * paymentType;
 
-        updatePriceDisplay(pricePerNight, nights, totalAmount, paymentAmount, finalAmount);
+        updatePriceDisplay(pricePerNight, nights, totalAmount, paymentAmount, finalAmount, addonsTotal);
         return;
     }
 
@@ -186,28 +251,30 @@ async function calculatePrice() {
         const result = await response.json();
         
         if (result.success) {
-            const { totalAmount, averagePricePerNight, nights } = result.data;
+            const { totalAmount: roomTotal, averagePricePerNight, nights } = result.data;
+            const totalAmount = roomTotal + addonsTotal;
             
             const paymentAmount = document.querySelector('input[name="paymentAmount"]:checked').value;
             const depositRate = depositPercentage / 100;
             const paymentType = paymentAmount === 'deposit' ? depositRate : 1;
             const finalAmount = totalAmount * paymentType;
 
-            updatePriceDisplay(averagePricePerNight, nights, totalAmount, paymentAmount, finalAmount);
+            updatePriceDisplay(averagePricePerNight, nights, totalAmount, paymentAmount, finalAmount, addonsTotal);
         } else {
             console.error('計算價格失敗:', result.message);
             // 如果 API 失敗，使用舊的計算方式
             const roomOption = selectedRoom.closest('.room-option');
             const pricePerNight = parseInt(roomOption.dataset.price);
             const nights = calculateNights();
-            const totalAmount = pricePerNight * nights;
+            const roomTotal = pricePerNight * nights;
+            const totalAmount = roomTotal + addonsTotal;
             
             const paymentAmount = document.querySelector('input[name="paymentAmount"]:checked').value;
             const depositRate = depositPercentage / 100;
             const paymentType = paymentAmount === 'deposit' ? depositRate : 1;
             const finalAmount = totalAmount * paymentType;
 
-            updatePriceDisplay(pricePerNight, nights, totalAmount, paymentAmount, finalAmount);
+            updatePriceDisplay(pricePerNight, nights, totalAmount, paymentAmount, finalAmount, addonsTotal);
         }
     } catch (error) {
         console.error('計算價格錯誤:', error);
@@ -215,14 +282,15 @@ async function calculatePrice() {
         const roomOption = selectedRoom.closest('.room-option');
         const pricePerNight = parseInt(roomOption.dataset.price);
         const nights = calculateNights();
-        const totalAmount = pricePerNight * nights;
+        const roomTotal = pricePerNight * nights;
+        const totalAmount = roomTotal + addonsTotal;
         
         const paymentAmount = document.querySelector('input[name="paymentAmount"]:checked').value;
         const depositRate = depositPercentage / 100;
         const paymentType = paymentAmount === 'deposit' ? depositRate : 1;
         const finalAmount = totalAmount * paymentType;
 
-        updatePriceDisplay(pricePerNight, nights, totalAmount, paymentAmount, finalAmount);
+        updatePriceDisplay(pricePerNight, nights, totalAmount, paymentAmount, finalAmount, addonsTotal);
     }
 }
 
@@ -277,7 +345,7 @@ function updatePaymentMethods(settings) {
 }
 
 // 更新價格顯示
-function updatePriceDisplay(pricePerNight, nights, totalAmount, paymentType, finalAmount = 0, depositPercent = null) {
+function updatePriceDisplay(pricePerNight, nights, totalAmount, paymentType, finalAmount = 0, addonsTotal = 0, depositPercent = null) {
     // 如果沒有提供 depositPercent，使用全域變數
     if (depositPercent === null) {
         depositPercent = depositPercentage;
@@ -285,7 +353,19 @@ function updatePriceDisplay(pricePerNight, nights, totalAmount, paymentType, fin
     
     document.getElementById('roomPricePerNight').textContent = `NT$ ${pricePerNight.toLocaleString()}`;
     document.getElementById('nightsCount').textContent = `${nights} 晚`;
-    document.getElementById('totalAmount').textContent = `NT$ ${totalAmount.toLocaleString()}`;
+    
+    // 如果有加購商品，顯示加購商品金額
+    const totalAmountElement = document.getElementById('totalAmount');
+    if (addonsTotal > 0) {
+        const roomTotal = totalAmount - addonsTotal;
+        totalAmountElement.innerHTML = `
+            <div style="margin-bottom: 5px; color: #666;">房型總額：NT$ ${roomTotal.toLocaleString()}</div>
+            <div style="margin-bottom: 5px; color: #666;">加購商品：NT$ ${addonsTotal.toLocaleString()}</div>
+            <div style="font-weight: 700; font-size: 18px; color: #2C8EC4; border-top: 2px solid #ddd; padding-top: 5px; margin-top: 5px;">總金額：NT$ ${totalAmount.toLocaleString()}</div>
+        `;
+    } else {
+        totalAmountElement.textContent = `NT$ ${totalAmount.toLocaleString()}`;
+    }
     
     const paymentLabel = paymentType === 'deposit' ? `應付訂金 (${depositPercent}%)` : '應付全額';
     document.getElementById('paymentTypeLabel').textContent = paymentLabel;
@@ -387,7 +467,10 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     const selectedRoom = document.querySelector('input[name="roomType"]:checked').closest('.room-option');
     const pricePerNight = parseInt(selectedRoom.dataset.price);
     const nights = calculateNights();
-    const totalAmount = pricePerNight * nights;
+    // 計算加購商品總金額
+    const addonsTotal = selectedAddons.reduce((sum, addon) => sum + addon.price, 0);
+    const roomTotal = pricePerNight * nights;
+    const totalAmount = roomTotal + addonsTotal;
     const depositRate = depositPercentage / 100;
     const paymentType = formData.paymentAmount === 'deposit' ? depositRate : 1;
     const finalAmount = totalAmount * paymentType;
@@ -396,6 +479,8 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     formData.nights = nights;
     formData.totalAmount = totalAmount;
     formData.finalAmount = finalAmount;
+    formData.addons = selectedAddons; // 加購商品陣列
+    formData.addonsTotal = addonsTotal; // 加購商品總金額
     
     console.log('準備發送訂房資料:', formData);
     
