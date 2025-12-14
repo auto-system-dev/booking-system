@@ -725,10 +725,6 @@ async function generateCustomerEmail(data) {
                         <span class="info-label">房價（每晚）</span>
                         <span class="info-value">NT$ ${data.pricePerNight.toLocaleString()}</span>
                     </div>
-                    <div class="info-row">
-                        <span class="info-label">總金額</span>
-                        <span class="info-value">NT$ ${data.totalAmount.toLocaleString()}</span>
-                    </div>
                     ${data.addonsList ? `
                     <div class="info-row">
                         <span class="info-label">加購商品</span>
@@ -739,6 +735,10 @@ async function generateCustomerEmail(data) {
                         <span class="info-value">NT$ ${(data.addonsTotal || 0).toLocaleString()}</span>
                     </div>
                     ` : ''}
+                    <div class="info-row">
+                        <span class="info-label">總金額</span>
+                        <span class="info-value">NT$ ${data.totalAmount.toLocaleString()}</span>
+                    </div>
                     <div class="info-row">
                         <span class="info-label">支付方式</span>
                         <span class="info-value">${data.paymentAmount} - ${data.paymentMethod}</span>
@@ -850,6 +850,20 @@ function generateAdminEmail(data) {
                     <div class="info-row">
                         <span class="info-label">房型</span>
                         <span class="info-value">${data.roomType}</span>
+                    </div>
+                    ${data.addonsList ? `
+                    <div class="info-row">
+                        <span class="info-label">加購商品</span>
+                        <span class="info-value">${data.addonsList}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">加購商品總額</span>
+                        <span class="info-value">NT$ ${(data.addonsTotal || 0).toLocaleString()}</span>
+                    </div>
+                    ` : ''}
+                    <div class="info-row">
+                        <span class="info-label">總金額</span>
+                        <span class="info-value" style="color: #333; font-weight: 600;">NT$ ${(data.totalAmount || 0).toLocaleString()}</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">應付金額</span>

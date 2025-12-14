@@ -490,6 +490,10 @@ async function initEmailTemplates() {
                 </div>
                 {{/if}}
                 <div class="info-row">
+                    <span class="info-label">總金額</span>
+                    <span class="info-value" style="color: #333; font-weight: 600;">NT$ {{totalAmount}}</span>
+                </div>
+                <div class="info-row">
                     <span class="info-label">應付金額</span>
                     <span class="info-value" style="color: #e74c3c; font-weight: 700; font-size: 18px;">NT$ {{finalAmount}}</span>
                 </div>
