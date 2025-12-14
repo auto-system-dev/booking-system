@@ -527,20 +527,47 @@ app.post('/api/booking', async (req, res) => {
                 bookingStatus = 'reserved'; // 匯款轉帳先設為保留（保留3天）
             }
             
-            await db.saveBooking({
-                ...bookingData,
-                emailSent: emailSent,
+            console.log('💾 準備儲存訂房資料到資料庫...');
+            console.log('   訂房編號:', bookingData.bookingId);
+            console.log('   付款狀態:', paymentStatus);
+            console.log('   訂房狀態:', bookingStatus);
+            console.log('   加購商品:', bookingData.addons ? JSON.stringify(bookingData.addons) : '無');
+            console.log('   加購商品總額:', bookingData.addonsTotal || 0);
+            
+            const savedId = await db.saveBooking({
+                bookingId: bookingData.bookingId,
+                checkInDate: bookingData.checkInDate,
+                checkOutDate: bookingData.checkOutDate,
+                roomType: bookingData.roomType,
+                guestName: bookingData.guestName,
+                guestPhone: bookingData.guestPhone,
+                guestEmail: bookingData.guestEmail,
+                paymentAmount: bookingData.paymentAmount,
+                paymentMethod: bookingData.paymentMethod,
+                pricePerNight: bookingData.pricePerNight,
+                nights: bookingData.nights,
+                totalAmount: bookingData.totalAmount,
+                finalAmount: bookingData.finalAmount,
+                bookingDate: bookingData.bookingDate,
+                emailSent: emailSent ? 'booking_confirmation' : '0',
                 paymentStatus: paymentStatus,
-                status: bookingStatus
+                status: bookingStatus,
+                addons: bookingData.addons || null,
+                addonsTotal: bookingData.addonsTotal || 0
             });
+            
+            console.log('✅ 訂房資料已成功儲存到資料庫 (ID:', savedId, ')');
             
             // 如果郵件發送狀態改變，更新資料庫（匯款轉帳發送確認信）
             if (emailSent && paymentMethod === 'transfer') {
                 await db.updateEmailStatus(bookingData.bookingId, 'booking_confirmation');
             }
         } catch (dbError) {
-            console.error('⚠️  資料庫儲存錯誤（不影響訂房）:', dbError.message);
-            // 即使資料庫錯誤，也繼續處理（不影響訂房流程）
+            console.error('❌ 資料庫儲存錯誤:', dbError.message);
+            console.error('   錯誤堆疊:', dbError.stack);
+            console.error('   訂房編號:', bookingData.bookingId);
+            // 資料庫錯誤應該要拋出，讓前端知道訂房失敗
+            throw new Error('訂房資料儲存失敗: ' + dbError.message);
         }
 
         // 處理支付方式
