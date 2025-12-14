@@ -552,12 +552,12 @@ function getEmailStatusDisplay(emailSent) {
     }
     
     const emailTypeMap = {
-        'booking_confirmation': '確認信',
-        'checkin_reminder': '入住信',
-        'feedback_request': '退房信',
-        'payment_reminder': '繳款信',
-        '1': '確認信',  // 舊格式：數字 1 表示已發送確認信
-        '0': '未發送'   // 舊格式：數字 0 表示未發送
+        'booking_confirmation': { name: '確認信', class: 'status-email-confirmation' },
+        'checkin_reminder': { name: '入住信', class: 'status-email-checkin' },
+        'feedback_request': { name: '退房信', class: 'status-email-feedback' },
+        'payment_reminder': { name: '繳款信', class: 'status-email-payment' },
+        '1': { name: '確認信', class: 'status-email-confirmation' },  // 舊格式：數字 1 表示已發送確認信
+        '0': { name: '未發送', class: 'status-unsent' }   // 舊格式：數字 0 表示未發送
     };
     
     // 如果 email_sent 是字串，解析郵件類型（只顯示最後一個）
@@ -569,14 +569,14 @@ function getEmailStatusDisplay(emailSent) {
         
         // 只顯示最後一個郵件類型
         const lastType = emailTypes[emailTypes.length - 1].trim();
-        const typeName = emailTypeMap[lastType] || lastType;
+        const typeInfo = emailTypeMap[lastType] || { name: lastType, class: 'status-sent' };
         
-        return `<span class="status-badge status-sent">${typeName}</span>`;
+        return `<span class="status-badge ${typeInfo.class}">${typeInfo.name}</span>`;
     }
     
     // 舊格式：數字 1 表示已發送確認信
     if (emailSent === 1 || emailSent === '1') {
-        return '<span class="status-badge status-sent">確認信</span>';
+        return '<span class="status-badge status-email-confirmation">確認信</span>';
     }
     
     // 其他情況：顯示已發送

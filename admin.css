@@ -290,14 +290,36 @@ body {
     font-weight: 500;
 }
 
-.status-sent {
-    background: #d4edda;
-    color: #155724;
-}
-
 .status-unsent {
     background: #f8d7da;
     color: #721c24;
+}
+
+/* 郵件狀態顏色 */
+.status-email-confirmation {
+    background: #cfe2ff;
+    color: #084298;
+}
+
+.status-email-checkin {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+
+.status-email-feedback {
+    background: #e2d9f3;
+    color: #5a2d7a;
+}
+
+.status-email-payment {
+    background: #fff3cd;
+    color: #856404;
+}
+
+/* 舊格式兼容 */
+.status-sent {
+    background: #d4edda;
+    color: #155724;
 }
 
 .status-paid {
