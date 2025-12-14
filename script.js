@@ -384,11 +384,17 @@ function updatePriceDisplay(pricePerNight, nights, totalAmount, paymentType, fin
     
     // 如果有加購商品，顯示加購商品金額
     const totalAmountElement = document.getElementById('totalAmount');
-    if (addonsTotal > 0) {
+    if (addonsTotal > 0 && selectedAddons.length > 0) {
         const roomTotal = totalAmount - addonsTotal;
+        // 計算加購商品明細
+        const addonsDetail = selectedAddons.map(addon => {
+            const addonName = addons.find(a => a.name === addon.name)?.display_name || addon.name;
+            return `${addonName} x${addon.quantity || 1}`;
+        }).join('、');
+        
         totalAmountElement.innerHTML = `
             <div style="margin-bottom: 5px; color: #666;">房型總額：NT$ ${roomTotal.toLocaleString()}</div>
-            <div style="margin-bottom: 5px; color: #666;">加購商品：NT$ ${addonsTotal.toLocaleString()}</div>
+            <div style="margin-bottom: 5px; color: #666;">加購商品（${addonsDetail}）：NT$ ${addonsTotal.toLocaleString()}</div>
             <div style="font-weight: 700; font-size: 18px; color: #2C8EC4; border-top: 2px solid #ddd; padding-top: 5px; margin-top: 5px;">總金額：NT$ ${totalAmount.toLocaleString()}</div>
         `;
     } else {
