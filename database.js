@@ -2508,6 +2508,13 @@ module.exports = {
     // 房間可用性
     getRoomAvailability,
     // 過期保留訂房
-    getBookingsExpiredReservation
+    getBookingsExpiredReservation,
+    // 加購商品管理
+    getAllAddons,
+    getAllAddonsAdmin,
+    getAddonById,
+    createAddon,
+    updateAddon,
+    deleteAddon
 };
 
