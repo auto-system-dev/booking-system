@@ -2071,6 +2071,13 @@ async function replaceTemplateVariables(template, booking, bankInfo = null) {
         content = content.replace(/\{\{#if isDeposit\}\}[\s\S]*?\{\{\/if\}\}/g, '');
     }
     
+    // 添加旅館資訊 footer
+    const hotelInfoFooter = await getHotelInfoFooter();
+    if (hotelInfoFooter) {
+        // 在 </body> 之前插入旅館資訊
+        content = content.replace('</body>', hotelInfoFooter + '</body>');
+    }
+    
     let subject = template.subject;
     Object.keys(variables).forEach(key => {
         subject = subject.replace(new RegExp(key, 'g'), variables[key]);

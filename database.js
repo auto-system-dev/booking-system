@@ -887,7 +887,11 @@ function initSQLite() {
                                         ['enable_card', '1', '啟用線上刷卡（1=啟用，0=停用）'],
                                         ['ecpay_merchant_id', '', '綠界商店代號（MerchantID）'],
                                         ['ecpay_hash_key', '', '綠界金鑰（HashKey）'],
-                                        ['ecpay_hash_iv', '', '綠界向量（HashIV）']
+                                        ['ecpay_hash_iv', '', '綠界向量（HashIV）'],
+                                        ['hotel_name', '', '旅館名稱（顯示在郵件最下面）'],
+                                        ['hotel_phone', '', '旅館電話（顯示在郵件最下面）'],
+                                        ['hotel_address', '', '旅館地址（顯示在郵件最下面）'],
+                                        ['hotel_email', '', '旅館信箱（顯示在郵件最下面）']
                                     ];
                                     
                                     // 初始化預設設定
