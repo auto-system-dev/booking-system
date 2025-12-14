@@ -305,6 +305,29 @@ app.post('/api/booking', async (req, res) => {
             roomTypeName = roomTypes[roomType] || roomType;
         }
         
+        // 處理加購商品顯示名稱（用於郵件）
+        let addonsList = '';
+        if (addons && addons.length > 0) {
+            try {
+                const allAddons = await db.getAllAddonsAdmin();
+                addonsList = addons.map(addon => {
+                    const addonInfo = allAddons.find(a => a.name === addon.name);
+                    const displayName = addonInfo ? addonInfo.display_name : addon.name;
+                    const quantity = addon.quantity || 1;
+                    const itemTotal = addon.price * quantity;
+                    return `${displayName} x${quantity} (NT$ ${itemTotal.toLocaleString()})`;
+                }).join('、');
+            } catch (err) {
+                console.error('取得加購商品資訊失敗:', err);
+                // 如果查詢失敗，使用原始名稱
+                addonsList = addons.map(addon => {
+                    const quantity = addon.quantity || 1;
+                    const itemTotal = addon.price * quantity;
+                    return `${addon.name} x${quantity} (NT$ ${itemTotal.toLocaleString()})`;
+                }).join('、');
+            }
+        }
+        
         // 儲存訂房資料（這裡可以連接資料庫）
         const bookingData = {
             checkInDate,
@@ -325,7 +348,8 @@ app.post('/api/booking', async (req, res) => {
             bankInfo: bankInfo, // 匯款資訊（包含銀行、分行、帳號、戶名）
             paymentMethodCode: paymentMethod, // 原始付款方式代碼（transfer 或 card）
             addons: addons || null, // 加購商品陣列
-            addonsTotal: addonsTotal || 0 // 加購商品總金額
+            addonsTotal: addonsTotal || 0, // 加購商品總金額
+            addonsList: addonsList // 加購商品顯示字串（用於郵件）
         };
 
         // 取得匯款提醒模板的保留天數（用於計算到期日期）
@@ -705,6 +729,16 @@ async function generateCustomerEmail(data) {
                         <span class="info-label">總金額</span>
                         <span class="info-value">NT$ ${data.totalAmount.toLocaleString()}</span>
                     </div>
+                    ${data.addonsList ? `
+                    <div class="info-row">
+                        <span class="info-label">加購商品</span>
+                        <span class="info-value">${data.addonsList}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">加購商品總額</span>
+                        <span class="info-value">NT$ ${(data.addonsTotal || 0).toLocaleString()}</span>
+                    </div>
+                    ` : ''}
                     <div class="info-row">
                         <span class="info-label">支付方式</span>
                         <span class="info-value">${data.paymentAmount} - ${data.paymentMethod}</span>
@@ -1683,6 +1717,26 @@ const handlePaymentResult = async (req, res) => {
                             if (booking.payment_method && booking.payment_method.includes('刷卡')) {
                                 console.log('📧 測試環境：線上刷卡付款完成，發送確認郵件...');
                                 try {
+                                    // 處理加購商品顯示名稱
+                                    let addonsList = '';
+                                    if (booking.addons) {
+                                        try {
+                                            const parsedAddons = typeof booking.addons === 'string' ? JSON.parse(booking.addons) : booking.addons;
+                                            if (parsedAddons && parsedAddons.length > 0) {
+                                                const allAddons = await db.getAllAddonsAdmin();
+                                                addonsList = parsedAddons.map(addon => {
+                                                    const addonInfo = allAddons.find(a => a.name === addon.name);
+                                                    const displayName = addonInfo ? addonInfo.display_name : addon.name;
+                                                    const quantity = addon.quantity || 1;
+                                                    const itemTotal = addon.price * quantity;
+                                                    return `${displayName} x${quantity} (NT$ ${itemTotal.toLocaleString()})`;
+                                                }).join('、');
+                                            }
+                                        } catch (err) {
+                                            console.error('處理加購商品顯示失敗:', err);
+                                        }
+                                    }
+                                    
                                     const bookingData = {
                                         bookingId: booking.booking_id,
                                         guestName: booking.guest_name,
@@ -1699,7 +1753,10 @@ const handlePaymentResult = async (req, res) => {
                                         paymentMethod: booking.payment_method,
                                         paymentMethodCode: 'card',
                                         bookingDate: booking.booking_date,
-                                        bankInfo: null
+                                        bankInfo: null,
+                                        addons: booking.addons ? (typeof booking.addons === 'string' ? JSON.parse(booking.addons) : booking.addons) : null,
+                                        addonsTotal: booking.addons_total || 0,
+                                        addonsList: addonsList
                                     };
                                     
                                     const customerMailOptions = {
@@ -1832,6 +1889,26 @@ const handlePaymentResult = async (req, res) => {
                     console.log('📧 線上刷卡付款完成，發送確認郵件...');
                     try {
                         // 構建 bookingData 物件
+                        // 處理加購商品顯示名稱
+                        let addonsList = '';
+                        if (booking.addons) {
+                            try {
+                                const parsedAddons = typeof booking.addons === 'string' ? JSON.parse(booking.addons) : booking.addons;
+                                if (parsedAddons && parsedAddons.length > 0) {
+                                    const allAddons = await db.getAllAddonsAdmin();
+                                    addonsList = parsedAddons.map(addon => {
+                                        const addonInfo = allAddons.find(a => a.name === addon.name);
+                                        const displayName = addonInfo ? addonInfo.display_name : addon.name;
+                                        const quantity = addon.quantity || 1;
+                                        const itemTotal = addon.price * quantity;
+                                        return `${displayName} x${quantity} (NT$ ${itemTotal.toLocaleString()})`;
+                                    }).join('、');
+                                }
+                            } catch (err) {
+                                console.error('處理加購商品顯示失敗:', err);
+                            }
+                        }
+                        
                         const bookingData = {
                             bookingId: booking.booking_id,
                             guestName: booking.guest_name,
@@ -1848,7 +1925,10 @@ const handlePaymentResult = async (req, res) => {
                             paymentMethod: booking.payment_method,
                             paymentMethodCode: 'card',
                             bookingDate: booking.booking_date,
-                            bankInfo: null // 線上刷卡不需要匯款資訊
+                            bankInfo: null, // 線上刷卡不需要匯款資訊
+                            addons: booking.addons ? (typeof booking.addons === 'string' ? JSON.parse(booking.addons) : booking.addons) : null,
+                            addonsTotal: booking.addons_total || 0,
+                            addonsList: addonsList
                         };
                         
                         // 發送確認郵件
@@ -2173,6 +2253,28 @@ async function replaceTemplateVariables(template, booking, bankInfo = null) {
     const finalAmount = booking.final_amount || 0;
     const remainingAmount = totalAmount - finalAmount;
     
+    // 處理加購商品顯示
+    let addonsList = '';
+    let addonsTotal = 0;
+    if (booking.addons) {
+        try {
+            const parsedAddons = typeof booking.addons === 'string' ? JSON.parse(booking.addons) : booking.addons;
+            if (parsedAddons && parsedAddons.length > 0) {
+                const allAddons = await db.getAllAddonsAdmin();
+                addonsList = parsedAddons.map(addon => {
+                    const addonInfo = allAddons.find(a => a.name === addon.name);
+                    const displayName = addonInfo ? addonInfo.display_name : addon.name;
+                    const quantity = addon.quantity || 1;
+                    const itemTotal = addon.price * quantity;
+                    return `${displayName} x${quantity} (NT$ ${itemTotal.toLocaleString()})`;
+                }).join('、');
+                addonsTotal = booking.addons_total || parsedAddons.reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0);
+            }
+        } catch (err) {
+            console.error('處理加購商品顯示失敗:', err);
+        }
+    }
+    
     const variables = {
         '{{guestName}}': booking.guest_name,
         '{{bookingId}}': booking.booking_id,
@@ -2188,7 +2290,9 @@ async function replaceTemplateVariables(template, booking, bankInfo = null) {
         '{{bankAccount}}': bankInfo ? bankInfo.account : '1234567890123',
         '{{accountName}}': bankInfo ? bankInfo.accountName : 'XXX',
         '{{daysReserved}}': daysReserved.toString(),
-        '{{paymentDeadline}}': paymentDeadline
+        '{{paymentDeadline}}': paymentDeadline,
+        '{{addonsList}}': addonsList,
+        '{{addonsTotal}}': addonsTotal.toLocaleString()
     };
     
     Object.keys(variables).forEach(key => {
