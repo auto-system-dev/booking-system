@@ -2308,6 +2308,15 @@ async function replaceTemplateVariables(template, booking, bankInfo = null) {
         content = content.replace(/\{\{#if isDeposit\}\}[\s\S]*?\{\{\/if\}\}/g, '');
     }
     
+    // 處理加購商品顯示（如果有加購商品，則顯示；否則移除整個區塊）
+    if (addonsList && addonsList.trim() !== '') {
+        // 替換 {{#if addonsList}} ... {{/if}} 區塊
+        content = content.replace(/\{\{#if addonsList\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+    } else {
+        // 移除 {{#if addonsList}} ... {{/if}} 區塊
+        content = content.replace(/\{\{#if addonsList\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+    }
+    
     // 添加旅館資訊 footer
     const hotelInfoFooter = await getHotelInfoFooter();
     if (hotelInfoFooter) {

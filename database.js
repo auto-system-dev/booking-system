@@ -479,6 +479,16 @@ async function initEmailTemplates() {
                     <span class="info-label">房型</span>
                     <span class="info-value">{{roomType}}</span>
                 </div>
+                {{#if addonsList}}
+                <div class="info-row">
+                    <span class="info-label">加購商品</span>
+                    <span class="info-value">{{addonsList}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">加購商品總額</span>
+                    <span class="info-value">NT$ {{addonsTotal}}</span>
+                </div>
+                {{/if}}
                 <div class="info-row">
                     <span class="info-label">應付金額</span>
                     <span class="info-value" style="color: #e74c3c; font-weight: 700; font-size: 18px;">NT$ {{finalAmount}}</span>
