@@ -673,6 +673,12 @@ function generateCustomerEmail(data) {
                     </div>
                 </div>
 
+                ${data.paymentAmount && data.paymentAmount.includes('訂金') ? `
+                <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                    <p style="color: #2e7d32; font-weight: 600; margin: 0; font-size: 16px;">💡 剩餘尾款於現場付清！</p>
+                </div>
+                ` : ''}
+
                 ${data.paymentMethodCode === 'transfer' ? `
                 <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
                     <h3 style="color: #856404; margin-top: 0;">💰 匯款提醒</h3>
