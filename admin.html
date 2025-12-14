@@ -32,6 +32,10 @@
                     <span class="nav-icon">🛏️</span>
                     <span>房型管理</span>
                 </a>
+                <a href="#addons" class="nav-item" data-section="addons">
+                    <span class="nav-icon">➕</span>
+                    <span>加購商品</span>
+                </a>
                 <a href="#holidays" class="nav-item" data-section="holidays">
                     <span class="nav-icon">📅</span>
                     <span>假日管理</span>
@@ -195,6 +199,45 @@
                         <tbody id="roomTypesTableBody">
                             <tr>
                                 <td colspan="9" class="loading">載入中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 加購商品管理區 -->
+            <section id="addons-section" class="content-section">
+                <div class="section-header">
+                    <h2>➕ 加購商品管理</h2>
+                    <div class="header-actions">
+                        <button class="btn-primary" onclick="showAddAddonModal()">
+                            <span>➕</span> 新增加購商品
+                        </button>
+                        <button class="btn-refresh" id="addonFilterBtn" onclick="toggleAddonFilter()">
+                            <span>📋</span> 顯示所有加購商品
+                        </button>
+                        <button class="btn-refresh" onclick="loadAddons()">
+                            <span>🔄</span> 重新整理
+                        </button>
+                    </div>
+                </div>
+
+                <div class="room-types-container">
+                    <table class="bookings-table">
+                        <thead>
+                            <tr>
+                                <th>排序</th>
+                                <th>圖示</th>
+                                <th>商品代碼</th>
+                                <th>商品名稱</th>
+                                <th>價格</th>
+                                <th>狀態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="addonsTableBody">
+                            <tr>
+                                <td colspan="7" class="loading">載入中...</td>
                             </tr>
                         </tbody>
                     </table>

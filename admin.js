@@ -82,6 +82,8 @@ function switchSection(section) {
     // 根據區塊載入對應資料
     if (section === 'room-types') {
         loadRoomTypes();
+    } else if (section === 'addons') {
+        loadAddons();
     } else if (section === 'holidays') {
         loadHolidays();
     } else if (section === 'settings') {
