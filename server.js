@@ -1990,6 +1990,9 @@ function replaceTemplateVariables(template, booking, bankInfo = null) {
     // 處理銀行分行顯示（如果有分行則顯示 " - 分行名"，否則為空）
     const bankBranchDisplay = bankInfo && bankInfo.bankBranch ? ' - ' + bankInfo.bankBranch : '';
     
+    // 判斷是否為訂金支付（檢查 payment_amount 欄位是否包含「訂金」）
+    const isDeposit = booking.payment_amount && booking.payment_amount.includes('訂金');
+    
     const variables = {
         '{{guestName}}': booking.guest_name,
         '{{bookingId}}': booking.booking_id,
@@ -2010,6 +2013,15 @@ function replaceTemplateVariables(template, booking, bankInfo = null) {
     Object.keys(variables).forEach(key => {
         content = content.replace(new RegExp(key, 'g'), variables[key]);
     });
+    
+    // 處理訂金提示（如果不是訂金，則移除整個區塊）
+    if (isDeposit) {
+        // 替換 {{#if isDeposit}} ... {{/if}} 區塊
+        content = content.replace(/\{\{#if isDeposit\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+    } else {
+        // 移除 {{#if isDeposit}} ... {{/if}} 區塊
+        content = content.replace(/\{\{#if isDeposit\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+    }
     
     let subject = template.subject;
     Object.keys(variables).forEach(key => {
