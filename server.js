@@ -2262,9 +2262,7 @@ async function sendFeedbackRequestEmails() {
         const now = new Date();
         console.log(`\n[定時任務] 開始檢查回訪信... (${now.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })})`);
         
-        const bookings = await db.getBookingsForFeedbackRequest();
-        console.log(`找到 ${bookings.length} 筆需要發送回訪信的訂房`);
-        
+        // 先取得模板以取得天數和發送時間
         const template = await db.getEmailTemplateByKey('feedback_request');
         if (!template) {
             console.log('❌ 找不到回訪信模板');
@@ -2274,7 +2272,22 @@ async function sendFeedbackRequestEmails() {
             console.log('⚠️ 回訪信模板未啟用，跳過發送');
             return;
         }
-        console.log(`✅ 回訪信模板已啟用 (days_after_checkout: ${template.days_after_checkout || 1}, send_hour_feedback: ${template.send_hour_feedback || 10})`);
+        
+        const daysAfterCheckout = parseInt(template.days_after_checkout) || 1;
+        const sendHour = parseInt(template.send_hour_feedback) || 10;
+        
+        console.log(`✅ 回訪信模板已啟用 (days_after_checkout: ${daysAfterCheckout}, send_hour_feedback: ${sendHour})`);
+        
+        // 檢查當前時間是否符合發送時間
+        const currentHour = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', hour12: false });
+        const currentHourNum = parseInt(currentHour);
+        if (currentHourNum !== sendHour) {
+            console.log(`⏰ 當前時間 ${currentHourNum}:00 不符合發送時間 ${sendHour}:00，跳過`);
+            return;
+        }
+        
+        const bookings = await db.getBookingsForFeedbackRequest(daysAfterCheckout);
+        console.log(`找到 ${bookings.length} 筆需要發送回訪信的訂房`);
         
         for (const booking of bookings) {
             try {
@@ -2365,10 +2378,11 @@ async function startServer() {
             console.log('✅ 入住提醒定時任務已啟動（每小時檢查，根據模板設定時間發送）');
             
             // 每天上午 11:00 執行回訪信檢查（台灣時間）
-            cron.schedule('0 11 * * *', sendFeedbackRequestEmails, {
+            // 回訪信定時任務 - 每小時檢查一次，在設定的時間發送
+            cron.schedule('0 * * * *', sendFeedbackRequestEmails, {
                 timezone: timezone
             });
-            console.log('✅ 回訪信定時任務已啟動（每天 11:00 台灣時間）');
+            console.log('✅ 回訪信定時任務已啟動（每小時檢查，根據模板設定時間發送）');
             
             // 每天凌晨 1:00 執行自動取消過期保留訂房（台灣時間）
             cron.schedule('0 1 * * *', cancelExpiredReservations, {

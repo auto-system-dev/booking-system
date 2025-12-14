@@ -2152,26 +2152,26 @@ async function getBookingsForCheckinReminder(daysBeforeCheckin = 1) {
 }
 
 // 取得需要發送回訪信的訂房（退房後隔天）
-async function getBookingsForFeedbackRequest() {
+async function getBookingsForFeedbackRequest(daysAfterCheckout = 1) {
     try {
-        // 使用本地時區計算昨天的日期
+        // 使用本地時區計算目標日期（退房日期 + days_after_checkout 天前）
         const now = new Date();
-        const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysAfterCheckout);
         
         // 格式化為 YYYY-MM-DD（使用本地時區）
-        const year = yesterday.getFullYear();
-        const month = String(yesterday.getMonth() + 1).padStart(2, '0');
-        const day = String(yesterday.getDate()).padStart(2, '0');
-        const yesterdayStr = `${year}-${month}-${day}`;
+        const year = targetDate.getFullYear();
+        const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+        const day = String(targetDate.getDate()).padStart(2, '0');
+        const targetDateStr = `${year}-${month}-${day}`;
         
-        console.log(`📅 查詢回訪信訂房 - 目標日期: ${yesterdayStr} (昨天退房)`);
+        console.log(`📅 查詢回訪信訂房 - 目標日期: ${targetDateStr} (退房日期後${daysAfterCheckout}天)`);
         console.log(`   當前時間: ${now.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}`);
         
         const sql = usePostgreSQL
             ? `SELECT * FROM bookings WHERE check_out_date = $1 AND status = 'active'`
             : `SELECT * FROM bookings WHERE check_out_date = ? AND status = 'active'`;
         
-        const result = await query(sql, [yesterdayStr]);
+        const result = await query(sql, [targetDateStr]);
         console.log(`   找到 ${result.rows ? result.rows.length : 0} 筆符合條件的訂房`);
         if (result.rows && result.rows.length > 0) {
             result.rows.forEach(booking => {
