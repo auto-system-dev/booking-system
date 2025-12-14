@@ -2352,10 +2352,11 @@ async function startServer() {
             const timezone = 'Asia/Taipei';
             
             // 每天上午 9:00 執行匯款提醒檢查（台灣時間）
-            cron.schedule('0 9 * * *', sendPaymentReminderEmails, {
+            // 匯款提醒定時任務 - 每小時檢查一次，在設定的時間發送
+            cron.schedule('0 * * * *', sendPaymentReminderEmails, {
                 timezone: timezone
             });
-            console.log('✅ 匯款提醒定時任務已啟動（每天 09:00 台灣時間）');
+            console.log('✅ 匯款提醒定時任務已啟動（每小時檢查，根據模板設定時間發送）');
             
             // 入住提醒定時任務 - 每小時檢查一次，在設定的時間發送
             cron.schedule('0 * * * *', sendCheckinReminderEmails, {
