@@ -84,44 +84,54 @@ function renderAddons() {
     }
     
     grid.innerHTML = addons.map(addon => {
-        const isSelected = selectedAddons.some(a => a.name === addon.name);
+        const selectedAddon = selectedAddons.find(a => a.name === addon.name);
+        const quantity = selectedAddon ? selectedAddon.quantity : 0;
+        const isSelected = quantity > 0;
+        
         return `
             <div class="addon-option ${isSelected ? 'selected' : ''}" data-addon="${addon.name}" data-price="${addon.price}">
-                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 15px; border: 2px solid ${isSelected ? '#2C8EC4' : '#ddd'}; border-radius: 8px; background: ${isSelected ? '#f0f8ff' : '#fff'}; transition: all 0.3s;">
-                    <input type="checkbox" name="addon" value="${addon.name}" data-price="${addon.price}" ${isSelected ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer;">
+                <div style="display: flex; align-items: center; gap: 10px; padding: 15px; border: 2px solid ${isSelected ? '#2C8EC4' : '#ddd'}; border-radius: 8px; background: ${isSelected ? '#f0f8ff' : '#fff'}; transition: all 0.3s;">
                     <span style="font-size: 24px;">${addon.icon || '➕'}</span>
                     <div style="flex: 1;">
                         <div style="font-weight: 600; font-size: 16px; margin-bottom: 5px;">${addon.display_name}</div>
-                        <div style="color: #2C8EC4; font-weight: 600;">NT$ ${addon.price.toLocaleString()}</div>
+                        <div style="color: #2C8EC4; font-weight: 600;">NT$ ${addon.price.toLocaleString()}/人</div>
                     </div>
-                </label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button type="button" class="addon-quantity-btn" onclick="changeAddonQuantity('${addon.name}', ${addon.price}, -1)" style="width: 32px; height: 32px; border: 1px solid #ddd; border-radius: 4px; background: #fff; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; color: #666;" ${quantity === 0 ? 'disabled' : ''}>−</button>
+                        <span class="addon-quantity" style="min-width: 30px; text-align: center; font-weight: 600; font-size: 16px;">${quantity}</span>
+                        <button type="button" class="addon-quantity-btn" onclick="changeAddonQuantity('${addon.name}', ${addon.price}, 1)" style="width: 32px; height: 32px; border: 1px solid #ddd; border-radius: 4px; background: #fff; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; color: #666;">+</button>
+                    </div>
+                </div>
             </div>
         `;
     }).join('');
+}
+
+// 改變加購商品數量
+function changeAddonQuantity(addonName, addonPrice, change) {
+    const existingIndex = selectedAddons.findIndex(a => a.name === addonName);
+    let newQuantity = 0;
     
-    // 綁定事件
-    document.querySelectorAll('input[name="addon"]').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const addonName = this.value;
-            const addonPrice = parseInt(this.dataset.price);
-            
-            if (this.checked) {
-                selectedAddons.push({ name: addonName, price: addonPrice });
-            } else {
-                selectedAddons = selectedAddons.filter(a => a.name !== addonName);
-            }
-            
-            // 更新視覺效果
-            const addonOption = this.closest('.addon-option');
-            if (this.checked) {
-                addonOption.classList.add('selected');
-            } else {
-                addonOption.classList.remove('selected');
-            }
-            
-            calculatePrice();
-        });
-    });
+    if (existingIndex >= 0) {
+        newQuantity = selectedAddons[existingIndex].quantity + change;
+        if (newQuantity <= 0) {
+            // 移除該加購商品
+            selectedAddons.splice(existingIndex, 1);
+        } else {
+            // 更新數量
+            selectedAddons[existingIndex].quantity = newQuantity;
+        }
+    } else if (change > 0) {
+        // 新增加購商品
+        selectedAddons.push({ name: addonName, price: addonPrice, quantity: 1 });
+        newQuantity = 1;
+    }
+    
+    // 重新渲染加購商品列表
+    renderAddons();
+    
+    // 重新計算價格
+    calculatePrice();
 }
 
 // 檢查日期是否為假日（週末）
@@ -485,8 +495,8 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     const selectedRoom = document.querySelector('input[name="roomType"]:checked').closest('.room-option');
     const pricePerNight = parseInt(selectedRoom.dataset.price);
     const nights = calculateNights();
-    // 計算加購商品總金額（只有在啟用時才計算）
-    const addonsTotal = enableAddons ? selectedAddons.reduce((sum, addon) => sum + addon.price, 0) : 0;
+    // 計算加購商品總金額（只有在啟用時才計算，考慮數量）
+    const addonsTotal = enableAddons ? selectedAddons.reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0) : 0;
     const roomTotal = pricePerNight * nights;
     const totalAmount = roomTotal + addonsTotal;
     const depositRate = depositPercentage / 100;
@@ -497,7 +507,7 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     formData.nights = nights;
     formData.totalAmount = totalAmount;
     formData.finalAmount = finalAmount;
-    formData.addons = enableAddons ? selectedAddons : []; // 加購商品陣列（只有在啟用時才包含）
+    formData.addons = enableAddons ? selectedAddons : []; // 加購商品陣列（只有在啟用時才包含，包含數量）
     formData.addonsTotal = addonsTotal; // 加購商品總金額
     
     console.log('準備發送訂房資料:', formData);
