@@ -260,6 +260,24 @@
 
                 <div class="settings-container">
                     <div class="settings-card">
+                        <h3>付款方式設定</h3>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="enableTransfer" style="width: 20px; height: 20px;">
+                                <span>啟用匯款轉帳</span>
+                            </label>
+                            <small>勾選後，客戶在前台可以選擇匯款轉帳付款</small>
+                        </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="enableCard" style="width: 20px; height: 20px;">
+                                <span>啟用線上刷卡</span>
+                            </label>
+                            <small>勾選後，客戶在前台可以選擇線上刷卡付款（需填寫綠界串接碼）</small>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-card" style="margin-top: 20px;">
                         <h3>付款設定</h3>
                         <div class="form-group">
                             <label>訂金百分比</label>
@@ -292,24 +310,6 @@
                     </div>
                     
                     <div class="settings-card" style="margin-top: 20px;">
-                        <h3>付款方式設定</h3>
-                        <div class="form-group">
-                            <label style="display: flex; align-items: center; gap: 10px;">
-                                <input type="checkbox" id="enableTransfer" style="width: 20px; height: 20px;">
-                                <span>啟用匯款轉帳</span>
-                            </label>
-                            <small>勾選後，客戶在前台可以選擇匯款轉帳付款</small>
-                        </div>
-                        <div class="form-group">
-                            <label style="display: flex; align-items: center; gap: 10px;">
-                                <input type="checkbox" id="enableCard" style="width: 20px; height: 20px;">
-                                <span>啟用線上刷卡</span>
-                            </label>
-                            <small>勾選後，客戶在前台可以選擇線上刷卡付款（需填寫綠界串接碼）</small>
-                        </div>
-                    </div>
-                    
-                    <div class="settings-card" style="margin-top: 20px;">
                         <h3>綠界支付設定</h3>
                         <div class="form-group">
                             <label>MerchantID（商店代號）</label>
@@ -326,6 +326,30 @@
                             <input type="text" id="ecpayHashIV" placeholder="例如：v77hoKGq4kWxNNIS">
                             <small>綠界提供的 HashIV</small>
                         </div>
+                    </div>
+                    
+                    <div class="settings-card" style="margin-top: 20px;">
+                        <h3>旅館資訊</h3>
+                        <div class="form-group">
+                            <label>旅館名稱</label>
+                            <input type="text" id="hotelName" placeholder="例如：XX旅館">
+                            <small>旅館或民宿的名稱</small>
+                        </div>
+                        <div class="form-group">
+                            <label>旅館電話</label>
+                            <input type="text" id="hotelPhone" placeholder="例如：02-1234-5678">
+                            <small>聯絡電話</small>
+                        </div>
+                        <div class="form-group">
+                            <label>旅館地址</label>
+                            <input type="text" id="hotelAddress" placeholder="例如：台北市信義區信義路五段7號">
+                            <small>完整地址</small>
+                        </div>
+                        <div class="form-group">
+                            <label>旅館信箱</label>
+                            <input type="email" id="hotelEmail" placeholder="例如：service@hotel.com">
+                            <small>聯絡信箱</small>
+                        </div>
                         <button class="btn-save" onclick="saveSettings()">儲存設定</button>
                     </div>
                 </div>
@@ -334,7 +358,7 @@
             <!-- 郵件模板區 -->
             <section id="email-templates-section" class="content-section">
                 <div class="section-header">
-                    <h2>✉ 郵件模板管理</h2>
+                    <h2>📧 郵件模板管理</h2>
                     <button class="btn-refresh" onclick="loadEmailTemplates()">
                         <span>🔄</span> 重新整理
                     </button>

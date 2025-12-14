@@ -370,7 +370,7 @@ app.post('/api/booking', async (req, res) => {
                 from: process.env.EMAIL_USER || 'your-email@gmail.com',
                 to: guestEmail,
                 subject: '【訂房確認】您的訂房已成功',
-                html: generateCustomerEmail(bookingData)
+                html: await generateCustomerEmail(bookingData)
             };
             
             try {
@@ -600,13 +600,51 @@ app.post('/api/booking', async (req, res) => {
 });
 
 // 生成客戶確認郵件
-function generateCustomerEmail(data) {
+// 取得旅館資訊 footer
+async function getHotelInfoFooter() {
+    try {
+        const hotelName = await db.getSetting('hotel_name') || '';
+        const hotelPhone = await db.getSetting('hotel_phone') || '';
+        const hotelAddress = await db.getSetting('hotel_address') || '';
+        const hotelEmail = await db.getSetting('hotel_email') || '';
+        
+        if (!hotelName && !hotelPhone && !hotelAddress && !hotelEmail) {
+            return '';
+        }
+        
+        let footer = '<div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #ddd;">';
+        footer += '<h3 style="color: #333; margin-bottom: 15px; font-size: 18px;">🏨 旅館資訊</h3>';
+        footer += '<div style="color: #666; line-height: 1.8;">';
+        
+        if (hotelName) {
+            footer += `<p style="margin: 5px 0;"><strong>旅館名稱：</strong>${hotelName}</p>`;
+        }
+        if (hotelPhone) {
+            footer += `<p style="margin: 5px 0;"><strong>聯絡電話：</strong>${hotelPhone}</p>`;
+        }
+        if (hotelAddress) {
+            footer += `<p style="margin: 5px 0;"><strong>地址：</strong>${hotelAddress}</p>`;
+        }
+        if (hotelEmail) {
+            footer += `<p style="margin: 5px 0;"><strong>Email：</strong>${hotelEmail}</p>`;
+        }
+        
+        footer += '</div></div>';
+        return footer;
+    } catch (error) {
+        console.error('取得旅館資訊失敗:', error);
+        return '';
+    }
+}
+
+async function generateCustomerEmail(data) {
     console.log('📧 生成客戶郵件，資料:', {
         paymentMethodCode: data.paymentMethodCode,
         daysReserved: data.daysReserved,
         paymentDeadline: data.paymentDeadline,
         bankInfo: data.bankInfo
     });
+    const hotelInfoFooter = await getHotelInfoFooter();
     return `
     <!DOCTYPE html>
     <html>
@@ -708,7 +746,7 @@ function generateCustomerEmail(data) {
                     <li>如有任何問題，請隨時與我們聯繫</li>
                 </ul>
 
-                <div class="footer">
+                <div class="footer" style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #ddd;">
                     <p>感謝您的預訂，期待為您服務！</p>
                     <p>此為系統自動發送郵件，請勿直接回覆</p>
                 </div>
@@ -1535,7 +1573,7 @@ const handlePaymentResult = async (req, res) => {
                                         from: process.env.EMAIL_USER || 'your-email@gmail.com',
                                         to: booking.guest_email,
                                         subject: '【訂房確認】您的訂房已成功',
-                                        html: generateCustomerEmail(bookingData)
+                                        html: await generateCustomerEmail(bookingData)
                                     };
                                     
                                     let emailSent = false;
@@ -1685,7 +1723,7 @@ const handlePaymentResult = async (req, res) => {
                             from: process.env.EMAIL_USER || 'your-email@gmail.com',
                             to: booking.guest_email,
                             subject: '【訂房確認】您的訂房已成功',
-                            html: generateCustomerEmail(bookingData)
+                            html: await generateCustomerEmail(bookingData)
                         };
                         
                         let emailSent = false;
@@ -1976,7 +2014,7 @@ app.put('/api/email-templates/:key', async (req, res) => {
 // ==================== 自動郵件發送功能 ====================
 
 // 替換郵件模板中的變數
-function replaceTemplateVariables(template, booking, bankInfo = null) {
+async function replaceTemplateVariables(template, booking, bankInfo = null) {
     let content = template.content;
     const checkInDate = new Date(booking.check_in_date).toLocaleDateString('zh-TW');
     const checkOutDate = new Date(booking.check_out_date).toLocaleDateString('zh-TW');
@@ -2101,7 +2139,7 @@ async function sendPaymentReminderEmails() {
         
         for (const booking of bookings) {
             try {
-                const { subject, content } = replaceTemplateVariables(template, booking, bankInfo);
+                const { subject, content } = await replaceTemplateVariables(template, booking, bankInfo);
                 
                 const mailOptions = {
                     from: process.env.EMAIL_USER || 'your-email@gmail.com',
@@ -2232,7 +2270,7 @@ async function sendCheckinReminderEmails() {
         
         for (const booking of bookings) {
             try {
-                const { subject, content } = replaceTemplateVariables(template, booking);
+                const { subject, content } = await replaceTemplateVariables(template, booking);
                 
                 const mailOptions = {
                     from: process.env.EMAIL_USER || 'your-email@gmail.com',
@@ -2319,7 +2357,7 @@ async function sendFeedbackRequestEmails() {
         
         for (const booking of bookings) {
             try {
-                const { subject, content } = replaceTemplateVariables(template, booking);
+                const { subject, content } = await replaceTemplateVariables(template, booking);
                 
                 const mailOptions = {
                     from: process.env.EMAIL_USER || 'your-email@gmail.com',

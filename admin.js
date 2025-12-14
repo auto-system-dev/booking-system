@@ -154,7 +154,7 @@ function renderBookings() {
         const finalAmount = parseInt(booking.final_amount) || 0;
         
         return `
-        <tr ${isCancelled ? 'style="opacity: 0.6; background: rgba(255, 255, 255, 0.03);"' : ''}>
+        <tr ${isCancelled ? 'style="opacity: 0.6; background: #f8f8f8;"' : ''}>
             <td>${booking.booking_id}</td>
             <td>${booking.guest_name}</td>
             <td>${booking.room_type}</td>
@@ -1192,6 +1192,12 @@ async function loadSettings() {
             document.getElementById('ecpayMerchantID').value = settings.ecpay_merchant_id || '';
             document.getElementById('ecpayHashKey').value = settings.ecpay_hash_key || '';
             document.getElementById('ecpayHashIV').value = settings.ecpay_hash_iv || '';
+            
+            // 旅館資訊
+            document.getElementById('hotelName').value = settings.hotel_name || '';
+            document.getElementById('hotelPhone').value = settings.hotel_phone || '';
+            document.getElementById('hotelAddress').value = settings.hotel_address || '';
+            document.getElementById('hotelEmail').value = settings.hotel_email || '';
         } else {
             showError('載入設定失敗：' + (result.message || '未知錯誤'));
         }
@@ -1213,6 +1219,10 @@ async function saveSettings() {
     const ecpayMerchantID = document.getElementById('ecpayMerchantID').value;
     const ecpayHashKey = document.getElementById('ecpayHashKey').value;
     const ecpayHashIV = document.getElementById('ecpayHashIV').value;
+    const hotelName = document.getElementById('hotelName').value;
+    const hotelPhone = document.getElementById('hotelPhone').value;
+    const hotelAddress = document.getElementById('hotelAddress').value;
+    const hotelEmail = document.getElementById('hotelEmail').value;
     
     if (!depositPercentage || depositPercentage < 0 || depositPercentage > 100) {
         showError('請輸入有效的訂金百分比（0-100）');
@@ -1230,7 +1240,8 @@ async function saveSettings() {
         const [
             depositResponse, bankNameResponse, bankBranchResponse, bankAccountResponse, accountNameResponse,
             enableTransferResponse, enableCardResponse,
-            ecpayMerchantIDResponse, ecpayHashKeyResponse, ecpayHashIVResponse
+            ecpayMerchantIDResponse, ecpayHashKeyResponse, ecpayHashIVResponse,
+            hotelNameResponse, hotelPhoneResponse, hotelAddressResponse, hotelEmailResponse
         ] = await Promise.all([
             fetch('/api/admin/settings/deposit_percentage', {
                 method: 'PUT',
@@ -1331,6 +1342,46 @@ async function saveSettings() {
                     value: ecpayHashIV,
                     description: '綠界向量（HashIV）'
                 })
+            }),
+            fetch('/api/admin/settings/hotel_name', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: hotelName,
+                    description: '旅館名稱（顯示在郵件最下面）'
+                })
+            }),
+            fetch('/api/admin/settings/hotel_phone', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: hotelPhone,
+                    description: '旅館電話（顯示在郵件最下面）'
+                })
+            }),
+            fetch('/api/admin/settings/hotel_address', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: hotelAddress,
+                    description: '旅館地址（顯示在郵件最下面）'
+                })
+            }),
+            fetch('/api/admin/settings/hotel_email', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: hotelEmail,
+                    description: '旅館信箱（顯示在郵件最下面）'
+                })
             })
         ]);
         
@@ -1344,7 +1395,11 @@ async function saveSettings() {
             enableCardResponse.json(),
             ecpayMerchantIDResponse.json(),
             ecpayHashKeyResponse.json(),
-            ecpayHashIVResponse.json()
+            ecpayHashIVResponse.json(),
+            hotelNameResponse.json(),
+            hotelPhoneResponse.json(),
+            hotelAddressResponse.json(),
+            hotelEmailResponse.json()
         ]);
         
         const allSuccess = results.every(r => r.success);
