@@ -1229,9 +1229,14 @@ function renderAddons() {
             <td>${addon.display_name}</td>
             <td>NT$ ${addon.price.toLocaleString()}</td>
             <td>
-                <span class="status-badge ${addon.is_active === 1 ? 'status-sent' : 'status-unsent'}">
-                    ${addon.is_active === 1 ? '啟用' : '停用'}
-                </span>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" ${addon.is_active === 1 ? 'checked' : ''} 
+                           onchange="toggleAddonStatus(${addon.id}, this.checked)"
+                           style="width: 18px; height: 18px; cursor: pointer;">
+                    <span class="status-badge ${addon.is_active === 1 ? 'status-sent' : 'status-unsent'}">
+                        ${addon.is_active === 1 ? '啟用' : '停用'}
+                    </span>
+                </label>
             </td>
             <td>
                 <div class="action-buttons">
@@ -1348,6 +1353,49 @@ async function saveAddon(event, id) {
     } catch (error) {
         console.error('儲存加購商品錯誤:', error);
         showError('儲存加購商品時發生錯誤：' + error.message);
+    }
+}
+
+// 切換加購商品啟用狀態
+async function toggleAddonStatus(id, isActive) {
+    try {
+        const addon = allAddons.find(a => a.id === id);
+        if (!addon) {
+            showError('找不到該加購商品');
+            return;
+        }
+        
+        const data = {
+            display_name: addon.display_name,
+            price: addon.price,
+            icon: addon.icon || '➕',
+            display_order: addon.display_order || 0,
+            is_active: isActive ? 1 : 0
+        };
+        
+        const response = await fetch(`/api/admin/addons/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            loadAddons();
+            showSuccess(isActive ? '加購商品已啟用' : '加購商品已停用');
+        } else {
+            showError(result.message || '更新失敗');
+            // 恢復 checkbox 狀態
+            loadAddons(); // 重新載入以恢復正確狀態
+        }
+    } catch (error) {
+        console.error('切換加購商品狀態錯誤:', error);
+        showError('切換加購商品狀態時發生錯誤：' + error.message);
+        // 恢復 checkbox 狀態
+        loadAddons(); // 重新載入以恢復正確狀態
     }
 }
 
