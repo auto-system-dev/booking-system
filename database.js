@@ -243,6 +243,30 @@ async function initPostgreSQL() {
                 }
             }
             
+            // 檢查並添加 addons 欄位（如果不存在）
+            try {
+                await query(`ALTER TABLE bookings ADD COLUMN addons TEXT`);
+                console.log('✅ 已添加 addons 欄位');
+            } catch (err) {
+                if (err.message && (err.message.includes('already exists') || err.message.includes('duplicate column') || err.message.includes('column') && err.message.includes('already'))) {
+                    console.log('✅ addons 欄位已存在');
+                } else {
+                    console.warn('⚠️  添加 addons 欄位時發生錯誤:', err.message);
+                }
+            }
+            
+            // 檢查並添加 addons_total 欄位（如果不存在）
+            try {
+                await query(`ALTER TABLE bookings ADD COLUMN addons_total INTEGER DEFAULT 0`);
+                console.log('✅ 已添加 addons_total 欄位');
+            } catch (err) {
+                if (err.message && (err.message.includes('already exists') || err.message.includes('duplicate column') || err.message.includes('column') && err.message.includes('already'))) {
+                    console.log('✅ addons_total 欄位已存在');
+                } else {
+                    console.warn('⚠️  添加 addons_total 欄位時發生錯誤:', err.message);
+                }
+            }
+            
             // 建立房型設定表
             await query(`
                 CREATE TABLE IF NOT EXISTS room_types (
