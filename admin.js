@@ -1239,6 +1239,226 @@ async function deleteRoomType(id) {
     }
 }
 
+// ==================== 加購商品管理 ====================
+
+let allAddons = [];
+let showOnlyActiveAddons = true; // 預設只顯示啟用的加購商品
+
+// 載入加購商品列表
+async function loadAddons() {
+    try {
+        const response = await fetch('/api/admin/addons');
+        const result = await response.json();
+        
+        if (result.success) {
+            allAddons = result.data || [];
+            renderAddons();
+        } else {
+            showError('載入加購商品列表失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('載入加購商品列表錯誤:', error);
+        showError('載入加購商品列表時發生錯誤：' + error.message);
+    }
+}
+
+// 篩選加購商品（根據狀態）
+function toggleAddonFilter() {
+    showOnlyActiveAddons = !showOnlyActiveAddons;
+    renderAddons();
+    // 更新按鈕文字
+    const filterBtn = document.getElementById('addonFilterBtn');
+    if (filterBtn) {
+        filterBtn.innerHTML = showOnlyActiveAddons 
+            ? '<span>🔍</span> 只顯示啟用加購商品' 
+            : '<span>📋</span> 顯示所有加購商品';
+    }
+}
+
+// 渲染加購商品列表
+function renderAddons() {
+    const tbody = document.getElementById('addonsTableBody');
+    if (!tbody) return;
+    
+    // 根據篩選條件過濾加購商品
+    const filteredAddons = showOnlyActiveAddons 
+        ? allAddons.filter(addon => addon.is_active === 1)
+        : allAddons;
+    
+    if (filteredAddons.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="loading">沒有加購商品資料</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = filteredAddons.map(addon => `
+        <tr ${addon.is_active === 0 ? 'style="opacity: 0.6; background: #f8f8f8;"' : ''}>
+            <td>${addon.display_order || 0}</td>
+            <td>${addon.icon || '➕'}</td>
+            <td>${addon.name}</td>
+            <td>${addon.display_name}</td>
+            <td>NT$ ${addon.price.toLocaleString()}</td>
+            <td>
+                <span class="status-badge ${addon.is_active === 1 ? 'status-sent' : 'status-unsent'}">
+                    ${addon.is_active === 1 ? '啟用' : '停用'}
+                </span>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-edit" onclick="editAddon(${addon.id})">編輯</button>
+                    <button class="btn-cancel" onclick="deleteAddon(${addon.id})">刪除</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// 顯示新增加購商品模態框
+function showAddAddonModal() {
+    showAddonModal(null);
+}
+
+// 顯示編輯加購商品模態框
+async function editAddon(id) {
+    try {
+        const addon = allAddons.find(a => a.id === id);
+        if (addon) {
+            showAddonModal(addon);
+        } else {
+            showError('找不到該加購商品');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showError('載入加購商品資料時發生錯誤：' + error.message);
+    }
+}
+
+// 顯示加購商品編輯模態框
+function showAddonModal(addon) {
+    const modal = document.getElementById('bookingModal');
+    const modalBody = document.getElementById('modalBody');
+    const isEdit = addon !== null;
+    
+    modalBody.innerHTML = `
+        <form id="addonForm" onsubmit="saveAddon(event, ${isEdit ? addon.id : 'null'})">
+            <div class="form-group">
+                <label>商品代碼（英文）</label>
+                <input type="text" name="name" value="${isEdit ? escapeHtml(addon.name) : ''}" required ${isEdit ? 'readonly' : ''}>
+                <small>用於系統內部識別，建立後無法修改</small>
+            </div>
+            <div class="form-group">
+                <label>顯示名稱</label>
+                <input type="text" name="display_name" value="${isEdit ? escapeHtml(addon.display_name) : ''}" required>
+            </div>
+            <div class="form-group">
+                <label>價格</label>
+                <input type="number" name="price" value="${isEdit ? addon.price : ''}" min="0" step="1" required>
+                <small>加購商品的單價</small>
+            </div>
+            <div class="form-group">
+                <label>圖示（Emoji）</label>
+                <input type="text" name="icon" value="${isEdit ? escapeHtml(addon.icon) : '➕'}" maxlength="10">
+            </div>
+            <div class="form-group">
+                <label>顯示順序</label>
+                <input type="number" name="display_order" value="${isEdit ? addon.display_order : 0}" min="0" step="1">
+            </div>
+            <div class="form-group">
+                <label>狀態</label>
+                <select name="is_active" required>
+                    <option value="1" ${isEdit && addon.is_active === 1 ? 'selected' : ''}>啟用</option>
+                    <option value="0" ${isEdit && addon.is_active === 0 ? 'selected' : ''}>停用</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn-save">儲存</button>
+                <button type="button" class="btn-cancel" onclick="closeModal()">取消</button>
+            </div>
+        </form>
+    `;
+    
+    modal.classList.add('active');
+}
+
+// 儲存加購商品
+async function saveAddon(event, id) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const data = {
+        name: formData.get('name'),
+        display_name: formData.get('display_name'),
+        price: parseInt(formData.get('price')),
+        icon: formData.get('icon') || '➕',
+        display_order: parseInt(formData.get('display_order')) || 0,
+        is_active: parseInt(formData.get('is_active'))
+    };
+    
+    try {
+        const url = id ? `/api/admin/addons/${id}` : '/api/admin/addons';
+        const method = id ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            closeModal();
+            loadAddons();
+            showSuccess(id ? '加購商品已更新' : '加購商品已新增');
+        } else {
+            showError(result.message || '儲存失敗');
+        }
+    } catch (error) {
+        console.error('儲存加購商品錯誤:', error);
+        showError('儲存加購商品時發生錯誤：' + error.message);
+    }
+}
+
+// 刪除加購商品
+async function deleteAddon(id) {
+    if (!confirm('確定要刪除這個加購商品嗎？此操作無法復原。')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/admin/addons/${id}`, {
+            method: 'DELETE'
+        });
+        
+        // 檢查 HTTP 狀態碼
+        if (!response.ok) {
+            // 如果狀態碼不是 2xx，嘗試解析錯誤訊息
+            let errorMessage = '刪除失敗';
+            try {
+                const errorResult = await response.json();
+                errorMessage = errorResult.message || `HTTP ${response.status}: ${response.statusText}`;
+            } catch (e) {
+                errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            }
+            showError(errorMessage);
+            return;
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            loadAddons();
+            showSuccess('加購商品已刪除');
+        } else {
+            showError(result.message || '刪除失敗');
+        }
+    } catch (error) {
+        console.error('刪除加購商品錯誤:', error);
+        showError('刪除加購商品時發生錯誤：' + error.message);
+    }
+}
+
 // ==================== 系統設定 ====================
 
 // 載入系統設定
