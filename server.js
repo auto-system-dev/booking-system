@@ -673,11 +673,15 @@ function generateCustomerEmail(data) {
                     </div>
                 </div>
 
-                ${data.paymentAmount && data.paymentAmount.includes('訂金') ? `
+                ${data.paymentAmount && data.paymentAmount.includes('訂金') ? (() => {
+                    const remainingAmount = data.totalAmount - data.finalAmount;
+                    return `
                 <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 15px; margin: 20px 0;">
                     <p style="color: #2e7d32; font-weight: 600; margin: 0; font-size: 16px;">💡 剩餘尾款於現場付清！</p>
+                    <p style="color: #2e7d32; margin: 10px 0 0 0; font-size: 18px; font-weight: 700;">剩餘尾款：NT$ ${remainingAmount.toLocaleString()}</p>
                 </div>
-                ` : ''}
+                `;
+                })() : ''}
 
                 ${data.paymentMethodCode === 'transfer' ? `
                 <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
@@ -1993,14 +1997,20 @@ function replaceTemplateVariables(template, booking, bankInfo = null) {
     // 判斷是否為訂金支付（檢查 payment_amount 欄位是否包含「訂金」）
     const isDeposit = booking.payment_amount && booking.payment_amount.includes('訂金');
     
+    // 計算剩餘尾款金額
+    const totalAmount = booking.total_amount || 0;
+    const finalAmount = booking.final_amount || 0;
+    const remainingAmount = totalAmount - finalAmount;
+    
     const variables = {
         '{{guestName}}': booking.guest_name,
         '{{bookingId}}': booking.booking_id,
         '{{checkInDate}}': checkInDate,
         '{{checkOutDate}}': checkOutDate,
         '{{roomType}}': booking.room_type,
-        '{{totalAmount}}': booking.total_amount ? booking.total_amount.toLocaleString() : '0',
-        '{{finalAmount}}': booking.final_amount ? booking.final_amount.toLocaleString() : '0',
+        '{{totalAmount}}': totalAmount.toLocaleString(),
+        '{{finalAmount}}': finalAmount.toLocaleString(),
+        '{{remainingAmount}}': remainingAmount.toLocaleString(),
         '{{bankName}}': bankInfo ? bankInfo.bankName : 'XXX銀行',
         '{{bankBranch}}': bankInfo ? bankInfo.bankBranch : 'XXX分行',
         '{{bankBranchDisplay}}': bankBranchDisplay,
