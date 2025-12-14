@@ -750,6 +750,7 @@ async function generateCustomerEmail(data) {
                     <p>感謝您的預訂，期待為您服務！</p>
                     <p>此為系統自動發送郵件，請勿直接回覆</p>
                 </div>
+                ${hotelInfoFooter}
             </div>
         </div>
     </body>
