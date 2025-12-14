@@ -2031,7 +2031,17 @@ async function sendPaymentReminderEmails() {
         }
         
         const daysReserved = parseInt(template.days_reserved) || 3;
-        console.log(`✅ 匯款提醒模板已啟用 (days_reserved: ${daysReserved}, send_hour_payment_reminder: ${template.send_hour_payment_reminder || 9})`);
+        const sendHour = parseInt(template.send_hour_payment_reminder) || 9;
+        
+        console.log(`✅ 匯款提醒模板已啟用 (days_reserved: ${daysReserved}, send_hour_payment_reminder: ${sendHour})`);
+        
+        // 檢查當前時間是否符合發送時間
+        const currentHour = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', hour12: false });
+        const currentHourNum = parseInt(currentHour);
+        if (currentHourNum !== sendHour) {
+            console.log(`⏰ 當前時間 ${currentHourNum}:00 不符合發送時間 ${sendHour}:00，跳過`);
+            return;
+        }
         
         // 取得所有可能的訂房
         const allBookings = await db.getBookingsForPaymentReminder();
