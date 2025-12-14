@@ -632,7 +632,7 @@ function generateCustomerEmail(data) {
             </div>
             <div class="content">
                 <p>親愛的 ${data.guestName}，</p>
-                <p>您的訂房已成功確認，以下是您的訂房資訊：</p>
+                <p style="margin-bottom: 25px;">您的訂房已成功確認，以下是您的訂房資訊：</p>
                 
                 <div class="highlight">
                     <div class="info-row">
@@ -701,7 +701,7 @@ function generateCustomerEmail(data) {
                 </div>
                 ` : ''}
                 
-                <p><strong>重要提醒：</strong></p>
+                <p style="margin-top: 30px;"><strong>重要提醒：</strong></p>
                 <ul>
                     <li>請於入住當天攜帶身分證件辦理入住手續</li>
                     <li>如需取消或變更訂房，請提前 3 天通知</li>

@@ -408,13 +408,14 @@ async function initEmailTemplates() {
         </div>
         <div class="content">
             <p>親愛的 {{guestName}} 您好，</p>
+            <p style="margin-bottom: 25px;">感謝您選擇我們的住宿服務！</p>
             <div class="highlight">
                 <h3 style="color: #856404; margin-top: 0;">⚠️ 重要提醒</h3>
                 <p style="color: #856404; font-weight: 600; font-size: 18px;">
                     此訂房將為您保留 {{daysReserved}} 天，請於 <strong>{{paymentDeadline}}前</strong>完成匯款，逾期將自動取消訂房。
                 </p>
             </div>
-            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 25px 0;">
                 <h3>訂房資訊</h3>
                 <div class="info-row">
                     <span class="info-label">訂房編號</span>
@@ -437,7 +438,7 @@ async function initEmailTemplates() {
                     <span class="info-value" style="color: #e74c3c; font-weight: 700; font-size: 18px;">NT$ {{finalAmount}}</span>
                 </div>
             </div>
-            <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0;">
                 <h3 style="color: #856404; margin-top: 0;">💰 匯款資訊</h3>
                 <div style="background: white; padding: 15px; border-radius: 5px; margin-top: 15px;">
                     <p style="margin: 5px 0; color: #333;"><strong>匯款資訊：</strong></p>
@@ -453,7 +454,7 @@ async function initEmailTemplates() {
                 </div>
                 {{/if}}
             </div>
-            <p>如有任何問題，請隨時與我們聯繫。</p>
+            <p style="margin-top: 30px;">如有任何問題，請隨時與我們聯繫。</p>
             <p>感謝您的配合！</p>
         </div>
     </div>
