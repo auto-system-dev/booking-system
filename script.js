@@ -252,8 +252,8 @@ async function calculatePrice() {
     const checkInDate = document.getElementById('checkInDate').value;
     const checkOutDate = document.getElementById('checkOutDate').value;
     
-    // 計算加購商品總金額（只有在啟用時才計算）
-    const addonsTotal = enableAddons ? selectedAddons.reduce((sum, addon) => sum + addon.price, 0) : 0;
+    // 計算加購商品總金額（只有在啟用時才計算，考慮數量）
+    const addonsTotal = enableAddons ? selectedAddons.reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0) : 0;
     
     if (!checkInDate || !checkOutDate) {
         // 如果沒有選擇日期，使用舊的計算方式（不考慮假日）
