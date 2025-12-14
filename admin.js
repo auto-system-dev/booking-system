@@ -1178,18 +1178,70 @@ let showOnlyActiveAddons = true; // 預設只顯示啟用的加購商品
 // 載入加購商品列表
 async function loadAddons() {
     try {
-        const response = await fetch('/api/admin/addons');
-        const result = await response.json();
+        // 同時載入加購商品列表和前台啟用設定
+        const [addonsResponse, settingsResponse] = await Promise.all([
+            fetch('/api/admin/addons'),
+            fetch('/api/settings')
+        ]);
         
-        if (result.success) {
-            allAddons = result.data || [];
+        const addonsResult = await addonsResponse.json();
+        const settingsResult = await settingsResponse.json();
+        
+        if (addonsResult.success) {
+            allAddons = addonsResult.data || [];
             renderAddons();
         } else {
-            showError('載入加購商品列表失敗：' + (result.message || '未知錯誤'));
+            showError('載入加購商品列表失敗：' + (addonsResult.message || '未知錯誤'));
+        }
+        
+        // 載入前台啟用設定
+        if (settingsResult.success && settingsResult.data) {
+            const enableAddons = settingsResult.data.enable_addons === '1' || settingsResult.data.enable_addons === 'true';
+            const checkbox = document.getElementById('enableAddonsFrontend');
+            if (checkbox) {
+                checkbox.checked = enableAddons;
+            }
         }
     } catch (error) {
         console.error('載入加購商品列表錯誤:', error);
         showError('載入加購商品列表時發生錯誤：' + error.message);
+    }
+}
+
+// 切換前台加購商品啟用狀態
+async function toggleAddonsFrontend(isEnabled) {
+    try {
+        const response = await fetch('/api/admin/settings/enable_addons', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                value: isEnabled ? '1' : '0',
+                description: '啟用前台加購商品功能（1=啟用，0=停用）'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess(isEnabled ? '前台加購商品功能已啟用' : '前台加購商品功能已停用');
+        } else {
+            showError(result.message || '更新失敗');
+            // 恢復 checkbox 狀態
+            const checkbox = document.getElementById('enableAddonsFrontend');
+            if (checkbox) {
+                checkbox.checked = !isEnabled;
+            }
+        }
+    } catch (error) {
+        console.error('切換前台加購商品啟用狀態錯誤:', error);
+        showError('切換前台加購商品啟用狀態時發生錯誤：' + error.message);
+        // 恢復 checkbox 狀態
+        const checkbox = document.getElementById('enableAddonsFrontend');
+        if (checkbox) {
+            checkbox.checked = !isEnabled;
+        }
     }
 }
 
@@ -1229,14 +1281,9 @@ function renderAddons() {
             <td>${addon.display_name}</td>
             <td>NT$ ${addon.price.toLocaleString()}</td>
             <td>
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <input type="checkbox" ${addon.is_active === 1 ? 'checked' : ''} 
-                           onchange="toggleAddonStatus(${addon.id}, this.checked)"
-                           style="width: 18px; height: 18px; cursor: pointer;">
-                    <span class="status-badge ${addon.is_active === 1 ? 'status-sent' : 'status-unsent'}">
-                        ${addon.is_active === 1 ? '啟用' : '停用'}
-                    </span>
-                </label>
+                <span class="status-badge ${addon.is_active === 1 ? 'status-sent' : 'status-unsent'}">
+                    ${addon.is_active === 1 ? '啟用' : '停用'}
+                </span>
             </td>
             <td>
                 <div class="action-buttons">

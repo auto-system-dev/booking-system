@@ -2,6 +2,7 @@
 let roomTypes = [];
 let addons = []; // 加購商品列表
 let selectedAddons = []; // 已選擇的加購商品
+let enableAddons = true; // 前台加購商品功能是否啟用
 let depositPercentage = 30; // 預設訂金百分比
 let unavailableRooms = []; // 已滿房的房型列表
 
@@ -29,9 +30,26 @@ async function loadRoomTypesAndSettings() {
             renderRoomTypes();
         }
         
-        if (addonsResult.success) {
+        // 檢查是否啟用前台加購商品功能
+        enableAddons = settingsResult.success && settingsResult.data && 
+                       (settingsResult.data.enable_addons === '1' || settingsResult.data.enable_addons === 'true');
+        
+        if (enableAddons && addonsResult.success) {
             addons = addonsResult.data || [];
             renderAddons();
+            // 顯示加購商品區塊
+            const addonsSection = document.querySelector('.form-section:has(#addonsGrid)');
+            if (addonsSection) {
+                addonsSection.style.display = 'block';
+            }
+        } else {
+            // 隱藏加購商品區塊
+            const addonsSection = document.querySelector('.form-section:has(#addonsGrid)');
+            if (addonsSection) {
+                addonsSection.style.display = 'none';
+            }
+            addons = [];
+            selectedAddons = [];
         }
         
         if (settingsResult.success && settingsResult.data.deposit_percentage) {
@@ -224,8 +242,8 @@ async function calculatePrice() {
     const checkInDate = document.getElementById('checkInDate').value;
     const checkOutDate = document.getElementById('checkOutDate').value;
     
-    // 計算加購商品總金額
-    const addonsTotal = selectedAddons.reduce((sum, addon) => sum + addon.price, 0);
+    // 計算加購商品總金額（只有在啟用時才計算）
+    const addonsTotal = enableAddons ? selectedAddons.reduce((sum, addon) => sum + addon.price, 0) : 0;
     
     if (!checkInDate || !checkOutDate) {
         // 如果沒有選擇日期，使用舊的計算方式（不考慮假日）
@@ -467,8 +485,8 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     const selectedRoom = document.querySelector('input[name="roomType"]:checked').closest('.room-option');
     const pricePerNight = parseInt(selectedRoom.dataset.price);
     const nights = calculateNights();
-    // 計算加購商品總金額
-    const addonsTotal = selectedAddons.reduce((sum, addon) => sum + addon.price, 0);
+    // 計算加購商品總金額（只有在啟用時才計算）
+    const addonsTotal = enableAddons ? selectedAddons.reduce((sum, addon) => sum + addon.price, 0) : 0;
     const roomTotal = pricePerNight * nights;
     const totalAmount = roomTotal + addonsTotal;
     const depositRate = depositPercentage / 100;
@@ -479,7 +497,7 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     formData.nights = nights;
     formData.totalAmount = totalAmount;
     formData.finalAmount = finalAmount;
-    formData.addons = selectedAddons; // 加購商品陣列
+    formData.addons = enableAddons ? selectedAddons : []; // 加購商品陣列（只有在啟用時才包含）
     formData.addonsTotal = addonsTotal; // 加購商品總金額
     
     console.log('準備發送訂房資料:', formData);

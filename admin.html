@@ -221,6 +221,18 @@
                     </div>
                 </div>
 
+                <!-- 前台啟用開關 -->
+                <div class="settings-card" style="margin-bottom: 20px;">
+                    <h3>前台啟用設定</h3>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="enableAddonsFrontend" style="width: 20px; height: 20px;" onchange="toggleAddonsFrontend(this.checked)">
+                            <span>啟用前台加購商品功能</span>
+                        </label>
+                        <small>關閉後，前台將不顯示加購商品選項，也不計算加購商品價格</small>
+                    </div>
+                </div>
+
                 <div class="room-types-container">
                     <table class="bookings-table">
                         <thead>
