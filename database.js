@@ -2556,56 +2556,40 @@ async function deleteAddon(id) {
     }
 }
 
-// 檢查房間可用性
-// 規則：
-// 1. 只要在入住～退房日期範圍內，有「有效 / 保留」訂房，即視為滿房
-// 2. 或者在此日期範圍內被設定為關房（room_closures.is_closed = 1），也視為滿房
 async function getRoomAvailability(checkInDate, checkOutDate) {
     try {
-        const sql = usePostgreSQL ? `
-            (
-                SELECT DISTINCT rt.name
-                FROM bookings b
-                INNER JOIN room_types rt ON b.room_type = rt.display_name
-                WHERE b.check_in_date < $2 
-                  AND b.check_out_date > $1
-                  AND b.status IN ('active', 'reserved')
-            )
-            UNION
-            (
-                SELECT DISTINCT rt.name
-                FROM room_closures rc
-                INNER JOIN room_types rt ON rc.room_type = rt.display_name
-                WHERE rc.date >= $1::date 
-                  AND rc.date <  $2::date
-                  AND rc.is_closed = 1
-            )
-        ` : `
-            SELECT DISTINCT name FROM (
-                SELECT rt.name AS name
-                FROM bookings b
-                INNER JOIN room_types rt ON b.room_type = rt.display_name
-                WHERE b.check_in_date < ? 
-                  AND b.check_out_date > ?
-                  AND b.status IN ('active', 'reserved')
-                
-                UNION
-                
-                SELECT rt.name AS name
-                FROM room_closures rc
-                INNER JOIN room_types rt ON rc.room_type = rt.display_name
-                WHERE rc.date >= ? 
-                  AND rc.date < ?
-                  AND rc.is_closed = 1
-            );
-        `;
-        const params = usePostgreSQL
-            ? [checkInDate, checkOutDate]
-            : [checkInDate, checkOutDate, checkInDate, checkOutDate];
-        const result = await query(sql, params);
-        const rows = result.rows || result;
-        const unavailableRooms = rows.map(row => row.name || row.NAME || row.Name);
-        return unavailableRooms || [];
+        // 直接重用既有的 helper：根據訂房與關房資料計算滿房房型
+        const [roomTypes, bookings, closures] = await Promise.all([
+            getAllRoomTypesAdmin(),
+            getBookingsInRange(checkInDate, checkOutDate),
+            getRoomClosuresInRange(checkInDate, checkOutDate)
+        ]);
+
+        // 建立 display_name -> 內部代碼(name) 的對照表
+        const nameMap = {};
+        (roomTypes || []).forEach(rt => {
+            if (rt.display_name) {
+                nameMap[rt.display_name] = rt.name || rt.display_name;
+            }
+        });
+
+        const unavailableSet = new Set();
+
+        // 1. 有有效/保留訂房的房型
+        (bookings || []).forEach(b => {
+            const internal = nameMap[b.room_type] || b.room_type;
+            unavailableSet.add(internal);
+        });
+
+        // 2. 有關房設定的房型
+        (closures || []).forEach(c => {
+            if (c.is_closed) {
+                const internal = nameMap[c.room_type] || c.room_type;
+                unavailableSet.add(internal);
+            }
+        });
+
+        return Array.from(unavailableSet);
     } catch (error) {
         console.error('❌ 查詢房間可用性失敗:', error.message);
         throw error;
