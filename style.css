@@ -303,6 +303,18 @@ body {
     margin-top: 10px;
 }
 
+.guest-counter-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.guest-counter-label {
+    font-size: 13px;
+    color: #666;
+    padding-left: 10px;
+}
+
 .guest-counter {
     display: inline-flex;
     align-items: center;
@@ -311,6 +323,10 @@ body {
     border-radius: 10px;
     overflow: hidden;
     min-width: 140px;
+}
+
+.guest-counter-box {
+    width: 100%;
 }
 
 .guest-counter-btn {
