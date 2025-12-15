@@ -5,11 +5,7 @@ let selectedAddons = []; // 已選擇的加購商品
 let enableAddons = true; // 前台加購商品功能是否啟用
 let depositPercentage = 30; // 預設訂金百分比
 let unavailableRooms = []; // 已滿房的房型列表
-
-// 設定最小日期為今天
-const today = new Date().toISOString().split('T')[0];
-document.getElementById('checkInDate').setAttribute('min', today);
-document.getElementById('checkOutDate').setAttribute('min', today);
+let datePicker = null; // 日期區間選擇器
 
 // 載入房型資料和系統設定
 async function loadRoomTypesAndSettings() {
@@ -211,12 +207,41 @@ async function renderRoomTypes() {
     });
 }
 
+function initDatePicker() {
+    if (!window.flatpickr) return;
+    const rangeInput = document.getElementById('dateRange');
+    const checkInInput = document.getElementById('checkInDate');
+    const checkOutInput = document.getElementById('checkOutDate');
+    datePicker = flatpickr(rangeInput, {
+        mode: 'range',
+        dateFormat: 'Y-m-d',
+        minDate: 'today',
+        onChange: (selectedDates) => {
+            const [start, end] = selectedDates;
+            if (start) {
+                checkInInput.value = start.toISOString().split('T')[0];
+            } else {
+                checkInInput.value = '';
+            }
+            if (end && end > start) {
+                checkOutInput.value = end.toISOString().split('T')[0];
+            } else {
+                checkOutInput.value = '';
+            }
+            calculateNights();
+            calculatePrice();
+            checkRoomAvailability();
+            renderRoomTypes();
+        }
+    });
+}
+
 // 頁面載入時執行
 loadRoomTypesAndSettings();
 
 // 頁面載入後，如果有日期，檢查房間可用性
 document.addEventListener('DOMContentLoaded', function() {
-    // 延遲一下，確保日期輸入框已初始化
+    initDatePicker();
     setTimeout(() => {
         const checkInDate = document.getElementById('checkInDate').value;
         const checkOutDate = document.getElementById('checkOutDate').value;
@@ -436,36 +461,7 @@ async function checkRoomAvailability() {
     }
 }
 
-// 日期變更事件
-document.getElementById('checkInDate').addEventListener('change', function() {
-    const checkIn = new Date(this.value);
-    const checkOutInput = document.getElementById('checkOutDate');
-    
-    // 設定退房日期最小值為入住日期後一天
-    if (checkIn) {
-        const minCheckOut = new Date(checkIn);
-        minCheckOut.setDate(minCheckOut.getDate() + 1);
-        checkOutInput.setAttribute('min', minCheckOut.toISOString().split('T')[0]);
-        
-        // 如果退房日期早於入住日期，清空退房日期
-        const checkOut = new Date(checkOutInput.value);
-        if (checkOut <= checkIn) {
-            checkOutInput.value = '';
-        }
-    }
-    
-    calculateNights();
-    calculatePrice();
-    checkRoomAvailability(); // 檢查房間可用性
-    renderRoomTypes(); // 重新渲染房型（更新價格顯示）
-});
-
-document.getElementById('checkOutDate').addEventListener('change', function() {
-    calculateNights();
-    calculatePrice();
-    checkRoomAvailability(); // 檢查房間可用性
-    renderRoomTypes(); // 重新渲染房型（更新價格顯示）
-});
+// 日期變更事件（已由 flatpickr 控制）
 
 // 房型選擇事件
 document.querySelectorAll('input[name="roomType"]').forEach(radio => {

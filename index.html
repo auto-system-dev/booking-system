@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 </head>
 <body>
@@ -22,14 +23,12 @@
                 <!-- 日期選擇區 -->
                 <div class="form-section">
                     <h2 class="section-title"><span class="material-symbols-outlined">calendar_month</span> 選擇日期</h2>
-                    <div class="date-picker-group">
+                    <div class="date-picker-group" style="grid-template-columns: 1fr;">
                         <div class="date-input-wrapper">
-                            <label for="checkInDate">入住日期</label>
-                            <input type="date" id="checkInDate" name="checkInDate" required>
-                        </div>
-                        <div class="date-input-wrapper">
-                            <label for="checkOutDate">退房日期</label>
-                            <input type="date" id="checkOutDate" name="checkOutDate" required>
+                            <label for="dateRange">入住 / 退房</label>
+                            <input type="text" id="dateRange" name="dateRange" placeholder="選擇入住與退房日期" readonly>
+                            <input type="hidden" id="checkInDate" name="checkInDate">
+                            <input type="hidden" id="checkOutDate" name="checkOutDate">
                         </div>
                     </div>
                     <div class="nights-display" id="nightsDisplay"></div>
@@ -138,6 +137,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="script.js"></script>
 </body>
 </html>
