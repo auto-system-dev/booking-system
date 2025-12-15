@@ -996,79 +996,82 @@ function initSQLite() {
                                             console.log('✅ 假日日期表已準備就緒');
                                         }
                                         
-                                    // 建立房型關房表
-                                    db.run(`
-                                        CREATE TABLE IF NOT EXISTS room_closures (
-                                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                            room_type TEXT NOT NULL,
-                                            date TEXT NOT NULL,
-                                            is_closed INTEGER DEFAULT 1,
-                                            UNIQUE (room_type, date)
-                                        )
-                                    `, (err) => {
-                                        if (err) {
-                                            console.warn('⚠️  建立 room_closures 表時發生錯誤:', err.message);
-                                        } else {
-                                            console.log('✅ 房型關房表已準備就緒');
-                                        }
-                                        
-                                        // 建立加購商品表
+                                        // 建立房型關房表
                                         db.run(`
-                                            CREATE TABLE IF NOT EXISTS addons (
+                                            CREATE TABLE IF NOT EXISTS room_closures (
                                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                name TEXT UNIQUE NOT NULL,
-                                                display_name TEXT NOT NULL,
-                                                price INTEGER NOT NULL,
-                                                icon TEXT DEFAULT '➕',
-                                                display_order INTEGER DEFAULT 0,
-                                                is_active INTEGER DEFAULT 1,
-                                                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                                                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                                                room_type TEXT NOT NULL,
+                                                date TEXT NOT NULL,
+                                                is_closed INTEGER DEFAULT 1,
+                                                UNIQUE (room_type, date)
                                             )
                                         `, (err) => {
                                             if (err) {
-                                                console.warn('⚠️  建立 addons 表時發生錯誤:', err.message);
+                                                console.warn('⚠️  建立 room_closures 表時發生錯誤:', err.message);
                                             } else {
-                                                console.log('✅ 加購商品表已準備就緒');
-                                                
-                                                // 初始化預設加購商品
-                                                const defaultAddons = [
-                                                    ['extra_bed', '加床', 500, '🛏️', 1],
-                                                    ['breakfast', '早餐', 200, '🍳', 2],
-                                                    ['afternoon_tea', '下午茶', 300, '☕', 3],
-                                                    ['dinner', '晚餐', 600, '🍽️', 4],
-                                                    ['bbq', '烤肉', 800, '🔥', 5],
-                                                    ['spa', 'SPA', 1000, '💆', 6]
-                                                ];
-                                                
-                                                let addonCount = 0;
-                                                defaultAddons.forEach(([name, displayName, price, icon, displayOrder]) => {
-                                                    db.get('SELECT id FROM addons WHERE name = ?', [name], (err, row) => {
-                                                        if (!err && !row) {
-                                                            db.run('INSERT INTO addons (name, display_name, price, icon, display_order) VALUES (?, ?, ?, ?, ?)',
-                                                                [name, displayName, price, icon, displayOrder], (err) => {
-                                                                if (!err) {
-                                                                    addonCount++;
-                                                                    if (addonCount === defaultAddons.length) {
-                                                                        console.log('✅ 預設加購商品已初始化');
-                                                                    }
-                                                                }
-                                                            });
-                                                        }
-                                                    });
-                                                });
+                                                console.log('✅ 房型關房表已準備就緒');
                                             }
                                             
-                                            // 繼續後續初始化
-                                            db.run(`ALTER TABLE bookings ADD COLUMN addons TEXT`, (err) => {
-                                                if (err && !err.message.includes('duplicate column')) {
-                                                    console.warn('⚠️  新增 addons 欄位時發生錯誤:', err.message);
+                                            // 建立加購商品表
+                                            db.run(`
+                                                CREATE TABLE IF NOT EXISTS addons (
+                                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                    name TEXT UNIQUE NOT NULL,
+                                                    display_name TEXT NOT NULL,
+                                                    price INTEGER NOT NULL,
+                                                    icon TEXT DEFAULT '➕',
+                                                    display_order INTEGER DEFAULT 0,
+                                                    is_active INTEGER DEFAULT 1,
+                                                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                                                )
+                                            `, (err) => {
+                                                if (err) {
+                                                    console.warn('⚠️  建立 addons 表時發生錯誤:', err.message);
+                                                } else {
+                                                    console.log('✅ 加購商品表已準備就緒');
+                                                    
+                                                    // 初始化預設加購商品
+                                                    const defaultAddons = [
+                                                        ['extra_bed', '加床', 500, '🛏️', 1],
+                                                        ['breakfast', '早餐', 200, '🍳', 2],
+                                                        ['afternoon_tea', '下午茶', 300, '☕', 3],
+                                                        ['dinner', '晚餐', 600, '🍽️', 4],
+                                                        ['bbq', '烤肉', 800, '🔥', 5],
+                                                        ['spa', 'SPA', 1000, '💆', 6]
+                                                    ];
+                                                    
+                                                    let addonCount = 0;
+                                                    defaultAddons.forEach(([name, displayName, price, icon, displayOrder]) => {
+                                                        db.get('SELECT id FROM addons WHERE name = ?', [name], (err, row) => {
+                                                            if (!err && !row) {
+                                                                db.run(
+                                                                    'INSERT INTO addons (name, display_name, price, icon, display_order) VALUES (?, ?, ?, ?, ?)',
+                                                                    [name, displayName, price, icon, displayOrder],
+                                                                    (err) => {
+                                                                        if (!err) {
+                                                                            addonCount++;
+                                                                            if (addonCount === defaultAddons.length) {
+                                                                                console.log('✅ 預設加購商品已初始化');
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                );
+                                                            }
+                                                        });
+                                                    });
                                                 }
                                                 
-                db.run(`ALTER TABLE bookings ADD COLUMN addons_total INTEGER DEFAULT 0`, (err) => {
+                                                // 繼續後續初始化：為 bookings 加上 addons / addons_total 欄位
+                                                db.run(`ALTER TABLE bookings ADD COLUMN addons TEXT`, (err) => {
                                                     if (err && !err.message.includes('duplicate column')) {
-                                                        console.warn('⚠️  新增 addons_total 欄位時發生錯誤:', err.message);
+                                                        console.warn('⚠️  新增 addons 欄位時發生錯誤:', err.message);
                                                     }
+                                                    db.run(`ALTER TABLE bookings ADD COLUMN addons_total INTEGER DEFAULT 0`, (err) => {
+                                                        if (err && !err.message.includes('duplicate column')) {
+                                                            console.warn('⚠️  新增 addons_total 欄位時發生錯誤:', err.message);
+                                                        }
+                                                    });
                                                 });
                                             });
                                         });
