@@ -1306,9 +1306,15 @@ app.get('/api/admin/room-calendar', async (req, res) => {
         // 套用關房設定
         closures.forEach(c => {
             const roomType = c.room_type;
-            const date = (c.date || '').slice(0, 10);
-            if (calendar[roomType] && calendar[roomType][date]) {
-                calendar[roomType][date].isClosed = !!c.is_closed;
+            let dateStr;
+            if (c.date instanceof Date) {
+                dateStr = c.date.toISOString().split('T')[0];
+            } else {
+                // PostgreSQL 可能回傳類 Date 物件，SQLite 則為字串
+                dateStr = String(c.date || '').slice(0, 10);
+            }
+            if (calendar[roomType] && calendar[roomType][dateStr]) {
+                calendar[roomType][dateStr].isClosed = !!c.is_closed;
             }
         });
         
