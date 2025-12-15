@@ -254,7 +254,7 @@ function changeGuestCount(type, delta) {
     const displayEl = document.getElementById(`${type}Display`);
     const inputEl = document.getElementById(type);
     if (!displayEl || !inputEl) return;
-    let current = guestCounts[type] ?? parseInt(inputEl.value) || 0;
+    let current = (guestCounts[type] !== undefined) ? guestCounts[type] : (parseInt(inputEl.value) || 0);
     current = Math.min(max, Math.max(min, current + delta));
     guestCounts[type] = current;
     displayEl.textContent = current;
