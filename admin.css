@@ -118,6 +118,14 @@ body {
     font-size: 14px;
     font-weight: 500;
     transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-refresh .material-symbols-outlined {
+    font-size: 18px;
+    line-height: 1;
 }
 
 .btn-refresh:hover {
@@ -608,6 +616,14 @@ body {
     font-weight: 500;
     transition: all 0.3s ease;
     display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-primary .material-symbols-outlined {
+    font-size: 18px;
+    line-height: 1;
+}
     align-items: center;
     gap: 8px;
 }
