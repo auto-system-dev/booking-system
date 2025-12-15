@@ -34,17 +34,13 @@ async function loadRoomTypesAndSettings() {
         if (enableAddons && addonsResult.success) {
             addons = addonsResult.data || [];
             renderAddons();
-            // 顯示加購商品區塊
-            const addonsSection = document.querySelector('.form-section:has(#addonsGrid)');
-            if (addonsSection) {
-                addonsSection.style.display = 'block';
-            }
+            // 顯示加購商品區塊（避免 :has 選擇器，改用 closest）
+            const addonsSection = document.getElementById('addonsGrid')?.closest('.form-section');
+            if (addonsSection) addonsSection.style.display = 'block';
         } else {
             // 隱藏加購商品區塊
-            const addonsSection = document.querySelector('.form-section:has(#addonsGrid)');
-            if (addonsSection) {
-                addonsSection.style.display = 'none';
-            }
+            const addonsSection = document.getElementById('addonsGrid')?.closest('.form-section');
+            if (addonsSection) addonsSection.style.display = 'none';
             addons = [];
             selectedAddons = [];
         }
