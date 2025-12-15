@@ -200,7 +200,11 @@ async function renderRoomTypes() {
     
     // 重新綁定事件
     document.querySelectorAll('input[name="roomType"]').forEach(radio => {
-        radio.addEventListener('change', calculatePrice);
+        radio.addEventListener('change', function () {
+            // 切換房型時清除先前的驗證錯誤訊息
+            document.querySelectorAll('input[name="roomType"]').forEach(r => r.setCustomValidity(''));
+            calculatePrice();
+        });
     });
 }
 
