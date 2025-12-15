@@ -706,6 +706,14 @@ body {
     font-size: 48px;
     margin-bottom: 15px;
     color: #2C8EC4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dashboard-card-icon .material-symbols-outlined {
+    font-size: 48px;
+    line-height: 1;
 }
 
 .dashboard-card-title {
