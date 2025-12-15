@@ -186,7 +186,7 @@ async function renderRoomTypes() {
              data-holiday-surcharge="${holidaySurcharge}"
              data-max-occupancy="${room.max_occupancy != null ? room.max_occupancy : 0}"
              data-extra-beds="${room.extra_beds != null ? room.extra_beds : 0}">
-            <input type="radio" id="room-${room.name}" name="roomType" value="${room.name}" ${disabledAttr} ${isUnavailable ? '' : 'required'}>
+            <input type="radio" id="room-${room.name}" name="roomType" value="${room.name}" ${disabledAttr}>
             <label for="room-${room.name}">
                 <div class="room-icon">${room.icon || '🏠'}</div>
                 <div class="room-name">${room.display_name}</div>
@@ -545,18 +545,49 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     
     const checkIn = document.getElementById('checkInDate').value;
     const checkOut = document.getElementById('checkOutDate').value;
+    const rangeInput = document.getElementById('dateRange');
     if (!checkIn || !checkOut) {
-        alert('請先選擇入住與退房日期');
-        const rangeInput = document.getElementById('dateRange');
         if (rangeInput) {
+            rangeInput.setCustomValidity('請先選擇入住與退房日期');
+            rangeInput.reportValidity();
             rangeInput.focus();
         }
         return;
+    }
+    if (rangeInput) {
+        rangeInput.setCustomValidity('');
+    }
+
+    // 手機格式檢查：台灣 09 開頭，共 10 碼
+    const phoneInput = document.getElementById('guestPhone');
+    const phone = phoneInput.value.trim();
+    const taiwanPhoneRegex = /^09\d{8}$/;
+    if (!taiwanPhoneRegex.test(phone)) {
+        phoneInput.setCustomValidity('請輸入有效的手機號碼（09 開頭，共 10 碼）');
+        phoneInput.reportValidity();
+        phoneInput.focus();
+        return;
+    } else {
+        phoneInput.setCustomValidity('');
     }
     
     const submitBtn = this.querySelector('.submit-btn');
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span>處理中...</span>';
+    
+    // 檢查是否有選房型（在日期與手機之後）
+    const selectedRoomRadio = document.querySelector('input[name="roomType"]:checked');
+    if (!selectedRoomRadio) {
+        const firstRoomRadio = document.querySelector('input[name="roomType"]');
+        if (firstRoomRadio) {
+            firstRoomRadio.setCustomValidity('請選擇房型');
+            firstRoomRadio.reportValidity();
+            firstRoomRadio.focus();
+        }
+        return;
+    } else {
+        document.querySelectorAll('input[name="roomType"]').forEach(r => r.setCustomValidity(''));
+    }
     
     const adults = parseInt(document.getElementById('adults').value) || 0;
     const children = parseInt(document.getElementById('children').value) || 0;
