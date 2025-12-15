@@ -242,7 +242,7 @@ function initDatePicker() {
             }
             if (dateRangeInfo) {
                 if (start && end && end > start) {
-                    dateRangeInfo.textContent = `入住：${formatWithWeekday(start)} － 退房：${formatWithWeekday(end)}`;
+                    dateRangeInfo.innerHTML = `入住：${formatWithWeekday(start)}&nbsp;&nbsp;&nbsp;~&nbsp;&nbsp;&nbsp;退房：${formatWithWeekday(end)}`;
                 } else if (start) {
                     dateRangeInfo.textContent = `入住：${formatWithWeekday(start)}（請再選退房日期）`;
                 } else {
