@@ -2557,29 +2557,54 @@ async function deleteAddon(id) {
 }
 
 // 檢查房間可用性
-// 規則：只根據「關房設定」判斷。
-// 只要在入住～退房日期範圍內，有任何一天被設為關房，前台即視為該房型滿房。
+// 規則：
+// 1. 只要在入住～退房日期範圍內，有「有效 / 保留」訂房，即視為滿房
+// 2. 或者在此日期範圍內被設定為關房（room_closures.is_closed = 1），也視為滿房
 async function getRoomAvailability(checkInDate, checkOutDate) {
     try {
         const sql = usePostgreSQL ? `
-            SELECT DISTINCT rt.name
-            FROM room_closures rc
-            INNER JOIN room_types rt ON rc.room_type = rt.display_name
-            WHERE rc.date >= $1 
-              AND rc.date < $2
-              AND rc.is_closed = 1
+            (
+                SELECT DISTINCT rt.name
+                FROM bookings b
+                INNER JOIN room_types rt ON b.room_type = rt.display_name
+                WHERE b.check_in_date < $2 
+                  AND b.check_out_date > $1
+                  AND b.status IN ('active', 'reserved')
+            )
+            UNION
+            (
+                SELECT DISTINCT rt.name
+                FROM room_closures rc
+                INNER JOIN room_types rt ON rc.room_type = rt.display_name
+                WHERE rc.date >= $1 
+                  AND rc.date < $2
+                  AND rc.is_closed = 1
+            )
         ` : `
-            SELECT DISTINCT rt.name
-            FROM room_closures rc
-            INNER JOIN room_types rt ON rc.room_type = rt.display_name
-            WHERE rc.date >= ? 
-              AND rc.date < ?
-              AND rc.is_closed = 1
+            SELECT DISTINCT name FROM (
+                SELECT rt.name AS name
+                FROM bookings b
+                INNER JOIN room_types rt ON b.room_type = rt.display_name
+                WHERE b.check_in_date < ? 
+                  AND b.check_out_date > ?
+                  AND b.status IN ('active', 'reserved')
+                
+                UNION
+                
+                SELECT rt.name AS name
+                FROM room_closures rc
+                INNER JOIN room_types rt ON rc.room_type = rt.display_name
+                WHERE rc.date >= ? 
+                  AND rc.date < ?
+                  AND rc.is_closed = 1
+            );
         `;
-        const params = usePostgreSQL ? [checkInDate, checkOutDate] : [checkInDate, checkOutDate];
+        const params = usePostgreSQL
+            ? [checkInDate, checkOutDate]
+            : [checkInDate, checkOutDate, checkInDate, checkOutDate];
         const result = await query(sql, params);
         const rows = result.rows || result;
-        const unavailableRooms = rows.map(row => row.name);
+        const unavailableRooms = rows.map(row => row.name || row.NAME || row.Name);
         return unavailableRooms || [];
     } catch (error) {
         console.error('❌ 查詢房間可用性失敗:', error.message);
