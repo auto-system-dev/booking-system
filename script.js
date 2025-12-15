@@ -510,6 +510,8 @@ document.getElementById('bookingForm').addEventListener('submit', async function
         guestName: document.getElementById('guestName').value,
         guestPhone: document.getElementById('guestPhone').value,
         guestEmail: document.getElementById('guestEmail').value,
+        adults: parseInt(document.getElementById('adults').value) || 0,
+        children: parseInt(document.getElementById('children').value) || 0,
         paymentAmount: document.querySelector('input[name="paymentAmount"]:checked').value,
         paymentMethod: document.querySelector('input[name="paymentMethod"]:checked').value
     };

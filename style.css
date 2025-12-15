@@ -296,6 +296,13 @@ body {
     gap: 15px;
 }
 
+.guest-count-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-top: 10px;
+}
+
 .form-group label {
     display: block;
     font-size: 14px;
