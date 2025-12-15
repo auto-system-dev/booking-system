@@ -22,26 +22,19 @@ async function loadRoomTypesAndSettings() {
         const addonsResult = await addonsResponse.json();
         const settingsResult = await settingsResponse.json();
         
-        if (roomTypesResult.success) {
-            roomTypes = roomTypesResult.data || [];
-            renderRoomTypes();
-        }
+        roomTypes = roomTypesResult.success ? (roomTypesResult.data || []) : [];
+        renderRoomTypes();
         
         // 檢查是否啟用前台加購商品功能
         enableAddons = settingsResult.success && settingsResult.data && 
                        (settingsResult.data.enable_addons === '1' || settingsResult.data.enable_addons === 'true');
         
-        if (enableAddons && addonsResult.success) {
-            addons = addonsResult.data || [];
-            renderAddons();
-            // 顯示加購商品區塊（避免 :has 選擇器，改用 closest）
-            const addonsSection = document.getElementById('addonsGrid')?.closest('.form-section');
-            if (addonsSection) addonsSection.style.display = 'block';
-        } else {
-            // 隱藏加購商品區塊
-            const addonsSection = document.getElementById('addonsGrid')?.closest('.form-section');
-            if (addonsSection) addonsSection.style.display = 'none';
-            addons = [];
+        addons = (enableAddons && addonsResult.success) ? (addonsResult.data || []) : [];
+        renderAddons();
+        // 顯示/隱藏加購商品區塊（避免 :has 選擇器，改用 closest）
+        const addonsSection = document.getElementById('addonsGrid')?.closest('.form-section');
+        if (addonsSection) addonsSection.style.display = enableAddons && addons.length > 0 ? 'block' : 'none';
+        if (!enableAddons || addons.length === 0) {
             selectedAddons = [];
         }
         
@@ -62,6 +55,7 @@ async function loadRoomTypesAndSettings() {
     } catch (error) {
         console.error('載入房型和設定錯誤:', error);
         document.getElementById('roomTypeGrid').innerHTML = '<div class="error">載入房型失敗，請重新整理頁面</div>';
+        document.getElementById('addonsGrid').innerHTML = '<div class="error">載入加購商品失敗</div>';
     }
 }
 
