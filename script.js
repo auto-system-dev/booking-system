@@ -179,7 +179,12 @@ async function renderRoomTypes() {
         }
         
         return `
-        <div class="${roomOptionClass}" data-room="${room.name}" data-price="${room.price}" data-holiday-surcharge="${holidaySurcharge}">
+        <div class="${roomOptionClass}" 
+             data-room="${room.name}" 
+             data-price="${room.price}" 
+             data-holiday-surcharge="${holidaySurcharge}"
+             data-max-occupancy="${room.max_occupancy != null ? room.max_occupancy : 0}"
+             data-extra-beds="${room.extra_beds != null ? room.extra_beds : 0}">
             <input type="radio" id="room-${room.name}" name="roomType" value="${room.name}" ${disabledAttr} ${isUnavailable ? '' : 'required'}>
             <label for="room-${room.name}">
                 <div class="room-icon">${room.icon || '🏠'}</div>
@@ -506,6 +511,26 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span>處理中...</span>';
     
+    const adults = parseInt(document.getElementById('adults').value) || 0;
+    const children = parseInt(document.getElementById('children').value) || 0;
+    const totalGuests = adults + children;
+    
+    // 選取的房型與容量檢查
+    const selectedRoom = document.querySelector('input[name="roomType"]:checked').closest('.room-option');
+    const maxOcc = parseInt(selectedRoom.dataset.maxOccupancy || '0');
+    const extraBeds = parseInt(selectedRoom.dataset.extraBeds || '0');
+    const capacity = (maxOcc || 0) + (extraBeds || 0);
+    
+    if (capacity > 0 && totalGuests > capacity) {
+        const msg = `您所訂購的房型總容納人數為 ${capacity} 人，目前選擇 ${totalGuests} 人，是否確定繼續完成預訂？\n\n*若超出房型建議人數，旅宿業者有權決定是否接受此筆訂單。`;
+        const proceed = window.confirm(msg);
+        if (!proceed) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span>確認訂房</span>';
+            return;
+        }
+    }
+    
     // 收集表單資料
     const formData = {
         checkInDate: document.getElementById('checkInDate').value,
@@ -514,14 +539,13 @@ document.getElementById('bookingForm').addEventListener('submit', async function
         guestName: document.getElementById('guestName').value,
         guestPhone: document.getElementById('guestPhone').value,
         guestEmail: document.getElementById('guestEmail').value,
-        adults: parseInt(document.getElementById('adults').value) || 0,
-        children: parseInt(document.getElementById('children').value) || 0,
+        adults,
+        children,
         paymentAmount: document.querySelector('input[name="paymentAmount"]:checked').value,
         paymentMethod: document.querySelector('input[name="paymentMethod"]:checked').value
     };
     
     // 計算價格資訊
-    const selectedRoom = document.querySelector('input[name="roomType"]:checked').closest('.room-option');
     const pricePerNight = parseInt(selectedRoom.dataset.price);
     const nights = calculateNights();
     // 計算加購商品總金額（只有在啟用時才計算，考慮數量）
