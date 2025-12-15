@@ -304,33 +304,42 @@ body {
 }
 
 .guest-counter {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    display: inline-flex;
     align-items: center;
     background: #f7f9fb;
     border: 1px solid #e0e0e0;
     border-radius: 10px;
     overflow: hidden;
+    min-width: 140px;
 }
 
 .guest-counter-btn {
     border: none;
-    background: #eef2f6;
-    font-size: 24px;
-    padding: 10px;
+    background: #fff;
+    font-size: 18px;
+    padding: 8px 12px;
     cursor: pointer;
     transition: background 0.2s ease;
+    border-right: 1px solid #e0e0e0;
+}
+
+.guest-counter-btn:last-of-type {
+    border-right: none;
+    border-left: 1px solid #e0e0e0;
 }
 
 .guest-counter-btn:hover {
-    background: #dfe7f0;
+    background: #2C8EC4;
+    color: #fff;
 }
 
 .guest-counter-value {
     text-align: center;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     color: #333;
+    padding: 0 12px;
+    min-width: 32px;
 }
 
 .form-group label {
