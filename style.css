@@ -321,8 +321,9 @@ body {
 }
 
 .guest-counter-label-inline {
-    font-size: 13px;
-    color: #666;
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
 }
 
 .guest-counter {
