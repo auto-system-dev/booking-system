@@ -237,7 +237,9 @@ app.post('/api/booking', async (req, res) => {
             totalAmount,
             finalAmount,
             addons,
-            addonsTotal
+            addonsTotal,
+            adults,
+            children
         } = req.body;
 
         // 驗證必填欄位
@@ -336,6 +338,8 @@ app.post('/api/booking', async (req, res) => {
             guestName,
             guestPhone,
             guestEmail,
+            adults: adults || 0,
+            children: children || 0,
             paymentAmount: paymentAmount === 'deposit' ? `訂金 (${depositPercentage}%)` : '全額',
             paymentMethod: paymentMethods[paymentMethod] || paymentMethod,
             pricePerNight,
@@ -542,6 +546,8 @@ app.post('/api/booking', async (req, res) => {
                 guestName: bookingData.guestName,
                 guestPhone: bookingData.guestPhone,
                 guestEmail: bookingData.guestEmail,
+                adults: bookingData.adults || 0,
+                children: bookingData.children || 0,
                 paymentAmount: bookingData.paymentAmount,
                 paymentMethod: bookingData.paymentMethod,
                 pricePerNight: bookingData.pricePerNight,

@@ -177,6 +177,8 @@ async function initPostgreSQL() {
                     guest_name VARCHAR(255) NOT NULL,
                     guest_phone VARCHAR(255) NOT NULL,
                     guest_email VARCHAR(255) NOT NULL,
+                    adults INTEGER DEFAULT 0,
+                    children INTEGER DEFAULT 0,
                     payment_amount VARCHAR(255) NOT NULL,
                     payment_method VARCHAR(255) NOT NULL,
                     price_per_night INTEGER NOT NULL,
@@ -264,6 +266,28 @@ async function initPostgreSQL() {
                     console.log('✅ addons_total 欄位已存在');
                 } else {
                     console.warn('⚠️  添加 addons_total 欄位時發生錯誤:', err.message);
+                }
+            }
+            
+            // 檢查並添加 adults, children 欄位（如果不存在）
+            try {
+                await query(`ALTER TABLE bookings ADD COLUMN adults INTEGER DEFAULT 0`);
+                console.log('✅ 已添加 adults 欄位');
+            } catch (err) {
+                if (err.message && (err.message.includes('already exists') || err.message.includes('duplicate column') || err.message.includes('column') && err.message.includes('already'))) {
+                    console.log('✅ adults 欄位已存在');
+                } else {
+                    console.warn('⚠️  添加 adults 欄位時發生錯誤:', err.message);
+                }
+            }
+            try {
+                await query(`ALTER TABLE bookings ADD COLUMN children INTEGER DEFAULT 0`);
+                console.log('✅ 已添加 children 欄位');
+            } catch (err) {
+                if (err.message && (err.message.includes('already exists') || err.message.includes('duplicate column') || err.message.includes('column') && err.message.includes('already'))) {
+                    console.log('✅ children 欄位已存在');
+                } else {
+                    console.warn('⚠️  添加 children 欄位時發生錯誤:', err.message);
                 }
             }
             
@@ -860,6 +884,8 @@ function initSQLite() {
                     guest_name TEXT NOT NULL,
                     guest_phone TEXT NOT NULL,
                     guest_email TEXT NOT NULL,
+                    adults INTEGER DEFAULT 0,
+                    children INTEGER DEFAULT 0,
                     payment_amount TEXT NOT NULL,
                     payment_method TEXT NOT NULL,
                     price_per_night INTEGER NOT NULL,
@@ -1012,7 +1038,7 @@ function initSQLite() {
                                                     console.warn('⚠️  新增 addons 欄位時發生錯誤:', err.message);
                                                 }
                                                 
-                                                db.run(`ALTER TABLE bookings ADD COLUMN addons_total INTEGER DEFAULT 0`, (err) => {
+                db.run(`ALTER TABLE bookings ADD COLUMN addons_total INTEGER DEFAULT 0`, (err) => {
                                                     if (err && !err.message.includes('duplicate column')) {
                                                         console.warn('⚠️  新增 addons_total 欄位時發生錯誤:', err.message);
                                                     }
@@ -1495,19 +1521,21 @@ async function saveBooking(bookingData) {
             INSERT INTO bookings (
                 booking_id, check_in_date, check_out_date, room_type,
                 guest_name, guest_phone, guest_email,
+                adults, children,
                 payment_amount, payment_method,
                 price_per_night, nights, total_amount, final_amount,
                 booking_date, email_sent, payment_status, status, addons, addons_total
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
             RETURNING id
         ` : `
             INSERT INTO bookings (
                 booking_id, check_in_date, check_out_date, room_type,
                 guest_name, guest_phone, guest_email,
+                adults, children,
                 payment_amount, payment_method,
                 price_per_night, nights, total_amount, final_amount,
                 booking_date, email_sent, payment_status, status, addons, addons_total
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         
         const addonsJson = bookingData.addons ? JSON.stringify(bookingData.addons) : null;
@@ -1521,6 +1549,8 @@ async function saveBooking(bookingData) {
             bookingData.guestName,
             bookingData.guestPhone,
             bookingData.guestEmail,
+            bookingData.adults || 0,
+            bookingData.children || 0,
             bookingData.paymentAmount,
             bookingData.paymentMethod,
             bookingData.pricePerNight,

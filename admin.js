@@ -185,7 +185,7 @@ function renderBookings() {
     const tbody = document.getElementById('bookingsTableBody');
     
     if (filteredBookings.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="loading">沒有找到訂房記錄</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" class="loading">沒有找到訂房記錄</td></tr>';
         return;
     }
 
@@ -208,6 +208,7 @@ function renderBookings() {
             <td>${booking.booking_id}</td>
             <td>${booking.guest_name}</td>
             <td>${booking.room_type}</td>
+            <td>${(booking.adults || 0) + (booking.children || 0)}人</td>
             <td>${formatDate(booking.check_in_date)}</td>
             <td>${booking.nights} 晚</td>
             <td>NT$ ${totalAmount.toLocaleString()}</td>
@@ -414,6 +415,10 @@ function showBookingModal(booking) {
         <div class="detail-row">
             <span class="detail-label">房型</span>
             <span class="detail-value">${booking.room_type}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">人數</span>
+            <span class="detail-value">成人：${booking.adults || 0} 人，孩童：${booking.children || 0} 人</span>
         </div>
         <div class="detail-row">
             <span class="detail-label">入住日期</span>
