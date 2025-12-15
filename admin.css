@@ -75,6 +75,11 @@ body {
     object-fit: contain;
 }
 
+.nav-icon .material-symbols-outlined {
+    font-size: 20px;
+    line-height: 1;
+}
+
 /* 主內容區 */
 .main-content {
     flex: 1;
