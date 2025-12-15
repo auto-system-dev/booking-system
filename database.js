@@ -2576,8 +2576,8 @@ async function getRoomAvailability(checkInDate, checkOutDate) {
                 SELECT DISTINCT rt.name
                 FROM room_closures rc
                 INNER JOIN room_types rt ON rc.room_type = rt.display_name
-                WHERE rc.date >= $1 
-                  AND rc.date < $2
+                WHERE rc.date >= $1::date 
+                  AND rc.date <  $2::date
                   AND rc.is_closed = 1
             )
         ` : `
