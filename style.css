@@ -105,26 +105,10 @@ body {
 }
 
 .date-input-wrapper label {
-    font-size: 14px;
-    color: #666;
-    margin-bottom: 8px;
-    font-weight: 500;
-}
-
-.date-input-wrapper input[type="date"] {
-    padding: 12px 16px;
-    border: 2px solid #e0e0e0;
-    border-radius: 12px;
     font-size: 16px;
-    font-family: inherit;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.date-input-wrapper input[type="date"]:focus {
-    outline: none;
-    border-color: #2C8EC4;
-    box-shadow: 0 0 0 3px rgba(44, 142, 196, 0.1);
+    color: #333;
+    margin-bottom: 8px;
+    font-weight: 600;
 }
 
 .nights-display {
@@ -132,16 +116,40 @@ body {
     padding: 12px;
     background: #f5f5f5;
     border-radius: 8px;
-    font-size: 14px;
-    color: #666;
+    font-size: 16px;
+    color: #333;
+    font-weight: 600;
     margin-top: 10px;
 }
 .date-range-info {
     text-align: center;
     margin-top: 8px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #2C8EC4;
+}
+
+#dateRange {
+    padding: 12px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
     font-size: 16px;
+    font-family: inherit;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    color: #2C8EC4;
     font-weight: 600;
-    color: #333;
+}
+
+#dateRange::placeholder {
+    color: #2C8EC4;
+    opacity: 0.8;
+}
+
+#dateRange:focus {
+    outline: none;
+    border-color: #2C8EC4;
+    box-shadow: 0 0 0 3px rgba(44, 142, 196, 0.1);
 }
 
 /* 房型選擇 */

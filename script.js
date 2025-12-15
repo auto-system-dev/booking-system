@@ -227,7 +227,7 @@ function initDatePicker() {
         mode: 'range',
         dateFormat: 'Y-m-d',
         minDate: 'today',
-        locale: 'zh',
+        locale: flatpickr.l10ns.zh || 'zh',
         onChange: (selectedDates) => {
             const [start, end] = selectedDates;
             if (start) {
