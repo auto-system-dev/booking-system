@@ -643,6 +643,142 @@ body {
     margin-top: 20px;
 }
 
+/* 訂房記錄檢視切換 */
+.view-tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 12px;
+}
+
+.view-tab {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid #e0e0e0;
+    background: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.view-tab.active {
+    background: #2C8EC4;
+    color: #fff;
+    border-color: #2C8EC4;
+}
+
+.view-tab .material-symbols-outlined {
+    font-size: 18px;
+}
+
+/* 排房日曆 */
+.calendar-container {
+    margin-top: 20px;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
+    padding: 16px;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.calendar-title {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.calendar-table-wrapper {
+    overflow-x: auto;
+}
+
+.calendar-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.calendar-table th,
+.calendar-table td {
+    border: 1px solid #eee;
+    padding: 6px 8px;
+    text-align: center;
+    min-width: 90px;
+}
+
+.calendar-table th.sticky-col,
+.calendar-table td.sticky-col {
+    position: sticky;
+    left: 0;
+    background: #f9fafb;
+    z-index: 2;
+}
+
+.calendar-cell {
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+}
+
+.calendar-cell.booked {
+    background: #e0f3ff;
+}
+
+.calendar-cell.closed {
+    background: #ffe5e5;
+}
+
+.calendar-cell:hover {
+    background: #f1f5f9;
+}
+
+.calendar-cell .count {
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.calendar-cell .status {
+    font-size: 11px;
+    color: #666;
+}
+
+.calendar-legend {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #666;
+    display: flex;
+    gap: 10px;
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.legend-box {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+.legend-box.booked {
+    background: #e0f3ff;
+}
+
+.legend-box.closed {
+    background: #ffe5e5;
+}
+
 .pagination button {
     padding: 8px 16px;
     border: 1px solid #e0e0e0;

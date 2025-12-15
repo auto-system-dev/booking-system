@@ -4,6 +4,8 @@ let allBookings = [];
 let filteredBookings = [];
 let currentPage = 1;
 const itemsPerPage = 10;
+let currentBookingView = 'list';
+let calendarStartDate = null;
 let sortColumn = null; // 當前排序欄位
 let sortDirection = 'asc'; // 排序方向：'asc' 或 'desc'
 
@@ -177,6 +179,143 @@ async function loadBookings() {
     } catch (error) {
         console.error('載入訂房記錄錯誤:', error);
         showError('載入訂房記錄時發生錯誤：' + error.message);
+    }
+}
+
+// 切換訂房記錄檢視（列表 / 日曆）
+function switchBookingView(view) {
+    currentBookingView = view;
+    const listTab = document.getElementById('bookingListTab');
+    const calTab = document.getElementById('bookingCalendarTab');
+    const listFilters = document.getElementById('bookingListFilters');
+    const listTable = document.getElementById('bookingListTableContainer');
+    const pagination = document.getElementById('pagination');
+    const calendarContainer = document.getElementById('bookingCalendarContainer');
+    
+    if (!listTab || !calTab || !listFilters || !listTable || !pagination || !calendarContainer) return;
+    
+    if (view === 'calendar') {
+        listTab.classList.remove('active');
+        calTab.classList.add('active');
+        listFilters.style.display = 'none';
+        listTable.style.display = 'none';
+        pagination.style.display = 'none';
+        calendarContainer.style.display = 'block';
+        loadBookingCalendar();
+    } else {
+        listTab.classList.add('active');
+        calTab.classList.remove('active');
+        listFilters.style.display = '';
+        listTable.style.display = '';
+        pagination.style.display = '';
+        calendarContainer.style.display = 'none';
+        renderBookings();
+    }
+}
+
+function reloadCurrentBookingView() {
+    if (currentBookingView === 'calendar') {
+        loadBookingCalendar();
+    } else {
+        loadBookings();
+    }
+}
+
+function changeCalendarRange(offsetDays) {
+    if (!calendarStartDate) {
+        calendarStartDate = new Date();
+    } else {
+        calendarStartDate.setDate(calendarStartDate.getDate() + offsetDays);
+    }
+    loadBookingCalendar();
+}
+
+async function loadBookingCalendar() {
+    try {
+        if (!calendarStartDate) {
+            calendarStartDate = new Date();
+        }
+        const startStr = calendarStartDate.toISOString().split('T')[0];
+        const response = await fetch(`/api/admin/room-calendar?startDate=${startStr}&days=7`);
+        const result = await response.json();
+        if (!result.success) {
+            console.error('載入排房日曆失敗:', result.message);
+            return;
+        }
+        const { dates, calendar } = result.data;
+        renderBookingCalendar(dates, calendar);
+    } catch (error) {
+        console.error('載入排房日曆時發生錯誤:', error);
+    }
+}
+
+function renderBookingCalendar(dates, calendar) {
+    const container = document.getElementById('bookingCalendar');
+    const titleEl = document.getElementById('calendarTitle');
+    if (!container) return;
+    
+    if (!dates || dates.length === 0) {
+        container.innerHTML = '<div class="loading">沒有日期資料</div>';
+        return;
+    }
+    
+    const start = dates[0];
+    const end = dates[dates.length - 1];
+    if (titleEl) {
+        titleEl.textContent = `${start} ~ ${end} 排房日曆`;
+    }
+    
+    const roomTypes = Object.keys(calendar || {});
+    if (roomTypes.length === 0) {
+        container.innerHTML = '<div class="loading">目前沒有房型資料</div>';
+        return;
+    }
+    
+    let html = '<table class="calendar-table"><thead><tr><th class="sticky-col">房型</th>';
+    dates.forEach(d => {
+        html += `<th>${d}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+    
+    roomTypes.forEach(rt => {
+        html += `<tr><td class="sticky-col">${rt}</td>`;
+        dates.forEach(d => {
+            const cell = (calendar[rt] && calendar[rt][d]) || { bookings: 0, isClosed: false };
+            const classes = ['calendar-cell'];
+            if (cell.bookings > 0) classes.push('booked');
+            if (cell.isClosed) classes.push('closed');
+            html += `
+                <td>
+                    <div class="${classes.join(' ')}" onclick="toggleRoomClosure('${rt}', '${d}', ${cell.isClosed ? 0 : 1})">
+                        <div class="count">${cell.bookings} 筆</div>
+                        <div class="status">${cell.isClosed ? '關房' : '開放'}</div>
+                    </div>
+                </td>
+            `;
+        });
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+async function toggleRoomClosure(roomType, date, newStatus) {
+    try {
+        const res = await fetch('/api/admin/room-calendar/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roomType, date, isClosed: newStatus })
+        });
+        const result = await res.json();
+        if (result.success) {
+            loadBookingCalendar();
+        } else {
+            alert(result.message || '更新關房狀態失敗');
+        }
+    } catch (error) {
+        console.error('更新關房狀態錯誤:', error);
+        alert('更新關房狀態時發生錯誤');
     }
 }
 

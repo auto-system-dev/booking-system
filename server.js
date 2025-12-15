@@ -1254,6 +1254,92 @@ app.get('/api/room-availability', async (req, res) => {
     }
 });
 
+// API: 後台排房日曆資料
+app.get('/api/admin/room-calendar', async (req, res) => {
+    try {
+        const { startDate, days } = req.query;
+        const start = startDate || new Date().toISOString().split('T')[0];
+        const rangeDays = parseInt(days, 10) || 7;
+        const startObj = new Date(start);
+        const endObj = new Date(startObj);
+        endObj.setDate(startObj.getDate() + rangeDays);
+        const end = endObj.toISOString().split('T')[0];
+        
+        const [roomTypes, bookings, closures] = await Promise.all([
+            db.getAllRoomTypesAdmin(),
+            db.getBookingsInRange(start, end),
+            db.getRoomClosuresInRange(start, end)
+        ]);
+        
+        // 準備日期陣列
+        const dates = [];
+        for (let d = new Date(startObj); d < endObj; d.setDate(d.getDate() + 1)) {
+            dates.push(d.toISOString().split('T')[0]);
+        }
+        
+        // 建立房型 x 日期結構
+        const calendar = {};
+        roomTypes.forEach(rt => {
+            if (rt.is_active === 0) return;
+            const key = rt.display_name || rt.name;
+            calendar[key] = {};
+            dates.forEach(date => {
+                calendar[key][date] = { bookings: 0, isClosed: false };
+            });
+        });
+        
+        // 累計訂房數量
+        bookings.forEach(b => {
+            const roomType = b.room_type;
+            const checkIn = new Date(b.check_in_date);
+            const checkOut = new Date(b.check_out_date);
+            dates.forEach(dateStr => {
+                const dateObj = new Date(dateStr);
+                if (dateObj >= checkIn && dateObj < checkOut) {
+                    if (calendar[roomType] && calendar[roomType][dateStr]) {
+                        calendar[roomType][dateStr].bookings += 1;
+                    }
+                }
+            });
+        });
+        
+        // 套用關房設定
+        closures.forEach(c => {
+            const roomType = c.room_type;
+            const date = (c.date || '').slice(0, 10);
+            if (calendar[roomType] && calendar[roomType][date]) {
+                calendar[roomType][date].isClosed = !!c.is_closed;
+            }
+        });
+        
+        res.json({
+            success: true,
+            data: {
+                dates,
+                calendar
+            }
+        });
+    } catch (error) {
+        console.error('取得排房日曆資料錯誤:', error);
+        res.status(500).json({ success: false, message: '取得排房日曆資料失敗' });
+    }
+});
+
+// API: 切換單日關房狀態
+app.post('/api/admin/room-calendar/toggle', async (req, res) => {
+    try {
+        const { roomType, date, isClosed } = req.body;
+        if (!roomType || !date) {
+            return res.status(400).json({ success: false, message: '缺少房型或日期' });
+        }
+        await db.setRoomClosure(roomType, date, !!isClosed);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('更新關房狀態錯誤:', error);
+        res.status(500).json({ success: false, message: '更新關房狀態失敗' });
+    }
+});
+
 // API: 取得所有房型（管理後台，包含已停用的）
 app.get('/api/admin/room-types', async (req, res) => {
     try {
