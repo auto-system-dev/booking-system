@@ -164,6 +164,16 @@ body {
     .date-range-info {
         font-size: 15px;
     }
+    .guest-count-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    .guest-counter-input {
+        padding: 8px 10px;
+    }
+    .guest-counter {
+        min-width: 0;
+    }
 }
 
 /* 房型選擇 */
@@ -322,7 +332,7 @@ body {
 
 .guest-counter-label-inline {
     font-size: 16px;
-    font-weight: 500;
+    font-weight: 600;
     color: #333;
 }
 
