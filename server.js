@@ -2116,50 +2116,74 @@ const handlePaymentResult = async (req, res) => {
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
                         <title>付款成功</title>
                         <style>
+                            :root {
+                                --primary-color: #2C8EC4;
+                                --card-bg: #ffffff;
+                                --header-bg: #262A33;
+                            }
                             body {
-                                font-family: 'Microsoft JhengHei', Arial, sans-serif;
+                                font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
                                 display: flex;
                                 justify-content: center;
                                 align-items: center;
                                 min-height: 100vh;
                                 margin: 0;
-                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                background-image: url('/Background%20image.jpg');
+                                background-size: cover;
+                                background-position: center;
+                                background-repeat: no-repeat;
+                                background-attachment: fixed;
+                                padding: 20px;
                             }
                             .container {
-                                background: white;
-                                padding: 40px;
-                                border-radius: 20px;
+                                background: var(--card-bg);
+                                border-radius: 24px;
                                 box-shadow: 0 20px 60px rgba(0,0,0,0.3);
                                 text-align: center;
-                                max-width: 500px;
+                                max-width: 480px;
+                                width: 100%;
+                                overflow: hidden;
+                            }
+                            .container-header {
+                                background: var(--header-bg);
+                                color: #fff;
+                                padding: 24px 20px 16px;
                             }
                             .success-icon {
-                                font-size: 80px;
-                                color: #4CAF50;
-                                margin-bottom: 20px;
+                                font-size: 56px;
+                                color: #4caf50;
+                                margin-bottom: 8px;
                             }
-                            h1 { color: #333; margin-bottom: 10px; }
-                            p { color: #666; margin: 10px 0; }
+                            .container-body {
+                                padding: 24px 28px 28px;
+                            }
+                            h1 { color: #333; margin: 0 0 16px; font-size: 24px; }
+                            p { color: #555; margin: 6px 0; font-size: 14px; }
                             .btn {
                                 display: inline-block;
                                 margin-top: 20px;
-                                padding: 12px 30px;
-                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                                color: white;
+                                padding: 10px 28px;
+                                background: var(--primary-color);
+                                color: #fff;
                                 text-decoration: none;
-                                border-radius: 8px;
+                                border-radius: 999px;
+                                font-size: 14px;
                             }
                         </style>
                     </head>
                     <body>
                         <div class="container">
-                            <div class="success-icon">✓</div>
-                            <h1>付款成功！</h1>
-                            <p>訂單編號：${paymentResult.merchantTradeNo}</p>
-                            <p>交易編號：${paymentResult.tradeNo}</p>
-                            <p>付款金額：NT$ ${paymentResult.tradeAmt.toLocaleString()}</p>
-                            <p>付款時間：${paymentResult.paymentDate}</p>
-                            <a href="/" class="btn">返回首頁</a>
+                            <div class="container-header">
+                                <div class="success-icon">✓</div>
+                                <h1>付款成功！</h1>
+                            </div>
+                            <div class="container-body">
+                                <p>訂單編號：${paymentResult.merchantTradeNo}</p>
+                                <p>交易編號：${paymentResult.tradeNo}</p>
+                                <p>付款金額：NT$ ${paymentResult.tradeAmt.toLocaleString()}</p>
+                                <p>付款時間：${paymentResult.paymentDate}</p>
+                                <a href="/" class="btn">返回首頁</a>
+                            </div>
                         </div>
                     </body>
                 </html>
