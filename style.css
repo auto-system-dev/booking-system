@@ -152,6 +152,20 @@ body {
     box-shadow: 0 0 0 3px rgba(44, 142, 196, 0.1);
 }
 
+@media (max-width: 480px) {
+    #dateRange {
+        width: 100%;
+        font-size: 14px;
+        padding: 10px 12px;
+    }
+    .date-input-wrapper label {
+        font-size: 15px;
+    }
+    .date-range-info {
+        font-size: 15px;
+    }
+}
+
 /* 房型選擇 */
 .room-type-grid {
     display: grid;
