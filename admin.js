@@ -185,7 +185,7 @@ function renderBookings() {
     const tbody = document.getElementById('bookingsTableBody');
     
     if (filteredBookings.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="13" class="loading">沒有找到訂房記錄</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="loading">沒有找到訂房記錄</td></tr>';
         return;
     }
 
@@ -200,7 +200,6 @@ function renderBookings() {
         const isCancelled = bookingStatus === 'cancelled';
         
         // 確保金額是數字類型並正確顯示
-        const totalAmount = parseInt(booking.total_amount) || 0;
         const finalAmount = parseInt(booking.final_amount) || 0;
         
         return `
@@ -208,10 +207,9 @@ function renderBookings() {
             <td>${booking.booking_id}</td>
             <td>${booking.guest_name}</td>
             <td>${booking.room_type}</td>
-            <td>${(booking.adults || 0) + (booking.children || 0)}人</td>
+            <td>${(booking.adults || 0)}大${(booking.children || 0)}小</td>
             <td>${formatDate(booking.check_in_date)}</td>
             <td>${booking.nights} 晚</td>
-            <td>NT$ ${totalAmount.toLocaleString()}</td>
             <td>NT$ ${finalAmount.toLocaleString()}</td>
             <td>${booking.payment_method}</td>
             <td>
