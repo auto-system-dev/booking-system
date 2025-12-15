@@ -212,10 +212,22 @@ function initDatePicker() {
     const rangeInput = document.getElementById('dateRange');
     const checkInInput = document.getElementById('checkInDate');
     const checkOutInput = document.getElementById('checkOutDate');
+    const dateRangeInfo = document.getElementById('dateRangeInfo');
+
+    const formatWithWeekday = (date) => {
+        if (!date) return '';
+        const weekdays = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${m}/${d} ${weekdays[date.getDay()]}`;
+    };
+
     datePicker = flatpickr(rangeInput, {
         mode: 'range',
         dateFormat: 'Y-m-d',
         minDate: 'today',
+        locale: 'zh',
         onChange: (selectedDates) => {
             const [start, end] = selectedDates;
             if (start) {
@@ -227,6 +239,15 @@ function initDatePicker() {
                 checkOutInput.value = end.toISOString().split('T')[0];
             } else {
                 checkOutInput.value = '';
+            }
+            if (dateRangeInfo) {
+                if (start && end && end > start) {
+                    dateRangeInfo.textContent = `入住：${formatWithWeekday(start)} － 退房：${formatWithWeekday(end)}`;
+                } else if (start) {
+                    dateRangeInfo.textContent = `入住：${formatWithWeekday(start)}（請再選退房日期）`;
+                } else {
+                    dateRangeInfo.textContent = '';
+                }
             }
             calculateNights();
             calculatePrice();
