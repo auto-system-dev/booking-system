@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>線上訂房系統</title>
+    <link rel="preload" href="Background%20image.jpg" as="image">
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,7 +20,7 @@
                 <p class="subtitle">預訂您的完美住宿體驗</p>
             </div>
 
-            <form id="bookingForm" class="booking-form">
+            <form id="bookingForm" class="booking-form" novalidate>
                 <!-- 日期選擇區 -->
                 <div class="form-section">
                     <h2 class="section-title"><span class="material-symbols-outlined">calendar_month</span> 選擇日期</h2>
@@ -61,7 +62,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="guestPhone">手機 <span class="required">*</span></label>
-                            <input type="tel" id="guestPhone" name="guestPhone" placeholder="0912-345-678" required>
+                            <input type="tel" id="guestPhone" name="guestPhone" placeholder="0912-345-678" required inputmode="numeric" pattern="09[0-9]{8}" maxlength="10">
                         </div>
                         <div class="form-group">
                             <label for="guestEmail">Email <span class="required">*</span></label>
