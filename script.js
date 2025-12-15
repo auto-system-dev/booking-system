@@ -543,6 +543,17 @@ document.querySelectorAll('input[name="paymentAmount"]').forEach(radio => {
 document.getElementById('bookingForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
+    const checkIn = document.getElementById('checkInDate').value;
+    const checkOut = document.getElementById('checkOutDate').value;
+    if (!checkIn || !checkOut) {
+        alert('請先選擇入住與退房日期');
+        const rangeInput = document.getElementById('dateRange');
+        if (rangeInput) {
+            rangeInput.focus();
+        }
+        return;
+    }
+    
     const submitBtn = this.querySelector('.submit-btn');
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span>處理中...</span>';
