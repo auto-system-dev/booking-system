@@ -285,11 +285,12 @@ function renderBookingCalendar(dates, calendar) {
             if (cell.bookings > 0) classes.push('booked');
             if (cell.isClosed) classes.push('closed');
             const namesText = (cell.names && cell.names.length > 0) ? cell.names.join('<br>') : '';
+            const statusText = cell.bookings > 0 ? '有訂房' : (cell.isClosed ? '關房' : '開放');
             html += `
                 <td>
                     <div class="${classes.join(' ')}" onclick="handleCalendarCellClick('${rt}', '${d}', ${cell.isClosed ? 0 : 1}, ${cell.bookings})">
                         <div class="count">${cell.bookings} 筆</div>
-                        <div class="status">${cell.isClosed ? '關房' : '開放'}</div>
+                        <div class="status">${statusText}</div>
                         ${namesText ? `<div class="names">${namesText}</div>` : ''}
                     </div>
                 </td>
