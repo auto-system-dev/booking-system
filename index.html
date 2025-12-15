@@ -159,6 +159,22 @@
                 <h3>訂房成功！</h3>
                 <p>我們已收到您的訂房申請，確認信已發送至您的 Email</p>
             </div>
+
+            <!-- 容納人數提醒模態框 -->
+            <div id="capacityModal" class="modal-overlay hidden">
+                <div class="modal-dialog">
+                    <div class="modal-icon">⚠️</div>
+                    <h3 class="modal-title">提醒</h3>
+                    <p class="modal-message">
+                        您所訂購的房型總容納人數為 <span id="capacityValue">0</span> 人，目前選擇 <span id="guestCountValue">0</span> 人，是否確定繼續完成預訂？
+                    </p>
+                    <p class="modal-note">*若超出房型建議人數，旅宿業者有權決定是否接受此筆訂單。</p>
+                    <div class="modal-actions">
+                        <button type="button" id="capacityCancelBtn" class="modal-btn modal-btn-secondary">取消</button>
+                        <button type="button" id="capacityConfirmBtn" class="modal-btn modal-btn-primary">繼續</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

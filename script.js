@@ -7,6 +7,7 @@ let depositPercentage = 30; // 預設訂金百分比
 let unavailableRooms = []; // 已滿房的房型列表
 let datePicker = null; // 日期區間選擇器
 let guestCounts = { adults: 1, children: 0 };
+let capacityModalData = { capacity: 0, totalGuests: 0 };
 
 // 載入房型資料和系統設定
 async function loadRoomTypesAndSettings() {
@@ -253,6 +254,22 @@ function initDatePicker() {
     });
 }
 
+function showCapacityModal(capacity, totalGuests) {
+    capacityModalData.capacity = capacity;
+    capacityModalData.totalGuests = totalGuests;
+    const overlay = document.getElementById('capacityModal');
+    if (!overlay) return;
+    document.getElementById('capacityValue').textContent = capacity;
+    document.getElementById('guestCountValue').textContent = totalGuests;
+    overlay.classList.remove('hidden');
+}
+
+function hideCapacityModal() {
+    const overlay = document.getElementById('capacityModal');
+    if (!overlay) return;
+    overlay.classList.add('hidden');
+}
+
 function changeGuestCount(type, delta) {
     const min = type === 'adults' ? 1 : 0;
     const max = 20;
@@ -279,6 +296,25 @@ document.addEventListener('DOMContentLoaded', function() {
             checkRoomAvailability();
         }
     }, 500);
+});
+
+// 容納人數提醒模態框按鈕事件
+document.addEventListener('DOMContentLoaded', function() {
+    const cancelBtn = document.getElementById('capacityCancelBtn');
+    const confirmBtn = document.getElementById('capacityConfirmBtn');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            hideCapacityModal();
+        });
+    }
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', () => {
+            hideCapacityModal();
+            window.__skipCapacityCheck = true;
+            const form = document.getElementById('bookingForm');
+            if (form) form.requestSubmit();
+        });
+    }
 });
 
 // 計算住宿天數
@@ -521,15 +557,13 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     const extraBeds = parseInt(selectedRoom.dataset.extraBeds || '0');
     const capacity = (maxOcc || 0) + (extraBeds || 0);
     
-    if (capacity > 0 && totalGuests > capacity) {
-        const msg = `您所訂購的房型總容納人數為 ${capacity} 人，目前選擇 ${totalGuests} 人，是否確定繼續完成預訂？\n\n*若超出房型建議人數，旅宿業者有權決定是否接受此筆訂單。`;
-        const proceed = window.confirm(msg);
-        if (!proceed) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<span>確認訂房</span>';
-            return;
-        }
+    if (!window.__skipCapacityCheck && capacity > 0 && totalGuests > capacity) {
+        showCapacityModal(capacity, totalGuests);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span>確認訂房</span>';
+        return;
     }
+    window.__skipCapacityCheck = false;
     
     // 收集表單資料
     const formData = {
