@@ -750,6 +750,13 @@ body {
     color: #666;
 }
 
+.calendar-cell .names {
+    margin-top: 2px;
+    font-size: 11px;
+    color: #333;
+    white-space: normal;
+}
+
 .calendar-legend {
     margin-top: 10px;
     font-size: 12px;

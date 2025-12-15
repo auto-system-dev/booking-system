@@ -2592,13 +2592,13 @@ async function getRoomAvailability(checkInDate, checkOutDate) {
 async function getBookingsInRange(startDate, endDate) {
     try {
         const sql = usePostgreSQL ? `
-            SELECT room_type, check_in_date, check_out_date, status
+            SELECT room_type, check_in_date, check_out_date, status, guest_name
             FROM bookings
             WHERE check_in_date < $2 
               AND check_out_date > $1
               AND status IN ('active', 'reserved')
         ` : `
-            SELECT room_type, check_in_date, check_out_date, status
+            SELECT room_type, check_in_date, check_out_date, status, guest_name
             FROM bookings
             WHERE check_in_date < ? 
               AND check_out_date > ?

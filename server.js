@@ -1284,7 +1284,7 @@ app.get('/api/admin/room-calendar', async (req, res) => {
             const key = rt.display_name || rt.name;
             calendar[key] = {};
             dates.forEach(date => {
-                calendar[key][date] = { bookings: 0, isClosed: false };
+                calendar[key][date] = { bookings: 0, isClosed: false, names: [] };
             });
         });
         
@@ -1297,7 +1297,11 @@ app.get('/api/admin/room-calendar', async (req, res) => {
                 const dateObj = new Date(dateStr);
                 if (dateObj >= checkIn && dateObj < checkOut) {
                     if (calendar[roomType] && calendar[roomType][dateStr]) {
-                        calendar[roomType][dateStr].bookings += 1;
+                        const cell = calendar[roomType][dateStr];
+                        cell.bookings += 1;
+                        if (b.guest_name) {
+                            cell.names.push(b.guest_name);
+                        }
                     }
                 }
             });

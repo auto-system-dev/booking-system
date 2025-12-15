@@ -280,15 +280,17 @@ function renderBookingCalendar(dates, calendar) {
     roomTypes.forEach(rt => {
         html += `<tr><td class="sticky-col">${rt}</td>`;
         dates.forEach(d => {
-            const cell = (calendar[rt] && calendar[rt][d]) || { bookings: 0, isClosed: false };
+            const cell = (calendar[rt] && calendar[rt][d]) || { bookings: 0, isClosed: false, names: [] };
             const classes = ['calendar-cell'];
             if (cell.bookings > 0) classes.push('booked');
             if (cell.isClosed) classes.push('closed');
+            const namesText = (cell.names && cell.names.length > 0) ? cell.names.join('<br>') : '';
             html += `
                 <td>
-                    <div class="${classes.join(' ')}" onclick="toggleRoomClosure('${rt}', '${d}', ${cell.isClosed ? 0 : 1})">
+                    <div class="${classes.join(' ')}" onclick="handleCalendarCellClick('${rt}', '${d}', ${cell.isClosed ? 0 : 1}, ${cell.bookings})">
                         <div class="count">${cell.bookings} 筆</div>
                         <div class="status">${cell.isClosed ? '關房' : '開放'}</div>
+                        ${namesText ? `<div class="names">${namesText}</div>` : ''}
                     </div>
                 </td>
             `;
@@ -298,6 +300,15 @@ function renderBookingCalendar(dates, calendar) {
     
     html += '</tbody></table>';
     container.innerHTML = html;
+}
+
+function handleCalendarCellClick(roomType, date, newStatus, bookings) {
+    // 有有效/保留訂房時，不允許執行「關房」動作，但可從關房改回開放
+    if (newStatus === 1 && bookings > 0) {
+        alert('此日期已有有效或保留的訂房，無法關房。');
+        return;
+    }
+    toggleRoomClosure(roomType, date, newStatus);
 }
 
 async function toggleRoomClosure(roomType, date, newStatus) {
