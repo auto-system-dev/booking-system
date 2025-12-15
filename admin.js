@@ -26,19 +26,30 @@ document.addEventListener('DOMContentLoaded', function() {
     loadBookings();
     loadStatistics();
     
-    // 如果切換到系統設定，載入假日列表
-    if (urlHash === '#settings') {
-        loadHolidays();
-    }
-    
-    // 如果切換到房型管理或系統設定，載入對應資料
+    // 根據 URL hash 載入對應區塊
     const urlHash = window.location.hash;
-    if (urlHash === '#room-types') {
+    if (urlHash === '#dashboard') {
+        switchSection('dashboard');
+        loadDashboard();
+    } else if (urlHash === '#room-types') {
         switchSection('room-types');
         loadRoomTypes();
     } else if (urlHash === '#settings') {
         switchSection('settings');
         loadSettings();
+        loadHolidays();
+    } else if (urlHash === '#addons') {
+        switchSection('addons');
+        loadAddons();
+    } else if (urlHash === '#holidays') {
+        switchSection('holidays');
+        loadHolidays();
+    } else if (urlHash === '#email-templates') {
+        switchSection('email-templates');
+        loadEmailTemplates();
+    } else if (urlHash === '#statistics') {
+        switchSection('statistics');
+        loadStatistics();
     }
 
     // 點擊模態框外部關閉
@@ -80,7 +91,9 @@ function switchSection(section) {
     }
     
     // 根據區塊載入對應資料
-    if (section === 'room-types') {
+    if (section === 'dashboard') {
+        loadDashboard();
+    } else if (section === 'room-types') {
         loadRoomTypes();
     } else if (section === 'addons') {
         loadAddons();
@@ -94,6 +107,41 @@ function switchSection(section) {
         loadStatistics();
     } else if (section === 'bookings') {
         loadBookings();
+    }
+}
+
+// 載入儀表板數據
+async function loadDashboard() {
+    try {
+        const response = await fetch('/api/dashboard');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const data = result.data;
+            
+            // 更新今日房況
+            document.getElementById('todayCheckIns').textContent = data.todayCheckIns || 0;
+            document.getElementById('todayCheckOuts').textContent = data.todayCheckOuts || 0;
+            
+            // 更新今日訂單
+            document.getElementById('todayTransferOrders').textContent = data.todayTransferOrders || 0;
+            document.getElementById('todayCardOrders').textContent = data.todayCardOrders || 0;
+            
+            // 更新訂房狀態
+            document.getElementById('activeBookings').textContent = data.activeBookings || 0;
+            document.getElementById('reservedBookings').textContent = data.reservedBookings || 0;
+            document.getElementById('cancelledBookings').textContent = data.cancelledBookings || 0;
+        } else {
+            showError('載入儀表板數據失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('載入儀表板數據錯誤:', error);
+        showError('載入儀表板數據時發生錯誤：' + error.message);
     }
 }
 

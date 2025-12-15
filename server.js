@@ -1029,6 +1029,71 @@ app.get('/api/statistics', async (req, res) => {
     }
 });
 
+// API: 儀表板數據
+app.get('/api/dashboard', async (req, res) => {
+    try {
+        // 獲取今天的日期（YYYY-MM-DD）
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${day}`;
+        
+        // 獲取所有訂房記錄
+        const allBookings = await db.getAllBookings();
+        
+        // 計算今日房況
+        const todayCheckIns = allBookings.filter(booking => 
+            booking.check_in_date === todayStr && 
+            (booking.status === 'active' || booking.status === 'reserved')
+        ).length;
+        
+        const todayCheckOuts = allBookings.filter(booking => 
+            booking.check_out_date === todayStr && 
+            booking.status === 'active'
+        ).length;
+        
+        // 計算今日訂單（訂購日為今日）
+        const todayBookings = allBookings.filter(booking => {
+            const bookingDate = new Date(booking.created_at || booking.booking_date);
+            const bookingDateStr = `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}-${String(bookingDate.getDate()).padStart(2, '0')}`;
+            return bookingDateStr === todayStr;
+        });
+        
+        const todayTransferOrders = todayBookings.filter(booking => 
+            booking.payment_method && booking.payment_method.includes('匯款')
+        ).length;
+        
+        const todayCardOrders = todayBookings.filter(booking => 
+            booking.payment_method && (booking.payment_method.includes('線上') || booking.payment_method.includes('卡'))
+        ).length;
+        
+        // 計算訂房狀態
+        const activeBookings = allBookings.filter(booking => booking.status === 'active').length;
+        const reservedBookings = allBookings.filter(booking => booking.status === 'reserved').length;
+        const cancelledBookings = allBookings.filter(booking => booking.status === 'cancelled').length;
+        
+        res.json({
+            success: true,
+            data: {
+                todayCheckIns,
+                todayCheckOuts,
+                todayTransferOrders,
+                todayCardOrders,
+                activeBookings,
+                reservedBookings,
+                cancelledBookings
+            }
+        });
+    } catch (error) {
+        console.error('查詢儀表板數據錯誤:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: '查詢儀表板數據失敗：' + error.message
+        });
+    }
+});
+
 // API: 更新訂房資料
 app.put('/api/bookings/:bookingId', async (req, res) => {
     try {

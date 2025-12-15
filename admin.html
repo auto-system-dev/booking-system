@@ -20,6 +20,10 @@
                 <h1>🏨 管理後台</h1>
             </div>
             <nav class="sidebar-nav">
+                <a href="#dashboard" class="nav-item" data-section="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span>儀表板</span>
+                </a>
                 <a href="#bookings" class="nav-item active" data-section="bookings">
                     <span class="nav-icon">📋</span>
                     <span>訂房記錄</span>
@@ -53,6 +57,76 @@
 
         <!-- 主內容區 -->
         <main class="main-content">
+            <!-- 儀表板區 -->
+            <section id="dashboard-section" class="content-section">
+                <div class="section-header">
+                    <h2>📊 儀表板</h2>
+                    <button class="btn-refresh" onclick="loadDashboard()">
+                        <span>🔄</span> 重新整理
+                    </button>
+                </div>
+
+                <div class="dashboard-grid">
+                    <!-- 今日房況卡片 -->
+                    <div class="dashboard-card">
+                        <div class="dashboard-card-icon">🔔</div>
+                        <div class="dashboard-card-title">今日房況</div>
+                        <div class="dashboard-card-subtitle">住房/退房為今日</div>
+                        <div class="dashboard-card-metrics">
+                            <div class="dashboard-metric">
+                                <div class="dashboard-metric-label">今日住房</div>
+                                <div class="dashboard-metric-value" id="todayCheckIns">0</div>
+                            </div>
+                            <div class="dashboard-metric">
+                                <div class="dashboard-metric-label">今日退房</div>
+                                <div class="dashboard-metric-value" id="todayCheckOuts">0</div>
+                            </div>
+                        </div>
+                        <button class="dashboard-card-button" onclick="switchSection('bookings')">前往訂單列表</button>
+                    </div>
+
+                    <!-- 今日訂單卡片 -->
+                    <div class="dashboard-card">
+                        <div class="dashboard-card-icon">📄</div>
+                        <div class="dashboard-card-title">今日訂單</div>
+                        <div class="dashboard-card-subtitle">訂購日為今日</div>
+                        <div class="dashboard-card-metrics">
+                            <div class="dashboard-metric">
+                                <div class="dashboard-metric-label">匯款轉帳</div>
+                                <div class="dashboard-metric-value" id="todayTransferOrders">0</div>
+                            </div>
+                            <div class="dashboard-metric">
+                                <div class="dashboard-metric-label">線上卡</div>
+                                <div class="dashboard-metric-value" id="todayCardOrders">0</div>
+                            </div>
+                        </div>
+                        <button class="dashboard-card-button" onclick="switchSection('bookings')">前往訂單列表</button>
+                    </div>
+
+                    <!-- 訂房狀態卡片 -->
+                    <div class="dashboard-card">
+                        <div class="dashboard-card-icon">💰</div>
+                        <div class="dashboard-card-title">訂房狀態</div>
+                        <div class="dashboard-card-subtitle">所有訂單狀態統計</div>
+                        <div class="dashboard-card-metrics">
+                            <div class="dashboard-metric">
+                                <div class="dashboard-metric-label">有效</div>
+                                <div class="dashboard-metric-value" id="activeBookings">0</div>
+                            </div>
+                            <div class="dashboard-metric">
+                                <div class="dashboard-metric-label">保留</div>
+                                <div class="dashboard-metric-value" id="reservedBookings">0</div>
+                            </div>
+                            <div class="dashboard-metric">
+                                <div class="dashboard-metric-label">取消</div>
+                                <div class="dashboard-metric-value" id="cancelledBookings">0</div>
+                            </div>
+                        </div>
+                        <button class="dashboard-card-button" onclick="switchSection('bookings')">前往訂單列表</button>
+                    </div>
+                </div>
+            </section>
+
             <!-- 訂房記錄區 -->
             <section id="bookings-section" class="content-section active">
                 <div class="section-header">
