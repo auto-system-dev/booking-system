@@ -1038,7 +1038,7 @@ function renderRoomTypes() {
         : allRoomTypes;
     
     if (filteredRoomTypes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="loading">沒有房型資料</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="loading">沒有房型資料</td></tr>';
         return;
     }
     
@@ -1048,6 +1048,8 @@ function renderRoomTypes() {
             <td>${room.icon || '🏠'}</td>
             <td>${room.name}</td>
             <td>${room.display_name}</td>
+            <td>${room.max_occupancy ?? 0}</td>
+            <td>${room.extra_beds ?? 0}</td>
             <td>NT$ ${room.price.toLocaleString()}</td>
             <td>${room.holiday_surcharge ? (room.holiday_surcharge > 0 ? '+' : '') + 'NT$ ' + room.holiday_surcharge.toLocaleString() : 'NT$ 0'}</td>
             <td>
@@ -1103,6 +1105,16 @@ function showRoomTypeModal(room) {
                 <input type="text" name="display_name" value="${isEdit ? escapeHtml(room.display_name) : ''}" required>
             </div>
             <div class="form-group">
+                <label>入住人數</label>
+                <input type="number" name="max_occupancy" value="${isEdit ? (room.max_occupancy ?? 0) : 0}" min="0" step="1" required>
+                <small>此房型的建議入住人數</small>
+            </div>
+            <div class="form-group">
+                <label>加床人數</label>
+                <input type="number" name="extra_beds" value="${isEdit ? (room.extra_beds ?? 0) : 0}" min="0" step="1" required>
+                <small>最多可加床人數</small>
+            </div>
+            <div class="form-group">
                 <label>平日價格（每晚）</label>
                 <input type="number" name="price" value="${isEdit ? room.price : ''}" min="0" step="1" required>
                 <small>平日（週一至週五）的基礎價格</small>
@@ -1147,6 +1159,8 @@ async function saveRoomType(event, id) {
         display_name: formData.get('display_name'),
         price: parseInt(formData.get('price')),
         holiday_surcharge: parseInt(formData.get('holiday_surcharge')) || 0,
+        max_occupancy: parseInt(formData.get('max_occupancy')) || 0,
+        extra_beds: parseInt(formData.get('extra_beds')) || 0,
         icon: formData.get('icon') || '🏠',
         display_order: parseInt(formData.get('display_order')) || 0,
         is_active: parseInt(formData.get('is_active'))
