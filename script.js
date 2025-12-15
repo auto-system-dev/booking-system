@@ -570,6 +570,28 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     } else {
         phoneInput.setCustomValidity('');
     }
+
+    // 姓名必填
+    const nameInput = document.getElementById('guestName');
+    if (!nameInput.value.trim()) {
+        nameInput.setCustomValidity('請填寫姓名');
+        nameInput.reportValidity();
+        nameInput.focus();
+        return;
+    } else {
+        nameInput.setCustomValidity('');
+    }
+
+    // Email 必填（沿用瀏覽器格式檢查）
+    const emailInput = document.getElementById('guestEmail');
+    if (!emailInput.value.trim()) {
+        emailInput.setCustomValidity('請填寫 Email');
+        emailInput.reportValidity();
+        emailInput.focus();
+        return;
+    } else {
+        emailInput.setCustomValidity('');
+    }
     
     const submitBtn = this.querySelector('.submit-btn');
     submitBtn.disabled = true;
@@ -584,6 +606,8 @@ document.getElementById('bookingForm').addEventListener('submit', async function
             firstRoomRadio.reportValidity();
             firstRoomRadio.focus();
         }
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span>確認訂房</span>';
         return;
     } else {
         document.querySelectorAll('input[name="roomType"]').forEach(r => r.setCustomValidity(''));
