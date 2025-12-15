@@ -134,15 +134,7 @@
                 <div class="section-header">
                     <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">event_note</span> 訂房記錄管理</h2>
                     <div class="header-actions">
-                        <div class="view-tabs">
-                            <button class="view-tab active" id="bookingListTab" onclick="switchBookingView('list')">
-                                <span class="material-symbols-outlined">view_list</span> 列表
-                            </button>
-                            <button class="view-tab" id="bookingCalendarTab" onclick="switchBookingView('calendar')">
-                                <span class="material-symbols-outlined">calendar_month</span> 日曆
-                            </button>
-                        </div>
-                        <button class="btn-refresh" onclick="reloadCurrentBookingView()">
+                        <button class="btn-refresh" onclick="loadBookings()">
                             <span class="material-symbols-outlined">refresh</span> 重新整理
                         </button>
                     </div>
@@ -174,7 +166,7 @@
                 </div>
 
                 <!-- 訂房記錄表格 -->
-                <div class="table-container" id="bookingListTableContainer">
+                <div class="table-container">
                     <table class="bookings-table">
                         <thead>
                             <tr>
@@ -205,26 +197,6 @@
 
                 <!-- 分頁 -->
                 <div class="pagination" id="pagination"></div>
-
-                <!-- 日曆檢視 -->
-                <div id="bookingCalendarContainer" class="calendar-container" style="display:none;">
-                    <div class="calendar-header">
-                        <button class="btn-refresh" type="button" onclick="changeCalendarRange(-7)">
-                            <span class="material-symbols-outlined">chevron_left</span>
-                        </button>
-                        <div class="calendar-title" id="calendarTitle">排房日曆</div>
-                        <button class="btn-refresh" type="button" onclick="changeCalendarRange(7)">
-                            <span class="material-symbols-outlined">chevron_right</span>
-                        </button>
-                    </div>
-                    <div id="bookingCalendar" class="calendar-table-wrapper">
-                        <!-- 日曆表格動態載入 -->
-                    </div>
-                    <div class="calendar-legend">
-                        <span class="legend-item"><span class="legend-box booked"></span> 有訂房</span>
-                        <span class="legend-item"><span class="legend-box closed"></span> 關房</span>
-                    </div>
-                </div>
             </section>
 
             <!-- 統計資料區 -->
