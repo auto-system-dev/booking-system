@@ -6,6 +6,7 @@ let enableAddons = true; // 前台加購商品功能是否啟用
 let depositPercentage = 30; // 預設訂金百分比
 let unavailableRooms = []; // 已滿房的房型列表
 let datePicker = null; // 日期區間選擇器
+let guestCounts = { adults: 1, children: 0 };
 
 // 載入房型資料和系統設定
 async function loadRoomTypesAndSettings() {
@@ -255,6 +256,19 @@ function initDatePicker() {
             renderRoomTypes();
         }
     });
+}
+
+function changeGuestCount(type, delta) {
+    const min = type === 'adults' ? 1 : 0;
+    const max = 20;
+    const displayEl = document.getElementById(`${type}Display`);
+    const inputEl = document.getElementById(type);
+    if (!displayEl || !inputEl) return;
+    let current = guestCounts[type] ?? parseInt(inputEl.value) || 0;
+    current = Math.min(max, Math.max(min, current + delta));
+    guestCounts[type] = current;
+    displayEl.textContent = current;
+    inputEl.value = current;
 }
 
 // 頁面載入時執行

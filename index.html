@@ -70,12 +70,22 @@
                     </div>
                     <div class="guest-count-row">
                         <div class="form-group">
-                            <label for="adults">成人（12 歲以上）</label>
-                            <input type="number" id="adults" name="adults" min="1" step="1" value="1">
+                            <label for="adultsDisplay">成人（12 歲以上）</label>
+                            <div class="guest-counter">
+                                <button type="button" class="guest-counter-btn" onclick="changeGuestCount('adults', -1)">−</button>
+                                <span id="adultsDisplay" class="guest-counter-value">1</span>
+                                <button type="button" class="guest-counter-btn" onclick="changeGuestCount('adults', 1)">+</button>
+                            </div>
+                            <input type="hidden" id="adults" name="adults" value="1">
                         </div>
                         <div class="form-group">
-                            <label for="children">孩童（3-11 歲）</label>
-                            <input type="number" id="children" name="children" min="0" step="1" value="0">
+                            <label for="childrenDisplay">孩童（3-11 歲）</label>
+                            <div class="guest-counter">
+                                <button type="button" class="guest-counter-btn" onclick="changeGuestCount('children', -1)">−</button>
+                                <span id="childrenDisplay" class="guest-counter-value">0</span>
+                                <button type="button" class="guest-counter-btn" onclick="changeGuestCount('children', 1)">+</button>
+                            </div>
+                            <input type="hidden" id="children" name="children" value="0">
                         </div>
                     </div>
                 </div>
