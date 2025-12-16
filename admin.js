@@ -2106,19 +2106,46 @@ async function showEmailTemplateModal(templateKey) {
                         // 立即檢查
                         checkAndRestore();
                         
-                        // 持續監控並恢復（每 200ms 檢查一次，持續 2 秒）
+                        // 持續監控並恢復（只在 class 丟失時才恢復，每 200ms 檢查一次，持續 2 秒）
                         let checkCount = 0;
                         const maxChecks = 10;
                         const checkInterval = setInterval(() => {
                             checkCount++;
                             const currentContent = editorElement.innerHTML;
-                            if (currentContent.length < htmlContent.length * 0.5) {
-                                console.log(`🔄 第 ${checkCount} 次檢查：內容被清理，恢復中...`);
+                            
+                            // 只檢查 class 是否存在，不檢查長度（因為用戶可能會編輯內容）
+                            const hasContainer = currentContent.includes('container');
+                            const hasHeader = currentContent.includes('header');
+                            const hasContent = currentContent.includes('content');
+                            
+                            // 只有在 class 丟失時才恢復（不是因為長度）
+                            if (!hasContainer || !hasHeader || !hasContent) {
+                                console.log(`🔄 第 ${checkCount} 次檢查：檢測到 class 丟失，恢復中...`);
                                 editorElement.innerHTML = htmlContent;
+                                
+                                // 驗證恢復是否成功
+                                setTimeout(() => {
+                                    const restoredContent = editorElement.innerHTML;
+                                    const restoredHasContainer = restoredContent.includes('container');
+                                    const restoredHasHeader = restoredContent.includes('header');
+                                    const restoredHasContent = restoredContent.includes('content');
+                                    if (restoredHasContainer && restoredHasHeader && restoredHasContent) {
+                                        console.log('✅ Class 已成功恢復');
+                                    }
+                                }, 50);
                             }
+                            
                             if (checkCount >= maxChecks) {
                                 clearInterval(checkInterval);
-                                console.log('✅ 監控結束，內容應已穩定');
+                                const finalContent = editorElement.innerHTML;
+                                const finalHasContainer = finalContent.includes('container');
+                                const finalHasHeader = finalContent.includes('header');
+                                const finalHasContent = finalContent.includes('content');
+                                if (finalHasContainer && finalHasHeader && finalHasContent) {
+                                    console.log('✅ 監控結束，HTML 結構和 class 名稱已穩定保留');
+                                } else {
+                                    console.warn('⚠️ 監控結束，但部分 class 可能仍缺失');
+                                }
                             }
                         }, 200);
                     } catch (error) {
