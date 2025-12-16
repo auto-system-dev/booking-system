@@ -195,22 +195,7 @@ async function initPostgreSQL() {
             console.log('✅ 訂房資料表已準備就緒');
             
             // 檢查並新增欄位（如果不存在）
-            try {
-                await query(`ALTER TABLE bookings ADD COLUMN payment_status VARCHAR(255) DEFAULT 'pending'`);
-            } catch (err) {
-                if (!err.message.includes('duplicate column')) {
-                    console.warn('⚠️  新增 payment_status 欄位時發生錯誤:', err.message);
-                }
-            }
-            
-            try {
-                await query(`ALTER TABLE bookings ADD COLUMN status VARCHAR(255) DEFAULT 'active'`);
-                console.log('✅ 資料表欄位已更新');
-            } catch (err) {
-                if (!err.message.includes('duplicate column')) {
-                    console.warn('⚠️  新增 status 欄位時發生錯誤:', err.message);
-                }
-            }
+            // payment_status 和 status 已在 CREATE TABLE 中定義，不需要再次添加
             
             // 修改 email_sent 欄位類型（如果已經是 INTEGER，改為 VARCHAR）
             try {
@@ -245,49 +230,43 @@ async function initPostgreSQL() {
                 }
             }
             
-            // 檢查並添加 addons 欄位（如果不存在）
-            try {
-                await query(`ALTER TABLE bookings ADD COLUMN addons TEXT`);
-                console.log('✅ 已添加 addons 欄位');
-            } catch (err) {
-                if (err.message && (err.message.includes('already exists') || err.message.includes('duplicate column') || err.message.includes('column') && err.message.includes('already'))) {
-                    console.log('✅ addons 欄位已存在');
-                } else {
-                    console.warn('⚠️  添加 addons 欄位時發生錯誤:', err.message);
-                }
-            }
+            // 檢查並添加欄位（如果不存在）- 使用檢查方式避免錯誤訊息
+            const columnsToAdd = [
+                { name: 'addons', type: 'TEXT', default: null },
+                { name: 'addons_total', type: 'INTEGER', default: '0' },
+                { name: 'adults', type: 'INTEGER', default: '0' },
+                { name: 'children', type: 'INTEGER', default: '0' }
+            ];
             
-            // 檢查並添加 addons_total 欄位（如果不存在）
-            try {
-                await query(`ALTER TABLE bookings ADD COLUMN addons_total INTEGER DEFAULT 0`);
-                console.log('✅ 已添加 addons_total 欄位');
-            } catch (err) {
-                if (err.message && (err.message.includes('already exists') || err.message.includes('duplicate column') || err.message.includes('column') && err.message.includes('already'))) {
-                    console.log('✅ addons_total 欄位已存在');
-                } else {
-                    console.warn('⚠️  添加 addons_total 欄位時發生錯誤:', err.message);
-                }
-            }
-            
-            // 檢查並添加 adults, children 欄位（如果不存在）
-            try {
-                await query(`ALTER TABLE bookings ADD COLUMN adults INTEGER DEFAULT 0`);
-                console.log('✅ 已添加 adults 欄位');
-            } catch (err) {
-                if (err.message && (err.message.includes('already exists') || err.message.includes('duplicate column') || err.message.includes('column') && err.message.includes('already'))) {
-                    console.log('✅ adults 欄位已存在');
-                } else {
-                    console.warn('⚠️  添加 adults 欄位時發生錯誤:', err.message);
-                }
-            }
-            try {
-                await query(`ALTER TABLE bookings ADD COLUMN children INTEGER DEFAULT 0`);
-                console.log('✅ 已添加 children 欄位');
-            } catch (err) {
-                if (err.message && (err.message.includes('already exists') || err.message.includes('duplicate column') || err.message.includes('column') && err.message.includes('already'))) {
-                    console.log('✅ children 欄位已存在');
-                } else {
-                    console.warn('⚠️  添加 children 欄位時發生錯誤:', err.message);
+            for (const col of columnsToAdd) {
+                try {
+                    // 先檢查欄位是否存在
+                    const checkResult = await query(`
+                        SELECT column_name 
+                        FROM information_schema.columns 
+                        WHERE table_name = 'bookings' 
+                        AND column_name = $1
+                    `, [col.name]);
+                    
+                    if (!checkResult.rows || checkResult.rows.length === 0) {
+                        // 欄位不存在，添加它
+                        const defaultClause = col.default !== null ? `DEFAULT ${col.default}` : '';
+                        await query(`ALTER TABLE bookings ADD COLUMN ${col.name} ${col.type} ${defaultClause}`);
+                        console.log(`✅ 已添加 ${col.name} 欄位`);
+                    }
+                    // 如果欄位已存在，靜默跳過（不顯示訊息）
+                } catch (err) {
+                    // 如果檢查失敗，嘗試直接添加（兼容舊邏輯）
+                    try {
+                        const defaultClause = col.default !== null ? `DEFAULT ${col.default}` : '';
+                        await query(`ALTER TABLE bookings ADD COLUMN ${col.name} ${col.type} ${defaultClause}`);
+                        console.log(`✅ 已添加 ${col.name} 欄位`);
+                    } catch (addErr) {
+                        // 如果錯誤訊息包含 "already exists"，靜默處理
+                        if (!addErr.message || (!addErr.message.includes('already exists') && !addErr.message.includes('duplicate column'))) {
+                            console.warn(`⚠️  添加 ${col.name} 欄位時發生錯誤:`, addErr.message);
+                        }
+                    }
                 }
             }
             
