@@ -361,7 +361,7 @@ function renderBookingCalendar(roomTypes, bookings, startDate) {
                 
                 // 空白格子可以點擊快速新增訂房
                 const dateLabel = dateKey; // YYYY-MM-DD
-                html += `<td class="booking-cell" style="min-width: 120px; min-height: 80px;" onclick="handleCalendarCellClick(event, '${escapeHtml(roomType.display_name)}', '${dateLabel}')">`;
+                html += `<td class="booking-cell" style="min-width: 120px; min-height: 80px;" onclick="handleCalendarCellClick(this, '${escapeHtml(roomType.display_name)}', '${dateLabel}')">`;
                 if (roomBookings.length > 0) {
                     roomBookings.forEach(booking => {
                         const statusClass = booking.status === 'active' ? 'status-active' : 
@@ -756,10 +756,10 @@ async function viewBookingDetail(bookingId) {
     }
 }
 
-// 處理日曆格子點擊：有訂房 → 看詳情；空白 → 快速新增訂房
-function handleCalendarCellClick(event, roomTypeName, dateStr) {
-    // 如果點到的是已存在的訂房區塊，改由原本的 onclick 處理
-    const bookingItem = event.target.closest('.calendar-booking-item');
+// 處理日曆格子點擊：有訂房 → 看詳情（保持原行為）；空白 → 快速新增訂房
+function handleCalendarCellClick(cellElement, roomTypeName, dateStr) {
+    // 如果此格子裡已經有訂房區塊，就不額外開快速新增（點訂房區塊本身會觸發詳情）
+    const bookingItem = cellElement.querySelector('.calendar-booking-item');
     if (bookingItem) {
         return;
     }
