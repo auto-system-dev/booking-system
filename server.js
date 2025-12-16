@@ -998,6 +998,34 @@ app.get('/api/bookings/:bookingId', async (req, res) => {
     }
 });
 
+// API: 取得日曆視圖的訂房資料
+app.get('/api/bookings/calendar', async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        
+        if (!startDate || !endDate) {
+            return res.status(400).json({
+                success: false,
+                message: '請提供開始日期和結束日期'
+            });
+        }
+        
+        const bookings = await db.getBookingsInRange(startDate, endDate);
+        
+        res.json({
+            success: true,
+            count: bookings.length,
+            data: bookings
+        });
+    } catch (error) {
+        console.error('查詢日曆訂房記錄錯誤:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: '查詢日曆訂房記錄失敗：' + error.message 
+        });
+    }
+});
+
 // API: 根據 Email 查詢訂房記錄
 app.get('/api/bookings/email/:email', async (req, res) => {
     try {

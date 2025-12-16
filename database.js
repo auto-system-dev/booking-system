@@ -2655,21 +2655,23 @@ async function getRoomAvailability(checkInDate, checkOutDate) {
     }
 }
 
-// 取得指定日期範圍內的訂房資料（供排房日曆使用）
+// 取得指定日期範圍內的訂房資料（供日曆視圖使用）
 async function getBookingsInRange(startDate, endDate) {
     try {
         const sql = usePostgreSQL ? `
-            SELECT room_type, check_in_date, check_out_date, status, guest_name
+            SELECT booking_id, room_type, check_in_date, check_out_date, status, guest_name
             FROM bookings
-            WHERE check_in_date < $2 
-              AND check_out_date > $1
-              AND status IN ('active', 'reserved')
+            WHERE check_in_date::date <= $2::date
+              AND check_out_date::date >= $1::date
+              AND status IN ('active', 'reserved', 'cancelled')
+            ORDER BY check_in_date, room_type
         ` : `
-            SELECT room_type, check_in_date, check_out_date, status, guest_name
+            SELECT booking_id, room_type, check_in_date, check_out_date, status, guest_name
             FROM bookings
-            WHERE check_in_date < ? 
-              AND check_out_date > ?
-              AND status IN ('active', 'reserved')
+            WHERE DATE(check_in_date) <= DATE(?)
+              AND DATE(check_out_date) >= DATE(?)
+              AND status IN ('active', 'reserved', 'cancelled')
+            ORDER BY check_in_date, room_type
         `;
         const params = usePostgreSQL ? [startDate, endDate] : [startDate, endDate];
         const result = await query(sql, params);

@@ -108,7 +108,11 @@ function switchSection(section) {
     } else if (section === 'statistics') {
         loadStatistics();
     } else if (section === 'bookings') {
-        loadBookings();
+        if (currentBookingView === 'calendar') {
+            loadBookingCalendar();
+        } else {
+            loadBookings();
+        }
     } else if (section === 'customers') {
         loadCustomers();
     }

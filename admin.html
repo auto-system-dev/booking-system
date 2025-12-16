@@ -138,12 +138,24 @@
                 <div class="section-header">
                     <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">event_note</span> 訂房記錄管理</h2>
                     <div class="header-actions">
-                        <button class="btn-refresh" onclick="loadBookings()">
+                        <button class="btn-refresh" onclick="reloadCurrentBookingView()">
                             <span class="material-symbols-outlined">refresh</span> 重新整理
                         </button>
                     </div>
                 </div>
 
+                <!-- 視圖切換標籤 -->
+                <div class="view-tabs" style="margin-bottom: 20px; border-bottom: 2px solid #e0e0e0;">
+                    <button class="view-tab active" data-view="list" onclick="switchBookingView('list')">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">list</span> 列表
+                    </button>
+                    <button class="view-tab" data-view="calendar" onclick="switchBookingView('calendar')">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">calendar_month</span> 日曆
+                    </button>
+                </div>
+
+                <!-- 列表視圖 -->
+                <div id="bookingListView" class="booking-view">
                 <!-- 搜尋和篩選 -->
                 <div class="filter-bar" id="bookingListFilters">
                     <div class="search-box">
