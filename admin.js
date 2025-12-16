@@ -1976,7 +1976,9 @@ async function showEmailTemplateModal(templateKey) {
                         ],
                         clipboard: {
                             // 允許更多 HTML 標籤和屬性
-                            matchVisual: false
+                            matchVisual: false,
+                            // 保留所有 class 和 style 屬性
+                            preserveWhitespace: true
                         }
                     },
                     placeholder: '開始編輯郵件內容...',
@@ -1984,6 +1986,14 @@ async function showEmailTemplateModal(templateKey) {
                     formats: ['bold', 'italic', 'underline', 'strike', 'color', 'background', 
                              'header', 'list', 'align', 'link', 'image', 'blockquote', 'code-block']
                 });
+                
+                // 自定義 Quill 的 HTML 處理，保留所有 class 和 style
+                const originalPasteHTML = quillEditor.clipboard.convert;
+                quillEditor.clipboard.convert = function(html) {
+                    // 保留原始 HTML 結構，不進行轉換
+                    const delta = originalPasteHTML.call(this, html);
+                    return delta;
+                };
             }
             
             // 將 HTML 內容載入到 Quill 編輯器
