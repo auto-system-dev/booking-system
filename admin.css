@@ -479,9 +479,9 @@ body {
 .modal-content {
     background: white;
     border-radius: 12px;
-    width: 90%;
-    max-width: 1200px;
-    max-height: 90vh;
+    width: 95%;
+    max-width: 1400px;
+    max-height: 95vh;
     overflow-y: auto;
     animation: slideUp 0.3s ease;
 }

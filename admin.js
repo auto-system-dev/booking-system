@@ -302,28 +302,28 @@ async function viewCustomerDetails(email) {
                     </div>
                     
                     <h4 style="margin: 20px 0 10px 0; color: #333;">訂房記錄</h4>
-                    <div style="max-height: 400px; overflow-y: auto;">
-                        <table class="bookings-table" style="width: 100%; font-size: 14px;">
+                    <div style="overflow: visible;">
+                        <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
                             <thead>
                                 <tr>
-                                    <th style="padding: 15px; text-align: left; background: #f8f9fa; border-bottom: 2px solid #e0e0e0; font-weight: 600;">訂房編號</th>
-                                    <th style="padding: 15px; text-align: left; background: #f8f9fa; border-bottom: 2px solid #e0e0e0; font-weight: 600;">入住日期</th>
-                                    <th style="padding: 15px; text-align: left; background: #f8f9fa; border-bottom: 2px solid #e0e0e0; font-weight: 600;">退房日期</th>
-                                    <th style="padding: 15px; text-align: left; background: #f8f9fa; border-bottom: 2px solid #e0e0e0; font-weight: 600;">房型</th>
-                                    <th style="padding: 15px; text-align: right; background: #f8f9fa; border-bottom: 2px solid #e0e0e0; font-weight: 600;">金額</th>
-                                    <th style="padding: 15px; text-align: center; background: #f8f9fa; border-bottom: 2px solid #e0e0e0; font-weight: 600;">狀態</th>
+                                    <th style="padding: 12px 8px; text-align: left; background: #f8f9fa; border-bottom: 2px solid #e0e0e0; font-weight: 600; white-space: nowrap;">訂房編號</th>
+                                    <th style="padding: 12px 8px; text-align: left; background: #f8f9fa; border-bottom: 2px solid #e0e0e0; font-weight: 600; white-space: nowrap;">入住日期</th>
+                                    <th style="padding: 12px 8px; text-align: left; background: #f8f9fa; border-bottom: 2px solid #e0e0e0; font-weight: 600; white-space: nowrap;">退房日期</th>
+                                    <th style="padding: 12px 8px; text-align: left; background: #f8f9fa; border-bottom: 2px solid #e0e0e0; font-weight: 600; white-space: nowrap;">房型</th>
+                                    <th style="padding: 12px 8px; text-align: right; background: #f8f9fa; border-bottom: 2px solid #e0e0e0; font-weight: 600; white-space: nowrap;">金額</th>
+                                    <th style="padding: 12px 8px; text-align: center; background: #f8f9fa; border-bottom: 2px solid #e0e0e0; font-weight: 600; white-space: nowrap;">狀態</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${customer.bookings && customer.bookings.length > 0 
                                     ? customer.bookings.map(booking => `
                                         <tr style="border-bottom: 1px solid #f0f0f0;">
-                                            <td style="padding: 15px;">${escapeHtml(booking.booking_id)}</td>
-                                            <td style="padding: 15px;">${escapeHtml(booking.check_in_date)}</td>
-                                            <td style="padding: 15px;">${escapeHtml(booking.check_out_date)}</td>
-                                            <td style="padding: 15px;">${escapeHtml(booking.room_type)}</td>
-                                            <td style="padding: 15px; text-align: right;">NT$ ${(parseInt(booking.total_amount) || 0).toLocaleString()}</td>
-                                            <td style="padding: 15px; text-align: center;">
+                                            <td style="padding: 12px 8px;">${escapeHtml(booking.booking_id)}</td>
+                                            <td style="padding: 12px 8px;">${escapeHtml(booking.check_in_date)}</td>
+                                            <td style="padding: 12px 8px;">${escapeHtml(booking.check_out_date)}</td>
+                                            <td style="padding: 12px 8px;">${escapeHtml(booking.room_type)}</td>
+                                            <td style="padding: 12px 8px; text-align: right;">NT$ ${(parseInt(booking.total_amount) || 0).toLocaleString()}</td>
+                                            <td style="padding: 12px 8px; text-align: center;">
                                                 <span class="status-badge status-${booking.status === 'active' ? 'sent' : booking.status === 'cancelled' ? 'unsent' : 'pending'}">
                                                     ${booking.status === 'active' ? '有效' : booking.status === 'cancelled' ? '已取消' : booking.status === 'reserved' ? '保留' : booking.status}
                                                 </span>
