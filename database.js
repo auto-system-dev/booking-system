@@ -344,8 +344,6 @@ async function initPostgreSQL() {
             
             // 建立假日日期表
             await query(`
-
-        await query(`
                 CREATE TABLE IF NOT EXISTS holidays (
                     id SERIAL PRIMARY KEY,
                     holiday_date DATE NOT NULL UNIQUE,
