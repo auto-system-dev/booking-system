@@ -492,9 +492,15 @@
             <section id="email-templates-section" class="content-section">
                 <div class="section-header">
                     <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">mail</span> 郵件模板管理</h2>
-                    <button class="btn-refresh" onclick="loadEmailTemplates()">
-                        <span class="material-symbols-outlined">refresh</span> 重新整理
-                    </button>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-secondary" onclick="resetEmailTemplatesToDefault()" style="display: flex; align-items: center; gap: 5px;">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">restart_alt</span>
+                            重置為圖卡樣式
+                        </button>
+                        <button class="btn-refresh" onclick="loadEmailTemplates()">
+                            <span class="material-symbols-outlined">refresh</span> 重新整理
+                        </button>
+                    </div>
                 </div>
 
                 <div class="email-templates-container">

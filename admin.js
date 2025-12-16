@@ -2439,6 +2439,35 @@ ${quillHtml}
     }
 }
 
+// 重置郵件模板為預設圖卡樣式
+async function resetEmailTemplatesToDefault() {
+    if (!confirm('確定要將所有郵件模板重置為預設的圖卡樣式嗎？此操作將覆蓋所有現有的模板內容。')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/email-templates/reset-to-default', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ 所有郵件模板已成功重置為預設圖卡樣式！');
+            // 重新載入模板列表
+            await loadEmailTemplates();
+        } else {
+            showError('重置失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('重置郵件模板錯誤:', error);
+        showError('重置失敗：' + error.message);
+    }
+}
+
 // 切換編輯模式（可視化 / HTML）
 function toggleEditorMode() {
     const editorContainer = document.getElementById('emailTemplateEditor');
