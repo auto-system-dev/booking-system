@@ -278,9 +278,15 @@ async function loadBookingCalendar() {
         const roomTypes = roomTypesResult.success ? roomTypesResult.data : [];
         
         // 獲取訂房資料
-        const bookingsResponse = await fetch(`/api/bookings/calendar?startDate=${startDateStr}&endDate=${endDateStr}`);
+        const bookingsResponse = await fetch(`/api/bookings/calendar?startDate=${encodeURIComponent(startDateStr)}&endDate=${encodeURIComponent(endDateStr)}`);
+        if (!bookingsResponse.ok) {
+            throw new Error(`HTTP ${bookingsResponse.status}: ${bookingsResponse.statusText}`);
+        }
         const bookingsResult = await bookingsResponse.json();
-        const bookings = bookingsResult.success ? bookingsResult.data : [];
+        if (!bookingsResult.success) {
+            throw new Error(bookingsResult.message || '獲取訂房資料失敗');
+        }
+        const bookings = bookingsResult.data || [];
         
         // 渲染日曆
         renderBookingCalendar(roomTypes, bookings, startDate);

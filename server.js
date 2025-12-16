@@ -972,33 +972,7 @@ app.get('/api/bookings', async (req, res) => {
     }
 });
 
-// API: 根據訂房編號查詢
-app.get('/api/bookings/:bookingId', async (req, res) => {
-    try {
-        const { bookingId } = req.params;
-        const booking = await db.getBookingById(bookingId);
-        
-        if (booking) {
-            res.json({
-                success: true,
-                data: booking
-            });
-        } else {
-            res.status(404).json({
-                success: false,
-                message: '找不到該訂房記錄'
-            });
-        }
-    } catch (error) {
-        console.error('查詢訂房記錄錯誤:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: '查詢訂房記錄失敗' 
-        });
-    }
-});
-
-// API: 取得日曆視圖的訂房資料
+// API: 取得日曆視圖的訂房資料（必須在 /api/bookings/:bookingId 之前）
 app.get('/api/bookings/calendar', async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
