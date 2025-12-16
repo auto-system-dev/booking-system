@@ -361,7 +361,7 @@ function renderBookingCalendar(roomTypes, bookings, startDate) {
                 
                 // 空白格子可以點擊快速新增訂房
                 const dateLabel = dateKey; // YYYY-MM-DD
-                html += `<td class="booking-cell" style="min-width: 120px; min-height: 80px;" onclick="handleCalendarCellClick(this, '${escapeHtml(roomType.display_name)}', '${dateLabel}')">`;
+                html += `<td class="booking-cell" data-room-type="${escapeHtml(roomType.display_name)}" data-date="${dateLabel}" style="min-width: 120px; min-height: 80px;">`;
                 if (roomBookings.length > 0) {
                     roomBookings.forEach(booking => {
                         const statusClass = booking.status === 'active' ? 'status-active' : 
@@ -384,6 +384,19 @@ function renderBookingCalendar(roomTypes, bookings, startDate) {
     html += '</tbody></table></div>';
     
     container.innerHTML = html;
+    
+    // 綁定每個格子的點擊事件（空白格 → 快速新增訂房）
+    const cells = container.querySelectorAll('.booking-cell');
+    cells.forEach(cell => {
+        cell.addEventListener('click', () => {
+            const roomTypeName = cell.getAttribute('data-room-type');
+            const dateStr = cell.getAttribute('data-date');
+            if (!roomTypeName || !dateStr) {
+                return;
+            }
+            handleCalendarCellClick(cell, roomTypeName, dateStr);
+        });
+    });
 }
 
 // 載入客戶列表
