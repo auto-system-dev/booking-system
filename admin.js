@@ -873,15 +873,9 @@ function openQuickBookingModal(roomTypeName, dateStr) {
     const modal = document.getElementById('bookingModal');
     const modalBody = document.getElementById('modalBody');
     
-    // 預設入住日期 = 被點擊那天，退房日期 = 隔天
+    // 預設入住日期 = 被點擊那天，退房日期 = 同一天（之後再自行調整）
     const checkInDate = dateStr;
-    const d = new Date(dateStr + 'T00:00:00');
-    if (isNaN(d.getTime())) {
-        showError('日期格式錯誤，無法建立訂房');
-        return;
-    }
-    d.setDate(d.getDate() + 1);
-    const checkOutDate = d.toISOString().slice(0, 10);
+    const checkOutDate = dateStr;
     
     modalBody.innerHTML = `
         <form id="quickBookingForm" onsubmit="saveQuickBooking(event)">
@@ -892,11 +886,11 @@ function openQuickBookingModal(roomTypeName, dateStr) {
             </div>
             <div class="form-group">
                 <label>入住日期</label>
-                <input type="date" name="check_in_date" id="quickCheckInDate" value="${checkInDate}" required>
+                <input type="date" name="check_in_date" value="${checkInDate}" required>
             </div>
             <div class="form-group">
                 <label>退房日期</label>
-                <input type="date" name="check_out_date" id="quickCheckOutDate" value="${checkOutDate}" required>
+                <input type="date" name="check_out_date" value="${checkOutDate}" required>
             </div>
             <div class="form-group">
                 <label>客戶姓名</label>
@@ -940,19 +934,6 @@ function openQuickBookingModal(roomTypeName, dateStr) {
     `;
     
     modal.classList.add('active');
-    
-    // 入住日期變更時，自動將退房日期設為隔天
-    const checkInInput = document.getElementById('quickCheckInDate');
-    const checkOutInput = document.getElementById('quickCheckOutDate');
-    if (checkInInput && checkOutInput) {
-        checkInInput.addEventListener('change', () => {
-            const ci = new Date(checkInInput.value + 'T00:00:00');
-            if (isNaN(ci.getTime())) return;
-            ci.setDate(ci.getDate() + 1);
-            const co = ci.toISOString().slice(0, 10);
-            checkOutInput.value = co;
-        });
-    }
 }
 
 // 儲存快速新增的訂房
