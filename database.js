@@ -1797,6 +1797,102 @@ async function getStatistics() {
     }
 }
 
+// ==================== 客戶管理 ====================
+
+// 取得所有客戶（聚合訂房資料）
+async function getAllCustomers() {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT 
+                guest_email,
+                guest_name,
+                guest_phone,
+                COUNT(*) as booking_count,
+                SUM(final_amount) as total_spent,
+                MAX(created_at) as last_booking_date
+            FROM bookings
+            GROUP BY guest_email, guest_name, guest_phone
+            ORDER BY last_booking_date DESC`
+            : `SELECT 
+                guest_email,
+                guest_name,
+                guest_phone,
+                COUNT(*) as booking_count,
+                SUM(final_amount) as total_spent,
+                MAX(created_at) as last_booking_date
+            FROM bookings
+            GROUP BY guest_email, guest_name, guest_phone
+            ORDER BY last_booking_date DESC`;
+        
+        const result = await query(sql);
+        
+        // 格式化日期
+        return result.rows.map(customer => ({
+            ...customer,
+            last_booking_date: customer.last_booking_date 
+                ? new Date(customer.last_booking_date).toLocaleDateString('zh-TW')
+                : null,
+            total_spent: parseInt(customer.total_spent || 0),
+            booking_count: parseInt(customer.booking_count || 0)
+        }));
+    } catch (error) {
+        console.error('❌ 查詢客戶列表失敗:', error.message);
+        throw error;
+    }
+}
+
+// 根據 Email 取得客戶詳情（包含所有訂房記錄）
+async function getCustomerByEmail(email) {
+    try {
+        // 先取得客戶基本資訊
+        const customerSQL = usePostgreSQL
+            ? `SELECT 
+                guest_email,
+                guest_name,
+                guest_phone,
+                COUNT(*) as booking_count,
+                SUM(final_amount) as total_spent,
+                MAX(created_at) as last_booking_date
+            FROM bookings
+            WHERE guest_email = $1
+            GROUP BY guest_email, guest_name, guest_phone`
+            : `SELECT 
+                guest_email,
+                guest_name,
+                guest_phone,
+                COUNT(*) as booking_count,
+                SUM(final_amount) as total_spent,
+                MAX(created_at) as last_booking_date
+            FROM bookings
+            WHERE guest_email = ?
+            GROUP BY guest_email, guest_name, guest_phone`;
+        
+        const customerResult = await queryOne(customerSQL, [email]);
+        
+        if (!customerResult) {
+            return null;
+        }
+        
+        // 取得該客戶的所有訂房記錄
+        const bookings = await getBookingsByEmail(email);
+        
+        return {
+            guest_email: customerResult.guest_email,
+            guest_name: customerResult.guest_name,
+            guest_phone: customerResult.guest_phone,
+            booking_count: parseInt(customerResult.booking_count || 0),
+            total_spent: parseInt(customerResult.total_spent || 0),
+            last_booking_date: customerResult.last_booking_date 
+                ? new Date(customerResult.last_booking_date).toLocaleDateString('zh-TW')
+                : null,
+            bookings: bookings
+        };
+    } catch (error) {
+        console.error('❌ 查詢客戶詳情失敗:', error.message);
+        throw error;
+    }
+}
+
 // ==================== 假日管理 ====================
 
 // 取得所有假日
