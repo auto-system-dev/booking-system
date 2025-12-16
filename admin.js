@@ -359,7 +359,9 @@ function renderBookingCalendar(roomTypes, bookings, startDate) {
                 const dayBookings = bookingsByDate[dateKey] || [];
                 const roomBookings = dayBookings.filter(b => b.room_type === roomType.display_name);
                 
-                html += '<td class="booking-cell" style="min-width: 120px; min-height: 80px;">';
+                // 空白格子可以點擊快速新增訂房
+                const dateLabel = dateKey; // YYYY-MM-DD
+                html += `<td class="booking-cell" style="min-width: 120px; min-height: 80px;" onclick="handleCalendarCellClick(event, '${escapeHtml(roomType.display_name)}', '${dateLabel}')">`;
                 if (roomBookings.length > 0) {
                     roomBookings.forEach(booking => {
                         const statusClass = booking.status === 'active' ? 'status-active' : 
@@ -754,6 +756,16 @@ async function viewBookingDetail(bookingId) {
     }
 }
 
+// 處理日曆格子點擊：有訂房 → 看詳情；空白 → 快速新增訂房
+function handleCalendarCellClick(event, roomTypeName, dateStr) {
+    // 如果點到的是已存在的訂房區塊，改由原本的 onclick 處理
+    const bookingItem = event.target.closest('.calendar-booking-item');
+    if (bookingItem) {
+        return;
+    }
+    openQuickBookingModal(roomTypeName, dateStr);
+}
+
 // 顯示訂房詳情模態框
 function showBookingModal(booking) {
     const modal = document.getElementById('bookingModal');
@@ -841,6 +853,134 @@ function showBookingModal(booking) {
     `;
     
     modal.classList.add('active');
+}
+
+// 顯示「快速新增訂房」表單
+function openQuickBookingModal(roomTypeName, dateStr) {
+    const modal = document.getElementById('bookingModal');
+    const modalBody = document.getElementById('modalBody');
+    
+    // 預設入住日期 = 被點擊那天，退房日期 = 隔天
+    const checkInDate = dateStr;
+    const d = new Date(dateStr + 'T00:00:00');
+    if (isNaN(d.getTime())) {
+        showError('日期格式錯誤，無法建立訂房');
+        return;
+    }
+    d.setDate(d.getDate() + 1);
+    const checkOutDate = d.toISOString().slice(0, 10);
+    
+    modalBody.innerHTML = `
+        <form id="quickBookingForm" onsubmit="saveQuickBooking(event)">
+            <h3 style="margin-bottom: 15px;">快速新增訂房</h3>
+            <div class="form-group">
+                <label>房型</label>
+                <input type="text" name="room_type" value="${escapeHtml(roomTypeName)}" readonly>
+            </div>
+            <div class="form-group">
+                <label>入住日期</label>
+                <input type="date" name="check_in_date" value="${checkInDate}" required>
+            </div>
+            <div class="form-group">
+                <label>退房日期</label>
+                <input type="date" name="check_out_date" value="${checkOutDate}" required>
+            </div>
+            <div class="form-group">
+                <label>客戶姓名</label>
+                <input type="text" name="guest_name" placeholder="請輸入客戶姓名" required>
+            </div>
+            <div class="form-group">
+                <label>聯絡電話</label>
+                <input type="tel" name="guest_phone" placeholder="選填">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="guest_email" placeholder="選填">
+            </div>
+            <div class="form-group">
+                <label>大人人數</label>
+                <input type="number" name="adults" value="2" min="0" step="1">
+            </div>
+            <div class="form-group">
+                <label>孩童人數</label>
+                <input type="number" name="children" value="0" min="0" step="1">
+            </div>
+            <div class="form-group">
+                <label>訂房狀態</label>
+                <select name="status">
+                    <option value="active">有效（標滿房）</option>
+                    <option value="reserved">保留</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>付款狀態</label>
+                <select name="payment_status">
+                    <option value="paid">已付款</option>
+                    <option value="pending">未付款</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button type="submit" class="btn-primary">儲存</button>
+                <button type="button" class="btn-cancel" onclick="closeModal()">取消</button>
+            </div>
+        </form>
+    `;
+    
+    modal.classList.add('active');
+}
+
+// 儲存快速新增的訂房
+async function saveQuickBooking(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    const checkInDate = formData.get('check_in_date');
+    const checkOutDate = formData.get('check_out_date');
+    
+    if (!checkInDate || !checkOutDate) {
+        showError('請選擇入住與退房日期');
+        return;
+    }
+    
+    const payload = {
+        roomType: formData.get('room_type'),
+        checkInDate,
+        checkOutDate,
+        guestName: formData.get('guest_name'),
+        guestPhone: formData.get('guest_phone') || '',
+        guestEmail: formData.get('guest_email') || '',
+        adults: parseInt(formData.get('adults') || '0', 10),
+        children: parseInt(formData.get('children') || '0', 10),
+        status: formData.get('status') || 'active',
+        paymentStatus: formData.get('payment_status') || 'paid'
+    };
+    
+    try {
+        const response = await fetch('/api/admin/bookings/quick', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok || !result.success) {
+            throw new Error(result.message || `HTTP ${response.status}`);
+        }
+        
+        showSuccess('訂房已建立');
+        closeModal();
+        // 重新載入目前視圖（週日曆＋列表一起更新）
+        await loadBookingCalendar();
+        await loadBookings();
+    } catch (error) {
+        console.error('快速新增訂房錯誤:', error);
+        showError('快速新增訂房時發生錯誤：' + error.message);
+    }
 }
 
 // 關閉模態框

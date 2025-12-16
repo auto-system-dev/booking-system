@@ -676,6 +676,89 @@ app.post('/api/booking', async (req, res) => {
     }
 });
 
+// 後台：快速建立訂房（不發送任何郵件，用於電話 / 其他平台訂房）
+app.post('/api/admin/bookings/quick', async (req, res) => {
+    try {
+        const {
+            roomType,
+            checkInDate,
+            checkOutDate,
+            guestName,
+            guestPhone,
+            guestEmail,
+            adults,
+            children,
+            status,
+            paymentStatus
+        } = req.body;
+        
+        if (!roomType || !checkInDate || !checkOutDate || !guestName) {
+            return res.status(400).json({
+                success: false,
+                message: '房型、日期與客戶姓名為必填欄位'
+            });
+        }
+        
+        const checkIn = new Date(checkInDate);
+        const checkOut = new Date(checkOutDate);
+        if (isNaN(checkIn.getTime()) || isNaN(checkOut.getTime()) || checkOut <= checkIn) {
+            return res.status(400).json({
+                success: false,
+                message: '入住與退房日期不正確'
+            });
+        }
+        
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const nights = Math.max(1, Math.round((checkOut - checkIn) / msPerDay));
+        
+        const bookingId = generateShortBookingId();
+        const bookingDate = new Date().toISOString();
+        
+        const bookingData = {
+            bookingId,
+            checkInDate,
+            checkOutDate,
+            roomType,
+            guestName,
+            guestPhone: guestPhone || '',
+            guestEmail: guestEmail || '',
+            adults: adults || 0,
+            children: children || 0,
+            paymentAmount: '後台手動建立',
+            paymentMethod: '其他',
+            pricePerNight: 0,
+            nights,
+            totalAmount: 0,
+            finalAmount: 0,
+            bookingDate,
+            emailSent: '0',
+            paymentStatus: paymentStatus || 'paid',
+            status: status || 'active',
+            addons: null,
+            addonsTotal: 0
+        };
+        
+        const savedId = await db.saveBooking(bookingData);
+        
+        console.log('✅ 後台快速建立訂房成功:', bookingId, 'DB ID:', savedId);
+        
+        res.json({
+            success: true,
+            message: '訂房已建立',
+            data: {
+                bookingId,
+                id: savedId
+            }
+        });
+    } catch (error) {
+        console.error('後台快速建立訂房錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '後台快速建立訂房失敗：' + error.message
+        });
+    }
+});
+
 // 生成客戶確認郵件
 // 取得旅館資訊 footer
 async function getHotelInfoFooter() {
