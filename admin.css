@@ -907,98 +907,138 @@ body {
 }
 
 /* 讓編輯器內的容器樣式生效 - 圖卡樣式 */
-#emailTemplateEditor .ql-editor .container {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 20px;
+#emailTemplateEditor .ql-editor {
+    font-family: 'Microsoft JhengHei', Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
 }
 
-#emailTemplateEditor .ql-editor .header {
-    padding: 30px;
-    text-align: center;
-    border-radius: 10px 10px 0 0;
-    color: white;
+#emailTemplateEditor .ql-editor .container,
+#emailTemplateEditor .ql-editor div.container {
+    max-width: 600px !important;
+    margin: 0 auto !important;
+    padding: 20px !important;
+    box-sizing: border-box;
+}
+
+#emailTemplateEditor .ql-editor .header,
+#emailTemplateEditor .ql-editor div.header {
+    padding: 30px !important;
+    text-align: center !important;
+    border-radius: 10px 10px 0 0 !important;
+    color: white !important;
+    margin: 0 !important;
 }
 
 /* 匯款提醒的紅色標題 */
 #emailTemplateEditor .ql-editor .header[style*="background: #e74c3c"],
-#emailTemplateEditor .ql-editor .header[style*="background:#e74c3c"] {
+#emailTemplateEditor .ql-editor .header[style*="background:#e74c3c"],
+#emailTemplateEditor .ql-editor div.header[style*="background: #e74c3c"],
+#emailTemplateEditor .ql-editor div.header[style*="background:#e74c3c"] {
     background: #e74c3c !important;
     color: white !important;
 }
 
 /* 入住提醒和感謝入住的深色標題 */
 #emailTemplateEditor .ql-editor .header[style*="background: #262A33"],
-#emailTemplateEditor .ql-editor .header[style*="background:#262A33"] {
+#emailTemplateEditor .ql-editor .header[style*="background:#262A33"],
+#emailTemplateEditor .ql-editor div.header[style*="background: #262A33"],
+#emailTemplateEditor .ql-editor div.header[style*="background:#262A33"],
+#emailTemplateEditor .ql-editor .header:has(h1:contains("入住提醒")),
+#emailTemplateEditor .ql-editor .header:has(h1:contains("感謝")) {
     background: #262A33 !important;
     color: white !important;
 }
 
-#emailTemplateEditor .ql-editor .content {
-    padding: 30px;
-    border-radius: 0 0 10px 10px;
-    background: #f9f9f9;
+#emailTemplateEditor .ql-editor .content,
+#emailTemplateEditor .ql-editor div.content {
+    padding: 30px !important;
+    border-radius: 0 0 10px 10px !important;
+    background: #f9f9f9 !important;
+    margin: 0 !important;
 }
 
-#emailTemplateEditor .ql-editor .info-box {
-    padding: 20px;
-    border-radius: 8px;
-    margin: 20px 0;
-    background: white;
-    border-left: 4px solid #262A33;
-}
-
-#emailTemplateEditor .ql-editor .highlight {
-    padding: 20px;
-    border-radius: 8px;
-    margin: 20px 0;
-    background: #fff3cd;
-    border: 2px solid #ffc107;
-}
-
-#emailTemplateEditor .ql-editor .info-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px 0;
-    border-bottom: 1px solid #ddd;
-}
-
-#emailTemplateEditor .ql-editor .info-label {
-    font-weight: 600;
-    color: #666;
-}
-
-#emailTemplateEditor .ql-editor .info-value {
-    color: #333;
-}
-
-/* 白色資訊卡片 */
-#emailTemplateEditor .ql-editor [style*="background: white"],
-#emailTemplateEditor .ql-editor [style*="background:white"] {
+#emailTemplateEditor .ql-editor .info-box,
+#emailTemplateEditor .ql-editor div.info-box {
+    padding: 20px !important;
+    border-radius: 8px !important;
+    margin: 20px 0 !important;
     background: white !important;
-    padding: 20px;
-    border-radius: 8px;
-    margin: 25px 0;
+    border-left: 4px solid #262A33 !important;
+    box-sizing: border-box;
+}
+
+#emailTemplateEditor .ql-editor .highlight,
+#emailTemplateEditor .ql-editor div.highlight {
+    padding: 20px !important;
+    border-radius: 8px !important;
+    margin: 20px 0 !important;
+    background: #fff3cd !important;
+    border: 2px solid #ffc107 !important;
+    box-sizing: border-box;
+}
+
+#emailTemplateEditor .ql-editor .info-row,
+#emailTemplateEditor .ql-editor div.info-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    padding: 10px 0 !important;
+    border-bottom: 1px solid #ddd !important;
+    box-sizing: border-box;
+}
+
+#emailTemplateEditor .ql-editor .info-label,
+#emailTemplateEditor .ql-editor span.info-label {
+    font-weight: 600 !important;
+    color: #666 !important;
+}
+
+#emailTemplateEditor .ql-editor .info-value,
+#emailTemplateEditor .ql-editor span.info-value {
+    color: #333 !important;
+}
+
+/* 白色資訊卡片 - 使用內聯樣式的元素 */
+#emailTemplateEditor .ql-editor [style*="background: white"],
+#emailTemplateEditor .ql-editor [style*="background:white"],
+#emailTemplateEditor .ql-editor div[style*="background: white"],
+#emailTemplateEditor .ql-editor div[style*="background:white"] {
+    background: white !important;
+    padding: 20px !important;
+    border-radius: 8px !important;
+    margin: 25px 0 !important;
+    box-sizing: border-box;
 }
 
 /* 黃色匯款資訊區塊 */
 #emailTemplateEditor .ql-editor [style*="background: #fff3cd"],
-#emailTemplateEditor .ql-editor [style*="background:#fff3cd"] {
+#emailTemplateEditor .ql-editor [style*="background:#fff3cd"],
+#emailTemplateEditor .ql-editor div[style*="background: #fff3cd"],
+#emailTemplateEditor .ql-editor div[style*="background:#fff3cd"] {
     background: #fff3cd !important;
     border: 2px solid #ffc107 !important;
     border-radius: 8px !important;
     padding: 20px !important;
     margin: 25px 0 !important;
+    box-sizing: border-box;
 }
 
 /* 綠色尾款區塊 */
 #emailTemplateEditor .ql-editor [style*="background: #e8f5e9"],
-#emailTemplateEditor .ql-editor [style*="background:#e8f5e9"] {
+#emailTemplateEditor .ql-editor [style*="background:#e8f5e9"],
+#emailTemplateEditor .ql-editor div[style*="background: #e8f5e9"],
+#emailTemplateEditor .ql-editor div[style*="background:#e8f5e9"] {
     background: #e8f5e9 !important;
     border: 2px solid #4caf50 !important;
     border-radius: 8px !important;
     padding: 15px !important;
     margin-top: 15px !important;
+    box-sizing: border-box;
+}
+
+/* 確保所有 div 元素都能正確顯示 */
+#emailTemplateEditor .ql-editor > div {
+    box-sizing: border-box;
 }
 
 /* 編輯模式切換按鈕 */
