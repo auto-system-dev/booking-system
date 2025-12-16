@@ -2067,6 +2067,14 @@ async function showEmailTemplateModal(templateKey) {
                             const loadedContent = quillEditor.root.innerHTML;
                             console.log('編輯器內容長度:', loadedContent.length);
                             console.log('內容預覽:', loadedContent.substring(0, 300));
+                            // 檢查是否有 class 名稱
+                            const hasContainer = loadedContent.includes('container');
+                            const hasHeader = loadedContent.includes('header');
+                            const hasContent = loadedContent.includes('content');
+                            console.log('Class 檢查:', { hasContainer, hasHeader, hasContent });
+                            if (!hasContainer || !hasHeader || !hasContent) {
+                                console.warn('⚠️ HTML 結構可能被 Quill 改變，class 名稱可能丟失');
+                            }
                             
                             // 如果內容被清理了，嘗試直接設置 innerHTML
                             if (loadedContent.trim() === '' || loadedContent === '<p><br></p>' || loadedContent.length < htmlContent.length * 0.3) {
