@@ -277,8 +277,9 @@ async function loadBookingCalendar() {
         const roomTypesResult = await roomTypesResponse.json();
         const roomTypes = roomTypesResult.success ? roomTypesResult.data : [];
         
-        // 獲取訂房資料
-        const bookingsResponse = await fetch(`/api/bookings/calendar?startDate=${encodeURIComponent(startDateStr)}&endDate=${encodeURIComponent(endDateStr)}`);
+        // 獲取訂房資料（使用絕對路徑，避免相對路徑造成 404）
+        const calendarUrl = `${window.location.origin}/api/bookings/calendar?startDate=${encodeURIComponent(startDateStr)}&endDate=${encodeURIComponent(endDateStr)}`;
+        const bookingsResponse = await fetch(calendarUrl);
         if (!bookingsResponse.ok) {
             throw new Error(`HTTP ${bookingsResponse.status}: ${bookingsResponse.statusText}`);
         }
