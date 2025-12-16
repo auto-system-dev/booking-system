@@ -1959,16 +1959,46 @@ async function showEmailTemplateModal(templateKey) {
                 const styleMatch = template.content.match(/<style>([\s\S]*?)<\/style>/i);
                 if (styleMatch) {
                     templateStyles = styleMatch[1];
-                    // 移除已存在的樣式標籤（如果有的話）
-                    const existingStyle = editorContainer.parentElement.querySelector('#emailTemplateEditorStyles');
-                    if (existingStyle) {
-                        existingStyle.remove();
-                    }
-                    // 創建新的 style 標籤並注入樣式
+                    // 移除已存在的樣式標籤（如果有的話，從任何位置）
+                    const allStyles = document.querySelectorAll('#emailTemplateEditorStyles');
+                    allStyles.forEach(style => style.remove());
+                    
+                    // 創建新的 style 標籤並注入樣式（限制在編輯器內部）
                     const styleTag = document.createElement('style');
                     styleTag.id = 'emailTemplateEditorStyles';
-                    styleTag.textContent = templateStyles;
-                    editorContainer.parentElement.insertBefore(styleTag, editorContainer);
+                    // 將所有樣式選擇器限制在編輯器內部，使用更嚴格的作用域
+                    const scopedStyles = templateStyles
+                        .split(/\n(?=\s*[.#\w])/g) // 按選擇器分割
+                        .map(rule => {
+                            if (!rule.trim() || rule.trim().startsWith('/*')) {
+                                return rule; // 保留註釋和空行
+                            }
+                            // 提取選擇器和內容
+                            const match = rule.match(/^([^{]+)\{([^}]+)\}/);
+                            if (!match) return rule;
+                            
+                            let selector = match[1].trim();
+                            const content = match[2];
+                            
+                            // 跳過 body 和 html 選擇器
+                            if (selector.includes('body') || selector.includes('html') || selector.includes('*')) {
+                                return ''; // 移除全局樣式
+                            }
+                            
+                            // 如果選擇器已經包含 #emailTemplateEditor，保持不變
+                            if (selector.includes('#emailTemplateEditor')) {
+                                return rule;
+                            }
+                            
+                            // 為選擇器添加編輯器作用域
+                            return `#emailTemplateEditor .ql-editor ${selector} {${content}}`;
+                        })
+                        .filter(rule => rule.trim()) // 移除空規則
+                        .join('\n');
+                    
+                    styleTag.textContent = scopedStyles;
+                    // 將樣式注入到編輯器容器內部
+                    editorContainer.appendChild(styleTag);
                 }
             }
             
@@ -2008,15 +2038,27 @@ async function showEmailTemplateModal(templateKey) {
                 });
             } else {
                 // 如果編輯器已存在，更新樣式
-                const existingStyle = editorContainer.parentElement.querySelector('#emailTemplateEditorStyles');
+                const existingStyle = editorContainer.querySelector('#emailTemplateEditorStyles');
                 if (existingStyle) {
                     existingStyle.remove();
                 }
                 if (templateStyles) {
                     const styleTag = document.createElement('style');
                     styleTag.id = 'emailTemplateEditorStyles';
-                    styleTag.textContent = templateStyles;
-                    editorContainer.parentElement.insertBefore(styleTag, editorContainer);
+                    // 將所有樣式選擇器限制在編輯器內部
+                    const scopedStyles = templateStyles
+                        .replace(/(^|\n)([^{]+)\{/g, (match, prefix, selector) => {
+                            if (selector.includes('#emailTemplateEditor')) {
+                                return match;
+                            }
+                            const trimmedSelector = selector.trim();
+                            if (trimmedSelector.startsWith('body') || trimmedSelector.startsWith('html')) {
+                                return match;
+                            }
+                            return `${prefix}#emailTemplateEditor .ql-editor ${trimmedSelector}{`;
+                        });
+                    styleTag.textContent = scopedStyles;
+                    editorContainer.appendChild(styleTag);
                 }
             }
             
@@ -2644,6 +2686,23 @@ function insertVariable(variable) {
 
 // 關閉郵件模板模態框
 function closeEmailTemplateModal() {
+    // 清理注入的樣式標籤，避免影響其他頁面
+    const editorContainer = document.getElementById('emailTemplateEditor');
+    if (editorContainer) {
+        const existingStyle = editorContainer.querySelector('#emailTemplateEditorStyles');
+        if (existingStyle) {
+            existingStyle.remove();
+        }
+    }
+    
+    // 也檢查父元素中是否有樣式標籤（舊版本可能遺留的）
+    const modal = document.getElementById('emailTemplateModal');
+    if (modal) {
+        const parentStyle = modal.querySelector('#emailTemplateEditorStyles');
+        if (parentStyle) {
+            parentStyle.remove();
+        }
+    }
     document.getElementById('emailTemplateModal').classList.remove('active');
     // 重置編輯模式
     isHtmlMode = false;
