@@ -69,10 +69,12 @@
                             <input type="email" id="guestEmail" name="guestEmail" placeholder="example@email.com" required>
                         </div>
                     </div>
-                    <div class="guest-count-row">
-                        <div class="guest-counter-wrapper">
-                            <div class="guest-counter-input">
-                                <div class="guest-counter-label-inline">成人（12 歲以上）</div>
+                    <div class="form-group">
+                        <label>人數</label>
+                        <div class="guest-count-row">
+                            <div class="guest-counter-wrapper">
+                                <div class="guest-counter-input">
+                                    <div class="guest-counter-label-inline">成人（12 歲以上）</div>
                                 <div class="guest-counter">
                                     <button type="button" class="guest-counter-btn" onclick="changeGuestCount('adults', -1)">−</button>
                                     <span id="adultsDisplay" class="guest-counter-value">1</span>
@@ -91,6 +93,7 @@
                                 </div>
                             </div>
                             <input type="hidden" id="children" name="children" value="0">
+                        </div>
                         </div>
                     </div>
                 </div>
