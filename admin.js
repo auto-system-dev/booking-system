@@ -227,12 +227,13 @@ function reloadCurrentBookingView() {
     }
 }
 
-// 切換日曆月份
+// 切換日曆範圍（以週為單位）
 function changeCalendarMonth(direction) {
     if (!calendarStartDate) {
         calendarStartDate = new Date();
     }
-    calendarStartDate.setMonth(calendarStartDate.getMonth() + direction);
+    // 每次前進或後退 7 天
+    calendarStartDate.setDate(calendarStartDate.getDate() + direction * 7);
     loadBookingCalendar();
 }
 
@@ -244,17 +245,26 @@ async function loadBookingCalendar() {
         
         container.innerHTML = '<div class="loading">載入日曆中...</div>';
         
-        // 計算月份範圍
+        // 計算週範圍（顯示 7 天）
         if (!calendarStartDate) {
             calendarStartDate = new Date();
         }
-        const year = calendarStartDate.getFullYear();
-        const month = calendarStartDate.getMonth();
-        const startDate = new Date(year, month, 1);
-        const endDate = new Date(year, month + 1, 0);
+        const startDate = new Date(calendarStartDate.getFullYear(), calendarStartDate.getMonth(), calendarStartDate.getDate());
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 6); // 共 7 天
         
-        const startDateStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-        const endDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+        const year = startDate.getFullYear();
+        const month = startDate.getMonth();
+        
+        const formatDateStr = (d) => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        };
+        
+        const startDateStr = formatDateStr(startDate);
+        const endDateStr = formatDateStr(endDate);
         
         // 更新月份標題
         const monthTitle = document.getElementById('calendarMonthTitle');
@@ -273,7 +283,7 @@ async function loadBookingCalendar() {
         const bookings = bookingsResult.success ? bookingsResult.data : [];
         
         // 渲染日曆
-        renderBookingCalendar(roomTypes, bookings, year, month);
+        renderBookingCalendar(roomTypes, bookings, startDate);
     } catch (error) {
         console.error('載入訂房日曆錯誤:', error);
         showError('載入訂房日曆時發生錯誤：' + error.message);
@@ -284,14 +294,13 @@ async function loadBookingCalendar() {
     }
 }
 
-// 渲染訂房日曆
-function renderBookingCalendar(roomTypes, bookings, year, month) {
+// 渲染訂房日曆（週視圖，一次顯示 7 天）
+function renderBookingCalendar(roomTypes, bookings, startDate) {
     const container = document.getElementById('bookingCalendarContainer');
     if (!container) return;
     
-    // 計算月份天數
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
+    // 一次顯示 7 天
+    const daysInWeek = 7;
     const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
     
     // 按日期組織訂房資料
@@ -303,13 +312,11 @@ function renderBookingCalendar(roomTypes, bookings, year, month) {
             
             // 遍歷訂房期間的每一天
             for (let d = new Date(checkIn); d < checkOut; d.setDate(d.getDate() + 1)) {
-                if (d.getMonth() === month && d.getFullYear() === year) {
-                    const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                    if (!bookingsByDate[dateKey]) {
-                        bookingsByDate[dateKey] = [];
-                    }
-                    bookingsByDate[dateKey].push(booking);
+                const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                if (!bookingsByDate[dateKey]) {
+                    bookingsByDate[dateKey] = [];
                 }
+                bookingsByDate[dateKey].push(booking);
             }
         } catch (e) {
             console.warn('處理訂房日期錯誤:', booking, e);
@@ -319,25 +326,29 @@ function renderBookingCalendar(roomTypes, bookings, year, month) {
     // 生成 HTML
     let html = '<div class="calendar-table-wrapper"><table class="calendar-table">';
     
-    // 表頭：日期
+    // 表頭：日期（7 天）
     html += '<thead><tr><th class="room-type-header">房型</th>';
-    for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(year, month, day);
+    for (let i = 0; i < daysInWeek; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        const dayNum = date.getDate();
         const weekday = weekdays[date.getDay()];
-        html += `<th class="date-header">${day}<br><span style="font-size: 11px; font-weight: normal; color: #999;">${weekday}</span></th>`;
+        html += `<th class="date-header">${dayNum}<br><span style="font-size: 11px; font-weight: normal; color: #999;">${weekday}</span></th>`;
     }
     html += '</tr></thead>';
     
     // 表格內容：每個房型一行
     html += '<tbody>';
     if (roomTypes.length === 0) {
-        html += `<tr><td colspan="${daysInMonth + 1}" style="text-align: center; padding: 40px;">沒有房型資料</td></tr>`;
+        html += `<tr><td colspan="${daysInWeek + 1}" style="text-align: center; padding: 40px;">沒有房型資料</td></tr>`;
     } else {
         roomTypes.forEach(roomType => {
             html += `<tr><td class="room-type-header" style="background: #2C8EC4; color: white; font-weight: 600; min-width: 150px;">${escapeHtml(roomType.display_name)}</td>`;
             
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            for (let i = 0; i < daysInWeek; i++) {
+                const dateObj = new Date(startDate);
+                dateObj.setDate(startDate.getDate() + i);
+                const dateKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
                 const dayBookings = bookingsByDate[dateKey] || [];
                 const roomBookings = dayBookings.filter(b => b.room_type === roomType.display_name);
                 
