@@ -906,7 +906,7 @@ body {
     box-sizing: border-box;
 }
 
-/* 讓編輯器內的容器樣式生效 */
+/* 讓編輯器內的容器樣式生效 - 圖卡樣式 */
 #emailTemplateEditor .ql-editor .container {
     max-width: 600px;
     margin: 0 auto;
@@ -917,23 +917,43 @@ body {
     padding: 30px;
     text-align: center;
     border-radius: 10px 10px 0 0;
+    color: white;
+}
+
+/* 匯款提醒的紅色標題 */
+#emailTemplateEditor .ql-editor .header[style*="background: #e74c3c"],
+#emailTemplateEditor .ql-editor .header[style*="background:#e74c3c"] {
+    background: #e74c3c !important;
+    color: white !important;
+}
+
+/* 入住提醒和感謝入住的深色標題 */
+#emailTemplateEditor .ql-editor .header[style*="background: #262A33"],
+#emailTemplateEditor .ql-editor .header[style*="background:#262A33"] {
+    background: #262A33 !important;
+    color: white !important;
 }
 
 #emailTemplateEditor .ql-editor .content {
     padding: 30px;
     border-radius: 0 0 10px 10px;
+    background: #f9f9f9;
 }
 
 #emailTemplateEditor .ql-editor .info-box {
     padding: 20px;
     border-radius: 8px;
     margin: 20px 0;
+    background: white;
+    border-left: 4px solid #262A33;
 }
 
 #emailTemplateEditor .ql-editor .highlight {
     padding: 20px;
     border-radius: 8px;
     margin: 20px 0;
+    background: #fff3cd;
+    border: 2px solid #ffc107;
 }
 
 #emailTemplateEditor .ql-editor .info-row {
@@ -941,6 +961,44 @@ body {
     justify-content: space-between;
     padding: 10px 0;
     border-bottom: 1px solid #ddd;
+}
+
+#emailTemplateEditor .ql-editor .info-label {
+    font-weight: 600;
+    color: #666;
+}
+
+#emailTemplateEditor .ql-editor .info-value {
+    color: #333;
+}
+
+/* 白色資訊卡片 */
+#emailTemplateEditor .ql-editor [style*="background: white"],
+#emailTemplateEditor .ql-editor [style*="background:white"] {
+    background: white !important;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 25px 0;
+}
+
+/* 黃色匯款資訊區塊 */
+#emailTemplateEditor .ql-editor [style*="background: #fff3cd"],
+#emailTemplateEditor .ql-editor [style*="background:#fff3cd"] {
+    background: #fff3cd !important;
+    border: 2px solid #ffc107 !important;
+    border-radius: 8px !important;
+    padding: 20px !important;
+    margin: 25px 0 !important;
+}
+
+/* 綠色尾款區塊 */
+#emailTemplateEditor .ql-editor [style*="background: #e8f5e9"],
+#emailTemplateEditor .ql-editor [style*="background:#e8f5e9"] {
+    background: #e8f5e9 !important;
+    border: 2px solid #4caf50 !important;
+    border-radius: 8px !important;
+    padding: 15px !important;
+    margin-top: 15px !important;
 }
 
 /* 編輯模式切換按鈕 */
