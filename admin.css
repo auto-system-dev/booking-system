@@ -528,7 +528,7 @@ body {
 
 .detail-row {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     padding: 12px 0;
     border-bottom: 1px solid #f0f0f0;
 }
@@ -540,11 +540,14 @@ body {
 .detail-label {
     font-weight: 600;
     color: #666;
+    min-width: 120px;
+    margin-right: 16px;
 }
 
 .detail-value {
     color: #333;
-    text-align: right;
+    text-align: left;
+    flex: 1;
 }
 
 /* 編輯表單 */
