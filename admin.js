@@ -278,25 +278,25 @@ async function viewCustomerDetails(email) {
             
             // 顯示客戶詳情
             modalBody.innerHTML = `
-                <div style="padding: 20px;">
-                    <h3 style="margin-bottom: 20px; color: #333;">客戶詳情</h3>
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                        <div style="margin-bottom: 10px;">
+                <div style="padding: 15px;">
+                    <h3 style="margin-bottom: 15px; color: #333; font-size: 20px;">客戶詳情</h3>
+                    <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 14px;">
+                        <div>
                             <strong>客戶姓名：</strong>${escapeHtml(customer.guest_name)}
                         </div>
-                        <div style="margin-bottom: 10px;">
+                        <div>
                             <strong>電話：</strong>${escapeHtml(customer.guest_phone)}
                         </div>
-                        <div style="margin-bottom: 10px;">
+                        <div>
                             <strong>Email：</strong>${escapeHtml(customer.guest_email)}
                         </div>
-                        <div style="margin-bottom: 10px;">
+                        <div>
                             <strong>訂房次數：</strong>${customer.booking_count || 0} 次
                         </div>
-                        <div style="margin-bottom: 10px;">
+                        <div>
                             <strong>總消費金額：</strong>NT$ ${(customer.total_spent || 0).toLocaleString()}
                         </div>
-                        <div style="margin-bottom: 10px;">
+                        <div>
                             <strong>最後訂房日期：</strong>${customer.last_booking_date || '-'}
                         </div>
                     </div>
