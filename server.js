@@ -944,12 +944,19 @@ app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
-// API: 查詢所有訂房記錄
+// API: 查詢訂房記錄（可帶入日期區間，供列表與日曆共用）
 app.get('/api/bookings', async (req, res) => {
     try {
-        console.log('收到查詢訂房記錄請求');
-        const bookings = await db.getAllBookings();
-        console.log(`查詢到 ${bookings.length} 筆訂房記錄`);
+        const { startDate, endDate } = req.query;
+        let bookings;
+
+        if (startDate && endDate) {
+            console.log('📅 查詢日曆區間:', startDate, '~', endDate);
+            bookings = await db.getBookingsInRange(startDate, endDate);
+        } else {
+            console.log('📋 查詢所有訂房記錄');
+            bookings = await db.getAllBookings();
+        }
         
         // 確保每筆記錄都有 payment_status 和 status 欄位（處理舊資料）
         const bookingsWithDefaults = bookings.map(booking => ({
@@ -968,34 +975,6 @@ app.get('/api/bookings', async (req, res) => {
         res.status(500).json({ 
             success: false, 
             message: '查詢訂房記錄失敗：' + error.message 
-        });
-    }
-});
-
-// API: 取得日曆視圖的訂房資料（必須在 /api/bookings/:bookingId 之前）
-app.get('/api/bookings/calendar', async (req, res) => {
-    try {
-        const { startDate, endDate } = req.query;
-        
-        if (!startDate || !endDate) {
-            return res.status(400).json({
-                success: false,
-                message: '請提供開始日期和結束日期'
-            });
-        }
-        
-        const bookings = await db.getBookingsInRange(startDate, endDate);
-        
-        res.json({
-            success: true,
-            count: bookings.length,
-            data: bookings
-        });
-    } catch (error) {
-        console.error('查詢日曆訂房記錄錯誤:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: '查詢日曆訂房記錄失敗：' + error.message 
         });
     }
 });
