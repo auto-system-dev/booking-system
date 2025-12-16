@@ -2053,54 +2053,36 @@ async function showEmailTemplateModal(templateKey) {
                     // 先清空編輯器
                     quillEditor.setText('');
                     
-                    // 方法：使用 dangerouslyPasteHTML 方法（最可靠，不會被清理）
+                    // 方法：直接設置 innerHTML 以保留完整的 HTML 結構和 class
                     try {
-                        // 先選擇全部（雖然已經清空）
-                        quillEditor.setSelection(0, 0);
-                        
-                        // 使用 dangerouslyPasteHTML 插入 HTML（這個方法不會被 Quill 清理）
-                        quillEditor.clipboard.dangerouslyPasteHTML(0, htmlContent);
-                        console.log('✅ 使用 dangerouslyPasteHTML 方法載入內容');
+                        // 直接設置 innerHTML（繞過 Quill 的轉換，保留所有 class 和結構）
+                        quillEditor.root.innerHTML = htmlContent;
+                        console.log('✅ 直接設置 innerHTML 以保留完整結構');
                         
                         // 驗證內容是否正確載入
                         setTimeout(() => {
                             const loadedContent = quillEditor.root.innerHTML;
                             console.log('編輯器內容長度:', loadedContent.length);
                             console.log('內容預覽:', loadedContent.substring(0, 300));
+                            
                             // 檢查是否有 class 名稱
                             const hasContainer = loadedContent.includes('container');
                             const hasHeader = loadedContent.includes('header');
                             const hasContent = loadedContent.includes('content');
                             console.log('Class 檢查:', { hasContainer, hasHeader, hasContent });
-                            if (!hasContainer || !hasHeader || !hasContent) {
-                                console.warn('⚠️ HTML 結構可能被 Quill 改變，class 名稱可能丟失');
+                            
+                            if (hasContainer && hasHeader && hasContent) {
+                                console.log('✅ HTML 結構和 class 名稱已保留');
+                            } else {
+                                console.warn('⚠️ 部分 class 名稱可能丟失');
                             }
                             
-                            // 如果內容被清理了，嘗試直接設置 innerHTML
-                            if (loadedContent.trim() === '' || loadedContent === '<p><br></p>' || loadedContent.length < htmlContent.length * 0.3) {
-                                console.warn('⚠️ dangerouslyPasteHTML 可能未正確載入，嘗試直接設置 innerHTML');
-                                // 直接設置 innerHTML（繞過 Quill 的轉換）
+                            // 如果內容被清理了，嘗試恢復
+                            if (loadedContent.length < htmlContent.length * 0.5) {
+                                console.warn('⚠️ 內容被清理，嘗試恢復');
                                 quillEditor.root.innerHTML = htmlContent;
-                                
-                                // 手動觸發一次更新（但使用 silent 模式避免清理）
-                                setTimeout(() => {
-                                    // 嘗試使用 convert 來處理，但保持原始結構
-                                    try {
-                                        const delta = quillEditor.clipboard.convert(htmlContent);
-                                        // 只在內容確實被清理時才使用 convert
-                                        const currentContent = quillEditor.root.innerHTML;
-                                        if (currentContent.length < htmlContent.length * 0.5) {
-                                            quillEditor.setContents(delta, 'silent');
-                                        }
-                                    } catch (e) {
-                                        // 如果 convert 失敗，保持直接設置的內容
-                                        console.log('保持直接設置的內容');
-                                    }
-                                }, 50);
-                            } else {
-                                console.log('✅ 內容已成功載入到編輯器');
                             }
-                        }, 200);
+                        }, 100);
                     } catch (error) {
                         console.error('❌ 載入內容時發生錯誤:', error);
                         // Fallback: 直接設置 innerHTML
