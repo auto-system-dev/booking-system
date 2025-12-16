@@ -1950,6 +1950,45 @@ async function showEmailTemplateModal(templateKey) {
                 }
             }
             
+            // 提取並安全注入 CSS 樣式到編輯器容器
+            const editorContainer = document.getElementById('emailTemplateEditor');
+            let templateStyles = '';
+            
+            // 從模板內容中提取 CSS 樣式
+            if (template.content && template.content.includes('<style>')) {
+                const styleMatch = template.content.match(/<style>([\s\S]*?)<\/style>/i);
+                if (styleMatch) {
+                    templateStyles = styleMatch[1];
+                    // 清理所有已存在的樣式標籤
+                    const allStyles = document.querySelectorAll('#emailTemplateEditorStyles');
+                    allStyles.forEach(style => style.remove());
+                    
+                    // 將樣式轉換為只作用於編輯器內部的樣式
+                    const scopedStyles = templateStyles
+                        .replace(/\s*body\s*\{[^}]*\}/gi, '') // 移除 body 樣式
+                        .replace(/\s*html\s*\{[^}]*\}/gi, '') // 移除 html 樣式
+                        .replace(/\s*\*\s*\{[^}]*\}/gi, '') // 移除全局選擇器
+                        .replace(/([^{}]+)\{([^}]+)\}/g, (match, selector, content) => {
+                            // 清理選擇器
+                            selector = selector.trim();
+                            // 跳過已經包含 #emailTemplateEditor 的選擇器
+                            if (selector.includes('#emailTemplateEditor')) {
+                                return match;
+                            }
+                            // 為每個選擇器添加編輯器作用域
+                            return `#emailTemplateEditor .ql-editor ${selector} {${content}}`;
+                        });
+                    
+                    // 創建樣式標籤並注入到編輯器容器內部
+                    if (scopedStyles.trim()) {
+                        const styleTag = document.createElement('style');
+                        styleTag.id = 'emailTemplateEditorStyles';
+                        styleTag.textContent = scopedStyles;
+                        editorContainer.appendChild(styleTag);
+                    }
+                }
+            }
+            
             // 初始化 Quill 編輯器（如果還沒有）
             if (!quillEditor) {
                 // 自定義 Clipboard 模組，允許更多 HTML 標籤
@@ -2597,7 +2636,7 @@ function insertVariable(variable) {
 
 // 關閉郵件模板模態框
 function closeEmailTemplateModal() {
-    // 清理可能遺留的樣式標籤（從任何位置）
+    // 清理注入的樣式標籤（從任何位置），避免影響其他頁面
     const allStyles = document.querySelectorAll('#emailTemplateEditorStyles');
     allStyles.forEach(style => style.remove());
     
