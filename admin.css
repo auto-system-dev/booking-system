@@ -528,9 +528,11 @@ body {
 
 .detail-row {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: center;
     padding: 12px 0;
     border-bottom: 1px solid #f0f0f0;
+    text-align: center;
 }
 
 .detail-row:last-child {
@@ -540,11 +542,12 @@ body {
 .detail-label {
     font-weight: 600;
     color: #666;
+    margin-bottom: 5px;
 }
 
 .detail-value {
     color: #333;
-    text-align: right;
+    text-align: center;
 }
 
 /* 編輯表單 */
