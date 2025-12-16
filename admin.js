@@ -2055,13 +2055,16 @@ async function showEmailTemplateModal(templateKey) {
                     
                     // 方法：直接設置 innerHTML 以保留完整的 HTML 結構和 class
                     try {
+                        // 暫時禁用 Quill 的更新機制
+                        const editorElement = quillEditor.root;
+                        
                         // 直接設置 innerHTML（繞過 Quill 的轉換，保留所有 class 和結構）
-                        quillEditor.root.innerHTML = htmlContent;
+                        editorElement.innerHTML = htmlContent;
                         console.log('✅ 直接設置 innerHTML 以保留完整結構');
                         
                         // 驗證內容是否正確載入
                         setTimeout(() => {
-                            const loadedContent = quillEditor.root.innerHTML;
+                            const loadedContent = editorElement.innerHTML;
                             console.log('編輯器內容長度:', loadedContent.length);
                             console.log('內容預覽:', loadedContent.substring(0, 300));
                             
@@ -2074,13 +2077,9 @@ async function showEmailTemplateModal(templateKey) {
                             if (hasContainer && hasHeader && hasContent) {
                                 console.log('✅ HTML 結構和 class 名稱已保留');
                             } else {
-                                console.warn('⚠️ 部分 class 名稱可能丟失');
-                            }
-                            
-                            // 如果內容被清理了，嘗試恢復
-                            if (loadedContent.length < htmlContent.length * 0.5) {
-                                console.warn('⚠️ 內容被清理，嘗試恢復');
-                                quillEditor.root.innerHTML = htmlContent;
+                                console.warn('⚠️ 部分 class 名稱可能丟失，嘗試恢復');
+                                // 如果 class 丟失，再次設置
+                                editorElement.innerHTML = htmlContent;
                             }
                         }, 100);
                     } catch (error) {
