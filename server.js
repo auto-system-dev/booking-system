@@ -2377,6 +2377,105 @@ app.put('/api/email-templates/:key', async (req, res) => {
     }
 });
 
+// API: 發送測試郵件
+app.post('/api/email-templates/:key/test', async (req, res) => {
+    try {
+        const { key } = req.params;
+        const { email, subject, content } = req.body;
+        
+        if (!email || !subject || !content) {
+            return res.status(400).json({
+                success: false,
+                message: '請提供 Email 地址、主旨和內容'
+            });
+        }
+        
+        // Email 格式驗證
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                success: false,
+                message: '請提供有效的 Email 地址'
+            });
+        }
+        
+        // 創建測試資料來替換模板變數
+        const testData = {
+            guestName: '測試用戶',
+            bookingId: 'TEST' + Date.now().toString().slice(-6),
+            checkInDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('zh-TW'),
+            checkOutDate: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000).toLocaleDateString('zh-TW'),
+            roomType: '標準雙人房',
+            totalAmount: '10,000',
+            finalAmount: '3,000',
+            remainingAmount: '7,000',
+            bankName: '測試銀行',
+            bankBranch: '測試分行',
+            bankBranchDisplay: ' - 測試分行',
+            bankAccount: '1234567890123',
+            accountName: '測試戶名',
+            daysReserved: '3',
+            paymentDeadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString('zh-TW'),
+            addonsList: '加床 x1 (NT$ 500)',
+            addonsTotal: '500'
+        };
+        
+        // 替換模板變數
+        let testContent = content;
+        Object.keys(testData).forEach(key => {
+            const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+            testContent = testContent.replace(regex, testData[key]);
+        });
+        
+        // 處理條件區塊（顯示所有條件區塊用於測試）
+        // 移除 {{#if isDeposit}} 條件，直接顯示內容
+        testContent = testContent.replace(/\{\{#if isDeposit\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+        // 移除 {{#if addonsList}} 條件，直接顯示內容
+        testContent = testContent.replace(/\{\{#if addonsList\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+        
+        // 替換主旨中的變數
+        let testSubject = subject;
+        Object.keys(testData).forEach(key => {
+            const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+            testSubject = testSubject.replace(regex, testData[key]);
+        });
+        
+        // 添加旅館資訊 footer
+        const hotelInfoFooter = await getHotelInfoFooter();
+        if (hotelInfoFooter) {
+            testContent = testContent.replace('</body>', hotelInfoFooter + '</body>');
+        }
+        
+        // 發送測試郵件
+        const mailOptions = {
+            from: emailConfig.from,
+            to: email,
+            subject: `[測試] ${testSubject}`,
+            html: testContent
+        };
+        
+        if (sendEmailViaGmailAPI) {
+            await sendEmailViaGmailAPI(mailOptions);
+        } else {
+            return res.status(500).json({
+                success: false,
+                message: '郵件服務未配置，無法發送測試郵件'
+            });
+        }
+        
+        res.json({
+            success: true,
+            message: '測試郵件已成功發送'
+        });
+    } catch (error) {
+        console.error('發送測試郵件錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '發送測試郵件失敗：' + error.message
+        });
+    }
+});
+
 // ==================== 自動郵件發送功能 ====================
 
 // 替換郵件模板中的變數

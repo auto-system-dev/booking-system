@@ -613,6 +613,26 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- 測試郵件功能 -->
+                    <div class="form-group" style="background: #f0f8ff; padding: 15px; border-radius: 5px; margin-top: 20px; border: 1px solid #2C8EC4;">
+                        <h3 style="margin-top: 0; font-size: 16px; color: #333; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-outlined" style="font-size: 20px;">mail</span>
+                            測試郵件
+                        </h3>
+                        <p style="color: #666; font-size: 13px; margin: 8px 0 12px 0;">輸入 Email 地址以發送測試郵件，查看郵件實際效果</p>
+                        <div style="display: flex; gap: 10px; align-items: flex-end;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 13px; color: #666; margin-bottom: 5px; display: block;">Email 地址</label>
+                                <input type="email" id="testEmailAddress" placeholder="example@email.com" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                            </div>
+                            <button type="button" id="sendTestEmailBtn" class="btn-primary" style="padding: 8px 20px; white-space: nowrap;" onclick="sendTestEmail()">
+                                <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">send</span>
+                                發送測試郵件
+                            </button>
+                        </div>
+                        <div id="testEmailStatus" style="margin-top: 10px; font-size: 13px; display: none;"></div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn-primary">儲存</button>

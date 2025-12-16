@@ -2310,6 +2310,135 @@ ${quillHtml}
     }
 }
 
+// 發送測試郵件
+async function sendTestEmail() {
+    const testEmailInput = document.getElementById('testEmailAddress');
+    const testEmailBtn = document.getElementById('sendTestEmailBtn');
+    const testEmailStatus = document.getElementById('testEmailStatus');
+    const form = document.getElementById('emailTemplateForm');
+    const templateKey = form.dataset.templateKey;
+    
+    if (!templateKey) {
+        showError('找不到模板代碼');
+        return;
+    }
+    
+    const email = testEmailInput.value.trim();
+    if (!email) {
+        testEmailStatus.style.display = 'block';
+        testEmailStatus.style.color = '#e74c3c';
+        testEmailStatus.textContent = '請輸入 Email 地址';
+        return;
+    }
+    
+    // 簡單的 Email 格式驗證
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        testEmailStatus.style.display = 'block';
+        testEmailStatus.style.color = '#e74c3c';
+        testEmailStatus.textContent = '請輸入有效的 Email 地址';
+        return;
+    }
+    
+    // 禁用按鈕並顯示載入狀態
+    testEmailBtn.disabled = true;
+    testEmailBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">hourglass_empty</span>發送中...';
+    testEmailStatus.style.display = 'none';
+    
+    try {
+        // 獲取當前模板內容（與儲存邏輯相同）
+        let content = '';
+        if (isHtmlMode) {
+            content = document.getElementById('emailTemplateContent').value;
+        } else {
+            const quillHtml = quillEditor.root.innerHTML;
+            const originalContent = document.getElementById('emailTemplateContent').value;
+            
+            if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
+                if (originalContent.includes('<body>')) {
+                    content = originalContent.replace(
+                        /<body[^>]*>[\s\S]*?<\/body>/i,
+                        `<body>${quillHtml}</body>`
+                    );
+                } else if (originalContent.includes('<html')) {
+                    content = originalContent.replace(
+                        /<html[^>]*>([\s\S]*?)<\/html>/i,
+                        (match, innerContent) => {
+                            if (innerContent.includes('<body>')) {
+                                return match.replace(/<body[^>]*>[\s\S]*?<\/body>/i, `<body>${quillHtml}</body>`);
+                            } else {
+                                return `<html${match.match(/<html([^>]*)>/)?.[1] || ''}>${innerContent}<body>${quillHtml}</body></html>`;
+                            }
+                        }
+                    );
+                } else {
+                    content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+    </style>
+</head>
+<body>
+${quillHtml}
+</body>
+</html>`;
+                }
+            } else {
+                content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+    </style>
+</head>
+<body>
+${quillHtml}
+</body>
+</html>`;
+            }
+        }
+        
+        const subject = document.getElementById('emailTemplateSubject').value;
+        
+        const response = await fetch(`/api/email-templates/${templateKey}/test`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: email,
+                subject: subject,
+                content: content
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            testEmailStatus.style.display = 'block';
+            testEmailStatus.style.color = '#27ae60';
+            testEmailStatus.textContent = '✅ 測試郵件已成功發送！請檢查收件箱。';
+            testEmailInput.value = ''; // 清空輸入框
+        } else {
+            testEmailStatus.style.display = 'block';
+            testEmailStatus.style.color = '#e74c3c';
+            testEmailStatus.textContent = '❌ 發送失敗：' + (result.message || '未知錯誤');
+        }
+    } catch (error) {
+        console.error('發送測試郵件時發生錯誤:', error);
+        testEmailStatus.style.display = 'block';
+        testEmailStatus.style.color = '#e74c3c';
+        testEmailStatus.textContent = '❌ 發送失敗：' + error.message;
+    } finally {
+        // 恢復按鈕狀態
+        testEmailBtn.disabled = false;
+        testEmailBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">send</span>發送測試郵件';
+    }
+}
+
 // 切換編輯模式（可視化 / HTML）
 function toggleEditorMode() {
     const editorContainer = document.getElementById('emailTemplateEditor');
