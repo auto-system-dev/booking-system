@@ -222,6 +222,11 @@ body {
     .addons-grid {
         grid-template-columns: 1fr;
     }
+    
+    .guest-count-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
 }
 
 .room-option {
