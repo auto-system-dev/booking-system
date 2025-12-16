@@ -985,10 +985,9 @@ function initSQLite() {
                                             console.log('✅ 假日日期表已準備就緒');
                                         }
                                         
-                                        // 建立房型關房表
                                         // 建立加購商品表
-                                            db.run(`
-                                                CREATE TABLE IF NOT EXISTS addons (
+                                        db.run(`
+                                            CREATE TABLE IF NOT EXISTS addons (
                                                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                                                     name TEXT UNIQUE NOT NULL,
                                                     display_name TEXT NOT NULL,
@@ -999,7 +998,7 @@ function initSQLite() {
                                                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                                                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                                                 )
-                                            `, (err) => {
+                                        `, (err) => {
                                                 if (err) {
                                                     console.warn('⚠️  建立 addons 表時發生錯誤:', err.message);
                                                 } else {
@@ -1048,9 +1047,7 @@ function initSQLite() {
                                                     });
                                                 });
                                             });
-                                        });
                                     });
-                                });
                                 
                                 // 初始化預設房型（如果表是空的）
                                 db.get('SELECT COUNT(*) as count FROM room_types', [], (err, row) => {
