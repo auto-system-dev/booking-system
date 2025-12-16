@@ -1047,26 +1047,26 @@ function initSQLite() {
                                                     });
                                                 });
                                             });
-                                    });
-                                
-                                // 初始化預設房型（如果表是空的）
-                                db.get('SELECT COUNT(*) as count FROM room_types', [], (err, row) => {
-                                    if (!err && row && row.count === 0) {
-                                        const defaultRooms = [
-                                            ['standard', '標準雙人房', 2000, 2, 0, '🏠', 1],
-                                            ['deluxe', '豪華雙人房', 3500, 2, 0, '✨', 2],
-                                            ['suite', '尊爵套房', 5000, 2, 0, '👑', 3],
-                                            ['family', '家庭四人房', 4500, 4, 0, '👨‍👩‍👧‍👦', 4]
-                                        ];
                                         
-                                        const stmt = db.prepare('INSERT INTO room_types (name, display_name, price, max_occupancy, extra_beds, icon, display_order) VALUES (?, ?, ?, ?, ?, ?, ?)');
-                                        defaultRooms.forEach(room => {
-                                            stmt.run(room);
+                                        // 初始化預設房型（如果表是空的）
+                                        db.get('SELECT COUNT(*) as count FROM room_types', [], (err, row) => {
+                                            if (!err && row && row.count === 0) {
+                                                const defaultRooms = [
+                                                    ['standard', '標準雙人房', 2000, 2, 0, '🏠', 1],
+                                                    ['deluxe', '豪華雙人房', 3500, 2, 0, '✨', 2],
+                                                    ['suite', '尊爵套房', 5000, 2, 0, '👑', 3],
+                                                    ['family', '家庭四人房', 4500, 4, 0, '👨‍👩‍👧‍👦', 4]
+                                                ];
+                                                
+                                                const stmt = db.prepare('INSERT INTO room_types (name, display_name, price, max_occupancy, extra_beds, icon, display_order) VALUES (?, ?, ?, ?, ?, ?, ?)');
+                                                defaultRooms.forEach(room => {
+                                                    stmt.run(room);
+                                                });
+                                                stmt.finalize();
+                                                console.log('✅ 預設房型已初始化');
+                                            }
                                         });
-                                        stmt.finalize();
-                                        console.log('✅ 預設房型已初始化');
-                                    }
-                                });
+                                    });
                             }
                             
                             // 建立系統設定表
