@@ -232,12 +232,20 @@ function initDatePicker() {
         onChange: (selectedDates) => {
             const [start, end] = selectedDates;
             if (start) {
-                checkInInput.value = start.toISOString().split('T')[0];
+                // 使用本地日期格式，避免時區轉換問題
+                const year = start.getFullYear();
+                const month = String(start.getMonth() + 1).padStart(2, '0');
+                const day = String(start.getDate()).padStart(2, '0');
+                checkInInput.value = `${year}-${month}-${day}`;
             } else {
                 checkInInput.value = '';
             }
             if (end && end > start) {
-                checkOutInput.value = end.toISOString().split('T')[0];
+                // 使用本地日期格式，避免時區轉換問題
+                const year = end.getFullYear();
+                const month = String(end.getMonth() + 1).padStart(2, '0');
+                const day = String(end.getDate()).padStart(2, '0');
+                checkOutInput.value = `${year}-${month}-${day}`;
             } else {
                 checkOutInput.value = '';
             }
