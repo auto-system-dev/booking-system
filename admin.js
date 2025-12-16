@@ -1950,6 +1950,28 @@ async function showEmailTemplateModal(templateKey) {
                 }
             }
             
+            // 提取並注入 CSS 樣式到編輯器容器
+            const editorContainer = document.getElementById('emailTemplateEditor');
+            let templateStyles = '';
+            
+            // 從模板內容中提取 CSS 樣式
+            if (template.content && template.content.includes('<style>')) {
+                const styleMatch = template.content.match(/<style>([\s\S]*?)<\/style>/i);
+                if (styleMatch) {
+                    templateStyles = styleMatch[1];
+                    // 移除已存在的樣式標籤（如果有的話）
+                    const existingStyle = editorContainer.parentElement.querySelector('#emailTemplateEditorStyles');
+                    if (existingStyle) {
+                        existingStyle.remove();
+                    }
+                    // 創建新的 style 標籤並注入樣式
+                    const styleTag = document.createElement('style');
+                    styleTag.id = 'emailTemplateEditorStyles';
+                    styleTag.textContent = templateStyles;
+                    editorContainer.parentElement.insertBefore(styleTag, editorContainer);
+                }
+            }
+            
             // 初始化 Quill 編輯器（如果還沒有）
             if (!quillEditor) {
                 // 自定義 Clipboard 模組，允許更多 HTML 標籤
@@ -1984,6 +2006,18 @@ async function showEmailTemplateModal(templateKey) {
                     formats: ['bold', 'italic', 'underline', 'strike', 'color', 'background', 
                              'header', 'list', 'align', 'link', 'image', 'blockquote', 'code-block']
                 });
+            } else {
+                // 如果編輯器已存在，更新樣式
+                const existingStyle = editorContainer.parentElement.querySelector('#emailTemplateEditorStyles');
+                if (existingStyle) {
+                    existingStyle.remove();
+                }
+                if (templateStyles) {
+                    const styleTag = document.createElement('style');
+                    styleTag.id = 'emailTemplateEditorStyles';
+                    styleTag.textContent = templateStyles;
+                    editorContainer.parentElement.insertBefore(styleTag, editorContainer);
+                }
             }
             
             // 將 HTML 內容載入到 Quill 編輯器
@@ -2013,6 +2047,19 @@ async function showEmailTemplateModal(templateKey) {
             
             // 先顯示模態框
             modal.classList.add('active');
+            
+            // 確保樣式已注入（延遲執行以確保 DOM 已更新）
+            setTimeout(() => {
+                if (templateStyles) {
+                    const existingStyle = editorContainer.parentElement.querySelector('#emailTemplateEditorStyles');
+                    if (!existingStyle) {
+                        const styleTag = document.createElement('style');
+                        styleTag.id = 'emailTemplateEditorStyles';
+                        styleTag.textContent = templateStyles;
+                        editorContainer.parentElement.insertBefore(styleTag, editorContainer);
+                    }
+                }
+            }, 100);
             
             // 預設使用可視化模式（用戶要求）
             isHtmlMode = false;

@@ -892,11 +892,55 @@ body {
 
 #emailTemplateEditor .ql-editor {
     min-height: 350px;
+    /* 確保編輯器內的樣式能夠正確顯示 */
+    padding: 20px;
 }
 
 #emailTemplateEditor .ql-editor.ql-blank::before {
     color: #999;
     font-style: normal;
+}
+
+/* 確保編輯器內的 HTML 結構和樣式能夠正確顯示 */
+#emailTemplateEditor .ql-editor * {
+    box-sizing: border-box;
+}
+
+/* 讓編輯器內的容器樣式生效 */
+#emailTemplateEditor .ql-editor .container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+#emailTemplateEditor .ql-editor .header {
+    padding: 30px;
+    text-align: center;
+    border-radius: 10px 10px 0 0;
+}
+
+#emailTemplateEditor .ql-editor .content {
+    padding: 30px;
+    border-radius: 0 0 10px 10px;
+}
+
+#emailTemplateEditor .ql-editor .info-box {
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+#emailTemplateEditor .ql-editor .highlight {
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+#emailTemplateEditor .ql-editor .info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #ddd;
 }
 
 /* 編輯模式切換按鈕 */
