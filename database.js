@@ -1243,9 +1243,11 @@ function initSQLite() {
                                             });
                                         }
                                     });
-                                                {
-                                                    key: 'payment_reminder',
-                                                    name: '匯款提醒',
+                                    
+                                    // 如果沒有設定需要初始化，直接建立郵件模板表
+                                    if (defaultSettings.length === 0) {
+                                        createEmailTemplatesTable();
+                                    }
                                                     subject: '【重要提醒】匯款期限即將到期',
                                                     days_reserved: 3,
                                                     send_hour_payment_reminder: 9,
