@@ -1170,9 +1170,13 @@ function initSQLite() {
                                             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                                             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                                         )
-                                    `, async (err) => {
+                                    `, (err) => {
                                         if (err) {
                                             console.warn('⚠️  建立 email_templates 表時發生錯誤:', err.message);
+                                            // 即使建立失敗，也繼續初始化
+                                            initEmailTemplates().then(() => {
+                                                resolve();
+                                            }).catch(reject);
                                         } else {
                                             console.log('✅ 郵件模板表已準備就緒');
                                             
@@ -1188,93 +1192,57 @@ function initSQLite() {
                                                     last_login DATETIME,
                                                     is_active INTEGER DEFAULT 1
                                                 )
-                                            `, async (err) => {
+                                            `, (err) => {
                                                 if (err) {
                                                     console.warn('⚠️  建立 admins 表時發生錯誤:', err.message);
+                                                    // 繼續初始化，不中斷流程
+                                                    initEmailTemplates().then(() => {
+                                                        resolve();
+                                                    }).catch(reject);
                                                 } else {
                                                     console.log('✅ 管理員資料表已準備就緒');
                                                     
                                                     // 初始化預設管理員（如果不存在）
-                                                    db.get('SELECT id FROM admins WHERE username = ?', ['admin'], async (err, row) => {
+                                                    db.get('SELECT id FROM admins WHERE username = ?', ['admin'], (err, row) => {
                                                         if (!err && !row) {
+                                                            // 使用 Promise 處理 bcrypt
                                                             const bcrypt = require('bcrypt');
                                                             const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'admin123';
-                                                            const passwordHash = await bcrypt.hash(defaultPassword, 10);
-                                                            db.run(
-                                                                'INSERT INTO admins (username, password_hash, email, role) VALUES (?, ?, ?, ?)',
-                                                                ['admin', passwordHash, process.env.ADMIN_EMAIL || '', 'super_admin'],
-                                                                (err) => {
-                                                                    if (err) {
-                                                                        console.warn('⚠️  建立預設管理員時發生錯誤:', err.message);
-                                                                    } else {
-                                                                        console.log('✅ 預設管理員已建立（帳號：admin，密碼：' + defaultPassword + '）');
-                                                                        console.log('⚠️  請立即登入並修改預設密碼！');
+                                                            bcrypt.hash(defaultPassword, 10).then((passwordHash) => {
+                                                                db.run(
+                                                                    'INSERT INTO admins (username, password_hash, email, role) VALUES (?, ?, ?, ?)',
+                                                                    ['admin', passwordHash, process.env.ADMIN_EMAIL || '', 'super_admin'],
+                                                                    (err) => {
+                                                                        if (err) {
+                                                                            console.warn('⚠️  建立預設管理員時發生錯誤:', err.message);
+                                                                        } else {
+                                                                            console.log('✅ 預設管理員已建立（帳號：admin，密碼：' + defaultPassword + '）');
+                                                                            console.log('⚠️  請立即登入並修改預設密碼！');
+                                                                        }
+                                                                        // 繼續初始化郵件模板
+                                                                        initEmailTemplates().then(() => {
+                                                                            resolve();
+                                                                        }).catch(reject);
                                                                     }
-                                                                }
-                                                            );
+                                                                );
+                                                            }).catch((hashErr) => {
+                                                                console.warn('⚠️  加密密碼時發生錯誤:', hashErr.message);
+                                                                // 繼續初始化，不中斷流程
+                                                                initEmailTemplates().then(() => {
+                                                                    resolve();
+                                                                }).catch(reject);
+                                                            });
+                                                        } else {
+                                                            // 管理員已存在，繼續初始化郵件模板
+                                                            initEmailTemplates().then(() => {
+                                                                resolve();
+                                                            }).catch(reject);
                                                         }
                                                     });
                                                 }
                                             });
                                         }
                                     });
-                                    
-                                    // 初始化預設郵件模板
-                                    initEmailTemplates().then(() => {
-                                        resolve();
-                                    }).catch(reject);
-                                    `, async (err) => {
-                                        if (err) {
-                                            console.warn('⚠️  建立 email_templates 表時發生錯誤:', err.message);
-                                            db.close();
-                                            resolve();
-                                            return;
-                                        }
-                                        
-                                        console.log('✅ 郵件模板表已準備就緒');
-                                        
-                                        // 建立管理員資料表
-                                        db.run(`
-                                            CREATE TABLE IF NOT EXISTS admins (
-                                                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                username TEXT UNIQUE NOT NULL,
-                                                password_hash TEXT NOT NULL,
-                                                email TEXT,
-                                                role TEXT DEFAULT 'admin',
-                                                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                                                last_login DATETIME,
-                                                is_active INTEGER DEFAULT 1
-                                            )
-                                        `, async (err) => {
-                                            if (err) {
-                                                console.warn('⚠️  建立 admins 表時發生錯誤:', err.message);
-                                            } else {
-                                                console.log('✅ 管理員資料表已準備就緒');
-                                                
-                                                // 初始化預設管理員（如果不存在）
-                                                db.get('SELECT id FROM admins WHERE username = ?', ['admin'], async (err, row) => {
-                                                    if (!err && !row) {
-                                                        const bcrypt = require('bcrypt');
-                                                        const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'admin123';
-                                                        const passwordHash = await bcrypt.hash(defaultPassword, 10);
-                                                        db.run(
-                                                            'INSERT INTO admins (username, password_hash, email, role) VALUES (?, ?, ?, ?)',
-                                                            ['admin', passwordHash, process.env.ADMIN_EMAIL || '', 'super_admin'],
-                                                            (err) => {
-                                                                if (err) {
-                                                                    console.warn('⚠️  建立預設管理員時發生錯誤:', err.message);
-                                                                } else {
-                                                                    console.log('✅ 預設管理員已建立（帳號：admin，密碼：' + defaultPassword + '）');
-                                                                    console.log('⚠️  請立即登入並修改預設密碼！');
-                                                                }
-                                                            }
-                                                        );
-                                                    }
-                                                });
-                                            }
-                                            
-                                            // 初始化預設郵件模板
-                                            const defaultTemplates = [
                                                 {
                                                     key: 'payment_reminder',
                                                     name: '匯款提醒',
