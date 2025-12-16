@@ -979,6 +979,32 @@ app.get('/api/bookings', async (req, res) => {
     }
 });
 
+// API: 根據訂房編號查詢單筆訂房（供後台列表/日曆詳情使用）
+app.get('/api/bookings/:bookingId', async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+        const booking = await db.getBookingById(bookingId);
+        
+        if (booking) {
+            res.json({
+                success: true,
+                data: booking
+            });
+        } else {
+            res.status(404).json({
+                success: false,
+                message: '找不到該訂房記錄'
+            });
+        }
+    } catch (error) {
+        console.error('查詢單筆訂房記錄錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '查詢單筆訂房記錄失敗：' + error.message
+        });
+    }
+});
+
 // API: 根據 Email 查詢訂房記錄
 app.get('/api/bookings/email/:email', async (req, res) => {
     try {
