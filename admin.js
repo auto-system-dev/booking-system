@@ -879,11 +879,11 @@ function openQuickBookingModal(roomTypeName, dateStr) {
             </div>
             <div class="form-group">
                 <label>入住日期</label>
-                <input type="date" name="check_in_date" value="${checkInDate}" required>
+                <input type="date" name="check_in_date" id="quickCheckInDate" value="${checkInDate}" required>
             </div>
             <div class="form-group">
                 <label>退房日期</label>
-                <input type="date" name="check_out_date" value="${checkOutDate}" required>
+                <input type="date" name="check_out_date" id="quickCheckOutDate" value="${checkOutDate}" required>
             </div>
             <div class="form-group">
                 <label>客戶姓名</label>
@@ -927,6 +927,19 @@ function openQuickBookingModal(roomTypeName, dateStr) {
     `;
     
     modal.classList.add('active');
+    
+    // 入住日期變更時，自動將退房日期設為隔天
+    const checkInInput = document.getElementById('quickCheckInDate');
+    const checkOutInput = document.getElementById('quickCheckOutDate');
+    if (checkInInput && checkOutInput) {
+        checkInInput.addEventListener('change', () => {
+            const ci = new Date(checkInInput.value + 'T00:00:00');
+            if (isNaN(ci.getTime())) return;
+            ci.setDate(ci.getDate() + 1);
+            const co = ci.toISOString().slice(0, 10);
+            checkOutInput.value = co;
+        });
+    }
 }
 
 // 儲存快速新增的訂房
