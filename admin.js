@@ -226,14 +226,16 @@ function renderCustomers() {
     
     tbody.innerHTML = filteredCustomers.map(customer => `
         <tr>
-            <td>${escapeHtml(customer.guest_name)}</td>
-            <td>${escapeHtml(customer.guest_phone)}</td>
-            <td>${escapeHtml(customer.guest_email)}</td>
-            <td>${customer.booking_count || 0}</td>
-            <td>NT$ ${(customer.total_spent || 0).toLocaleString()}</td>
+            <td>${escapeHtml(customer.guest_name || '-')}</td>
+            <td>${escapeHtml(customer.guest_phone || '-')}</td>
+            <td>${escapeHtml(customer.guest_email || '-')}</td>
+            <td style="text-align: center;">${customer.booking_count || 0}</td>
+            <td style="text-align: right;">NT$ ${(customer.total_spent || 0).toLocaleString()}</td>
             <td>${customer.last_booking_date || '-'}</td>
             <td>
-                <button class="btn-view" onclick="viewCustomerDetails('${escapeHtml(customer.guest_email)}')">查看</button>
+                <div class="action-buttons">
+                    <button class="btn-view" onclick="viewCustomerDetails('${escapeHtml(customer.guest_email)}')">查看</button>
+                </div>
             </td>
         </tr>
     `).join('');
