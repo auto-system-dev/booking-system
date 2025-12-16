@@ -2390,22 +2390,25 @@ app.post('/api/email-templates/:key/test', async (req, res) => {
             });
         }
         
-        // 從資料庫讀取最新的模板內容（優先使用資料庫中的內容）
-        let template = await db.getEmailTemplateByKey(key);
-        if (!template) {
-            return res.status(404).json({
-                success: false,
-                message: '找不到該郵件模板'
-            });
-        }
-        
         // 如果前端明確要求使用編輯器中的內容，則使用 req.body 中的內容
-        let content = template.content;
-        let subject = template.subject;
+        // 否則從資料庫讀取最新的模板內容
+        let content, subject;
         
         if (useEditorContent && req.body.content && req.body.subject) {
+            // 使用編輯器中的內容（用戶修改後的內容）
             content = req.body.content;
             subject = req.body.subject;
+        } else {
+            // 從資料庫讀取最新的模板內容
+            const template = await db.getEmailTemplateByKey(key);
+            if (!template) {
+                return res.status(404).json({
+                    success: false,
+                    message: '找不到該郵件模板'
+                });
+            }
+            content = template.content;
+            subject = template.subject;
         }
         
         // Email 格式驗證

@@ -2346,7 +2346,7 @@ async function sendTestEmail() {
     testEmailStatus.style.display = 'none';
     
     try {
-        // 獲取當前模板內容（與儲存邏輯相同）
+        // 獲取當前模板內容（與儲存邏輯相同，保留完整的 HTML 結構）
         let content = '';
         if (isHtmlMode) {
             content = document.getElementById('emailTemplateContent').value;
@@ -2354,8 +2354,10 @@ async function sendTestEmail() {
             const quillHtml = quillEditor.root.innerHTML;
             const originalContent = document.getElementById('emailTemplateContent').value;
             
+            // 使用與儲存邏輯相同的方法，確保保留完整的 HTML 結構和 CSS
             if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
                 if (originalContent.includes('<body>')) {
+                    // 保留完整的 HTML 結構，只替換 body 內容
                     content = originalContent.replace(
                         /<body[^>]*>[\s\S]*?<\/body>/i,
                         `<body>${quillHtml}</body>`
@@ -2372,6 +2374,41 @@ async function sendTestEmail() {
                         }
                     );
                 } else {
+                    // 如果沒有完整的結構，使用原始內容的結構
+                    content = originalContent.replace(/<body[^>]*>[\s\S]*?<\/body>/i, `<body>${quillHtml}</body>`);
+                }
+            } else {
+                // 如果沒有原始內容，使用資料庫中的內容
+                try {
+                    const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
+                    const templateResult = await templateResponse.json();
+                    if (templateResult.success && templateResult.data) {
+                        const templateContent = templateResult.data.content;
+                        if (templateContent && templateContent.includes('<body>')) {
+                            content = templateContent.replace(
+                                /<body[^>]*>[\s\S]*?<\/body>/i,
+                                `<body>${quillHtml}</body>`
+                            );
+                        } else {
+                            content = templateContent;
+                        }
+                    } else {
+                        // Fallback: 創建基本結構
+                        content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+    </style>
+</head>
+<body>
+${quillHtml}
+</body>
+</html>`;
+                    }
+                } catch (e) {
+                    console.error('獲取模板內容失敗:', e);
                     content = `<!DOCTYPE html>
 <html>
 <head>
@@ -2385,23 +2422,12 @@ ${quillHtml}
 </body>
 </html>`;
                 }
-            } else {
-                content = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
-    </style>
-</head>
-<body>
-${quillHtml}
-</body>
-</html>`;
             }
         }
         
-        // 使用資料庫中的最新模板內容（不傳遞 useEditorContent，讓後端從資料庫讀取）
+        const subject = document.getElementById('emailTemplateSubject').value;
+        
+        // 使用編輯器中的內容（用戶修改後的內容），但保留完整的 HTML 結構
         const response = await fetch(`/api/email-templates/${templateKey}/test`, {
             method: 'POST',
             headers: {
@@ -2409,7 +2435,9 @@ ${quillHtml}
             },
             body: JSON.stringify({
                 email: email,
-                useEditorContent: false  // 使用資料庫中的最新內容
+                useEditorContent: true,  // 使用編輯器中的內容
+                subject: subject,
+                content: content
             })
         });
         
