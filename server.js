@@ -2448,7 +2448,7 @@ app.post('/api/email-templates/:key/test', async (req, res) => {
         
         // 發送測試郵件
         const mailOptions = {
-            from: emailConfig.from,
+            from: emailUser,
             to: email,
             subject: `[測試] ${testSubject}`,
             html: testContent
