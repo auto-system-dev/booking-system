@@ -344,15 +344,6 @@ async function initPostgreSQL() {
             
             // 建立假日日期表
             await query(`
-            CREATE TABLE IF NOT EXISTS room_closures (
-                id SERIAL PRIMARY KEY,
-                room_type VARCHAR(255) NOT NULL,
-                date DATE NOT NULL,
-                is_closed INTEGER DEFAULT 1,
-                UNIQUE (room_type, date)
-            )
-        `);
-        console.log('✅ 房型關房表已準備就緒');
 
         await query(`
                 CREATE TABLE IF NOT EXISTS holidays (
@@ -997,22 +988,7 @@ function initSQLite() {
                                         }
                                         
                                         // 建立房型關房表
-                                        db.run(`
-                                            CREATE TABLE IF NOT EXISTS room_closures (
-                                                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                room_type TEXT NOT NULL,
-                                                date TEXT NOT NULL,
-                                                is_closed INTEGER DEFAULT 1,
-                                                UNIQUE (room_type, date)
-                                            )
-                                        `, (err) => {
-                                            if (err) {
-                                                console.warn('⚠️  建立 room_closures 表時發生錯誤:', err.message);
-                                            } else {
-                                                console.log('✅ 房型關房表已準備就緒');
-                                            }
-                                            
-                                            // 建立加購商品表
+                                        // 建立加購商品表
                                             db.run(`
                                                 CREATE TABLE IF NOT EXISTS addons (
                                                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2558,21 +2534,22 @@ async function deleteAddon(id) {
 
 async function getRoomAvailability(checkInDate, checkOutDate) {
     try {
-        // 穩定版：僅根據關房設定判斷前台的滿房房型
+        // 根據訂房狀態判斷前台的滿房房型
+        // 當訂房狀態為 'active'（有效）或 'reserved'（保留）時，顯示滿房
         const sql = usePostgreSQL ? `
             SELECT DISTINCT rt.name
-            FROM room_closures rc
-            INNER JOIN room_types rt ON rc.room_type = rt.display_name
-            WHERE rc.date >= $1::date
-              AND rc.date <  $2::date
-              AND rc.is_closed = 1
+            FROM bookings b
+            INNER JOIN room_types rt ON b.room_type = rt.display_name
+            WHERE b.check_in_date < $2::date
+              AND b.check_out_date > $1::date
+              AND b.status IN ('active', 'reserved')
         ` : `
             SELECT DISTINCT rt.name
-            FROM room_closures rc
-            INNER JOIN room_types rt ON rc.room_type = rt.display_name
-            WHERE rc.date >= ?
-              AND rc.date <  ?
-              AND rc.is_closed = 1
+            FROM bookings b
+            INNER JOIN room_types rt ON b.room_type = rt.display_name
+            WHERE b.check_in_date < ?
+              AND b.check_out_date > ?
+              AND b.status IN ('active', 'reserved')
         `;
 
         const params = usePostgreSQL ? [checkInDate, checkOutDate] : [checkInDate, checkOutDate];
@@ -2611,51 +2588,6 @@ async function getBookingsInRange(startDate, endDate) {
     }
 }
 
-// 取得指定日期範圍內的關房設定
-async function getRoomClosuresInRange(startDate, endDate) {
-    try {
-        const sql = usePostgreSQL ? `
-            SELECT room_type, date, is_closed
-            FROM room_closures
-            WHERE date BETWEEN $1 AND $2
-        ` : `
-            SELECT room_type, date, is_closed
-            FROM room_closures
-            WHERE date BETWEEN ? AND ?
-        `;
-        const result = await query(sql, [startDate, endDate]);
-        return result.rows || result;
-    } catch (error) {
-        console.error('❌ 查詢房型關房設定失敗:', error.message);
-        throw error;
-    }
-}
-
-// 設定或切換單一房型在某日的關房狀態
-async function setRoomClosure(roomType, date, isClosed) {
-    try {
-        if (usePostgreSQL) {
-            const sql = `
-                INSERT INTO room_closures (room_type, date, is_closed)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (room_type, date)
-                DO UPDATE SET is_closed = EXCLUDED.is_closed
-            `;
-            await query(sql, [roomType, date, isClosed ? 1 : 0]);
-        } else {
-            const sql = `
-                INSERT INTO room_closures (room_type, date, is_closed)
-                VALUES (?, ?, ?)
-                ON CONFLICT(room_type, date)
-                DO UPDATE SET is_closed = excluded.is_closed
-            `;
-            await query(sql, [roomType, date, isClosed ? 1 : 0]);
-        }
-    } catch (error) {
-        console.error('❌ 更新房型關房狀態失敗:', error.message);
-        throw error;
-    }
-}
 
 // 取得已過期保留期限的訂房（需要自動取消）
 async function getBookingsExpiredReservation() {
@@ -2721,8 +2653,6 @@ module.exports = {
     // 房間可用性
     getRoomAvailability,
     getBookingsInRange,
-    getRoomClosuresInRange,
-    setRoomClosure,
     // 過期保留訂房
     getBookingsExpiredReservation,
     // 加購商品管理
