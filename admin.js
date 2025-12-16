@@ -2401,8 +2401,7 @@ ${quillHtml}
             }
         }
         
-        const subject = document.getElementById('emailTemplateSubject').value;
-        
+        // 使用資料庫中的最新模板內容（不傳遞 useEditorContent，讓後端從資料庫讀取）
         const response = await fetch(`/api/email-templates/${templateKey}/test`, {
             method: 'POST',
             headers: {
@@ -2410,8 +2409,7 @@ ${quillHtml}
             },
             body: JSON.stringify({
                 email: email,
-                subject: subject,
-                content: content
+                useEditorContent: false  // 使用資料庫中的最新內容
             })
         });
         
@@ -2446,6 +2444,12 @@ async function resetEmailTemplatesToDefault() {
     }
     
     try {
+        // 檢查是否有打開的編輯模態框
+        const modal = document.getElementById('emailTemplateModal');
+        const form = document.getElementById('emailTemplateForm');
+        const templateKey = form ? form.dataset.templateKey : null;
+        const isModalOpen = modal && modal.classList.contains('active');
+        
         const response = await fetch('/api/email-templates/reset-to-default', {
             method: 'POST',
             headers: {
@@ -2457,6 +2461,12 @@ async function resetEmailTemplatesToDefault() {
         
         if (result.success) {
             alert('✅ 所有郵件模板已成功重置為預設圖卡樣式！');
+            
+            // 如果模態框是打開的，重新載入當前模板內容
+            if (isModalOpen && templateKey) {
+                await showEmailTemplateModal(templateKey);
+            }
+            
             // 重新載入模板列表
             await loadEmailTemplates();
         } else {

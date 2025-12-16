@@ -2381,13 +2381,31 @@ app.put('/api/email-templates/:key', async (req, res) => {
 app.post('/api/email-templates/:key/test', async (req, res) => {
     try {
         const { key } = req.params;
-        const { email, subject, content } = req.body;
+        const { email, useEditorContent } = req.body;
         
-        if (!email || !subject || !content) {
+        if (!email) {
             return res.status(400).json({
                 success: false,
-                message: '請提供 Email 地址、主旨和內容'
+                message: '請提供 Email 地址'
             });
+        }
+        
+        // 從資料庫讀取最新的模板內容（優先使用資料庫中的內容）
+        let template = await db.getEmailTemplateByKey(key);
+        if (!template) {
+            return res.status(404).json({
+                success: false,
+                message: '找不到該郵件模板'
+            });
+        }
+        
+        // 如果前端明確要求使用編輯器中的內容，則使用 req.body 中的內容
+        let content = template.content;
+        let subject = template.subject;
+        
+        if (useEditorContent && req.body.content && req.body.subject) {
+            content = req.body.content;
+            subject = req.body.subject;
         }
         
         // Email 格式驗證
