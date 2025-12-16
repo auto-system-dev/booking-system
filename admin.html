@@ -213,6 +213,23 @@
 
                 <!-- 分頁 -->
                 <div class="pagination" id="pagination"></div>
+                </div>
+
+                <!-- 日曆視圖 -->
+                <div id="bookingCalendarView" class="booking-view" style="display: none;">
+                    <div class="calendar-controls" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                        <button class="btn-primary" onclick="changeCalendarMonth(-1)">
+                            <span class="material-symbols-outlined">chevron_left</span> 上一個月
+                        </button>
+                        <h3 id="calendarMonthTitle" style="margin: 0; font-size: 20px; font-weight: 600;"></h3>
+                        <button class="btn-primary" onclick="changeCalendarMonth(1)">
+                            下一個月 <span class="material-symbols-outlined">chevron_right</span>
+                        </button>
+                    </div>
+                    <div id="bookingCalendarContainer" class="calendar-container">
+                        <div class="loading">載入日曆中...</div>
+                    </div>
+                </div>
             </section>
 
             <!-- 客戶管理區 -->
