@@ -2053,101 +2053,14 @@ async function showEmailTemplateModal(templateKey) {
                     // 先清空編輯器
                     quillEditor.setText('');
                     
-                    // 方法：直接設置 innerHTML 並持續監控恢復
+                    // 方法：使用 Quill 的標準方法載入內容（傳統模式）
                     try {
-                        const editorElement = quillEditor.root;
+                        // 先清空編輯器
+                        quillEditor.setText('');
                         
-                        // 保存原始 HTML 內容
-                        originalHtmlContent = htmlContent;
-                        
-                        // 直接設置 innerHTML（繞過 Quill 的轉換，保留所有 class 和結構）
-                        editorElement.innerHTML = htmlContent;
-                        console.log('✅ 直接設置 innerHTML 以保留完整結構');
-                        
-                        // 立即驗證並持續恢復
-                        const checkAndRestore = () => {
-                            const loadedContent = editorElement.innerHTML;
-                            console.log('編輯器內容長度:', loadedContent.length);
-                            
-                            // 檢查是否有 class 名稱
-                            const hasContainer = loadedContent.includes('container');
-                            const hasHeader = loadedContent.includes('header');
-                            const hasContent = loadedContent.includes('content');
-                            console.log('Class 檢查:', { hasContainer, hasHeader, hasContent });
-                            
-                            // 如果內容被清理或 class 丟失，立即恢復
-                            if (loadedContent.length < htmlContent.length * 0.5 || !hasContainer || !hasHeader || !hasContent) {
-                                console.warn('⚠️ 內容被清理，立即恢復');
-                                editorElement.innerHTML = htmlContent;
-                                
-                                // 再次檢查
-                                setTimeout(() => {
-                                    const restoredContent = editorElement.innerHTML;
-                                    const restoredHasContainer = restoredContent.includes('container');
-                                    const restoredHasHeader = restoredContent.includes('header');
-                                    const restoredHasContent = restoredContent.includes('content');
-                                    console.log('恢復後 Class 檢查:', { 
-                                        hasContainer: restoredHasContainer, 
-                                        hasHeader: restoredHasHeader, 
-                                        hasContent: restoredHasContent 
-                                    });
-                                    
-                                    if (restoredHasContainer && restoredHasHeader && restoredHasContent) {
-                                        console.log('✅ HTML 結構和 class 名稱已成功恢復');
-                                    } else {
-                                        console.warn('⚠️ 恢復失敗，可能需要手動檢查');
-                                    }
-                                }, 50);
-                            } else {
-                                console.log('✅ HTML 結構和 class 名稱已保留');
-                            }
-                        };
-                        
-                        // 立即檢查
-                        checkAndRestore();
-                        
-                        // 持續監控並恢復（只在 class 丟失時才恢復，每 200ms 檢查一次，持續 2 秒）
-                        let checkCount = 0;
-                        const maxChecks = 10;
-                        const checkInterval = setInterval(() => {
-                            checkCount++;
-                            const currentContent = editorElement.innerHTML;
-                            
-                            // 只檢查 class 是否存在，不檢查長度（因為用戶可能會編輯內容）
-                            const hasContainer = currentContent.includes('container');
-                            const hasHeader = currentContent.includes('header');
-                            const hasContent = currentContent.includes('content');
-                            
-                            // 只有在 class 丟失時才恢復（不是因為長度）
-                            if (!hasContainer || !hasHeader || !hasContent) {
-                                console.log(`🔄 第 ${checkCount} 次檢查：檢測到 class 丟失，恢復中...`);
-                                editorElement.innerHTML = htmlContent;
-                                
-                                // 驗證恢復是否成功
-                                setTimeout(() => {
-                                    const restoredContent = editorElement.innerHTML;
-                                    const restoredHasContainer = restoredContent.includes('container');
-                                    const restoredHasHeader = restoredContent.includes('header');
-                                    const restoredHasContent = restoredContent.includes('content');
-                                    if (restoredHasContainer && restoredHasHeader && restoredHasContent) {
-                                        console.log('✅ Class 已成功恢復');
-                                    }
-                                }, 50);
-                            }
-                            
-                            if (checkCount >= maxChecks) {
-                                clearInterval(checkInterval);
-                                const finalContent = editorElement.innerHTML;
-                                const finalHasContainer = finalContent.includes('container');
-                                const finalHasHeader = finalContent.includes('header');
-                                const finalHasContent = finalContent.includes('content');
-                                if (finalHasContainer && finalHasHeader && finalHasContent) {
-                                    console.log('✅ 監控結束，HTML 結構和 class 名稱已穩定保留');
-                                } else {
-                                    console.warn('⚠️ 監控結束，但部分 class 可能仍缺失');
-                                }
-                            }
-                        }, 200);
+                        // 使用 dangerouslyPasteHTML 方法載入內容
+                        quillEditor.clipboard.dangerouslyPasteHTML(0, htmlContent);
+                        console.log('✅ 內容已載入到編輯器');
                     } catch (error) {
                         console.error('❌ 載入內容時發生錯誤:', error);
                         // Fallback: 直接設置 innerHTML
