@@ -170,14 +170,11 @@ body {
     }
     .guest-counter-input {
         padding: 8px 10px;
-        flex-direction: column;
-        align-items: flex-start;
+        flex-direction: row;
+        align-items: center;
     }
     .guest-counter {
-        min-width: 0;
-        margin-top: 6px;
-        width: 100%;
-        justify-content: space-between;
+        gap: 8px;
     }
     .guest-counter-label-inline {
         font-size: 13px;
@@ -348,45 +345,43 @@ body {
     font-size: 14px;
     font-weight: 500;
     color: #666;
+    flex: 1;
 }
 
 .guest-counter {
     display: inline-flex;
     align-items: center;
-    background: #f7f9fb;
-    border-radius: 10px;
-    overflow: hidden;
-    min-width: 120px;
-    border: 1px solid #e0e0e0;
+    gap: 10px;
 }
 
 .guest-counter-btn {
-    border: none;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
     background: #fff;
-    font-size: 18px;
-    padding: 8px 12px;
     cursor: pointer;
-    transition: background 0.2s ease;
-    border-right: 1px solid #e0e0e0;
-}
-
-.guest-counter-btn:last-of-type {
-    border-right: none;
-    border-left: 1px solid #e0e0e0;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    transition: all 0.2s ease;
+    padding: 0;
 }
 
 .guest-counter-btn:hover {
     background: #2C8EC4;
-    color: #fff;
+    color: white;
+    border-color: #2C8EC4;
 }
 
 .guest-counter-value {
     text-align: center;
     font-size: 16px;
-    font-weight: 700;
+    font-weight: 600;
     color: #333;
-    padding: 0 12px;
-    min-width: 32px;
+    min-width: 30px;
 }
 
 .form-group label {
