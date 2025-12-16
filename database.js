@@ -2651,6 +2651,9 @@ module.exports = {
     getBookingsInRange,
     // 過期保留訂房
     getBookingsExpiredReservation,
+    // 客戶管理
+    getAllCustomers,
+    getCustomerByEmail,
     // 加購商品管理
     getAllAddons,
     getAllAddonsAdmin,

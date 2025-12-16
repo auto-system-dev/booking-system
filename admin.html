@@ -30,6 +30,10 @@
                     <span class="nav-icon"><span class="material-symbols-outlined">event_note</span></span>
                     <span>訂房記錄</span>
                 </a>
+                <a href="#customers" class="nav-item" data-section="customers">
+                    <span class="nav-icon"><span class="material-symbols-outlined">people</span></span>
+                    <span>客戶管理</span>
+                </a>
                 <a href="#statistics" class="nav-item" data-section="statistics">
                     <span class="nav-icon"><span class="material-symbols-outlined">monitoring</span></span>
                     <span>統計資料</span>
@@ -197,6 +201,48 @@
 
                 <!-- 分頁 -->
                 <div class="pagination" id="pagination"></div>
+            </section>
+
+            <!-- 客戶管理區 -->
+            <section id="customers-section" class="content-section">
+                <div class="section-header">
+                    <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">people</span> 客戶管理</h2>
+                    <div class="header-actions">
+                        <button class="btn-refresh" onclick="loadCustomers()">
+                            <span class="material-symbols-outlined">refresh</span> 重新整理
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 搜尋和篩選 -->
+                <div class="filter-bar">
+                    <div class="search-box">
+                        <input type="text" id="customerSearchInput" placeholder="搜尋客戶姓名、電話、Email..." onkeyup="filterCustomers()">
+                        <span class="search-icon"><span class="material-symbols-outlined" style="font-size: 20px; vertical-align: middle;">search</span></span>
+                    </div>
+                </div>
+
+                <!-- 客戶列表表格 -->
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>客戶姓名</th>
+                                <th>電話</th>
+                                <th>Email</th>
+                                <th>訂房次數</th>
+                                <th>總消費金額</th>
+                                <th>最後訂房日期</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customersTableBody">
+                            <tr>
+                                <td colspan="7" class="loading">載入中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             <!-- 統計資料區 -->

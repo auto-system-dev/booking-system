@@ -1018,6 +1018,51 @@ app.get('/api/bookings/email/:email', async (req, res) => {
     }
 });
 
+// API: 取得所有客戶列表（聚合訂房資料）
+app.get('/api/customers', async (req, res) => {
+    try {
+        const customers = await db.getAllCustomers();
+        
+        res.json({
+            success: true,
+            count: customers.length,
+            data: customers
+        });
+    } catch (error) {
+        console.error('查詢客戶列表錯誤:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: '查詢客戶列表失敗：' + error.message 
+        });
+    }
+});
+
+// API: 取得單一客戶詳情（包含所有訂房記錄）
+app.get('/api/customers/:email', async (req, res) => {
+    try {
+        const { email } = req.params;
+        const customer = await db.getCustomerByEmail(email);
+        
+        if (customer) {
+            res.json({
+                success: true,
+                data: customer
+            });
+        } else {
+            res.status(404).json({
+                success: false,
+                message: '找不到該客戶'
+            });
+        }
+    } catch (error) {
+        console.error('查詢客戶詳情錯誤:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: '查詢客戶詳情失敗：' + error.message 
+        });
+    }
+});
+
 // API: 取得統計資料
 app.get('/api/statistics', async (req, res) => {
     try {

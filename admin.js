@@ -109,6 +109,8 @@ function switchSection(section) {
         loadStatistics();
     } else if (section === 'bookings') {
         loadBookings();
+    } else if (section === 'customers') {
+        loadCustomers();
     }
 }
 
@@ -183,6 +185,166 @@ async function loadBookings() {
 }
 
 // （排房日曆功能已移除，僅保留列表檢視）
+
+// 載入客戶列表
+let allCustomers = [];
+let filteredCustomers = [];
+
+async function loadCustomers() {
+    try {
+        const response = await fetch('/api/customers');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            allCustomers = result.data || [];
+            filteredCustomers = [...allCustomers];
+            renderCustomers();
+        } else {
+            showError('載入客戶列表失敗：' + (result.message || '未知錯誤'));
+            document.getElementById('customersTableBody').innerHTML = '<tr><td colspan="7" class="loading">載入失敗</td></tr>';
+        }
+    } catch (error) {
+        console.error('載入客戶列表錯誤:', error);
+        showError('載入客戶列表時發生錯誤：' + error.message);
+        document.getElementById('customersTableBody').innerHTML = '<tr><td colspan="7" class="loading">載入失敗</td></tr>';
+    }
+}
+
+// 渲染客戶列表
+function renderCustomers() {
+    const tbody = document.getElementById('customersTableBody');
+    
+    if (filteredCustomers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="loading">沒有找到客戶資料</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = filteredCustomers.map(customer => `
+        <tr>
+            <td>${escapeHtml(customer.guest_name)}</td>
+            <td>${escapeHtml(customer.guest_phone)}</td>
+            <td>${escapeHtml(customer.guest_email)}</td>
+            <td>${customer.booking_count || 0}</td>
+            <td>NT$ ${(customer.total_spent || 0).toLocaleString()}</td>
+            <td>${customer.last_booking_date || '-'}</td>
+            <td>
+                <button class="btn-view" onclick="viewCustomerDetails('${escapeHtml(customer.guest_email)}')">查看</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// 篩選客戶
+function filterCustomers() {
+    const searchTerm = document.getElementById('customerSearchInput').value.toLowerCase().trim();
+    
+    if (!searchTerm) {
+        filteredCustomers = [...allCustomers];
+    } else {
+        filteredCustomers = allCustomers.filter(customer => {
+            return (
+                customer.guest_name.toLowerCase().includes(searchTerm) ||
+                customer.guest_phone.includes(searchTerm) ||
+                customer.guest_email.toLowerCase().includes(searchTerm)
+            );
+        });
+    }
+    
+    renderCustomers();
+}
+
+// 查看客戶詳情
+async function viewCustomerDetails(email) {
+    try {
+        const response = await fetch(`/api/customers/${encodeURIComponent(email)}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const customer = result.data;
+            const modal = document.getElementById('bookingModal');
+            const modalBody = document.getElementById('modalBody');
+            
+            // 顯示客戶詳情
+            modalBody.innerHTML = `
+                <div style="padding: 20px;">
+                    <h3 style="margin-bottom: 20px; color: #333;">客戶詳情</h3>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <div style="margin-bottom: 10px;">
+                            <strong>客戶姓名：</strong>${escapeHtml(customer.guest_name)}
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <strong>電話：</strong>${escapeHtml(customer.guest_phone)}
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <strong>Email：</strong>${escapeHtml(customer.guest_email)}
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <strong>訂房次數：</strong>${customer.booking_count || 0} 次
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <strong>總消費金額：</strong>NT$ ${(customer.total_spent || 0).toLocaleString()}
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <strong>最後訂房日期：</strong>${customer.last_booking_date || '-'}
+                        </div>
+                    </div>
+                    
+                    <h4 style="margin: 20px 0 10px 0; color: #333;">訂房記錄</h4>
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <table class="data-table" style="font-size: 14px;">
+                            <thead>
+                                <tr>
+                                    <th>訂房編號</th>
+                                    <th>入住日期</th>
+                                    <th>退房日期</th>
+                                    <th>房型</th>
+                                    <th>金額</th>
+                                    <th>狀態</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${customer.bookings && customer.bookings.length > 0 
+                                    ? customer.bookings.map(booking => `
+                                        <tr>
+                                            <td>${escapeHtml(booking.booking_id)}</td>
+                                            <td>${escapeHtml(booking.check_in_date)}</td>
+                                            <td>${escapeHtml(booking.check_out_date)}</td>
+                                            <td>${escapeHtml(booking.room_type)}</td>
+                                            <td>NT$ ${(parseInt(booking.total_amount) || 0).toLocaleString()}</td>
+                                            <td>
+                                                <span class="status-badge status-${booking.status === 'active' ? 'sent' : booking.status === 'cancelled' ? 'unsent' : 'pending'}">
+                                                    ${booking.status === 'active' ? '有效' : booking.status === 'cancelled' ? '已取消' : booking.status === 'reserved' ? '保留' : booking.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    `).join('')
+                                    : '<tr><td colspan="6" style="text-align: center; padding: 20px;">沒有訂房記錄</td></tr>'
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            
+            modal.classList.add('active');
+        } else {
+            showError('載入客戶詳情失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('載入客戶詳情錯誤:', error);
+        showError('載入客戶詳情時發生錯誤：' + error.message);
+    }
+}
 
 // 渲染訂房記錄
 function renderBookings() {
