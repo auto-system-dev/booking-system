@@ -469,6 +469,35 @@ async function initPostgreSQL() {
             `);
             console.log('✅ 郵件模板表已準備就緒');
             
+            // 建立管理員資料表
+            await query(`
+                CREATE TABLE IF NOT EXISTS admins (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(255) UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    email VARCHAR(255),
+                    role VARCHAR(50) DEFAULT 'admin',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_login TIMESTAMP,
+                    is_active INTEGER DEFAULT 1
+                )
+            `);
+            console.log('✅ 管理員資料表已準備就緒');
+            
+            // 初始化預設管理員（如果不存在）
+            const defaultAdmin = await queryOne('SELECT id FROM admins WHERE username = $1', ['admin']);
+            if (!defaultAdmin) {
+                const bcrypt = require('bcrypt');
+                const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'admin123';
+                const passwordHash = await bcrypt.hash(defaultPassword, 10);
+                await query(
+                    'INSERT INTO admins (username, password_hash, email, role) VALUES ($1, $2, $3, $4)',
+                    ['admin', passwordHash, process.env.ADMIN_EMAIL || '', 'super_admin']
+                );
+                console.log('✅ 預設管理員已建立（帳號：admin，密碼：' + defaultPassword + '）');
+                console.log('⚠️  請立即登入並修改預設密碼！');
+            }
+            
             // 初始化預設郵件模板
             await initEmailTemplates();
             
@@ -1141,7 +1170,60 @@ function initSQLite() {
                                             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                                             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                                         )
-                                    `, (err) => {
+                                    `, async (err) => {
+                                        if (err) {
+                                            console.warn('⚠️  建立 email_templates 表時發生錯誤:', err.message);
+                                        } else {
+                                            console.log('✅ 郵件模板表已準備就緒');
+                                            
+                                            // 建立管理員資料表
+                                            db.run(`
+                                                CREATE TABLE IF NOT EXISTS admins (
+                                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                    username TEXT UNIQUE NOT NULL,
+                                                    password_hash TEXT NOT NULL,
+                                                    email TEXT,
+                                                    role TEXT DEFAULT 'admin',
+                                                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                                    last_login DATETIME,
+                                                    is_active INTEGER DEFAULT 1
+                                                )
+                                            `, async (err) => {
+                                                if (err) {
+                                                    console.warn('⚠️  建立 admins 表時發生錯誤:', err.message);
+                                                } else {
+                                                    console.log('✅ 管理員資料表已準備就緒');
+                                                    
+                                                    // 初始化預設管理員（如果不存在）
+                                                    db.get('SELECT id FROM admins WHERE username = ?', ['admin'], async (err, row) => {
+                                                        if (!err && !row) {
+                                                            const bcrypt = require('bcrypt');
+                                                            const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'admin123';
+                                                            const passwordHash = await bcrypt.hash(defaultPassword, 10);
+                                                            db.run(
+                                                                'INSERT INTO admins (username, password_hash, email, role) VALUES (?, ?, ?, ?)',
+                                                                ['admin', passwordHash, process.env.ADMIN_EMAIL || '', 'super_admin'],
+                                                                (err) => {
+                                                                    if (err) {
+                                                                        console.warn('⚠️  建立預設管理員時發生錯誤:', err.message);
+                                                                    } else {
+                                                                        console.log('✅ 預設管理員已建立（帳號：admin，密碼：' + defaultPassword + '）');
+                                                                        console.log('⚠️  請立即登入並修改預設密碼！');
+                                                                    }
+                                                                }
+                                                            );
+                                                        }
+                                                    });
+                                                }
+                                            });
+                                        }
+                                    });
+                                    
+                                    // 初始化預設郵件模板
+                                    initEmailTemplates().then(() => {
+                                        resolve();
+                                    }).catch(reject);
+                                    `, async (err) => {
                                         if (err) {
                                             console.warn('⚠️  建立 email_templates 表時發生錯誤:', err.message);
                                             db.close();
@@ -1150,6 +1232,46 @@ function initSQLite() {
                                         }
                                         
                                         console.log('✅ 郵件模板表已準備就緒');
+                                        
+                                        // 建立管理員資料表
+                                        db.run(`
+                                            CREATE TABLE IF NOT EXISTS admins (
+                                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                username TEXT UNIQUE NOT NULL,
+                                                password_hash TEXT NOT NULL,
+                                                email TEXT,
+                                                role TEXT DEFAULT 'admin',
+                                                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                                last_login DATETIME,
+                                                is_active INTEGER DEFAULT 1
+                                            )
+                                        `, async (err) => {
+                                            if (err) {
+                                                console.warn('⚠️  建立 admins 表時發生錯誤:', err.message);
+                                            } else {
+                                                console.log('✅ 管理員資料表已準備就緒');
+                                                
+                                                // 初始化預設管理員（如果不存在）
+                                                db.get('SELECT id FROM admins WHERE username = ?', ['admin'], async (err, row) => {
+                                                    if (!err && !row) {
+                                                        const bcrypt = require('bcrypt');
+                                                        const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'admin123';
+                                                        const passwordHash = await bcrypt.hash(defaultPassword, 10);
+                                                        db.run(
+                                                            'INSERT INTO admins (username, password_hash, email, role) VALUES (?, ?, ?, ?)',
+                                                            ['admin', passwordHash, process.env.ADMIN_EMAIL || '', 'super_admin'],
+                                                            (err) => {
+                                                                if (err) {
+                                                                    console.warn('⚠️  建立預設管理員時發生錯誤:', err.message);
+                                                                } else {
+                                                                    console.log('✅ 預設管理員已建立（帳號：admin，密碼：' + defaultPassword + '）');
+                                                                    console.log('⚠️  請立即登入並修改預設密碼！');
+                                                                }
+                                                            }
+                                                        );
+                                                    }
+                                                });
+                                            }
                                             
                                             // 初始化預設郵件模板
                                             const defaultTemplates = [
@@ -2691,6 +2813,76 @@ async function getBookingsExpiredReservation() {
     }
 }
 
+// ==================== 管理員管理 ====================
+
+// 根據帳號查詢管理員
+async function getAdminByUsername(username) {
+    try {
+        const sql = usePostgreSQL 
+            ? `SELECT * FROM admins WHERE username = $1 AND is_active = 1`
+            : `SELECT * FROM admins WHERE username = ? AND is_active = 1`;
+        return await queryOne(sql, [username]);
+    } catch (error) {
+        console.error('❌ 查詢管理員失敗:', error.message);
+        throw error;
+    }
+}
+
+// 驗證管理員密碼
+async function verifyAdminPassword(username, password) {
+    try {
+        const admin = await getAdminByUsername(username);
+        if (!admin) {
+            return null;
+        }
+        
+        const bcrypt = require('bcrypt');
+        const isValid = await bcrypt.compare(password, admin.password_hash);
+        
+        if (isValid) {
+            // 更新最後登入時間
+            await updateAdminLastLogin(admin.id);
+            return admin;
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('❌ 驗證管理員密碼失敗:', error.message);
+        throw error;
+    }
+}
+
+// 更新管理員最後登入時間
+async function updateAdminLastLogin(adminId) {
+    try {
+        const sql = usePostgreSQL 
+            ? `UPDATE admins SET last_login = CURRENT_TIMESTAMP WHERE id = $1`
+            : `UPDATE admins SET last_login = datetime('now') WHERE id = ?`;
+        await query(sql, [adminId]);
+    } catch (error) {
+        console.error('❌ 更新管理員最後登入時間失敗:', error.message);
+        // 不拋出錯誤，因為這不是關鍵操作
+    }
+}
+
+// 修改管理員密碼
+async function updateAdminPassword(adminId, newPassword) {
+    try {
+        const bcrypt = require('bcrypt');
+        const passwordHash = await bcrypt.hash(newPassword, 10);
+        
+        const sql = usePostgreSQL 
+            ? `UPDATE admins SET password_hash = $1 WHERE id = $2`
+            : `UPDATE admins SET password_hash = ? WHERE id = ?`;
+        
+        const result = await query(sql, [passwordHash, adminId]);
+        return result.changes > 0;
+    } catch (error) {
+        console.error('❌ 修改管理員密碼失敗:', error.message);
+        throw error;
+    }
+}
+
 module.exports = {
     initDatabase,
     saveBooking,
@@ -2743,6 +2935,11 @@ module.exports = {
     getAddonById,
     createAddon,
     updateAddon,
-    deleteAddon
+    deleteAddon,
+    // 管理員管理
+    getAdminByUsername,
+    verifyAdminPassword,
+    updateAdminLastLogin,
+    updateAdminPassword
 };
 

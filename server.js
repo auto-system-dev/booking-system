@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 const nodemailer = require('nodemailer');
 const cors = require('cors');
 const path = require('path');
+const session = require('express-session');
 const db = require('./database');
 const payment = require('./payment');
 const cron = require('node-cron');
@@ -13,8 +14,23 @@ const cron = require('node-cron');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Session 設定
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'your-secret-key-change-this-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production', // 生產環境使用 HTTPS
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 小時
+    }
+}));
+
 // 中間件
-app.use(cors());
+app.use(cors({
+    credentials: true,
+    origin: true
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -407,82 +423,82 @@ app.post('/api/booking', async (req, res) => {
             
             try {
                 console.log('📧 正在發送郵件（匯款轉帳）...');
-                console.log('   發送給客戶:', guestEmail);
-                console.log('   使用帳號:', process.env.EMAIL_USER || 'cheng701107@gmail.com');
-                console.log('   認證方式:', useOAuth2 ? 'OAuth2' : '應用程式密碼');
-                
-                // 如果是 OAuth2，先測試取得 Access Token
-                if (useOAuth2 && getAccessToken) {
+            console.log('   發送給客戶:', guestEmail);
+            console.log('   使用帳號:', process.env.EMAIL_USER || 'cheng701107@gmail.com');
+            console.log('   認證方式:', useOAuth2 ? 'OAuth2' : '應用程式密碼');
+            
+            // 如果是 OAuth2，先測試取得 Access Token
+            if (useOAuth2 && getAccessToken) {
+                try {
+                    console.log('🔍 測試 OAuth2 Access Token...');
+                    const testToken = await getAccessToken();
+                    if (testToken) {
+                        console.log('✅ OAuth2 Access Token 測試成功');
+                    }
+                } catch (tokenError) {
+                    console.error('❌ OAuth2 Access Token 測試失敗:', tokenError.message);
+                    throw new Error('OAuth2 認證失敗: ' + tokenError.message);
+                }
+            }
+            
+            // 發送客戶確認郵件（優先使用 Gmail API，更快更穩定）
+            console.log('📤 發送客戶確認郵件...');
+            let customerResult;
+            if (sendEmailViaGmailAPI) {
+                // 直接使用 Gmail API（Railway 環境更穩定）
+                try {
+                    customerResult = await sendEmailViaGmailAPI(customerMailOptions);
+                    console.log('✅ 客戶確認郵件已發送 (Gmail API)');
+                } catch (gmailError) {
+                    // Gmail API 失敗時，嘗試 SMTP
+                    console.log('⚠️  Gmail API 失敗，嘗試 SMTP...');
                     try {
-                        console.log('🔍 測試 OAuth2 Access Token...');
-                        const testToken = await getAccessToken();
-                        if (testToken) {
-                            console.log('✅ OAuth2 Access Token 測試成功');
-                        }
-                    } catch (tokenError) {
-                        console.error('❌ OAuth2 Access Token 測試失敗:', tokenError.message);
-                        throw new Error('OAuth2 認證失敗: ' + tokenError.message);
+                        customerResult = await transporter.sendMail(customerMailOptions);
+                        console.log('✅ 客戶確認郵件已發送 (SMTP)');
+                    } catch (smtpError) {
+                        throw gmailError; // 拋出原始 Gmail API 錯誤
                     }
                 }
-                
-                // 發送客戶確認郵件（優先使用 Gmail API，更快更穩定）
-                console.log('📤 發送客戶確認郵件...');
-                let customerResult;
-                if (sendEmailViaGmailAPI) {
-                    // 直接使用 Gmail API（Railway 環境更穩定）
-                    try {
-                        customerResult = await sendEmailViaGmailAPI(customerMailOptions);
-                        console.log('✅ 客戶確認郵件已發送 (Gmail API)');
-                    } catch (gmailError) {
-                        // Gmail API 失敗時，嘗試 SMTP
-                        console.log('⚠️  Gmail API 失敗，嘗試 SMTP...');
-                        try {
-                            customerResult = await transporter.sendMail(customerMailOptions);
-                            console.log('✅ 客戶確認郵件已發送 (SMTP)');
-                        } catch (smtpError) {
-                            throw gmailError; // 拋出原始 Gmail API 錯誤
-                        }
-                    }
+            } else {
+                // 沒有 Gmail API，使用 SMTP
+                customerResult = await transporter.sendMail(customerMailOptions);
+                console.log('✅ 客戶確認郵件已發送 (SMTP)');
+            }
+            if (customerResult && customerResult.messageId) {
+                console.log('   郵件 ID:', customerResult.messageId);
+            }
+            
+            emailSent = true;
+        } catch (emailError) {
+            emailErrorMsg = emailError.message || '未知錯誤';
+            console.error('❌ 郵件發送失敗:');
+            console.error('   錯誤訊息:', emailErrorMsg);
+            console.error('   錯誤代碼:', emailError.code);
+            console.error('   錯誤命令:', emailError.command);
+            console.error('   完整錯誤:', emailError);
+            
+            // 如果是認證錯誤，提供更詳細的說明
+            if (emailError.code === 'EAUTH' || emailError.message.includes('Invalid login')) {
+                console.error('⚠️  認證失敗！請檢查：');
+                if (useOAuth2) {
+                    console.error('   1. GMAIL_CLIENT_ID 是否正確');
+                    console.error('   2. GMAIL_CLIENT_SECRET 是否正確');
+                    console.error('   3. GMAIL_REFRESH_TOKEN 是否有效');
+                    console.error('   4. Refresh Token 是否已過期或被撤銷');
                 } else {
-                    // 沒有 Gmail API，使用 SMTP
-                    customerResult = await transporter.sendMail(customerMailOptions);
-                    console.log('✅ 客戶確認郵件已發送 (SMTP)');
+                    console.error('   1. Email 帳號是否正確');
+                    console.error('   2. 是否使用應用程式密碼（Gmail 需要）');
+                    console.error('   3. 是否啟用兩步驟驗證');
                 }
-                if (customerResult && customerResult.messageId) {
-                    console.log('   郵件 ID:', customerResult.messageId);
+            } else if (emailError.code === 'ETIMEDOUT') {
+                console.error('⚠️  連接超時！');
+                if (useOAuth2) {
+                    console.error('   這可能是 OAuth2 Access Token 取得失敗');
+                    console.error('   請檢查 Refresh Token 是否有效');
+                } else {
+                    console.error('   建議使用 OAuth2 認證以解決連接超時問題');
                 }
-                
-                emailSent = true;
-            } catch (emailError) {
-                emailErrorMsg = emailError.message || '未知錯誤';
-                console.error('❌ 郵件發送失敗:');
-                console.error('   錯誤訊息:', emailErrorMsg);
-                console.error('   錯誤代碼:', emailError.code);
-                console.error('   錯誤命令:', emailError.command);
-                console.error('   完整錯誤:', emailError);
-                
-                // 如果是認證錯誤，提供更詳細的說明
-                if (emailError.code === 'EAUTH' || emailError.message.includes('Invalid login')) {
-                    console.error('⚠️  認證失敗！請檢查：');
-                    if (useOAuth2) {
-                        console.error('   1. GMAIL_CLIENT_ID 是否正確');
-                        console.error('   2. GMAIL_CLIENT_SECRET 是否正確');
-                        console.error('   3. GMAIL_REFRESH_TOKEN 是否有效');
-                        console.error('   4. Refresh Token 是否已過期或被撤銷');
-                    } else {
-                        console.error('   1. Email 帳號是否正確');
-                        console.error('   2. 是否使用應用程式密碼（Gmail 需要）');
-                        console.error('   3. 是否啟用兩步驟驗證');
-                    }
-                } else if (emailError.code === 'ETIMEDOUT') {
-                    console.error('⚠️  連接超時！');
-                    if (useOAuth2) {
-                        console.error('   這可能是 OAuth2 Access Token 取得失敗');
-                        console.error('   請檢查 Refresh Token 是否有效');
-                    } else {
-                        console.error('   建議使用 OAuth2 認證以解決連接超時問題');
-                    }
-                }
+            }
             }
         } else {
             console.log('📧 線上刷卡：確認郵件將於付款完成後發送');
@@ -1017,13 +1033,118 @@ function generateAdminEmail(data) {
     `;
 }
 
+// 登入驗證中間件
+function requireAuth(req, res, next) {
+    if (req.session && req.session.admin) {
+        return next();
+    }
+    res.status(401).json({ success: false, message: '請先登入' });
+}
+
 // 首頁
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// 管理後台
-app.get('/admin', (req, res) => {
+// 管理後台登入頁面
+app.get('/admin/login', (req, res) => {
+    // 如果已經登入，重導向到管理後台
+    if (req.session && req.session.admin) {
+        return res.redirect('/admin');
+    }
+    res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+// 管理後台登入 API
+app.post('/api/admin/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        
+        if (!username || !password) {
+            return res.status(400).json({
+                success: false,
+                message: '請輸入帳號和密碼'
+            });
+        }
+        
+        const admin = await db.verifyAdminPassword(username, password);
+        
+        if (admin) {
+            // 建立 Session
+            req.session.admin = {
+                id: admin.id,
+                username: admin.username,
+                email: admin.email,
+                role: admin.role
+            };
+            
+            res.json({
+                success: true,
+                message: '登入成功',
+                admin: {
+                    username: admin.username,
+                    role: admin.role
+                }
+            });
+        } else {
+            res.status(401).json({
+                success: false,
+                message: '帳號或密碼錯誤'
+            });
+        }
+    } catch (error) {
+        console.error('登入錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '登入時發生錯誤：' + error.message
+        });
+    }
+});
+
+// 管理後台登出 API
+app.post('/api/admin/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('登出錯誤:', err);
+            return res.status(500).json({
+                success: false,
+                message: '登出時發生錯誤'
+            });
+        }
+        res.json({
+            success: true,
+            message: '已成功登出'
+        });
+    });
+});
+
+// 檢查登入狀態 API
+app.get('/api/admin/check-auth', (req, res) => {
+    if (req.session && req.session.admin) {
+        res.json({
+            success: true,
+            authenticated: true,
+            admin: req.session.admin
+        });
+    } else {
+        res.json({
+            success: true,
+            authenticated: false
+        });
+    }
+});
+
+// 保護所有管理後台 API（除了登入相關）
+app.use('/api/admin', (req, res, next) => {
+    // 排除登入、登出和檢查狀態 API
+    if (req.path === '/login' || req.path === '/logout' || req.path === '/check-auth') {
+        return next();
+    }
+    requireAuth(req, res, next);
+});
+
+// 管理後台（需要登入）
+app.get('/admin', requireAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
@@ -1081,8 +1202,8 @@ app.get('/api/bookings/:bookingId', async (req, res) => {
         }
     } catch (error) {
         console.error('查詢單筆訂房記錄錯誤:', error);
-        res.status(500).json({
-            success: false,
+        res.status(500).json({ 
+            success: false, 
             message: '查詢單筆訂房記錄失敗：' + error.message
         });
     }
@@ -1108,8 +1229,8 @@ app.get('/api/bookings/email/:email', async (req, res) => {
     }
 });
 
-// API: 取得所有客戶列表（聚合訂房資料）
-app.get('/api/customers', async (req, res) => {
+// API: 取得所有客戶列表（聚合訂房資料）- 需要登入
+app.get('/api/customers', requireAuth, async (req, res) => {
     try {
         const customers = await db.getAllCustomers();
         
@@ -1153,8 +1274,8 @@ app.get('/api/customers/:email', async (req, res) => {
     }
 });
 
-// API: 取得統計資料
-app.get('/api/statistics', async (req, res) => {
+// API: 取得統計資料 - 需要登入
+app.get('/api/statistics', requireAuth, async (req, res) => {
     try {
         const stats = await db.getStatistics();
         res.json({
@@ -1971,7 +2092,7 @@ const handlePaymentResult = async (req, res) => {
                         const booking = await db.getBookingById(bookingId);
                         if (booking) {
                             // 更新付款狀態為已付款，並將訂房狀態改為有效
-                            await db.updateBooking(bookingId, {
+                        await db.updateBooking(bookingId, {
                                 payment_status: 'paid',
                                 status: 'active'
                             });
@@ -2310,15 +2431,15 @@ const handlePaymentResult = async (req, res) => {
                     <body>
                         <div class="container">
                             <div class="container-header">
-                                <div class="success-icon">✓</div>
-                                <h1>付款成功！</h1>
+                            <div class="success-icon">✓</div>
+                            <h1>付款成功！</h1>
                             </div>
                             <div class="container-body">
-                                <p>訂單編號：${paymentResult.merchantTradeNo}</p>
-                                <p>交易編號：${paymentResult.tradeNo}</p>
-                                <p>付款金額：NT$ ${paymentResult.tradeAmt.toLocaleString()}</p>
-                                <p>付款時間：${paymentResult.paymentDate}</p>
-                                <a href="/" class="btn">返回首頁</a>
+                            <p>訂單編號：${paymentResult.merchantTradeNo}</p>
+                            <p>交易編號：${paymentResult.tradeNo}</p>
+                            <p>付款金額：NT$ ${paymentResult.tradeAmt.toLocaleString()}</p>
+                            <p>付款時間：${paymentResult.paymentDate}</p>
+                            <a href="/" class="btn">返回首頁</a>
                             </div>
                         </div>
                     </body>

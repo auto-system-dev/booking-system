@@ -1,5 +1,129 @@
 // 管理後台 JavaScript
 
+// 檢查登入狀態
+async function checkAuthStatus() {
+    try {
+        const response = await fetch('/api/admin/check-auth');
+        const result = await response.json();
+        
+        if (result.success && result.authenticated) {
+            // 已登入，顯示管理後台
+            showAdminPage(result.admin);
+        } else {
+            // 未登入，顯示登入頁面
+            showLoginPage();
+        }
+    } catch (error) {
+        console.error('檢查登入狀態錯誤:', error);
+        showLoginPage();
+    }
+}
+
+// 顯示登入頁面
+function showLoginPage() {
+    const loginPage = document.getElementById('loginPage');
+    const adminPage = document.getElementById('adminPage');
+    if (loginPage) loginPage.style.display = 'flex';
+    if (adminPage) adminPage.style.display = 'none';
+}
+
+// 顯示管理後台
+function showAdminPage(admin) {
+    const loginPage = document.getElementById('loginPage');
+    const adminPage = document.getElementById('adminPage');
+    if (loginPage) loginPage.style.display = 'none';
+    if (adminPage) adminPage.style.display = 'flex';
+    
+    if (admin && admin.username) {
+        const usernameEl = document.getElementById('currentAdminUsername');
+        if (usernameEl) usernameEl.textContent = admin.username;
+    }
+}
+
+// 處理登入
+async function handleLogin(event) {
+    event.preventDefault();
+    
+    const username = document.getElementById('loginUsername').value;
+    const password = document.getElementById('loginPassword').value;
+    const errorDiv = document.getElementById('loginError');
+    
+    // 清除錯誤訊息
+    if (errorDiv) {
+        errorDiv.style.display = 'none';
+        errorDiv.textContent = '';
+    }
+    
+    try {
+        const response = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include', // 重要：包含 cookies
+            body: JSON.stringify({ username, password })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 登入成功
+            showAdminPage(result.admin);
+            // 載入資料
+            loadBookings();
+            loadStatistics();
+        } else {
+            // 登入失敗
+            if (errorDiv) {
+                errorDiv.textContent = result.message || '登入失敗，請檢查帳號密碼';
+                errorDiv.style.display = 'block';
+            }
+        }
+    } catch (error) {
+        console.error('登入錯誤:', error);
+        if (errorDiv) {
+            errorDiv.textContent = '登入時發生錯誤，請稍後再試';
+            errorDiv.style.display = 'block';
+        }
+    }
+}
+
+// 處理登出
+async function handleLogout() {
+    if (!confirm('確定要登出嗎？')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/admin/logout', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showLoginPage();
+            // 清除表單
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) loginForm.reset();
+        } else {
+            showError('登出失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('登出錯誤:', error);
+        showError('登出時發生錯誤');
+    }
+}
+
+// 統一的 fetch 輔助函數（自動包含 credentials）
+function adminFetch(url, options = {}) {
+    return fetch(url, {
+        ...options,
+        credentials: 'include' // 確保所有 API 呼叫都包含 session cookie
+    });
+}
+
 let allBookings = [];
 let filteredBookings = [];
 let currentPage = 1;
@@ -14,7 +138,10 @@ let quillEditor = null;
 let isHtmlMode = false;
 
 // 初始化
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    // 檢查登入狀態
+    await checkAuthStatus();
+    
     // 導航切換
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', function(e) {
@@ -24,9 +151,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // 載入資料
-    loadBookings();
-    loadStatistics();
+    // 載入資料（只有在已登入時才載入）
+    if (document.getElementById('adminPage').style.display !== 'none') {
+        loadBookings();
+        loadStatistics();
+    }
     
     // 根據 URL hash 載入對應區塊
     const urlHash = window.location.hash;
@@ -156,7 +285,7 @@ async function loadDashboard() {
 // 載入訂房記錄
 async function loadBookings() {
     try {
-        const response = await fetch('/api/bookings');
+        const response = await adminFetch('/api/bookings');
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -405,7 +534,7 @@ let filteredCustomers = [];
 
 async function loadCustomers() {
     try {
-        const response = await fetch('/api/customers');
+        const response = await adminFetch('/api/customers');
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -965,7 +1094,7 @@ async function saveQuickBooking(event) {
     };
     
     try {
-        const response = await fetch('/api/admin/bookings/quick', {
+        const response = await adminFetch('/api/admin/bookings/quick', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1176,8 +1305,8 @@ let depositPercentage = 30;
 async function loadRoomPrices() {
     try {
         const [roomTypesResponse, settingsResponse] = await Promise.all([
-            fetch('/api/admin/room-types'),
-            fetch('/api/settings')
+            adminFetch('/api/admin/room-types'),
+            adminFetch('/api/settings')
         ]);
         
         const roomTypesResult = await roomTypesResponse.json();
@@ -1514,7 +1643,7 @@ let allRoomTypes = [];
 // 載入房型列表
 async function loadRoomTypes() {
     try {
-        const response = await fetch('/api/admin/room-types');
+        const response = await adminFetch('/api/admin/room-types');
         const result = await response.json();
         
         if (result.success) {
@@ -1758,8 +1887,8 @@ async function loadAddons() {
     try {
         // 同時載入加購商品列表和前台啟用設定
         const [addonsResponse, settingsResponse] = await Promise.all([
-            fetch('/api/admin/addons'),
-            fetch('/api/settings')
+            adminFetch('/api/admin/addons'),
+            adminFetch('/api/settings')
         ]);
         
         const addonsResult = await addonsResponse.json();
@@ -1789,7 +1918,7 @@ async function loadAddons() {
 // 切換前台加購商品啟用狀態
 async function toggleAddonsFrontend(isEnabled) {
     try {
-        const response = await fetch('/api/admin/settings/enable_addons', {
+        const response = await adminFetch('/api/admin/settings/enable_addons', {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -2138,7 +2267,7 @@ async function saveSettings() {
             ecpayMerchantIDResponse, ecpayHashKeyResponse, ecpayHashIVResponse,
             hotelNameResponse, hotelPhoneResponse, hotelAddressResponse, hotelEmailResponse
         ] = await Promise.all([
-            fetch('/api/admin/settings/deposit_percentage', {
+            adminFetch('/api/admin/settings/deposit_percentage', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2148,7 +2277,7 @@ async function saveSettings() {
                     description: '訂金百分比（例如：30 表示 30%）'
                 })
             }),
-            fetch('/api/admin/settings/bank_name', {
+            adminFetch('/api/admin/settings/bank_name', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2158,7 +2287,7 @@ async function saveSettings() {
                     description: '銀行名稱（顯示在匯款轉帳確認郵件中）'
                 })
             }),
-            fetch('/api/admin/settings/bank_branch', {
+            adminFetch('/api/admin/settings/bank_branch', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2168,7 +2297,7 @@ async function saveSettings() {
                     description: '分行名稱（顯示在匯款轉帳確認郵件中）'
                 })
             }),
-            fetch('/api/admin/settings/bank_account', {
+            adminFetch('/api/admin/settings/bank_account', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2178,7 +2307,7 @@ async function saveSettings() {
                     description: '匯款帳號（顯示在匯款轉帳確認郵件中）'
                 })
             }),
-            fetch('/api/admin/settings/account_name', {
+            adminFetch('/api/admin/settings/account_name', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2188,7 +2317,7 @@ async function saveSettings() {
                     description: '帳戶戶名（顯示在匯款轉帳確認郵件中）'
                 })
             }),
-            fetch('/api/admin/settings/enable_transfer', {
+            adminFetch('/api/admin/settings/enable_transfer', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2198,7 +2327,7 @@ async function saveSettings() {
                     description: '啟用匯款轉帳（1=啟用，0=停用）'
                 })
             }),
-            fetch('/api/admin/settings/enable_card', {
+            adminFetch('/api/admin/settings/enable_card', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2208,7 +2337,7 @@ async function saveSettings() {
                     description: '啟用線上刷卡（1=啟用，0=停用）'
                 })
             }),
-            fetch('/api/admin/settings/ecpay_merchant_id', {
+            adminFetch('/api/admin/settings/ecpay_merchant_id', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2218,7 +2347,7 @@ async function saveSettings() {
                     description: '綠界商店代號（MerchantID）'
                 })
             }),
-            fetch('/api/admin/settings/ecpay_hash_key', {
+            adminFetch('/api/admin/settings/ecpay_hash_key', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2228,7 +2357,7 @@ async function saveSettings() {
                     description: '綠界金鑰（HashKey）'
                 })
             }),
-            fetch('/api/admin/settings/ecpay_hash_iv', {
+            adminFetch('/api/admin/settings/ecpay_hash_iv', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2238,7 +2367,7 @@ async function saveSettings() {
                     description: '綠界向量（HashIV）'
                 })
             }),
-            fetch('/api/admin/settings/hotel_name', {
+            adminFetch('/api/admin/settings/hotel_name', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2248,7 +2377,7 @@ async function saveSettings() {
                     description: '旅館名稱（顯示在郵件最下面）'
                 })
             }),
-            fetch('/api/admin/settings/hotel_phone', {
+            adminFetch('/api/admin/settings/hotel_phone', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2258,7 +2387,7 @@ async function saveSettings() {
                     description: '旅館電話（顯示在郵件最下面）'
                 })
             }),
-            fetch('/api/admin/settings/hotel_address', {
+            adminFetch('/api/admin/settings/hotel_address', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2268,7 +2397,7 @@ async function saveSettings() {
                     description: '旅館地址（顯示在郵件最下面）'
                 })
             }),
-            fetch('/api/admin/settings/hotel_email', {
+            adminFetch('/api/admin/settings/hotel_email', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -3104,7 +3233,7 @@ function closeEmailTemplateModal() {
 // 載入假日列表
 async function loadHolidays() {
     try {
-        const response = await fetch('/api/admin/holidays');
+        const response = await adminFetch('/api/admin/holidays');
         const result = await response.json();
         
         if (result.success) {
@@ -3167,7 +3296,7 @@ async function addHoliday() {
     }
     
     try {
-        const response = await fetch('/api/admin/holidays', {
+        const response = await adminFetch('/api/admin/holidays', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -3215,7 +3344,7 @@ async function addHolidayRange() {
     }
     
     try {
-        const response = await fetch('/api/admin/holidays', {
+        const response = await adminFetch('/api/admin/holidays', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
