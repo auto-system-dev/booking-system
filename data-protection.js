@@ -63,35 +63,95 @@ function verifyCode(email, code, purpose) {
 
 /**
  * 發送驗證碼 Email
+ * 使用與 server.js 相同的郵件發送邏輯
  */
 async function sendVerificationEmail(email, code, purpose) {
     try {
-        // 取得 Email 設定
-        const db = require('./database');
-        const smtpHost = await db.getSetting('smtp_host');
-        const smtpPort = await db.getSetting('smtp_port');
-        const smtpUser = await db.getSetting('smtp_user');
-        const smtpPass = await db.getSetting('smtp_pass');
-        const smtpFrom = await db.getSetting('smtp_from');
+        // 使用環境變數或預設值
+        const emailUser = process.env.EMAIL_USER || 'cheng701107@gmail.com';
+        const emailPass = process.env.EMAIL_PASS || 'vtik qvij ravh lirg';
+        const useOAuth2 = process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET && process.env.GMAIL_REFRESH_TOKEN;
         
-        if (!smtpHost || !smtpUser || !smtpPass) {
-            throw new Error('Email 設定不完整');
+        let transporter;
+        
+        if (useOAuth2) {
+            // 使用 OAuth2 認證
+            const { google } = require('googleapis');
+            
+            const oauth2Client = new google.auth.OAuth2(
+                process.env.GMAIL_CLIENT_ID,
+                process.env.GMAIL_CLIENT_SECRET,
+                'https://developers.google.com/oauthplayground'
+            );
+            
+            oauth2Client.setCredentials({
+                refresh_token: process.env.GMAIL_REFRESH_TOKEN
+            });
+            
+            // 取得 Access Token
+            let accessTokenCache = null;
+            let tokenExpiry = null;
+            
+            const getAccessToken = async function() {
+                if (accessTokenCache && tokenExpiry && Date.now() < tokenExpiry) {
+                    return accessTokenCache;
+                }
+                
+                try {
+                    const { token } = await oauth2Client.getAccessToken();
+                    accessTokenCache = token;
+                    tokenExpiry = Date.now() + (55 * 60 * 1000); // 55 分鐘後過期
+                    return token;
+                } catch (error) {
+                    console.error('取得 Access Token 失敗:', error);
+                    throw error;
+                }
+            };
+            
+            transporter = nodemailer.createTransport({
+                host: 'smtp.gmail.com',
+                port: 465,
+                secure: true,
+                auth: {
+                    type: 'OAuth2',
+                    user: emailUser,
+                    clientId: process.env.GMAIL_CLIENT_ID,
+                    clientSecret: process.env.GMAIL_CLIENT_SECRET,
+                    refreshToken: process.env.GMAIL_REFRESH_TOKEN,
+                    accessToken: getAccessToken
+                },
+                connectionTimeout: 10000,
+                greetingTimeout: 5000,
+                socketTimeout: 10000,
+                pool: false,
+                tls: {
+                    rejectUnauthorized: false
+                }
+            });
+        } else {
+            // 使用應用程式密碼
+            transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: emailUser,
+                    pass: emailPass
+                },
+                connectionTimeout: 60000,
+                greetingTimeout: 30000,
+                socketTimeout: 60000,
+                pool: true,
+                maxConnections: 1,
+                maxMessages: 3,
+                tls: {
+                    rejectUnauthorized: false
+                }
+            });
         }
-        
-        const transporter = nodemailer.createTransport({
-            host: smtpHost,
-            port: parseInt(smtpPort || '587'),
-            secure: parseInt(smtpPort || '587') === 465,
-            auth: {
-                user: smtpUser,
-                pass: smtpPass
-            }
-        });
         
         const purposeText = purpose === 'query' ? '查詢個人資料' : '刪除個人資料';
         
         const mailOptions = {
-            from: smtpFrom || smtpUser,
+            from: emailUser,
             to: email,
             subject: `【個資保護】${purposeText}驗證碼`,
             html: `
