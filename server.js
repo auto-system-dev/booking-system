@@ -30,10 +30,16 @@ console.log('   SESSION_SECRET:', process.env.SESSION_SECRET ? '已設定' : '�
 console.log('   useSecureCookie:', useSecureCookie);
 console.log('   isRailway:', isRailway);
 
+// 檢查 SESSION_SECRET 是否設定
+if (!process.env.SESSION_SECRET) {
+    console.warn('⚠️  WARNING: SESSION_SECRET 未設定！Session Cookie 可能無法正確設定！');
+    console.warn('   請在 Railway 環境變數中設定 SESSION_SECRET');
+}
+
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key-change-this-in-production',
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: false, // 只有當 Session 被修改時才儲存
     cookie: {
         // Railway 使用 HTTPS，所以需要 secure cookie
         secure: useSecureCookie,
@@ -1095,15 +1101,27 @@ app.post('/api/admin/login', async (req, res) => {
                 role: admin.role
             };
             
+            // 記錄 Session 資訊（用於除錯）
+            console.log('✅ 登入成功，建立 Session:', {
+                sessionId: req.sessionID,
+                admin: admin.username,
+                hasSecret: !!process.env.SESSION_SECRET,
+                useSecureCookie: useSecureCookie
+            });
+            
             // 明確儲存 Session（確保 Cookie 被設定）
             req.session.save((err) => {
                 if (err) {
-                    console.error('儲存 Session 錯誤:', err);
+                    console.error('❌ 儲存 Session 錯誤:', err);
                     return res.status(500).json({
                         success: false,
                         message: '登入時發生錯誤：無法儲存 Session'
                     });
                 }
+                
+                // 檢查 Cookie 是否被設定
+                const cookieHeader = res.getHeader('Set-Cookie');
+                console.log('📦 Session Cookie 設定:', cookieHeader ? '✅ 已設定' : '❌ 未設定');
                 
                 res.json({
                     success: true,
