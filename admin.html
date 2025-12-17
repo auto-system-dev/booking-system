@@ -71,10 +71,6 @@
                     <span class="nav-icon"><span class="material-symbols-outlined">add_shopping_cart</span></span>
                     <span>加購商品</span>
                 </a>
-                <a href="#holidays" class="nav-item" data-section="holidays">
-                    <span class="nav-icon"><span class="material-symbols-outlined">event</span></span>
-                    <span>假日管理</span>
-                </a>
                 <a href="#settings" class="nav-item" data-section="settings">
                     <span class="nav-icon"><span class="material-symbols-outlined">settings</span></span>
                     <span>系統設定</span>
@@ -370,24 +366,41 @@
                 </div>
             </section>
 
-            <!-- 房型管理區 -->
+            <!-- 房型管理區（包含假日管理分頁） -->
             <section id="room-types-section" class="content-section">
                 <div class="section-header">
                     <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">king_bed</span> 房型管理</h2>
                     <div class="header-actions">
-                        <button class="btn-primary" onclick="showAddRoomTypeModal()">
+                        <button class="btn-primary" id="addRoomTypeBtn" onclick="showAddRoomTypeModal()" style="display: none;">
                             <span class="material-symbols-outlined">add</span> 新增房型
                         </button>
-                        <button class="btn-refresh" id="roomTypeFilterBtn" onclick="toggleRoomTypeFilter()">
+                        <button class="btn-refresh" id="roomTypeFilterBtn" onclick="toggleRoomTypeFilter()" style="display: none;">
                             <span class="material-symbols-outlined">event_note</span> 顯示所有房型
                         </button>
-                        <button class="btn-refresh" onclick="loadRoomTypes()">
+                        <button class="btn-refresh" id="roomTypeRefreshBtn" onclick="loadRoomTypes()" style="display: none;">
+                            <span class="material-symbols-outlined">refresh</span> 重新整理
+                        </button>
+                        <button class="btn-refresh" id="holidayRefreshBtn" onclick="loadHolidays()" style="display: none;">
                             <span class="material-symbols-outlined">refresh</span> 重新整理
                         </button>
                     </div>
                 </div>
 
-                <div class="room-types-container">
+                <!-- 分頁切換 -->
+                <div class="tab-container" style="margin-bottom: 20px; border-bottom: 2px solid #e0e0e0;">
+                    <button class="tab-button active" onclick="switchRoomTypeTab('room-types')" id="roomTypesTab">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">king_bed</span>
+                        房型管理
+                    </button>
+                    <button class="tab-button" onclick="switchRoomTypeTab('holidays')" id="holidaysTab">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">event</span>
+                        假日管理
+                    </button>
+                </div>
+
+                <!-- 房型管理內容 -->
+                <div id="roomTypesTabContent" class="tab-content">
+                    <div class="room-types-container">
                     <table class="bookings-table">
                         <thead>
                             <tr>
@@ -409,6 +422,93 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                </div>
+
+                <!-- 假日管理內容 -->
+                <div id="holidaysTabContent" class="tab-content" style="display: none;">
+                    <!-- 平日/假日設定 -->
+                    <div class="settings-card" style="margin-bottom: 20px;">
+                        <h3>平日/假日設定</h3>
+                        <div class="form-group">
+                            <label>選擇假日（勾選的日期將視為假日，未勾選的日期為平日）</label>
+                            <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-top: 10px;">
+                                <label style="display: flex; flex-direction: column; align-items: center; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                                    <input type="checkbox" id="weekdaySun" value="0" style="width: 20px; height: 20px; margin-bottom: 5px;" onchange="updateWeekdaySettings()">
+                                    <span style="font-weight: 600;">週日</span>
+                                </label>
+                                <label style="display: flex; flex-direction: column; align-items: center; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                                    <input type="checkbox" id="weekdayMon" value="1" style="width: 20px; height: 20px; margin-bottom: 5px;" onchange="updateWeekdaySettings()">
+                                    <span style="font-weight: 600;">週一</span>
+                                </label>
+                                <label style="display: flex; flex-direction: column; align-items: center; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                                    <input type="checkbox" id="weekdayTue" value="2" style="width: 20px; height: 20px; margin-bottom: 5px;" onchange="updateWeekdaySettings()">
+                                    <span style="font-weight: 600;">週二</span>
+                                </label>
+                                <label style="display: flex; flex-direction: column; align-items: center; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                                    <input type="checkbox" id="weekdayWed" value="3" style="width: 20px; height: 20px; margin-bottom: 5px;" onchange="updateWeekdaySettings()">
+                                    <span style="font-weight: 600;">週三</span>
+                                </label>
+                                <label style="display: flex; flex-direction: column; align-items: center; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                                    <input type="checkbox" id="weekdayThu" value="4" style="width: 20px; height: 20px; margin-bottom: 5px;" onchange="updateWeekdaySettings()">
+                                    <span style="font-weight: 600;">週四</span>
+                                </label>
+                                <label style="display: flex; flex-direction: column; align-items: center; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                                    <input type="checkbox" id="weekdayFri" value="5" style="width: 20px; height: 20px; margin-bottom: 5px;" onchange="updateWeekdaySettings()">
+                                    <span style="font-weight: 600;">週五</span>
+                                </label>
+                                <label style="display: flex; flex-direction: column; align-items: center; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                                    <input type="checkbox" id="weekdaySat" value="6" style="width: 20px; height: 20px; margin-bottom: 5px;" onchange="updateWeekdaySettings()">
+                                    <span style="font-weight: 600;">週六</span>
+                                </label>
+                            </div>
+                            <small style="display: block; margin-top: 10px; color: #666;">
+                                💡 提示：勾選的日期將使用「假日價格（平日價格 + 假日加價）」，未勾選的日期將使用「平日價格」。<br>
+                                例如：勾選週六、週日，則週一到週五為平日；或勾選週五到週日，則週一到週四為平日。
+                            </small>
+                        </div>
+                        <button class="btn-save" onclick="saveWeekdaySettings()" style="margin-top: 15px;">儲存平日/假日設定</button>
+                    </div>
+
+                    <!-- 假日管理內容 -->
+                    <div class="settings-container">
+                        <div class="settings-card">
+                            <h3>新增單一假日</h3>
+                            <div class="form-group">
+                                <label>日期</label>
+                                <input type="date" id="holidayDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <div class="form-group">
+                                <label>假日名稱（選填）</label>
+                                <input type="text" id="holidayName" placeholder="例如：元旦" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <button type="button" class="btn-save" onclick="addHoliday()">新增</button>
+                        </div>
+                        
+                        <div class="settings-card" style="margin-top: 20px;">
+                            <h3>新增連續假期</h3>
+                            <div class="form-group">
+                                <label>開始日期</label>
+                                <input type="date" id="holidayStartDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <div class="form-group">
+                                <label>結束日期</label>
+                                <input type="date" id="holidayEndDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <div class="form-group">
+                                <label>假日名稱（選填）</label>
+                                <input type="text" id="holidayRangeName" placeholder="例如：春節連假" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <button type="button" class="btn-save" onclick="addHolidayRange()">新增</button>
+                        </div>
+                        
+                        <div class="settings-card" style="margin-top: 20px;">
+                            <h3>假日列表</h3>
+                            <div id="holidaysList" style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px; background: #f9f9f9;">
+                                <div class="loading">載入中...</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -463,54 +563,6 @@
                 </div>
             </section>
 
-            <!-- 假日管理區 -->
-            <section id="holidays-section" class="content-section">
-                <div class="section-header">
-                    <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">event</span> 假日管理</h2>
-                    <button class="btn-refresh" onclick="loadHolidays()">
-                        <span class="material-symbols-outlined">refresh</span> 重新整理
-                    </button>
-                </div>
-
-                <div class="settings-container">
-                    <div class="settings-card">
-                        <h3>新增單一假日</h3>
-                        <div class="form-group">
-                            <label>日期</label>
-                            <input type="date" id="holidayDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        </div>
-                        <div class="form-group">
-                            <label>假日名稱（選填）</label>
-                            <input type="text" id="holidayName" placeholder="例如：元旦" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        </div>
-                        <button type="button" class="btn-save" onclick="addHoliday()">新增</button>
-                    </div>
-                    
-                    <div class="settings-card" style="margin-top: 20px;">
-                        <h3>新增連續假期</h3>
-                        <div class="form-group">
-                            <label>開始日期</label>
-                            <input type="date" id="holidayStartDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        </div>
-                        <div class="form-group">
-                            <label>結束日期</label>
-                            <input type="date" id="holidayEndDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        </div>
-                        <div class="form-group">
-                            <label>假日名稱（選填）</label>
-                            <input type="text" id="holidayRangeName" placeholder="例如：春節連假" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        </div>
-                        <button type="button" class="btn-save" onclick="addHolidayRange()">新增</button>
-                    </div>
-                    
-                    <div class="settings-card" style="margin-top: 20px;">
-                        <h3>假日列表</h3>
-                        <div id="holidaysList" style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px; background: #f9f9f9;">
-                            <div class="loading">載入中...</div>
-                        </div>
-                    </div>
-                </div>
-            </section>
 
             <!-- 系統設定區 -->
             <section id="settings-section" class="content-section">

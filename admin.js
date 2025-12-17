@@ -297,11 +297,11 @@ function switchSection(section) {
     if (section === 'dashboard') {
         loadDashboard();
     } else if (section === 'room-types') {
+        // 載入房型管理時，顯示房型分頁
+        switchRoomTypeTab('room-types');
         loadRoomTypes();
     } else if (section === 'addons') {
         loadAddons();
-    } else if (section === 'holidays') {
-        loadHolidays();
     } else if (section === 'settings') {
         loadSettings();
     } else if (section === 'email-templates') {
@@ -316,6 +316,41 @@ function switchSection(section) {
         }
     } else if (section === 'customers') {
         loadCustomers();
+    }
+}
+
+// 切換房型管理分頁
+function switchRoomTypeTab(tab) {
+    // 更新分頁按鈕狀態
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // 顯示/隱藏對應的內容
+    if (tab === 'room-types') {
+        document.getElementById('roomTypesTab').classList.add('active');
+        document.getElementById('roomTypesTabContent').style.display = 'block';
+        document.getElementById('holidaysTabContent').style.display = 'none';
+        
+        // 顯示/隱藏對應的按鈕
+        document.getElementById('addRoomTypeBtn').style.display = 'inline-flex';
+        document.getElementById('roomTypeFilterBtn').style.display = 'inline-flex';
+        document.getElementById('roomTypeRefreshBtn').style.display = 'inline-flex';
+        document.getElementById('holidayRefreshBtn').style.display = 'none';
+    } else if (tab === 'holidays') {
+        document.getElementById('holidaysTab').classList.add('active');
+        document.getElementById('roomTypesTabContent').style.display = 'none';
+        document.getElementById('holidaysTabContent').style.display = 'block';
+        
+        // 顯示/隱藏對應的按鈕
+        document.getElementById('addRoomTypeBtn').style.display = 'none';
+        document.getElementById('roomTypeFilterBtn').style.display = 'none';
+        document.getElementById('roomTypeRefreshBtn').style.display = 'none';
+        document.getElementById('holidayRefreshBtn').style.display = 'inline-flex';
+        
+        // 載入假日資料和平日/假日設定
+        loadHolidays();
+        loadWeekdaySettingsFromServer();
     }
 }
 

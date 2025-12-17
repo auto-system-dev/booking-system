@@ -1055,6 +1055,47 @@ label:has(input[type="checkbox"]:hover) {
     box-shadow: 0 2px 8px rgba(44, 142, 196, 0.2);
 }
 
+/* 分頁樣式 */
+.tab-container {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+}
+
+.tab-button {
+    padding: 12px 24px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #666;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tab-button:hover {
+    color: #2C8EC4;
+    background: rgba(44, 142, 196, 0.05);
+}
+
+.tab-button.active {
+    color: #2C8EC4;
+    border-bottom-color: #2C8EC4;
+    font-weight: 600;
+}
+
+.tab-content {
+    display: block;
+}
+
+.tab-content[style*="display: none"] {
+    display: none !important;
+}
+
 /* Quill 編輯器自定義樣式 */
 #emailTemplateEditor .ql-container {
     font-family: 'Microsoft JhengHei', 'Noto Sans TC', Arial, sans-serif;
