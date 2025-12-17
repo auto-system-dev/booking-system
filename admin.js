@@ -417,13 +417,31 @@ function switchBookingView(view) {
     }
 }
 
-// 重新載入當前視圖
+// 重新載入當前視圖（並重設篩選條件）
 function reloadCurrentBookingView() {
     if (currentBookingView === 'calendar') {
+        // 日曆視圖目前沒有額外篩選，直接重新載入
         loadBookingCalendar();
-    } else {
-        loadBookings();
+        return;
     }
+
+    // 清空列表視圖的搜尋與篩選欄位
+    const searchInput = document.getElementById('searchInput');
+    const roomTypeFilter = document.getElementById('roomTypeFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const checkInDateFilter = document.getElementById('checkInDateFilter');
+
+    if (searchInput) searchInput.value = '';
+    if (roomTypeFilter) roomTypeFilter.value = '';
+    if (statusFilter) statusFilter.value = '';
+    if (checkInDateFilter) checkInDateFilter.value = '';
+
+    // 重設排序狀態（回到預設）
+    sortColumn = null;
+    sortDirection = 'asc';
+
+    // 重新載入訂房記錄並套用預設條件
+    loadBookings();
 }
 
 // 切換日曆範圍（以週為單位）
