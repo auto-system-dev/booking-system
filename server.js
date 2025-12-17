@@ -1095,13 +1095,24 @@ app.post('/api/admin/login', async (req, res) => {
                 role: admin.role
             };
             
-            res.json({
-                success: true,
-                message: '登入成功',
-                admin: {
-                    username: admin.username,
-                    role: admin.role
+            // 明確儲存 Session（確保 Cookie 被設定）
+            req.session.save((err) => {
+                if (err) {
+                    console.error('儲存 Session 錯誤:', err);
+                    return res.status(500).json({
+                        success: false,
+                        message: '登入時發生錯誤：無法儲存 Session'
+                    });
                 }
+                
+                res.json({
+                    success: true,
+                    message: '登入成功',
+                    admin: {
+                        username: admin.username,
+                        role: admin.role
+                    }
+                });
             });
         } else {
             res.status(401).json({
