@@ -16,9 +16,19 @@ const PORT = process.env.PORT || 3000;
 
 // Session 設定
 // 檢測是否在 Railway 環境（Railway 使用 HTTPS）
-const isRailway = !!process.env.RAILWAY_ENVIRONMENT || !!process.env.RAILWAY_ENVIRONMENT_NAME;
+// Railway 通常會有 PORT 環境變數，且使用 HTTPS
+const isRailway = !!process.env.RAILWAY_ENVIRONMENT || 
+                  !!process.env.RAILWAY_ENVIRONMENT_NAME || 
+                  (!!process.env.PORT && process.env.PORT !== '3000' && !process.env.DATABASE_URL?.includes('localhost'));
 const isProduction = process.env.NODE_ENV === 'production';
 const useSecureCookie = isProduction || isRailway || process.env.SESSION_SECURE === 'true';
+
+// 輸出 Session 設定資訊（用於除錯）
+console.log('🔐 Session 設定:');
+console.log('   NODE_ENV:', process.env.NODE_ENV || '未設定');
+console.log('   SESSION_SECRET:', process.env.SESSION_SECRET ? '已設定' : '⚠️ 未設定（使用預設值）');
+console.log('   useSecureCookie:', useSecureCookie);
+console.log('   isRailway:', isRailway);
 
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key-change-this-in-production',
