@@ -120,10 +120,14 @@ function containsSQLInjection(input) {
     }
     
     const dangerousPatterns = [
+        // SQL 關鍵字
         /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION|SCRIPT)\b)/i,
-        /(--|;|\/\*|\*\/|xp_|sp_)/i,
+        // SQL 註解和特殊字元（但排除單獨的雙引號）
+        /(--|\/\*|\*\/|xp_|sp_)/i,
+        // SQL 邏輯運算符
         /(\bOR\b.*=.*=|\bAND\b.*=.*=)/i,
-        /('|"|;|--|\*|\/\*|\*\/|xp_|sp_)/i
+        // 危險字元組合（但不包括單獨的引號，因為 JSON 格式會使用引號）
+        /(;.*--|;.*\/\*|\*\/.*;|'.*OR.*'|".*OR.*"|'.*AND.*'|".*AND.*")/i
     ];
     return dangerousPatterns.some(pattern => pattern.test(input));
 }
