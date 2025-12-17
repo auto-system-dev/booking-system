@@ -100,6 +100,25 @@ function containsSQLInjection(input) {
     if (!input || typeof input !== 'string') {
         return false;
     }
+    
+    // 先檢查是否為有效的 JSON 格式（特別是 weekday_settings 格式）
+    // 如果是有效的 JSON，跳過 SQL Injection 檢測
+    try {
+        const parsed = JSON.parse(input);
+        // 檢查是否為 weekday_settings 格式：{"weekdays": [0-6的數字陣列]}
+        if (parsed && typeof parsed === 'object' && Array.isArray(parsed.weekdays)) {
+            const isValidWeekdaySettings = parsed.weekdays.every(d => 
+                Number.isInteger(d) && d >= 0 && d <= 6
+            );
+            if (isValidWeekdaySettings) {
+                // 有效的 weekday_settings JSON，不視為 SQL Injection
+                return false;
+            }
+        }
+    } catch (e) {
+        // 不是有效的 JSON，繼續檢查 SQL Injection
+    }
+    
     const dangerousPatterns = [
         /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION|SCRIPT)\b)/i,
         /(--|;|\/\*|\*\/|xp_|sp_)/i,
