@@ -1214,10 +1214,35 @@ function closeModal() {
     document.getElementById('bookingModal').classList.remove('active');
 }
 
-// 載入統計資料
+// 依目前日期篩選載入統計資料
 async function loadStatistics() {
     try {
-        const response = await adminFetch('/api/statistics');
+        // 讀取日期區間（如果兩個都有填才套用）
+        const startInput = document.getElementById('statsStartDate');
+        const endInput = document.getElementById('statsEndDate');
+        const startDate = startInput?.value;
+        const endDate = endInput?.value;
+
+        if ((startDate && !endDate) || (!startDate && endDate)) {
+            showError('請同時選擇開始與結束日期');
+            return;
+        }
+
+        if (startDate && endDate && startDate > endDate) {
+            showError('統計期間的開始日期不能晚於結束日期');
+            return;
+        }
+
+        let url = '/api/statistics';
+        if (startDate && endDate) {
+            const params = new URLSearchParams({
+                startDate,
+                endDate
+            });
+            url += `?${params.toString()}`;
+        }
+
+        const response = await adminFetch(url);
         
         // 檢查 HTTP 狀態碼
         if (response.status === 401) {
@@ -1242,6 +1267,16 @@ async function loadStatistics() {
             document.getElementById('totalBookings').textContent = stats.totalBookings || 0;
             document.getElementById('totalRevenue').textContent = `NT$ ${(stats.totalRevenue || 0).toLocaleString()}`;
             document.getElementById('recentBookings').textContent = stats.recentBookings || 0;
+
+            // 更新「期間內訂房數」標籤（顯示目前篩選範圍）
+            const recentLabel = document.getElementById('recentBookingsLabel');
+            if (recentLabel) {
+                if (stats.period && stats.period.startDate && stats.period.endDate) {
+                    recentLabel.textContent = `期間內訂房數（${stats.period.startDate} ~ ${stats.period.endDate}）`;
+                } else {
+                    recentLabel.textContent = '期間內訂房數（全部期間）';
+                }
+            }
             
             // 計算郵件已發送數量
             const emailSentCount = allBookings.filter(b => b.email_sent).length;
@@ -1257,6 +1292,20 @@ async function loadStatistics() {
         console.error('載入統計資料錯誤:', error);
         showError('載入統計資料時發生錯誤: ' + (error.message || '未知錯誤'));
     }
+}
+
+// 套用統計日期篩選
+function applyStatisticsFilter() {
+    loadStatistics();
+}
+
+// 重設統計日期篩選（回到全部期間）
+function resetStatisticsFilter() {
+    const startInput = document.getElementById('statsStartDate');
+    const endInput = document.getElementById('statsEndDate');
+    if (startInput) startInput.value = '';
+    if (endInput) endInput.value = '';
+    loadStatistics();
 }
 
 // 渲染房型統計

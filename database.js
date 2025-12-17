@@ -1548,18 +1548,50 @@ async function deleteBooking(bookingId) {
     }
 }
 
-// 統計資料
-async function getStatistics() {
+// 統計資料（可選日期區間）
+async function getStatistics(startDate, endDate) {
     try {
-        const recentBookingsSQL = usePostgreSQL
-            ? `SELECT COUNT(*) as count FROM bookings WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '7 days'`
-            : `SELECT COUNT(*) as count FROM bookings WHERE created_at >= datetime('now', '-7 days')`;
-        
+        const hasRange = !!(startDate && endDate);
+
+        let totalSql, revenueSql, byRoomTypeSql, recentSql;
+        let params = [];
+
+        if (usePostgreSQL) {
+            const whereClause = hasRange ? ' WHERE created_at::date BETWEEN $1::date AND $2::date' : '';
+            totalSql = `SELECT COUNT(*) as count FROM bookings${whereClause}`;
+            revenueSql = `SELECT SUM(final_amount) as total FROM bookings${whereClause}`;
+            byRoomTypeSql = `SELECT room_type, COUNT(*) as count FROM bookings${whereClause} GROUP BY room_type`;
+
+            if (hasRange) {
+                recentSql = `SELECT COUNT(*) as count FROM bookings WHERE created_at::date BETWEEN $1::date AND $2::date`;
+                params = [startDate, endDate];
+            } else {
+                recentSql = `SELECT COUNT(*) as count FROM bookings WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '7 days'`;
+            }
+        } else {
+            const whereClause = hasRange ? ' WHERE DATE(created_at) BETWEEN DATE(?) AND DATE(?)' : '';
+            totalSql = `SELECT COUNT(*) as count FROM bookings${whereClause}`;
+            revenueSql = `SELECT SUM(final_amount) as total FROM bookings${whereClause}`;
+            byRoomTypeSql = `SELECT room_type, COUNT(*) as count FROM bookings${whereClause} GROUP BY room_type`;
+
+            if (hasRange) {
+                recentSql = `SELECT COUNT(*) as count FROM bookings WHERE DATE(created_at) BETWEEN DATE(?) AND DATE(?)`;
+                params = [startDate, endDate];
+            } else {
+                recentSql = `SELECT COUNT(*) as count FROM bookings WHERE created_at >= datetime('now', '-7 days')`;
+            }
+        }
+
+        const totalPromise = hasRange ? queryOne(totalSql, params) : queryOne(totalSql);
+        const revenuePromise = hasRange ? queryOne(revenueSql, params) : queryOne(revenueSql);
+        const byRoomTypePromise = hasRange ? query(byRoomTypeSql, params) : query(byRoomTypeSql);
+        const recentPromise = hasRange ? queryOne(recentSql, params) : queryOne(recentSql);
+
         const [totalResult, revenueResult, byRoomTypeResult, recentResult] = await Promise.all([
-            queryOne('SELECT COUNT(*) as count FROM bookings'),
-            queryOne('SELECT SUM(final_amount) as total FROM bookings'),
-            query('SELECT room_type, COUNT(*) as count FROM bookings GROUP BY room_type'),
-            queryOne(recentBookingsSQL)
+            totalPromise,
+            revenuePromise,
+            byRoomTypePromise,
+            recentPromise
         ]);
         
         return {

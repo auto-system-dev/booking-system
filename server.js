@@ -1965,9 +1965,22 @@ app.post('/api/data-protection/delete', publicLimiter, async (req, res, next) =>
 });
 
 // API: 取得統計資料 - 需要登入
+// 支援可選的日期區間：?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
 app.get('/api/statistics', requireAuth, adminLimiter, async (req, res) => {
     try {
-        const stats = await db.getStatistics();
+        const { startDate, endDate } = req.query;
+
+        let stats;
+        if (startDate && endDate) {
+            stats = await db.getStatistics(startDate, endDate);
+            stats.period = {
+                startDate,
+                endDate
+            };
+        } else {
+            stats = await db.getStatistics();
+            stats.period = {};
+        }
         res.json({
             success: true,
             data: stats
