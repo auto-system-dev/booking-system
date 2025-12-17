@@ -2602,9 +2602,18 @@ async function saveSettings() {
         
         if (allSuccess) {
             showSuccess('設定已儲存');
+            // 儲存成功後，重新載入設定以確保 UI 與資料庫同步
+            // 但不要立即重新載入，給伺服器一點時間處理
+            setTimeout(() => {
+                loadSettings();
+            }, 300);
         } else {
             const errorMsg = results.find(r => !r.success)?.message || '請稍後再試';
             showError('儲存失敗：' + errorMsg);
+            // 即使部分失敗，也重新載入設定以顯示實際狀態
+            setTimeout(() => {
+                loadSettings();
+            }, 300);
         }
     } catch (error) {
         console.error('Error:', error);
