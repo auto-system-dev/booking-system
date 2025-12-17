@@ -1150,8 +1150,9 @@ app.use('/api/admin', (req, res, next) => {
     requireAuth(req, res, next);
 });
 
-// 管理後台（需要登入）
-app.get('/admin', requireAuth, (req, res) => {
+// 管理後台（未登入時顯示登入頁面，已登入時顯示管理後台）
+app.get('/admin', (req, res) => {
+    // 直接返回 admin.html，由前端 JavaScript 檢查登入狀態並顯示對應頁面
     res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
