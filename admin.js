@@ -1128,7 +1128,23 @@ function closeModal() {
 async function loadStatistics() {
     try {
         const response = await adminFetch('/api/statistics');
+        
+        // 檢查 HTTP 狀態碼
+        if (response.status === 401) {
+            // 未登入，顯示登入頁面
+            console.warn('統計資料 API 返回 401，Session 可能已過期，重新檢查登入狀態');
+            await checkAuthStatus();
+            return;
+        }
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('統計資料 API 錯誤:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const result = await response.json();
+        console.log('統計資料 API 回應:', result);
         
         if (result.success) {
             const stats = result.data;
@@ -1144,11 +1160,12 @@ async function loadStatistics() {
             // 渲染房型統計
             renderRoomStats(stats.byRoomType || []);
         } else {
-            showError('載入統計資料失敗');
+            console.error('統計資料 API 返回失敗:', result);
+            showError(result.message || '載入統計資料失敗');
         }
     } catch (error) {
-        console.error('Error:', error);
-        showError('載入統計資料時發生錯誤');
+        console.error('載入統計資料錯誤:', error);
+        showError('載入統計資料時發生錯誤: ' + (error.message || '未知錯誤'));
     }
 }
 
