@@ -594,10 +594,18 @@ document.getElementById('bookingForm').addEventListener('submit', async function
         nameInput.setCustomValidity('');
     }
 
-    // Email 必填（沿用瀏覽器格式檢查）
+    // Email 格式檢查
     const emailInput = document.getElementById('guestEmail');
-    if (!emailInput.value.trim()) {
+    const email = emailInput.value.trim();
+    // Email 格式驗證：基本格式檢查（包含 @ 和 .）
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
         emailInput.setCustomValidity('請填寫 Email');
+        emailInput.reportValidity();
+        emailInput.focus();
+        return;
+    } else if (!emailRegex.test(email)) {
+        emailInput.setCustomValidity('請輸入有效的 Email 格式（例如：example@email.com）');
         emailInput.reportValidity();
         emailInput.focus();
         return;
