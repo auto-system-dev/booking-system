@@ -639,6 +639,15 @@ body {
     box-shadow: 0 4px 12px rgba(44, 142, 196, 0.4);
 }
 
+/* 危險操作按鈕（紅色） */
+.btn-danger {
+    background: #dc3545;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
 /* 分頁 */
 .pagination {
     display: flex;
