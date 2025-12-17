@@ -739,6 +739,23 @@ body {
     padding: 40px;
 }
 
+.login-box .btn-primary {
+    background: #262A33;
+    width: 100%;
+    margin-top: 20px;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+    justify-content: center;
+}
+
+.login-box .btn-primary:hover {
+    background: #1a1d24;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(38, 42, 51, 0.4);
+}
+
 .login-box .form-group {
     margin-bottom: 20px;
 }
