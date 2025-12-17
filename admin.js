@@ -578,8 +578,10 @@ function renderBookingCalendar(roomTypes, bookings, startDate) {
                 
                 // 空白格子可以點擊快速新增訂房
                 const dateLabel = dateKey; // YYYY-MM-DD
-                html += `<td class="booking-cell" data-room-type="${escapeHtml(roomType.display_name)}" data-date="${dateLabel}" style="min-width: 120px; min-height: 80px;">`;
-                if (roomBookings.length > 0) {
+                const hasBookings = roomBookings.length > 0;
+                const cellTitle = hasBookings ? '' : ' title="點擊新增訂房"';
+                html += `<td class="booking-cell" data-room-type="${escapeHtml(roomType.display_name)}" data-date="${dateLabel}" style="min-width: 120px; min-height: 80px;"${cellTitle}>`;
+                if (hasBookings) {
                     roomBookings.forEach(booking => {
                         const statusClass = booking.status === 'active' ? 'status-active' : 
                                           booking.status === 'reserved' ? 'status-reserved' : 
