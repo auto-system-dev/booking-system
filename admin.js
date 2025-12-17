@@ -2008,7 +2008,7 @@ async function saveRoomType(event, id) {
         const url = id ? `/api/admin/room-types/${id}` : '/api/admin/room-types';
         const method = id ? 'PUT' : 'POST';
         
-        const response = await fetch(url, {
+        const response = await adminFetch(url, {
             method: method,
             headers: {
                 'Content-Type': 'application/json',
@@ -2019,7 +2019,7 @@ async function saveRoomType(event, id) {
         const result = await response.json();
         
         if (result.success) {
-            alert(id ? '房型已更新' : '房型已新增');
+            showSuccess(id ? '房型已更新' : '房型已新增');
             closeModal();
             await loadRoomTypes();
         } else {
@@ -2038,7 +2038,7 @@ async function deleteRoomType(id) {
     }
     
     try {
-        const response = await fetch(`/api/admin/room-types/${id}`, {
+        const response = await adminFetch(`/api/admin/room-types/${id}`, {
             method: 'DELETE'
         });
         
@@ -2059,7 +2059,7 @@ async function deleteRoomType(id) {
         const result = await response.json();
         
         if (result.success) {
-            alert('房型已刪除');
+            showSuccess('房型已刪除');
             await loadRoomTypes();
         } else {
             showError('刪除失敗：' + (result.message || '請稍後再試'));
@@ -2280,7 +2280,7 @@ async function saveAddon(event, id) {
         const url = id ? `/api/admin/addons/${id}` : '/api/admin/addons';
         const method = id ? 'PUT' : 'POST';
         
-        const response = await fetch(url, {
+        const response = await adminFetch(url, {
             method: method,
             headers: {
                 'Content-Type': 'application/json',
@@ -2320,7 +2320,7 @@ async function toggleAddonStatus(id, isActive) {
             is_active: isActive ? 1 : 0
         };
         
-        const response = await fetch(`/api/admin/addons/${id}`, {
+        const response = await adminFetch(`/api/admin/addons/${id}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -2353,7 +2353,7 @@ async function deleteAddon(id) {
     }
     
     try {
-        const response = await fetch(`/api/admin/addons/${id}`, {
+        const response = await adminFetch(`/api/admin/addons/${id}`, {
             method: 'DELETE'
         });
         
@@ -3687,7 +3687,7 @@ async function deleteHoliday(holidayDate) {
     }
     
     try {
-        const response = await fetch(`/api/admin/holidays/${holidayDate}`, {
+        const response = await adminFetch(`/api/admin/holidays/${holidayDate}`, {
             method: 'DELETE'
         });
         
