@@ -2461,8 +2461,7 @@ async function saveSettings() {
             depositResponse, bankNameResponse, bankBranchResponse, bankAccountResponse, accountNameResponse,
             enableTransferResponse, enableCardResponse,
             ecpayMerchantIDResponse, ecpayHashKeyResponse, ecpayHashIVResponse,
-            hotelNameResponse, hotelPhoneResponse, hotelAddressResponse, hotelEmailResponse,
-            weekdaySettingsResponse
+            hotelNameResponse, hotelPhoneResponse, hotelAddressResponse, hotelEmailResponse
         ] = await Promise.all([
             adminFetch('/api/admin/settings/deposit_percentage', {
                 method: 'PUT',
@@ -2603,17 +2602,6 @@ async function saveSettings() {
                     value: hotelEmail,
                     description: '旅館信箱（顯示在郵件最下面）'
                 })
-            }),
-            // 儲存平日/假日設定
-            adminFetch('/api/admin/settings/weekday_settings', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    value: getWeekdaySettings(),
-                    description: '平日/假日設定（JSON 格式：{"weekdays": [1,2,3,4,5]}）'
-                })
             })
         ]);
         
@@ -2631,8 +2619,7 @@ async function saveSettings() {
             hotelNameResponse.json(),
             hotelPhoneResponse.json(),
             hotelAddressResponse.json(),
-            hotelEmailResponse.json(),
-            weekdaySettingsResponse.json()
+            hotelEmailResponse.json()
         ]);
         
         const allSuccess = results.every(r => r.success);
@@ -2708,7 +2695,52 @@ function getWeekdaySettings() {
 // 更新平日/假日設定（checkbox 變更時觸發）
 function updateWeekdaySettings() {
     // 這個函數可以在 checkbox 變更時做一些即時反饋，目前不需要特別處理
-    // 設定會在點擊「儲存設定」時一起儲存
+    // 設定會在點擊「儲存平日/假日設定」時儲存
+}
+
+// 從伺服器載入平日/假日設定
+async function loadWeekdaySettingsFromServer() {
+    try {
+        const response = await fetch('/api/settings');
+        const result = await response.json();
+        
+        if (result.success && result.data.weekday_settings) {
+            loadWeekdaySettings(result.data.weekday_settings);
+        }
+    } catch (error) {
+        console.error('載入平日/假日設定錯誤:', error);
+    }
+}
+
+// 儲存平日/假日設定（獨立按鈕）
+async function saveWeekdaySettings() {
+    try {
+        const response = await adminFetch('/api/admin/settings/weekday_settings', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                value: getWeekdaySettings(),
+                description: '平日/假日設定（JSON 格式：{"weekdays": [1,2,3,4,5]}）'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('平日/假日設定已儲存');
+            // 重新載入設定以確保 UI 同步
+            setTimeout(() => {
+                loadWeekdaySettingsFromServer();
+            }, 300);
+        } else {
+            showError('儲存失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('儲存平日/假日設定錯誤:', error);
+        showError('儲存時發生錯誤：' + error.message);
+    }
 }
 
 // 載入郵件模板列表
