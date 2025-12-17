@@ -2424,7 +2424,8 @@ async function saveSettings() {
             depositResponse, bankNameResponse, bankBranchResponse, bankAccountResponse, accountNameResponse,
             enableTransferResponse, enableCardResponse,
             ecpayMerchantIDResponse, ecpayHashKeyResponse, ecpayHashIVResponse,
-            hotelNameResponse, hotelPhoneResponse, hotelAddressResponse, hotelEmailResponse
+            hotelNameResponse, hotelPhoneResponse, hotelAddressResponse, hotelEmailResponse,
+            weekdaySettingsResponse
         ] = await Promise.all([
             adminFetch('/api/admin/settings/deposit_percentage', {
                 method: 'PUT',
@@ -2565,6 +2566,17 @@ async function saveSettings() {
                     value: hotelEmail,
                     description: '旅館信箱（顯示在郵件最下面）'
                 })
+            }),
+            // 儲存平日/假日設定
+            adminFetch('/api/admin/settings/weekday_settings', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: getWeekdaySettings(),
+                    description: '平日/假日設定（JSON 格式：{"weekdays": [1,2,3,4,5]}）'
+                })
             })
         ]);
         
@@ -2582,7 +2594,8 @@ async function saveSettings() {
             hotelNameResponse.json(),
             hotelPhoneResponse.json(),
             hotelAddressResponse.json(),
-            hotelEmailResponse.json()
+            hotelEmailResponse.json(),
+            weekdaySettingsResponse.json()
         ]);
         
         const allSuccess = results.every(r => r.success);
