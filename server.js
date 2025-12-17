@@ -15,14 +15,21 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Session 設定
+// 檢測是否在 Railway 環境（Railway 使用 HTTPS）
+const isRailway = !!process.env.RAILWAY_ENVIRONMENT || !!process.env.RAILWAY_ENVIRONMENT_NAME;
+const isProduction = process.env.NODE_ENV === 'production';
+const useSecureCookie = isProduction || isRailway || process.env.SESSION_SECURE === 'true';
+
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key-change-this-in-production',
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: process.env.NODE_ENV === 'production', // 生產環境使用 HTTPS
+        // Railway 使用 HTTPS，所以需要 secure cookie
+        secure: useSecureCookie,
         httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000 // 24 小時
+        maxAge: 24 * 60 * 60 * 1000, // 24 小時
+        sameSite: 'lax' // 改善跨站 Cookie 處理
     }
 }));
 
