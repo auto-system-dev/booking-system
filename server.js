@@ -39,7 +39,7 @@ if (!process.env.SESSION_SECRET) {
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key-change-this-in-production',
     resave: false,
-    saveUninitialized: false, // 只有當 Session 被修改時才儲存
+    saveUninitialized: true, // 改為 true，確保 Session 被儲存並設定 Cookie
     cookie: {
         // Railway 使用 HTTPS，所以需要 secure cookie
         secure: useSecureCookie,
@@ -1110,6 +1110,7 @@ app.post('/api/admin/login', async (req, res) => {
             });
             
             // 明確儲存 Session（確保 Cookie 被設定）
+            // 注意：express-session 會在回應發送時自動設定 Cookie
             req.session.save((err) => {
                 if (err) {
                     console.error('❌ 儲存 Session 錯誤:', err);
@@ -1119,14 +1120,7 @@ app.post('/api/admin/login', async (req, res) => {
                     });
                 }
                 
-                // 檢查 Cookie 是否被設定（在 save 回調中檢查）
-                const cookieHeader = res.getHeader('Set-Cookie');
-                console.log('📦 Session Cookie 設定:', cookieHeader ? '✅ 已設定' : '❌ 未設定');
-                if (cookieHeader) {
-                    console.log('   Cookie 內容:', Array.isArray(cookieHeader) ? cookieHeader[0] : cookieHeader);
-                }
-                
-                // 確保回應包含 Cookie
+                // 回應登入成功（express-session 會在回應發送時設定 Cookie）
                 res.json({
                     success: true,
                     message: '登入成功',
