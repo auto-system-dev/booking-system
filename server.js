@@ -1437,6 +1437,11 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// 隱私權政策頁面
+app.get('/privacy', (req, res) => {
+    res.sendFile(path.join(__dirname, 'privacy.html'));
+});
+
 // 管理後台登入頁面
 app.get('/admin/login', (req, res) => {
     // 如果已經登入，重導向到管理後台
