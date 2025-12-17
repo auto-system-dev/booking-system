@@ -1824,7 +1824,17 @@ app.post('/api/data-protection/send-verification-code', publicLimiter, async (re
         }
         
         // 檢查是否有該 Email 的資料
-        const customer = await db.getCustomerByEmail(email);
+        let customer;
+        try {
+            customer = await db.getCustomerByEmail(email);
+        } catch (dbError) {
+            console.error('查詢客戶資料錯誤:', dbError);
+            return res.status(500).json({
+                success: false,
+                message: '查詢客戶資料時發生錯誤：' + dbError.message
+            });
+        }
+        
         if (!customer) {
             return res.status(404).json({
                 success: false,
@@ -1838,19 +1848,24 @@ app.post('/api/data-protection/send-verification-code', publicLimiter, async (re
         
         try {
             await dataProtection.sendVerificationEmail(email, code, purpose);
+            console.log(`✅ 驗證碼已發送至 ${email} (目的: ${purpose})`);
             res.json({
                 success: true,
                 message: '驗證碼已發送至您的 Email'
             });
         } catch (emailError) {
-            console.error('發送驗證碼失敗:', emailError);
+            console.error('❌ 發送驗證碼失敗:', emailError);
+            console.error('錯誤詳情:', emailError.message);
+            console.error('錯誤堆疊:', emailError.stack);
             res.status(500).json({
                 success: false,
-                message: '發送驗證碼失敗，請稍後再試'
+                message: '發送驗證碼失敗：' + (emailError.message || '請稍後再試')
             });
         }
     } catch (error) {
-        console.error('發送驗證碼錯誤:', error);
+        console.error('❌ 發送驗證碼 API 錯誤:', error);
+        console.error('錯誤詳情:', error.message);
+        console.error('錯誤堆疊:', error.stack);
         next(error);
     }
 });
