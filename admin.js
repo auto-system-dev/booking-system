@@ -3,6 +3,9 @@
 // 檢查登入狀態
 async function checkAuthStatus() {
     try {
+        // 檢查狀態時也取得 CSRF Token
+        await getCsrfToken();
+        
         const response = await adminFetch('/api/admin/check-auth');
         const result = await response.json();
         
@@ -116,12 +119,79 @@ async function handleLogout() {
     }
 }
 
-// 統一的 fetch 輔助函數（自動包含 credentials）
-function adminFetch(url, options = {}) {
-    return fetch(url, {
+// CSRF Token 快取
+let csrfTokenCache = null;
+
+// 取得 CSRF Token
+async function getCsrfToken() {
+    if (csrfTokenCache) {
+        return csrfTokenCache;
+    }
+    
+    try {
+        const response = await fetch('/api/csrf-token', {
+            credentials: 'include'
+        });
+        if (response.ok) {
+            const data = await response.json();
+            csrfTokenCache = data.csrfToken;
+            return csrfTokenCache;
+        }
+    } catch (error) {
+        console.warn('無法取得 CSRF Token:', error);
+    }
+    return null;
+}
+
+// 統一的 API 請求函數（自動包含 credentials 和 CSRF Token）
+async function adminFetch(url, options = {}) {
+    // 取得 CSRF Token
+    const csrfToken = await getCsrfToken();
+    
+    const defaultOptions = {
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    };
+    
+    // 如果是 POST、PUT、PATCH、DELETE 請求，加入 CSRF Token
+    if (csrfToken && ['POST', 'PUT', 'PATCH', 'DELETE'].includes((options.method || 'GET').toUpperCase())) {
+        defaultOptions.headers['X-CSRF-Token'] = csrfToken;
+    }
+    
+    const mergedOptions = {
+        ...defaultOptions,
         ...options,
-        credentials: 'include' // 確保所有 API 呼叫都包含 session cookie
-    });
+        headers: {
+            ...defaultOptions.headers,
+            ...options.headers
+        }
+    };
+    
+    try {
+        const response = await fetch(url, mergedOptions);
+        
+        // 如果收到 403 或 CSRF 錯誤，清除 Token 快取並重試一次
+        if (response.status === 403 || response.status === 400) {
+            const result = await response.json().catch(() => ({}));
+            if (result.message && result.message.includes('CSRF')) {
+                csrfTokenCache = null; // 清除快取
+                // 重新取得 Token 並重試
+                const newToken = await getCsrfToken();
+                if (newToken) {
+                    mergedOptions.headers['X-CSRF-Token'] = newToken;
+                    return await fetch(url, mergedOptions);
+                }
+            }
+        }
+        
+        return response;
+    } catch (error) {
+        console.error('API 請求錯誤:', error);
+        throw error;
+    }
 }
 
 let allBookings = [];

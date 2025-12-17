@@ -484,6 +484,23 @@ async function initPostgreSQL() {
             `);
             console.log('✅ 管理員資料表已準備就緒');
             
+            // 建立操作日誌資料表
+            await query(`
+                CREATE TABLE IF NOT EXISTS admin_logs (
+                    id SERIAL PRIMARY KEY,
+                    admin_id INTEGER,
+                    admin_username VARCHAR(255),
+                    action VARCHAR(100) NOT NULL,
+                    resource_type VARCHAR(100),
+                    resource_id VARCHAR(255),
+                    details TEXT,
+                    ip_address VARCHAR(255),
+                    user_agent TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ 操作日誌資料表已準備就緒');
+            
             // 初始化預設管理員（如果不存在）
             const defaultAdmin = await queryOne('SELECT id FROM admins WHERE username = $1', ['admin']);
             if (!defaultAdmin) {
@@ -1201,6 +1218,28 @@ function initSQLite() {
                                                     }).catch(reject);
                                                 } else {
                                                     console.log('✅ 管理員資料表已準備就緒');
+                                                    
+                                                    // 建立操作日誌資料表
+                                                    db.run(`
+                                                        CREATE TABLE IF NOT EXISTS admin_logs (
+                                                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                            admin_id INTEGER,
+                                                            admin_username TEXT,
+                                                            action TEXT NOT NULL,
+                                                            resource_type TEXT,
+                                                            resource_id TEXT,
+                                                            details TEXT,
+                                                            ip_address TEXT,
+                                                            user_agent TEXT,
+                                                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                                                        )
+                                                    `, (err) => {
+                                                        if (err) {
+                                                            console.warn('⚠️  建立 admin_logs 表時發生錯誤:', err.message);
+                                                        } else {
+                                                            console.log('✅ 操作日誌資料表已準備就緒');
+                                                        }
+                                                    });
                                                     
                                                     // 初始化預設管理員（如果不存在）
                                                     db.get('SELECT id FROM admins WHERE username = ?', ['admin'], (err, row) => {
@@ -2514,6 +2553,172 @@ async function updateAdminPassword(adminId, newPassword) {
     }
 }
 
+// ==================== 操作日誌管理 ====================
+
+// 記錄管理員操作
+async function logAdminAction(actionData) {
+    try {
+        const {
+            adminId,
+            adminUsername,
+            action,
+            resourceType,
+            resourceId,
+            details,
+            ipAddress,
+            userAgent
+        } = actionData;
+        
+        const sql = usePostgreSQL
+            ? `INSERT INTO admin_logs (admin_id, admin_username, action, resource_type, resource_id, details, ip_address, user_agent)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+            : `INSERT INTO admin_logs (admin_id, admin_username, action, resource_type, resource_id, details, ip_address, user_agent)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+        
+        const detailsJson = details ? JSON.stringify(details) : null;
+        
+        await query(sql, [
+            adminId || null,
+            adminUsername || null,
+            action,
+            resourceType || null,
+            resourceId || null,
+            detailsJson,
+            ipAddress || null,
+            userAgent || null
+        ]);
+        
+        return true;
+    } catch (error) {
+        console.error('❌ 記錄操作日誌失敗:', error.message);
+        // 不拋出錯誤，避免影響主要功能
+        return false;
+    }
+}
+
+// 取得操作日誌列表
+async function getAdminLogs(options = {}) {
+    try {
+        const {
+            limit = 100,
+            offset = 0,
+            adminId = null,
+            action = null,
+            resourceType = null,
+            startDate = null,
+            endDate = null
+        } = options;
+        
+        let sql = usePostgreSQL
+            ? `SELECT * FROM admin_logs WHERE 1=1`
+            : `SELECT * FROM admin_logs WHERE 1=1`;
+        const params = [];
+        let paramIndex = 1;
+        
+        if (adminId) {
+            sql += usePostgreSQL ? ` AND admin_id = $${paramIndex}` : ` AND admin_id = ?`;
+            params.push(adminId);
+            paramIndex++;
+        }
+        
+        if (action) {
+            sql += usePostgreSQL ? ` AND action = $${paramIndex}` : ` AND action = ?`;
+            params.push(action);
+            paramIndex++;
+        }
+        
+        if (resourceType) {
+            sql += usePostgreSQL ? ` AND resource_type = $${paramIndex}` : ` AND resource_type = ?`;
+            params.push(resourceType);
+            paramIndex++;
+        }
+        
+        if (startDate) {
+            sql += usePostgreSQL ? ` AND created_at >= $${paramIndex}` : ` AND created_at >= ?`;
+            params.push(startDate);
+            paramIndex++;
+        }
+        
+        if (endDate) {
+            sql += usePostgreSQL ? ` AND created_at <= $${paramIndex}` : ` AND created_at <= ?`;
+            params.push(endDate);
+            paramIndex++;
+        }
+        
+        sql += usePostgreSQL
+            ? ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`
+            : ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
+        
+        const result = await query(sql, params);
+        const logs = result.rows || [];
+        
+        // 解析 details JSON
+        return logs.map(log => ({
+            ...log,
+            details: log.details ? JSON.parse(log.details) : null
+        }));
+    } catch (error) {
+        console.error('❌ 查詢操作日誌失敗:', error.message);
+        throw error;
+    }
+}
+
+// 取得操作日誌總數
+async function getAdminLogsCount(options = {}) {
+    try {
+        const {
+            adminId = null,
+            action = null,
+            resourceType = null,
+            startDate = null,
+            endDate = null
+        } = options;
+        
+        let sql = usePostgreSQL
+            ? `SELECT COUNT(*) as count FROM admin_logs WHERE 1=1`
+            : `SELECT COUNT(*) as count FROM admin_logs WHERE 1=1`;
+        const params = [];
+        let paramIndex = 1;
+        
+        if (adminId) {
+            sql += usePostgreSQL ? ` AND admin_id = $${paramIndex}` : ` AND admin_id = ?`;
+            params.push(adminId);
+            paramIndex++;
+        }
+        
+        if (action) {
+            sql += usePostgreSQL ? ` AND action = $${paramIndex}` : ` AND action = ?`;
+            params.push(action);
+            paramIndex++;
+        }
+        
+        if (resourceType) {
+            sql += usePostgreSQL ? ` AND resource_type = $${paramIndex}` : ` AND resource_type = ?`;
+            params.push(resourceType);
+            paramIndex++;
+        }
+        
+        if (startDate) {
+            sql += usePostgreSQL ? ` AND created_at >= $${paramIndex}` : ` AND created_at >= ?`;
+            params.push(startDate);
+            paramIndex++;
+        }
+        
+        if (endDate) {
+            sql += usePostgreSQL ? ` AND created_at <= $${paramIndex}` : ` AND created_at <= ?`;
+            params.push(endDate);
+            paramIndex++;
+        }
+        
+        const result = await queryOne(sql, params);
+        return parseInt(result.count) || 0;
+    } catch (error) {
+        console.error('❌ 查詢操作日誌總數失敗:', error.message);
+        throw error;
+    }
+}
+
 module.exports = {
     initDatabase,
     saveBooking,
@@ -2571,6 +2776,10 @@ module.exports = {
     getAdminByUsername,
     verifyAdminPassword,
     updateAdminLastLogin,
-    updateAdminPassword
+    updateAdminPassword,
+    // 操作日誌
+    logAdminAction,
+    getAdminLogs,
+    getAdminLogsCount
 };
 

@@ -7,9 +7,31 @@ const nodemailer = require('nodemailer');
 const cors = require('cors');
 const path = require('path');
 const session = require('express-session');
+const rateLimit = require('express-rate-limit');
 const db = require('./database');
 const payment = require('./payment');
 const cron = require('node-cron');
+const backup = require('./backup');
+const csrf = require('csrf');
+const {
+    errorHandler,
+    asyncHandler,
+    createError,
+    createValidationError,
+    createAuthError,
+    createNotFoundError,
+    createConflictError
+} = require('./errorHandler');
+const {
+    sanitizeObject,
+    validateRequired,
+    validateDateRange,
+    validateNumberRange,
+    sanitizeEmail,
+    sanitizePhone,
+    sanitizeDate,
+    createValidationMiddleware
+} = require('./validators');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -52,6 +74,62 @@ app.use(session({
     }
 }));
 
+// ============================================
+// CSRF 保護設定
+// ============================================
+const csrfProtection = new csrf();
+
+// 從 Session 中取得或建立 CSRF Secret
+function getCsrfSecret(req) {
+    if (!req.session.csrfSecret) {
+        req.session.csrfSecret = csrfProtection.secretSync();
+    }
+    return req.session.csrfSecret;
+}
+
+// CSRF Token 生成中間件（用於需要 Token 的路由）
+function generateCsrfToken(req, res, next) {
+    const secret = getCsrfSecret(req);
+    const token = csrfProtection.create(secret);
+    req.csrfToken = token;
+    res.locals.csrfToken = token;
+    next();
+}
+
+// CSRF Token 驗證中間件
+function verifyCsrfToken(req, res, next) {
+    // 排除某些路由（例如：支付回調、公開 API）
+    const excludedPaths = [
+        '/api/payment/return',
+        '/api/payment/result',
+        '/api/admin/login',
+        '/api/admin/logout',
+        '/api/admin/check-auth'
+    ];
+    
+    if (excludedPaths.some(path => req.path === path || req.path.startsWith(path))) {
+        return next();
+    }
+    
+    // 只驗證 POST、PUT、PATCH、DELETE 請求
+    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+        return next();
+    }
+    
+    const secret = getCsrfSecret(req);
+    const token = req.headers['x-csrf-token'] || req.body._csrf || req.query._csrf;
+    
+    if (!token) {
+        return next(createValidationError('缺少 CSRF Token'));
+    }
+    
+    if (!csrfProtection.verify(secret, token)) {
+        return next(createValidationError('CSRF Token 驗證失敗'));
+    }
+    
+    next();
+}
+
 // 中間件
 app.use(cors({
     credentials: true,
@@ -63,11 +141,255 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // 處理綠界 POST 表單資料（application/x-www-form-urlencoded）
 app.use(express.urlencoded({ extended: true }));
 
+// ============================================
+// API Rate Limiting 設定
+// ============================================
+
+// 1. 登入 API - 嚴格限制（防止暴力破解）
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 分鐘
+    max: 5, // 最多 5 次請求
+    message: {
+        success: false,
+        message: '登入嘗試次數過多，請稍後再試（15 分鐘後可再次嘗試）'
+    },
+    standardHeaders: true, // 返回 rate limit info 在 `RateLimit-*` headers
+    legacyHeaders: false, // 禁用 `X-RateLimit-*` headers
+    skipSuccessfulRequests: true, // 登入成功不計入限制
+    handler: (req, res) => {
+        console.warn(`⚠️  Rate Limit 觸發 - 登入 API: ${req.ip}`);
+        res.status(429).json({
+            success: false,
+            message: '登入嘗試次數過多，請稍後再試（15 分鐘後可再次嘗試）'
+        });
+    }
+});
+
+// 2. 管理後台 API - 中等限制
+const adminLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 分鐘
+    max: 100, // 最多 100 次請求
+    message: {
+        success: false,
+        message: '請求過於頻繁，請稍後再試'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => {
+        // 已登入的管理員放寬限制
+        return req.session && req.session.admin;
+    }
+});
+
+// 3. 公開 API - 寬鬆限制（訂房、查詢等）
+const publicLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 分鐘
+    max: 200, // 最多 200 次請求
+    message: {
+        success: false,
+        message: '請求過於頻繁，請稍後再試'
+    },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+// 4. 支付 API - 中等限制（防止濫用）
+const paymentLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 分鐘
+    max: 50, // 最多 50 次請求
+    message: {
+        success: false,
+        message: '支付請求過於頻繁，請稍後再試'
+    },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+// 5. 一般 API - 預設限制
+const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 分鐘
+    max: 150, // 最多 150 次請求
+    message: {
+        success: false,
+        message: '請求過於頻繁，請稍後再試'
+    },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+console.log('🛡️  API Rate Limiting 已啟用');
+console.log('   - 登入 API: 5 次/15 分鐘');
+console.log('   - 管理後台 API: 100 次/15 分鐘');
+console.log('   - 公開 API: 200 次/15 分鐘');
+console.log('   - 支付 API: 50 次/15 分鐘');
+console.log('   - 一般 API: 150 次/15 分鐘');
+
+// ============================================
+// 輸入驗證中間件
+// ============================================
+
+// 訂房驗證中間件
+const validateBooking = createValidationMiddleware([
+    (req) => {
+        const required = ['checkInDate', 'checkOutDate', 'roomType', 'guestName', 'guestPhone', 'guestEmail'];
+        return validateRequired(required, req.body);
+    },
+    (req) => {
+        return validateDateRange(req.body.checkInDate, req.body.checkOutDate);
+    },
+    (req) => {
+        const email = sanitizeEmail(req.body.guestEmail);
+        if (!email) {
+            return { valid: false, message: 'Email 格式不正確' };
+        }
+        req.body.guestEmail = email;
+        return { valid: true };
+    },
+    (req) => {
+        const phone = sanitizePhone(req.body.guestPhone);
+        if (!phone) {
+            return { valid: false, message: '手機號碼格式不正確（需為 09 開頭，共 10 碼）' };
+        }
+        req.body.guestPhone = phone;
+        return { valid: true };
+    },
+    (req) => {
+        if (req.body.adults !== undefined) {
+            return validateNumberRange(req.body.adults, 1, 20, '大人人數');
+        }
+        return { valid: true };
+    },
+    (req) => {
+        if (req.body.children !== undefined) {
+            return validateNumberRange(req.body.children, 0, 20, '孩童人數');
+        }
+        return { valid: true };
+    }
+]);
+
+// 登入驗證中間件
+const validateLogin = createValidationMiddleware([
+    (req) => {
+        return validateRequired(['username', 'password'], req.body);
+    },
+    (req) => {
+        // 檢查使用者名稱長度
+        if (req.body.username && req.body.username.length > 50) {
+            return { valid: false, message: '帳號長度不能超過 50 個字元' };
+        }
+        return { valid: true };
+    }
+]);
+
+// 房型管理驗證中間件
+const validateRoomType = createValidationMiddleware([
+    (req) => {
+        if (req.method === 'POST' || req.method === 'PUT') {
+            return validateRequired(['name', 'display_name', 'price'], req.body);
+        }
+        return { valid: true };
+    },
+    (req) => {
+        if (req.body.price !== undefined) {
+            return validateNumberRange(req.body.price, 0, 1000000, '價格');
+        }
+        return { valid: true };
+    },
+    (req) => {
+        if (req.body.max_guests !== undefined) {
+            return validateNumberRange(req.body.max_guests, 1, 20, '最大人數');
+        }
+        return { valid: true };
+    }
+]);
+
+// 假日驗證中間件
+const validateHoliday = createValidationMiddleware([
+    (req) => {
+        if (req.method === 'POST') {
+            if (!req.body.holidayDate && (!req.body.startDate || !req.body.endDate)) {
+                return { valid: false, message: '請提供假日日期或日期範圍' };
+            }
+            if (req.body.holidayDate) {
+                const date = sanitizeDate(req.body.holidayDate);
+                if (!date) {
+                    return { valid: false, message: '日期格式不正確（需為 YYYY-MM-DD）' };
+                }
+                req.body.holidayDate = date;
+            }
+            if (req.body.startDate && req.body.endDate) {
+                const startDate = sanitizeDate(req.body.startDate);
+                const endDate = sanitizeDate(req.body.endDate);
+                if (!startDate || !endDate) {
+                    return { valid: false, message: '日期格式不正確（需為 YYYY-MM-DD）' };
+                }
+                return validateDateRange(startDate, endDate);
+            }
+        }
+        return { valid: true };
+    }
+]);
+
+// 加購商品驗證中間件
+const validateAddon = createValidationMiddleware([
+    (req) => {
+        if (req.method === 'POST' || req.method === 'PUT') {
+            return validateRequired(['name', 'display_name'], req.body);
+        }
+        return { valid: true };
+    },
+    (req) => {
+        if (req.body.price !== undefined) {
+            return validateNumberRange(req.body.price, 0, 100000, '價格');
+        }
+        return { valid: true };
+    }
+]);
+
+// 通用清理中間件（應用於所有請求）
+const sanitizeInput = (req, res, next) => {
+    try {
+        if (req.body) {
+            req.body = sanitizeObject(req.body, {
+                checkSQLInjection: true,
+                checkXSS: true
+            });
+        }
+        if (req.query) {
+            req.query = sanitizeObject(req.query, {
+                checkSQLInjection: true,
+                checkXSS: true
+            });
+        }
+        if (req.params) {
+            req.params = sanitizeObject(req.params, {
+                checkSQLInjection: true,
+                checkXSS: true
+            });
+        }
+        next();
+    } catch (error) {
+        console.error('輸入清理錯誤:', error);
+        return res.status(400).json({
+            success: false,
+            message: error.message || '輸入驗證失敗'
+        });
+    }
+};
+
+console.log('✅ 輸入驗證系統已啟用');
+console.log('   - SQL Injection 防護');
+console.log('   - XSS 防護');
+console.log('   - 輸入清理與驗證');
+
 // 請求日誌中間件
 app.use((req, res, next) => {
     console.log(`[${new Date().toLocaleString('zh-TW')}] ${req.method} ${req.path}`);
     next();
 });
+
+// 應用通用輸入清理中間件（在所有路由之前）
+app.use(sanitizeInput);
 
 // 注意：API 路由必須在靜態檔案服務之前定義
 // app.use(express.static(__dirname)); // 移到最後
@@ -257,7 +579,7 @@ function generateShortBookingId() {
 }
 
 // 訂房 API
-app.post('/api/booking', async (req, res) => {
+app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async (req, res) => {
     console.log('\n========================================');
     console.log('📥 收到訂房請求');
     console.log('時間:', new Date().toLocaleString('zh-TW'));
@@ -719,7 +1041,7 @@ app.post('/api/booking', async (req, res) => {
 });
 
 // 後台：快速建立訂房（不發送任何郵件，用於電話 / 其他平台訂房）
-app.post('/api/admin/bookings/quick', async (req, res) => {
+app.post('/api/admin/bookings/quick', requireAuth, adminLimiter, async (req, res) => {
     try {
         const {
             roomType,
@@ -756,6 +1078,14 @@ app.post('/api/admin/bookings/quick', async (req, res) => {
         const bookingId = generateShortBookingId();
         const bookingDate = new Date().toISOString();
         
+        // 記錄建立訂房日誌
+        await logAction(req, 'create_booking', 'booking', bookingId, {
+            guestName: guestName,
+            checkInDate: checkInDate,
+            checkOutDate: checkOutDate,
+            roomType: roomType
+        });
+        
         const bookingData = {
             bookingId,
             checkInDate,
@@ -781,6 +1111,14 @@ app.post('/api/admin/bookings/quick', async (req, res) => {
         };
         
         const savedId = await db.saveBooking(bookingData);
+        
+        // 記錄建立訂房日誌
+        await logAction(req, 'create_booking', 'booking', bookingId, {
+            guestName: guestName,
+            checkInDate: checkInDate,
+            checkOutDate: checkOutDate,
+            roomType: roomType
+        });
         
         console.log('✅ 後台快速建立訂房成功:', bookingId, 'DB ID:', savedId);
         
@@ -1067,6 +1405,33 @@ function requireAuth(req, res, next) {
     res.status(401).json({ success: false, message: '請先登入' });
 }
 
+// 記錄操作日誌的輔助函數
+async function logAction(req, action, resourceType = null, resourceId = null, details = null) {
+    try {
+        const admin = req.session?.admin;
+        if (!admin) {
+            return; // 未登入的操作不記錄
+        }
+        
+        const ipAddress = req.ip || req.connection?.remoteAddress || 'unknown';
+        const userAgent = req.get('user-agent') || 'unknown';
+        
+        await db.logAdminAction({
+            adminId: admin.id,
+            adminUsername: admin.username,
+            action: action,
+            resourceType: resourceType,
+            resourceId: resourceId,
+            details: details,
+            ipAddress: ipAddress,
+            userAgent: userAgent
+        });
+    } catch (error) {
+        // 日誌記錄失敗不應影響主要功能
+        console.error('記錄操作日誌失敗:', error.message);
+    }
+}
+
 // 首頁
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
@@ -1081,8 +1446,8 @@ app.get('/admin/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
-// 管理後台登入 API
-app.post('/api/admin/login', async (req, res) => {
+// 管理後台登入 API（應用嚴格 rate limiting）
+app.post('/api/admin/login', loginLimiter, validateLogin, async (req, res) => {
     try {
         const { username, password } = req.body;
         
@@ -1123,6 +1488,12 @@ app.post('/api/admin/login', async (req, res) => {
                     });
                 }
                 
+                // 記錄登入日誌（在 session 儲存後）
+                logAction(req, 'login', null, null, {
+                    username: admin.username,
+                    role: admin.role
+                }).catch(err => console.error('記錄登入日誌失敗:', err));
+                
                 // 回應登入成功（express-session 會在回應發送時設定 Cookie）
                 res.json({
                     success: true,
@@ -1134,6 +1505,18 @@ app.post('/api/admin/login', async (req, res) => {
                 });
             });
         } else {
+            // 記錄登入失敗日誌（不包含管理員資訊）
+            await db.logAdminAction({
+                adminId: null,
+                adminUsername: username,
+                action: 'login_failed',
+                resourceType: null,
+                resourceId: null,
+                details: JSON.stringify({ reason: 'invalid_credentials' }),
+                ipAddress: req.ip || req.connection?.remoteAddress || 'unknown',
+                userAgent: req.get('user-agent') || 'unknown'
+            });
+            
             res.status(401).json({
                 success: false,
                 message: '帳號或密碼錯誤'
@@ -1148,8 +1531,8 @@ app.post('/api/admin/login', async (req, res) => {
     }
 });
 
-// 管理後台登出 API
-app.post('/api/admin/logout', (req, res) => {
+// 管理後台登出 API（應用管理後台 rate limiting）
+app.post('/api/admin/logout', adminLimiter, (req, res) => {
     req.session.destroy((err) => {
         if (err) {
             console.error('登出錯誤:', err);
@@ -1165,8 +1548,8 @@ app.post('/api/admin/logout', (req, res) => {
     });
 });
 
-// 檢查登入狀態 API
-app.get('/api/admin/check-auth', (req, res) => {
+// 檢查登入狀態 API（應用管理後台 rate limiting）
+app.get('/api/admin/check-auth', adminLimiter, (req, res) => {
     if (req.session && req.session.admin) {
         res.json({
             success: true,
@@ -1181,23 +1564,106 @@ app.get('/api/admin/check-auth', (req, res) => {
     }
 });
 
+// API: 取得備份列表
+app.get('/api/admin/backups', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        const backups = backup.getBackupList();
+        const stats = backup.getBackupStats();
+        
+        res.json({
+            success: true,
+            data: backups,
+            stats: stats
+        });
+    } catch (error) {
+        console.error('查詢備份列表錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '查詢備份列表失敗：' + error.message
+        });
+    }
+});
+
+// API: 手動執行備份
+app.post('/api/admin/backups/create', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        const result = await backup.performBackup();
+        
+        // 記錄備份操作日誌
+        await logAction(req, 'create_backup', 'backup', result.fileName, {
+            fileSize: result.fileSizeMB,
+            fileName: result.fileName
+        });
+        
+        res.json({
+            success: true,
+            message: '備份已建立',
+            data: result
+        });
+    } catch (error) {
+        console.error('手動備份錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '備份失敗：' + error.message
+        });
+    }
+});
+
+// API: 清理舊備份
+app.post('/api/admin/backups/cleanup', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        const { daysToKeep = 30 } = req.body;
+        const result = await backup.cleanupOldBackups(parseInt(daysToKeep));
+        
+        // 記錄清理操作日誌
+        await logAction(req, 'cleanup_backups', 'backup', null, {
+            deletedCount: result.deletedCount,
+            sizeFreedMB: result.totalSizeFreedMB
+        });
+        
+        res.json({
+            success: true,
+            message: `已清理 ${result.deletedCount} 個舊備份`,
+            data: result
+        });
+    } catch (error) {
+        console.error('清理舊備份錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '清理失敗：' + error.message
+        });
+    }
+});
+
+// CSRF Token API（提供 Token 給前端）
+app.get('/api/csrf-token', generateCsrfToken, (req, res) => {
+    res.json({
+        success: true,
+        csrfToken: req.csrfToken
+    });
+});
+
 // 保護所有管理後台 API（除了登入相關）
 app.use('/api/admin', (req, res, next) => {
     // 排除登入、登出和檢查狀態 API
     if (req.path === '/login' || req.path === '/logout' || req.path === '/check-auth') {
         return next();
     }
-    requireAuth(req, res, next);
+    // 先驗證 CSRF Token，再驗證登入狀態
+    verifyCsrfToken(req, res, (err) => {
+        if (err) return next(err);
+        requireAuth(req, res, next);
+    });
 });
 
 // 管理後台（未登入時顯示登入頁面，已登入時顯示管理後台）
-app.get('/admin', (req, res) => {
+app.get('/admin', generateCsrfToken, (req, res) => {
     // 直接返回 admin.html，由前端 JavaScript 檢查登入狀態並顯示對應頁面
     res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
 // API: 查詢訂房記錄（可帶入日期區間，供列表與日曆共用）
-app.get('/api/bookings', async (req, res) => {
+app.get('/api/bookings', publicLimiter, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
         let bookings;
@@ -1232,7 +1698,7 @@ app.get('/api/bookings', async (req, res) => {
 });
 
 // API: 根據訂房編號查詢單筆訂房（供後台列表/日曆詳情使用）
-app.get('/api/bookings/:bookingId', async (req, res) => {
+app.get('/api/bookings/:bookingId', publicLimiter, async (req, res) => {
     try {
         const { bookingId } = req.params;
         const booking = await db.getBookingById(bookingId);
@@ -1258,7 +1724,7 @@ app.get('/api/bookings/:bookingId', async (req, res) => {
 });
 
 // API: 根據 Email 查詢訂房記錄
-app.get('/api/bookings/email/:email', async (req, res) => {
+app.get('/api/bookings/email/:email', publicLimiter, async (req, res) => {
     try {
         const { email } = req.params;
         const bookings = await db.getBookingsByEmail(email);
@@ -1278,7 +1744,7 @@ app.get('/api/bookings/email/:email', async (req, res) => {
 });
 
 // API: 取得所有客戶列表（聚合訂房資料）- 需要登入
-app.get('/api/customers', requireAuth, async (req, res) => {
+app.get('/api/customers', requireAuth, adminLimiter, async (req, res) => {
     try {
         const customers = await db.getAllCustomers();
         
@@ -1297,7 +1763,7 @@ app.get('/api/customers', requireAuth, async (req, res) => {
 });
 
 // API: 取得單一客戶詳情（包含所有訂房記錄）
-app.get('/api/customers/:email', async (req, res) => {
+app.get('/api/customers/:email', publicLimiter, async (req, res) => {
     try {
         const { email } = req.params;
         const customer = await db.getCustomerByEmail(email);
@@ -1323,7 +1789,7 @@ app.get('/api/customers/:email', async (req, res) => {
 });
 
 // API: 取得統計資料 - 需要登入
-app.get('/api/statistics', requireAuth, async (req, res) => {
+app.get('/api/statistics', requireAuth, adminLimiter, async (req, res) => {
     try {
         const stats = await db.getStatistics();
         res.json({
@@ -1340,7 +1806,7 @@ app.get('/api/statistics', requireAuth, async (req, res) => {
 });
 
 // API: 儀表板數據
-app.get('/api/dashboard', async (req, res) => {
+app.get('/api/dashboard', adminLimiter, async (req, res) => {
     try {
         // 獲取今天的日期（YYYY-MM-DD）
         const today = new Date();
@@ -1405,7 +1871,7 @@ app.get('/api/dashboard', async (req, res) => {
 });
 
 // API: 更新訂房資料
-app.put('/api/bookings/:bookingId', async (req, res) => {
+app.put('/api/bookings/:bookingId', adminLimiter, async (req, res) => {
     try {
         const { bookingId } = req.params;
         const updateData = req.body;
@@ -1444,7 +1910,7 @@ app.put('/api/bookings/:bookingId', async (req, res) => {
 });
 
 // API: 取消訂房
-app.post('/api/bookings/:bookingId/cancel', async (req, res) => {
+app.post('/api/bookings/:bookingId/cancel', adminLimiter, async (req, res) => {
     try {
         const { bookingId } = req.params;
         
@@ -1471,7 +1937,7 @@ app.post('/api/bookings/:bookingId/cancel', async (req, res) => {
 });
 
 // API: 刪除訂房（僅限已取消的訂房）
-app.delete('/api/bookings/:bookingId', async (req, res) => {
+app.delete('/api/bookings/:bookingId', adminLimiter, async (req, res) => {
     try {
         const { bookingId } = req.params;
         
@@ -1516,7 +1982,7 @@ app.delete('/api/bookings/:bookingId', async (req, res) => {
 // ==================== 房型管理 API ====================
 
 // API: 取得所有房型（公開，供前台使用）
-app.get('/api/room-types', async (req, res) => {
+app.get('/api/room-types', publicLimiter, async (req, res) => {
     try {
         const roomTypes = await db.getAllRoomTypes();
         res.json({
@@ -1533,7 +1999,7 @@ app.get('/api/room-types', async (req, res) => {
 });
 
 // API: 檢查房間可用性
-app.get('/api/room-availability', async (req, res) => {
+app.get('/api/room-availability', publicLimiter, async (req, res) => {
     try {
         const { checkInDate, checkOutDate } = req.query;
         
@@ -1560,7 +2026,7 @@ app.get('/api/room-availability', async (req, res) => {
 
 
 // API: 取得所有房型（管理後台，包含已停用的）
-app.get('/api/admin/room-types', async (req, res) => {
+app.get('/api/admin/room-types', requireAuth, adminLimiter, async (req, res) => {
     try {
         // 使用資料庫抽象層，支援 PostgreSQL 和 SQLite
         const roomTypes = await db.getAllRoomTypesAdmin();
@@ -1578,7 +2044,7 @@ app.get('/api/admin/room-types', async (req, res) => {
 });
 
 // API: 新增房型
-app.post('/api/admin/room-types', async (req, res) => {
+app.post('/api/admin/room-types', requireAuth, adminLimiter, validateRoomType, async (req, res) => {
     try {
         const roomData = req.body;
         
@@ -1590,6 +2056,13 @@ app.post('/api/admin/room-types', async (req, res) => {
         }
         
         const id = await db.createRoomType(roomData);
+        
+        // 記錄新增房型日誌
+        await logAction(req, 'create_room_type', 'room_type', id.toString(), {
+            name: roomData.name,
+            display_name: roomData.display_name
+        });
+        
         res.json({
             success: true,
             message: '房型已新增',
@@ -1605,7 +2078,7 @@ app.post('/api/admin/room-types', async (req, res) => {
 });
 
 // API: 更新房型
-app.put('/api/admin/room-types/:id', async (req, res) => {
+app.put('/api/admin/room-types/:id', requireAuth, adminLimiter, validateRoomType, async (req, res) => {
     try {
         const { id } = req.params;
         const roomData = req.body;
@@ -1635,7 +2108,7 @@ app.put('/api/admin/room-types/:id', async (req, res) => {
 // ==================== 假日管理 API ====================
 
 // API: 取得所有假日
-app.get('/api/admin/holidays', async (req, res) => {
+app.get('/api/admin/holidays', requireAuth, adminLimiter, async (req, res) => {
     try {
         const holidays = await db.getAllHolidays();
         res.json({
@@ -1652,7 +2125,7 @@ app.get('/api/admin/holidays', async (req, res) => {
 });
 
 // API: 新增假日
-app.post('/api/admin/holidays', async (req, res) => {
+app.post('/api/admin/holidays', requireAuth, adminLimiter, validateHoliday, async (req, res) => {
     try {
         const { holidayDate, holidayName, startDate, endDate } = req.body;
         
@@ -1688,7 +2161,7 @@ app.post('/api/admin/holidays', async (req, res) => {
 });
 
 // API: 刪除假日
-app.delete('/api/admin/holidays/:date', async (req, res) => {
+app.delete('/api/admin/holidays/:date', requireAuth, adminLimiter, async (req, res) => {
     try {
         const { date } = req.params;
         const result = await db.deleteHoliday(date);
@@ -1714,7 +2187,7 @@ app.delete('/api/admin/holidays/:date', async (req, res) => {
 });
 
 // API: 檢查日期是否為假日
-app.get('/api/check-holiday', async (req, res) => {
+app.get('/api/check-holiday', publicLimiter, async (req, res) => {
     try {
         const { date } = req.query;
         
@@ -1740,7 +2213,7 @@ app.get('/api/check-holiday', async (req, res) => {
 });
 
 // API: 計算訂房價格（考慮平日/假日）
-app.get('/api/calculate-price', async (req, res) => {
+app.get('/api/calculate-price', publicLimiter, async (req, res) => {
     try {
         const { checkInDate, checkOutDate, roomTypeName } = req.query;
         
@@ -1807,7 +2280,7 @@ app.get('/api/calculate-price', async (req, res) => {
 });
 
 // API: 刪除房型
-app.delete('/api/admin/room-types/:id', async (req, res) => {
+app.delete('/api/admin/room-types/:id', requireAuth, adminLimiter, async (req, res) => {
     try {
         const { id } = req.params;
         
@@ -1848,7 +2321,7 @@ app.delete('/api/admin/room-types/:id', async (req, res) => {
 // ==================== 加購商品管理 API ====================
 
 // API: 取得所有加購商品（公開，供前台使用）
-app.get('/api/addons', async (req, res) => {
+app.get('/api/addons', publicLimiter, async (req, res) => {
     try {
         const addons = await db.getAllAddons();
         res.json({
@@ -1865,7 +2338,7 @@ app.get('/api/addons', async (req, res) => {
 });
 
 // API: 取得所有加購商品（管理後台，包含已停用的）
-app.get('/api/admin/addons', async (req, res) => {
+app.get('/api/admin/addons', requireAuth, adminLimiter, async (req, res) => {
     try {
         const addons = await db.getAllAddonsAdmin();
         res.json({
@@ -1882,7 +2355,7 @@ app.get('/api/admin/addons', async (req, res) => {
 });
 
 // API: 新增加購商品
-app.post('/api/admin/addons', async (req, res) => {
+app.post('/api/admin/addons', requireAuth, adminLimiter, validateAddon, async (req, res) => {
     try {
         const addonData = req.body;
         
@@ -1909,7 +2382,7 @@ app.post('/api/admin/addons', async (req, res) => {
 });
 
 // API: 更新加購商品
-app.put('/api/admin/addons/:id', async (req, res) => {
+app.put('/api/admin/addons/:id', requireAuth, adminLimiter, validateAddon, async (req, res) => {
     try {
         const { id } = req.params;
         const addonData = req.body;
@@ -1937,7 +2410,7 @@ app.put('/api/admin/addons/:id', async (req, res) => {
 });
 
 // API: 刪除加購商品
-app.delete('/api/admin/addons/:id', async (req, res) => {
+app.delete('/api/admin/addons/:id', requireAuth, adminLimiter, async (req, res) => {
     try {
         const { id } = req.params;
         
@@ -1976,7 +2449,7 @@ app.delete('/api/admin/addons/:id', async (req, res) => {
 // ==================== 系統設定 API ====================
 
 // API: 取得系統設定
-app.get('/api/settings', async (req, res) => {
+app.get('/api/settings', publicLimiter, async (req, res) => {
     try {
         const settings = await db.getAllSettings();
         const settingsObj = {};
@@ -1998,7 +2471,7 @@ app.get('/api/settings', async (req, res) => {
 });
 
 // API: 更新系統設定
-app.put('/api/admin/settings/:key', async (req, res) => {
+app.put('/api/admin/settings/:key', requireAuth, adminLimiter, async (req, res) => {
     try {
         const { key } = req.params;
         const { value, description } = req.body;
@@ -2025,7 +2498,7 @@ app.put('/api/admin/settings/:key', async (req, res) => {
 });
 
 // API: 建立支付表單（用於重新支付）
-app.post('/api/payment/create', async (req, res) => {
+app.post('/api/payment/create', paymentLimiter, async (req, res) => {
     try {
         const { bookingId } = req.body;
         
@@ -2072,7 +2545,7 @@ app.post('/api/payment/create', async (req, res) => {
 });
 
 // API: 綠界付款完成回傳（Server POST）
-app.post('/api/payment/return', async (req, res) => {
+app.post('/api/payment/return', paymentLimiter, async (req, res) => {
     try {
         console.log('\n========================================');
         console.log('📥 收到綠界付款回傳');
@@ -2556,13 +3029,13 @@ const handlePaymentResult = async (req, res) => {
 };
 
 // 同時支援 GET 和 POST
-app.get('/api/payment/result', handlePaymentResult);
-app.post('/api/payment/result', handlePaymentResult);
+app.get('/api/payment/result', paymentLimiter, handlePaymentResult);
+app.post('/api/payment/result', paymentLimiter, handlePaymentResult);
 
 // ==================== 郵件模板 API ====================
 
 // API: 取得所有郵件模板
-app.get('/api/email-templates', async (req, res) => {
+app.get('/api/email-templates', requireAuth, adminLimiter, async (req, res) => {
     try {
         const templates = await db.getAllEmailTemplates();
         res.json({
@@ -2579,7 +3052,7 @@ app.get('/api/email-templates', async (req, res) => {
 });
 
 // API: 取得單一郵件模板
-app.get('/api/email-templates/:key', async (req, res) => {
+app.get('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res) => {
     try {
         const { key } = req.params;
         console.log(`📧 取得郵件模板: ${key}`);
@@ -2615,7 +3088,7 @@ app.get('/api/email-templates/:key', async (req, res) => {
 });
 
 // API: 更新郵件模板
-app.put('/api/email-templates/:key', async (req, res) => {
+app.put('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res) => {
     try {
         const { key } = req.params;
         const { 
@@ -2682,7 +3155,7 @@ app.put('/api/email-templates/:key', async (req, res) => {
 });
 
 // API: 發送測試郵件
-app.post('/api/email-templates/:key/test', async (req, res) => {
+app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req, res) => {
     try {
         const { key } = req.params;
         const { email, useEditorContent } = req.body;
@@ -2802,7 +3275,7 @@ app.post('/api/email-templates/:key/test', async (req, res) => {
 });
 
 // API: 重置郵件模板為預設圖卡樣式
-app.post('/api/email-templates/reset-to-default', async (req, res) => {
+app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, async (req, res) => {
     try {
         // 獲取預設模板內容（從 database.js 的預設模板）
         const defaultTemplates = [
@@ -3347,6 +3820,98 @@ async function sendPaymentReminderEmails() {
     }
 }
 
+// 生成取消通知郵件
+async function generateCancellationEmail(booking) {
+    const hotelInfoFooter = await getHotelInfoFooter();
+    const bookingDate = new Date(booking.created_at);
+    const checkInDate = new Date(booking.check_in_date);
+    const checkOutDate = new Date(booking.check_out_date);
+    
+    // 計算住宿天數
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const nights = Math.max(1, Math.round((checkOutDate - checkInDate) / msPerDay));
+    
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #e74c3c; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+            .info-label { font-weight: 600; color: #666; }
+            .info-value { color: #333; }
+            .highlight { background: #fff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #e74c3c; }
+            .warning-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>⚠️ 訂房已自動取消</h1>
+                <p>很抱歉，您的訂房因超過保留期限已自動取消</p>
+            </div>
+            <div class="content">
+                <p>親愛的 ${booking.guest_name}，</p>
+                <p style="margin-bottom: 25px;">很抱歉通知您，由於超過匯款保留期限，您的訂房已自動取消。以下是取消的訂房資訊：</p>
+                
+                <div class="highlight">
+                    <div class="info-row">
+                        <span class="info-label">訂房編號</span>
+                        <span class="info-value"><strong>${booking.booking_id}</strong></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">入住日期</span>
+                        <span class="info-value">${checkInDate.toLocaleDateString('zh-TW')}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">退房日期</span>
+                        <span class="info-value">${checkOutDate.toLocaleDateString('zh-TW')}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">住宿天數</span>
+                        <span class="info-value">${nights} 晚</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">房型</span>
+                        <span class="info-value">${booking.room_type || '-'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">訂房日期</span>
+                        <span class="info-value">${bookingDate.toLocaleDateString('zh-TW')}</span>
+                    </div>
+                    <div class="info-row" style="border-bottom: none;">
+                        <span class="info-label">應付金額</span>
+                        <span class="info-value">NT$ ${(booking.final_amount || 0).toLocaleString()}</span>
+                    </div>
+                </div>
+
+                <div class="warning-box">
+                    <h3 style="color: #856404; margin-top: 0;">📌 取消原因</h3>
+                    <p style="color: #856404; margin: 10px 0;">
+                        此訂房因超過匯款保留期限（${bookingDate.toLocaleDateString('zh-TW')} 起算），且未在期限內完成付款，系統已自動取消。
+                    </p>
+                </div>
+
+                <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                    <h3 style="color: #2e7d32; margin-top: 0;">💡 如需重新訂房</h3>
+                    <p style="color: #2e7d32; margin: 10px 0;">
+                        如果您仍希望預訂，歡迎重新進行訂房。如有任何疑問，請隨時與我們聯繫。
+                    </p>
+                </div>
+
+                ${hotelInfoFooter}
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+}
+
 // 自動取消過期保留訂房
 async function cancelExpiredReservations() {
     try {
@@ -3367,6 +3932,8 @@ async function cancelExpiredReservations() {
         
         const now = new Date();
         let cancelledCount = 0;
+        let emailSentCount = 0;
+        let emailFailedCount = 0;
         
         for (const booking of bookings) {
             try {
@@ -3377,9 +3944,59 @@ async function cancelExpiredReservations() {
                 
                 // 如果當前時間超過保留期限，自動取消
                 if (now > deadline) {
+                    // 取消訂房
                     await db.cancelBooking(booking.booking_id);
                     console.log(`✅ 已自動取消過期保留訂房: ${booking.booking_id} (${booking.guest_name})`);
                     cancelledCount++;
+                    
+                    // 發送取消通知 Email
+                    try {
+                        const cancellationEmail = await generateCancellationEmail(booking);
+                        const mailOptions = {
+                            from: process.env.EMAIL_USER || 'your-email@gmail.com',
+                            to: booking.guest_email,
+                            subject: '【訂房取消通知】您的訂房已自動取消',
+                            html: cancellationEmail
+                        };
+                        
+                        let emailSent = false;
+                        
+                        // 優先使用 Gmail API（Railway 環境更穩定）
+                        if (sendEmailViaGmailAPI) {
+                            try {
+                                await sendEmailViaGmailAPI(mailOptions);
+                                console.log(`✅ 已發送取消通知給 ${booking.guest_name} (${booking.booking_id}) - Gmail API`);
+                                emailSent = true;
+                                emailSentCount++;
+                            } catch (gmailError) {
+                                // Gmail API 失敗時，嘗試 SMTP
+                                console.log(`⚠️  Gmail API 失敗，嘗試 SMTP... (${booking.booking_id})`);
+                                try {
+                                    await transporter.sendMail(mailOptions);
+                                    console.log(`✅ 已發送取消通知給 ${booking.guest_name} (${booking.booking_id}) - SMTP`);
+                                    emailSent = true;
+                                    emailSentCount++;
+                                } catch (smtpError) {
+                                    console.error(`❌ 發送取消通知失敗 (${booking.booking_id}):`, smtpError.message);
+                                    emailFailedCount++;
+                                }
+                            }
+                        } else {
+                            // 沒有 Gmail API，使用 SMTP
+                            try {
+                                await transporter.sendMail(mailOptions);
+                                console.log(`✅ 已發送取消通知給 ${booking.guest_name} (${booking.booking_id}) - SMTP`);
+                                emailSent = true;
+                                emailSentCount++;
+                            } catch (smtpError) {
+                                console.error(`❌ 發送取消通知失敗 (${booking.booking_id}):`, smtpError.message);
+                                emailFailedCount++;
+                            }
+                        }
+                    } catch (emailError) {
+                        console.error(`❌ 發送取消通知時發生錯誤 (${booking.booking_id}):`, emailError.message);
+                        emailFailedCount++;
+                    }
                 }
             } catch (error) {
                 console.error(`❌ 取消過期保留訂房失敗 (${booking.booking_id}):`, error.message);
@@ -3387,6 +4004,10 @@ async function cancelExpiredReservations() {
         }
         
         console.log(`✅ 共取消 ${cancelledCount} 筆過期保留訂房`);
+        console.log(`📧 成功發送 ${emailSentCount} 封取消通知郵件`);
+        if (emailFailedCount > 0) {
+            console.warn(`⚠️  有 ${emailFailedCount} 封取消通知郵件發送失敗`);
+        }
     } catch (error) {
         console.error('❌ 自動取消過期保留訂房任務錯誤:', error);
     }
@@ -3611,6 +4232,20 @@ async function startServer() {
                 timezone: timezone
             });
             console.log('✅ 自動取消過期保留訂房定時任務已啟動（每天 01:00 台灣時間）');
+            
+            // 每天凌晨 2:00 執行資料庫備份（台灣時間）
+            cron.schedule('0 2 * * *', async () => {
+                try {
+                    await backup.performBackup();
+                    // 備份完成後清理舊備份
+                    await backup.cleanupOldBackups(30);
+                } catch (error) {
+                    console.error('❌ 備份任務失敗:', error.message);
+                }
+            }, {
+                timezone: timezone
+            });
+            console.log('✅ 資料庫備份定時任務已啟動（每天 02:00 台灣時間，保留 30 天）');
         });
     } catch (error) {
         console.error('❌ 伺服器啟動失敗:', error);
@@ -3620,6 +4255,11 @@ async function startServer() {
 
 // 靜態檔案服務（放在最後，避免覆蓋 API 路由）
 app.use(express.static(__dirname));
+
+// ============================================
+// 統一錯誤處理中間件（必須放在所有路由之後）
+// ============================================
+app.use(errorHandler);
 
 // 啟動應用程式
 startServer();

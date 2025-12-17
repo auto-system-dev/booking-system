@@ -678,12 +678,32 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     console.log('準備發送訂房資料:', formData);
     
     try {
+        // 取得 CSRF Token
+        let csrfToken = null;
+        try {
+            const tokenResponse = await fetch('/api/csrf-token', {
+                credentials: 'include'
+            });
+            if (tokenResponse.ok) {
+                const tokenData = await tokenResponse.json();
+                csrfToken = tokenData.csrfToken;
+            }
+        } catch (tokenError) {
+            console.warn('無法取得 CSRF Token:', tokenError);
+        }
+        
         console.log('正在發送請求到 /api/booking...');
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        if (csrfToken) {
+            headers['X-CSRF-Token'] = csrfToken;
+        }
+        
         const response = await fetch('/api/booking', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: headers,
+            credentials: 'include',
             body: JSON.stringify(formData)
         });
         
