@@ -594,7 +594,7 @@
                     <div class="settings-card" style="margin-top: 20px;">
                         <h3>平日/假日設定</h3>
                         <div class="form-group">
-                            <label>選擇平日（未勾選的日期將視為假日）</label>
+                            <label>選擇假日（勾選的日期將視為假日，未勾選的日期為平日）</label>
                             <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-top: 10px;">
                                 <label style="display: flex; flex-direction: column; align-items: center; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s;">
                                     <input type="checkbox" id="weekdaySun" value="0" style="width: 20px; height: 20px; margin-bottom: 5px;" onchange="updateWeekdaySettings()">
@@ -626,8 +626,8 @@
                                 </label>
                             </div>
                             <small style="display: block; margin-top: 10px; color: #666;">
-                                💡 提示：勾選的日期將使用「平日價格」，未勾選的日期將使用「假日價格（平日價格 + 假日加價）」。<br>
-                                例如：勾選週一到週五，則週六、週日為假日；或勾選週一到週四，則週五到週日為假日。
+                                💡 提示：勾選的日期將使用「假日價格（平日價格 + 假日加價）」，未勾選的日期將使用「平日價格」。<br>
+                                例如：勾選週六、週日，則週一到週五為平日；或勾選週五到週日，則週一到週四為平日。
                             </small>
                         </div>
                     </div>

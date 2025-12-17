@@ -2635,18 +2635,24 @@ function loadWeekdaySettings(settingsJson) {
         }
         
         // 設定 checkbox 狀態
+        // 注意：未勾選的日期 = 平日，勾選的日期 = 假日
+        // 所以如果 weekdays 包含某個日期，該日期是平日，checkbox 應該不勾選
         for (let i = 0; i <= 6; i++) {
             const checkbox = document.getElementById(`weekday${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i]}`);
             if (checkbox) {
-                checkbox.checked = weekdays.includes(i);
+                // weekdays 列表中的日期是平日（未勾選），不在列表中的是假日（勾選）
+                checkbox.checked = !weekdays.includes(i);
             }
         }
     } catch (error) {
         console.error('載入平日/假日設定錯誤:', error);
-        // 使用預設值
-        for (let i = 1; i <= 5; i++) {
+        // 使用預設值：週一到週五為平日（不勾選），週六週日為假日（勾選）
+        for (let i = 0; i <= 6; i++) {
             const checkbox = document.getElementById(`weekday${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i]}`);
-            if (checkbox) checkbox.checked = true;
+            if (checkbox) {
+                // 週一到週五（1-5）不勾選（平日），週日（0）和週六（6）勾選（假日）
+                checkbox.checked = (i === 0 || i === 6);
+            }
         }
     }
 }
@@ -2654,9 +2660,10 @@ function loadWeekdaySettings(settingsJson) {
 // 取得平日/假日設定
 function getWeekdaySettings() {
     const weekdays = [];
+    // 未勾選的日期 = 平日，所以收集未勾選的日期
     for (let i = 0; i <= 6; i++) {
         const checkbox = document.getElementById(`weekday${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i]}`);
-        if (checkbox && checkbox.checked) {
+        if (checkbox && !checkbox.checked) {
             weekdays.push(i);
         }
     }
