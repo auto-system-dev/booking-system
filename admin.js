@@ -175,7 +175,9 @@ async function adminFetch(url, options = {}) {
         
         // 如果收到 403 或 CSRF 錯誤，清除 Token 快取並重試一次
         if (response.status === 403 || response.status === 400) {
-            const result = await response.json().catch(() => ({}));
+            // Clone response 以便讀取 body，同時保留原始 response
+            const clonedResponse = response.clone();
+            const result = await clonedResponse.json().catch(() => ({}));
             if (result.message && result.message.includes('CSRF')) {
                 csrfTokenCache = null; // 清除快取
                 // 重新取得 Token 並重試
