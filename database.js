@@ -2780,6 +2780,60 @@ module.exports = {
     // 操作日誌
     logAdminAction,
     getAdminLogs,
-    getAdminLogsCount
+    getAdminLogsCount,
+    // 個資保護
+    anonymizeCustomerData,
+    deleteCustomerData
 };
+
+// ==================== 個資保護功能 ====================
+
+// 匿名化客戶資料（符合法規要求，保留部分資料用於會計）
+async function anonymizeCustomerData(email) {
+    try {
+        // 匿名化姓名、電話、Email
+        const anonymizedName = email[0] + '*'.repeat(Math.max(1, email.length - 1));
+        const anonymizedPhone = '09********';
+        const anonymizedEmail = email.split('@')[0][0] + '***@' + email.split('@')[1];
+        
+        const sql = usePostgreSQL
+            ? `UPDATE bookings 
+               SET guest_name = $1, 
+                   guest_phone = $2, 
+                   guest_email = $3,
+                   status = 'deleted'
+               WHERE guest_email = $4`
+            : `UPDATE bookings 
+               SET guest_name = ?, 
+                   guest_phone = ?, 
+                   guest_email = ?,
+                   status = 'deleted'
+               WHERE guest_email = ?`;
+        
+        await query(sql, [anonymizedName, anonymizedPhone, anonymizedEmail, email]);
+        
+        console.log(`✅ 已匿名化客戶資料: ${email}`);
+        return true;
+    } catch (error) {
+        console.error('❌ 匿名化客戶資料失敗:', error.message);
+        throw error;
+    }
+}
+
+// 刪除客戶資料（完全刪除，僅在特殊情況下使用）
+async function deleteCustomerData(email) {
+    try {
+        const sql = usePostgreSQL
+            ? `DELETE FROM bookings WHERE guest_email = $1`
+            : `DELETE FROM bookings WHERE guest_email = ?`;
+        
+        const result = await query(sql, [email]);
+        
+        console.log(`✅ 已刪除客戶資料: ${email}`);
+        return result.changes > 0;
+    } catch (error) {
+        console.error('❌ 刪除客戶資料失敗:', error.message);
+        throw error;
+    }
+}
 

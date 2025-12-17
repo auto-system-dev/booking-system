@@ -1442,6 +1442,11 @@ app.get('/privacy', (req, res) => {
     res.sendFile(path.join(__dirname, 'privacy.html'));
 });
 
+// 個資保護頁面
+app.get('/data-protection', (req, res) => {
+    res.sendFile(path.join(__dirname, 'data-protection.html'));
+});
+
 // 管理後台登入頁面
 app.get('/admin/login', (req, res) => {
     // 如果已經登入，重導向到管理後台
@@ -1790,6 +1795,157 @@ app.get('/api/customers/:email', publicLimiter, async (req, res) => {
             success: false, 
             message: '查詢客戶詳情失敗：' + error.message 
         });
+    }
+});
+
+// ==================== 個資保護 API ====================
+
+const dataProtection = require('./data-protection');
+
+// 發送個資查詢驗證碼
+app.post('/api/data-protection/send-verification-code', publicLimiter, async (req, res, next) => {
+    try {
+        const { email, purpose } = req.body;
+        
+        if (!email || !purpose) {
+            return res.status(400).json({
+                success: false,
+                message: '請提供 Email 和操作目的'
+            });
+        }
+        
+        // 驗證 Email 格式
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email 格式不正確'
+            });
+        }
+        
+        // 檢查是否有該 Email 的資料
+        const customer = await db.getCustomerByEmail(email);
+        if (!customer) {
+            return res.status(404).json({
+                success: false,
+                message: '找不到該 Email 的資料'
+            });
+        }
+        
+        // 生成並發送驗證碼
+        const code = dataProtection.generateVerificationCode();
+        dataProtection.saveVerificationCode(email, code, purpose);
+        
+        try {
+            await dataProtection.sendVerificationEmail(email, code, purpose);
+            res.json({
+                success: true,
+                message: '驗證碼已發送至您的 Email'
+            });
+        } catch (emailError) {
+            console.error('發送驗證碼失敗:', emailError);
+            res.status(500).json({
+                success: false,
+                message: '發送驗證碼失敗，請稍後再試'
+            });
+        }
+    } catch (error) {
+        console.error('發送驗證碼錯誤:', error);
+        next(error);
+    }
+});
+
+// 查詢個人資料（需要驗證碼）
+app.post('/api/data-protection/query', publicLimiter, async (req, res, next) => {
+    try {
+        const { email, verificationCode } = req.body;
+        
+        if (!email || !verificationCode) {
+            return res.status(400).json({
+                success: false,
+                message: '請提供 Email 和驗證碼'
+            });
+        }
+        
+        // 驗證驗證碼
+        const verification = dataProtection.verifyCode(email, verificationCode, 'query');
+        if (!verification.valid) {
+            return res.status(400).json({
+                success: false,
+                message: verification.message
+            });
+        }
+        
+        // 取得客戶資料
+        const customer = await db.getCustomerByEmail(email);
+        if (!customer) {
+            return res.status(404).json({
+                success: false,
+                message: '找不到該 Email 的資料'
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: customer
+        });
+    } catch (error) {
+        console.error('查詢個人資料錯誤:', error);
+        next(error);
+    }
+});
+
+// 刪除個人資料（需要驗證碼）
+app.post('/api/data-protection/delete', publicLimiter, async (req, res, next) => {
+    try {
+        const { email, verificationCode } = req.body;
+        
+        if (!email || !verificationCode) {
+            return res.status(400).json({
+                success: false,
+                message: '請提供 Email 和驗證碼'
+            });
+        }
+        
+        // 驗證驗證碼
+        const verification = dataProtection.verifyCode(email, verificationCode, 'delete');
+        if (!verification.valid) {
+            return res.status(400).json({
+                success: false,
+                message: verification.message
+            });
+        }
+        
+        // 檢查是否有該 Email 的資料
+        const customer = await db.getCustomerByEmail(email);
+        if (!customer) {
+            return res.status(404).json({
+                success: false,
+                message: '找不到該 Email 的資料'
+            });
+        }
+        
+        // 匿名化資料（而非完全刪除，以符合會計法規）
+        await db.anonymizeCustomerData(email);
+        
+        // 記錄操作日誌
+        try {
+            await db.logAdminAction(null, 'customer_data_deletion', 'customer', email, {
+                email: email,
+                action: 'data_deletion',
+                method: 'anonymization'
+            });
+        } catch (logError) {
+            console.error('記錄操作日誌失敗:', logError);
+        }
+        
+        res.json({
+            success: true,
+            message: '您的個人資料已成功刪除（已匿名化處理）'
+        });
+    } catch (error) {
+        console.error('刪除個人資料錯誤:', error);
+        next(error);
     }
 });
 
