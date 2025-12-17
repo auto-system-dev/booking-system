@@ -334,7 +334,6 @@ function switchRoomTypeTab(tab) {
         
         // 顯示/隱藏對應的按鈕
         document.getElementById('addRoomTypeBtn').style.display = 'inline-flex';
-        document.getElementById('roomTypeFilterBtn').style.display = 'inline-flex';
         document.getElementById('roomTypeRefreshBtn').style.display = 'inline-flex';
         document.getElementById('holidayRefreshBtn').style.display = 'none';
     } else if (tab === 'holidays') {
@@ -344,7 +343,6 @@ function switchRoomTypeTab(tab) {
         
         // 顯示/隱藏對應的按鈕
         document.getElementById('addRoomTypeBtn').style.display = 'none';
-        document.getElementById('roomTypeFilterBtn').style.display = 'none';
         document.getElementById('roomTypeRefreshBtn').style.display = 'none';
         document.getElementById('holidayRefreshBtn').style.display = 'inline-flex';
         
@@ -1851,29 +1849,12 @@ async function loadRoomTypes() {
     }
 }
 
-// 篩選房型（根據狀態）
-let showOnlyActive = true; // 預設只顯示啟用的房型
-
-function toggleRoomTypeFilter() {
-    showOnlyActive = !showOnlyActive;
-    renderRoomTypes();
-    // 更新按鈕文字
-    const filterBtn = document.getElementById('roomTypeFilterBtn');
-    if (filterBtn) {
-        filterBtn.innerHTML = showOnlyActive 
-            ? '<span>🔍</span> 只顯示啟用房型' 
-            : '<span>📋</span> 顯示所有房型';
-    }
-}
-
 // 渲染房型列表
 function renderRoomTypes() {
     const tbody = document.getElementById('roomTypesTableBody');
     
-    // 根據篩選條件過濾房型
-    const filteredRoomTypes = showOnlyActive 
-        ? allRoomTypes.filter(room => room.is_active === 1)
-        : allRoomTypes;
+    // 顯示所有房型（包括啟用和停用的）
+    const filteredRoomTypes = allRoomTypes;
     
     if (filteredRoomTypes.length === 0) {
         tbody.innerHTML = '<tr><td colspan="10" class="loading">沒有房型資料</td></tr>';
@@ -2145,28 +2126,13 @@ async function toggleAddonsFrontend(isEnabled) {
     }
 }
 
-// 篩選加購商品（根據狀態）
-function toggleAddonFilter() {
-    showOnlyActiveAddons = !showOnlyActiveAddons;
-    renderAddons();
-    // 更新按鈕文字
-    const filterBtn = document.getElementById('addonFilterBtn');
-    if (filterBtn) {
-        filterBtn.innerHTML = showOnlyActiveAddons 
-            ? '<span>🔍</span> 只顯示啟用加購商品' 
-            : '<span>📋</span> 顯示所有加購商品';
-    }
-}
-
 // 渲染加購商品列表
 function renderAddons() {
     const tbody = document.getElementById('addonsTableBody');
     if (!tbody) return;
     
-    // 根據篩選條件過濾加購商品
-    const filteredAddons = showOnlyActiveAddons 
-        ? allAddons.filter(addon => addon.is_active === 1)
-        : allAddons;
+    // 顯示所有加購商品（包括啟用和停用的）
+    const filteredAddons = allAddons;
     
     if (filteredAddons.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="loading">沒有加購商品資料</td></tr>';
