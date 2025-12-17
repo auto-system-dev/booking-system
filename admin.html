@@ -210,18 +210,12 @@
                             <option value="failed">付款失敗</option>
                             <option value="refunded">已退款</option>
                         </select>
-                        <!-- 入住日期查詢：上方加說明標籤 -->
-                        <div style="display: flex; flex-direction: column;">
-                            <label for="checkInDateFilter" style="font-size: 12px; color: #666; margin-bottom: 2px; padding-left: 2px;">
-                                查詢入住日期
-                            </label>
-                            <input
-                                type="date"
-                                id="checkInDateFilter"
-                                onchange="filterBookings()"
-                                style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;"
-                            >
-                        </div>
+                        <input
+                            type="date"
+                            id="checkInDateFilter"
+                            onchange="filterBookings()"
+                            style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;"
+                        >
                     </div>
                 </div>
 
