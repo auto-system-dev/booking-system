@@ -201,8 +201,8 @@ async function renderRoomTypes() {
     // 重新綁定事件
     document.querySelectorAll('input[name="roomType"]').forEach(radio => {
         radio.addEventListener('change', function () {
-            // 切換房型時清除先前的驗證錯誤訊息
-            document.querySelectorAll('input[name="roomType"]').forEach(r => r.setCustomValidity(''));
+            // 清除房型選擇錯誤訊息
+            clearSectionError('roomTypeGrid');
             calculatePrice();
         });
     });
@@ -301,6 +301,25 @@ loadRoomTypesAndSettings();
 // 頁面載入後，如果有日期，檢查房間可用性
 document.addEventListener('DOMContentLoaded', function() {
     initDatePicker();
+    
+    // 日期選擇變更時清除錯誤訊息
+    const rangeInput = document.getElementById('dateRange');
+    if (rangeInput) {
+        rangeInput.addEventListener('change', function() {
+            clearFieldError('dateRange');
+        });
+    }
+    
+    // 輸入框變更時清除錯誤訊息
+    ['guestName', 'guestPhone', 'guestEmail'].forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.addEventListener('input', function() {
+                clearFieldError(inputId);
+            });
+        }
+    });
+    
     setTimeout(() => {
         const checkInDate = document.getElementById('checkInDate').value;
         const checkOutDate = document.getElementById('checkOutDate').value;
@@ -551,87 +570,169 @@ document.querySelectorAll('input[name="paymentAmount"]').forEach(radio => {
     radio.addEventListener('change', calculatePrice);
 });
 
+// 統一的錯誤訊息顯示函數
+function showFieldError(inputId, message, scrollTo = true) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    
+    // 清除先前的錯誤訊息
+    clearFieldError(inputId);
+    
+    // 建立錯誤訊息元素
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'field-error-message';
+    errorDiv.innerHTML = `<span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">error</span>${message}`;
+    errorDiv.style.cssText = 'color: #e74c3c; font-weight: 600; padding: 8px 12px; background: #ffe6e6; border-radius: 6px; margin-top: 8px; font-size: 14px; display: flex; align-items: center; border-left: 3px solid #e74c3c;';
+    
+    // 插入錯誤訊息（在輸入框之後）
+    const formGroup = input.closest('.form-group') || input.closest('.date-input-wrapper') || input.parentElement;
+    if (formGroup) {
+        formGroup.appendChild(errorDiv);
+    } else {
+        input.parentElement.insertAdjacentElement('afterend', errorDiv);
+    }
+    
+    // 設定輸入框樣式
+    input.style.borderColor = '#e74c3c';
+    input.style.boxShadow = '0 0 0 2px rgba(231, 76, 60, 0.2)';
+    
+    // 聚焦並滾動
+    input.focus();
+    if (scrollTo) {
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
+// 清除錯誤訊息
+function clearFieldError(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    
+    // 移除錯誤訊息元素
+    const formGroup = input.closest('.form-group') || input.closest('.date-input-wrapper') || input.parentElement;
+    const errorMsg = formGroup ? formGroup.querySelector('.field-error-message') : null;
+    if (errorMsg) {
+        errorMsg.remove();
+    }
+    
+    // 恢復輸入框樣式
+    input.style.borderColor = '';
+    input.style.boxShadow = '';
+    input.setCustomValidity('');
+}
+
+// 顯示區塊錯誤訊息（用於房型選擇等）
+function showSectionError(sectionId, message, scrollTo = true) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    
+    // 清除先前的錯誤訊息
+    clearSectionError(sectionId);
+    
+    // 建立錯誤訊息元素
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'section-error-message';
+    errorDiv.innerHTML = `<span class="material-symbols-outlined" style="font-size: 20px; vertical-align: middle; margin-right: 8px;">error</span>${message}`;
+    errorDiv.style.cssText = 'color: #e74c3c; font-weight: 600; padding: 12px; background: #ffe6e6; border-radius: 8px; margin-top: 10px; text-align: center; display: flex; align-items: center; justify-content: center; border-left: 4px solid #e74c3c;';
+    
+    // 插入錯誤訊息
+    section.appendChild(errorDiv);
+    
+    // 滾動到區塊
+    if (scrollTo) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
+// 清除區塊錯誤訊息
+function clearSectionError(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    
+    const errorMsg = section.querySelector('.section-error-message');
+    if (errorMsg) {
+        errorMsg.remove();
+    }
+}
+
 // 表單提交
 document.getElementById('bookingForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
+    const submitBtn = this.querySelector('.submit-btn');
+    
+    // ============================================
+    // 驗證順序：由上到下
+    // ============================================
+    
+    // 1. 日期選擇驗證
     const checkIn = document.getElementById('checkInDate').value;
     const checkOut = document.getElementById('checkOutDate').value;
     const rangeInput = document.getElementById('dateRange');
     if (!checkIn || !checkOut) {
-        if (rangeInput) {
-            rangeInput.setCustomValidity('請先選擇入住與退房日期');
-            rangeInput.reportValidity();
-            rangeInput.focus();
+        showFieldError('dateRange', '請先選擇入住與退房日期');
+        return;
+    }
+    clearFieldError('dateRange');
+    
+    // 2. 房型選擇驗證
+    const selectedRoomRadio = document.querySelector('input[name="roomType"]:checked');
+    const roomTypeGrid = document.getElementById('roomTypeGrid');
+    
+    if (!selectedRoomRadio) {
+        const roomTypeRadios = document.querySelectorAll('input[name="roomType"]');
+        if (roomTypeRadios.length === 0) {
+            showSectionError('roomTypeGrid', '目前沒有可用的房型，請稍後再試');
+            return;
+        }
+        showSectionError('roomTypeGrid', '請選擇房型');
+        // 嘗試聚焦第一個房型選項
+        const firstRoomRadio = roomTypeRadios[0];
+        if (firstRoomRadio) {
+            firstRoomRadio.focus();
         }
         return;
     }
-    if (rangeInput) {
-        rangeInput.setCustomValidity('');
+    clearSectionError('roomTypeGrid');
+    
+    // 3. 姓名驗證
+    const nameInput = document.getElementById('guestName');
+    const name = nameInput.value.trim();
+    if (!name) {
+        showFieldError('guestName', '請填寫姓名');
+        return;
     }
-
-    // 手機格式檢查：台灣 09 開頭，共 10 碼
+    clearFieldError('guestName');
+    
+    // 4. 手機驗證
     const phoneInput = document.getElementById('guestPhone');
     const phone = phoneInput.value.trim();
     const taiwanPhoneRegex = /^09\d{8}$/;
-    if (!taiwanPhoneRegex.test(phone)) {
-        phoneInput.setCustomValidity('請輸入有效的手機號碼（09 開頭，共 10 碼）');
-        phoneInput.reportValidity();
-        phoneInput.focus();
+    if (!phone) {
+        showFieldError('guestPhone', '請填寫手機號碼');
         return;
-    } else {
-        phoneInput.setCustomValidity('');
-    }
-
-    // 姓名必填
-    const nameInput = document.getElementById('guestName');
-    if (!nameInput.value.trim()) {
-        nameInput.setCustomValidity('請填寫姓名');
-        nameInput.reportValidity();
-        nameInput.focus();
+    } else if (!taiwanPhoneRegex.test(phone)) {
+        showFieldError('guestPhone', '請輸入有效的手機號碼（09 開頭，共 10 碼）');
         return;
-    } else {
-        nameInput.setCustomValidity('');
     }
-
-    // Email 格式檢查
+    clearFieldError('guestPhone');
+    
+    // 5. Email 驗證
     const emailInput = document.getElementById('guestEmail');
     const email = emailInput.value.trim();
-    // Email 格式驗證：基本格式檢查（包含 @ 和 .）
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email) {
-        emailInput.setCustomValidity('請填寫 Email');
-        emailInput.reportValidity();
-        emailInput.focus();
+        showFieldError('guestEmail', '請填寫 Email');
         return;
     } else if (!emailRegex.test(email)) {
-        emailInput.setCustomValidity('請輸入有效的 Email 格式（例如：example@email.com）');
-        emailInput.reportValidity();
-        emailInput.focus();
+        showFieldError('guestEmail', '請輸入有效的 Email 格式（例如：example@email.com）');
         return;
-    } else {
-        emailInput.setCustomValidity('');
     }
+    clearFieldError('guestEmail');
     
-    const submitBtn = this.querySelector('.submit-btn');
+    // 所有驗證通過，開始提交
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span>處理中...</span>';
-    
-    // 檢查是否有選房型（在日期與手機之後）
-    const selectedRoomRadio = document.querySelector('input[name="roomType"]:checked');
-    if (!selectedRoomRadio) {
-        const firstRoomRadio = document.querySelector('input[name="roomType"]');
-        if (firstRoomRadio) {
-            firstRoomRadio.setCustomValidity('請選擇房型');
-            firstRoomRadio.reportValidity();
-            firstRoomRadio.focus();
-        }
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<span>確認訂房</span>';
-        return;
-    } else {
-        document.querySelectorAll('input[name="roomType"]').forEach(r => r.setCustomValidity(''));
-    }
     
     const adults = parseInt(document.getElementById('adults').value) || 0;
     const children = parseInt(document.getElementById('children').value) || 0;
