@@ -350,6 +350,42 @@ const validateAddon = createValidationMiddleware([
 const sanitizeInput = (req, res, next) => {
     try {
         if (req.body) {
+            // 對 weekday_settings 欄位進行特殊處理（允許 JSON 格式）
+            if (req.body.value && req.params && req.params.key === 'weekday_settings') {
+                // 驗證是否為有效的 JSON 格式
+                try {
+                    const parsed = typeof req.body.value === 'string' 
+                        ? JSON.parse(req.body.value) 
+                        : req.body.value;
+                    // 驗證 JSON 結構是否符合 weekday_settings 的格式
+                    if (parsed && typeof parsed === 'object' && Array.isArray(parsed.weekdays)) {
+                        // 驗證 weekdays 陣列中的值是否都是有效的數字（0-6）
+                        const isValid = parsed.weekdays.every(d => 
+                            Number.isInteger(d) && d >= 0 && d <= 6
+                        );
+                        if (isValid) {
+                            // 有效的 weekday_settings，跳過 SQL Injection 檢測
+                            // 但仍需要清理其他欄位
+                            const { value, ...rest } = req.body;
+                            req.body = {
+                                ...sanitizeObject(rest, {
+                                    checkSQLInjection: true,
+                                    checkXSS: true
+                                }),
+                                value: typeof req.body.value === 'string' 
+                                    ? req.body.value 
+                                    : JSON.stringify(req.body.value)
+                            };
+                            next();
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    // JSON 解析失敗，繼續正常驗證流程
+                }
+            }
+            
+            // 正常清理流程
             req.body = sanitizeObject(req.body, {
                 checkSQLInjection: true,
                 checkXSS: true
