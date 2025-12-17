@@ -14,6 +14,9 @@ const cron = require('node-cron');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Railway 使用代理，需要信任代理以正確處理 HTTPS 和 Cookie
+app.set('trust proxy', 1);
+
 // Session 設定
 // 檢測是否在 Railway 環境（Railway 使用 HTTPS）
 // Railway 通常會有 PORT 環境變數，且使用 HTTPS
