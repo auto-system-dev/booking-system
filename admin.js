@@ -3,7 +3,7 @@
 // 檢查登入狀態
 async function checkAuthStatus() {
     try {
-        const response = await fetch('/api/admin/check-auth');
+        const response = await adminFetch('/api/admin/check-auth');
         const result = await response.json();
         
         if (result.success && result.authenticated) {
@@ -250,7 +250,7 @@ function switchSection(section) {
 // 載入儀表板數據
 async function loadDashboard() {
     try {
-        const response = await fetch('/api/dashboard');
+        const response = await adminFetch('/api/dashboard');
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -1127,7 +1127,7 @@ function closeModal() {
 // 載入統計資料
 async function loadStatistics() {
     try {
-        const response = await fetch('/api/statistics');
+        const response = await adminFetch('/api/statistics');
         const result = await response.json();
         
         if (result.success) {
