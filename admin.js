@@ -2378,6 +2378,9 @@ async function loadSettings() {
             document.getElementById('hotelPhone').value = settings.hotel_phone || '';
             document.getElementById('hotelAddress').value = settings.hotel_address || '';
             document.getElementById('hotelEmail').value = settings.hotel_email || '';
+            
+            // 平日/假日設定
+            loadWeekdaySettings(settings.weekday_settings);
         } else {
             showError('載入設定失敗：' + (result.message || '未知錯誤'));
         }
@@ -2585,7 +2588,7 @@ async function saveSettings() {
         const allSuccess = results.every(r => r.success);
         
         if (allSuccess) {
-            alert('設定已儲存');
+            showSuccess('設定已儲存');
         } else {
             const errorMsg = results.find(r => !r.success)?.message || '請稍後再試';
             showError('儲存失敗：' + errorMsg);
@@ -2594,6 +2597,52 @@ async function saveSettings() {
         console.error('Error:', error);
         showError('儲存時發生錯誤：' + error.message);
     }
+}
+
+// 載入平日/假日設定
+function loadWeekdaySettings(settingsJson) {
+    try {
+        let weekdays = [1, 2, 3, 4, 5]; // 預設：週一到週五為平日
+        if (settingsJson) {
+            const settings = typeof settingsJson === 'string' ? JSON.parse(settingsJson) : settingsJson;
+            if (settings.weekdays && Array.isArray(settings.weekdays)) {
+                weekdays = settings.weekdays.map(d => parseInt(d));
+            }
+        }
+        
+        // 設定 checkbox 狀態
+        for (let i = 0; i <= 6; i++) {
+            const checkbox = document.getElementById(`weekday${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i]}`);
+            if (checkbox) {
+                checkbox.checked = weekdays.includes(i);
+            }
+        }
+    } catch (error) {
+        console.error('載入平日/假日設定錯誤:', error);
+        // 使用預設值
+        for (let i = 1; i <= 5; i++) {
+            const checkbox = document.getElementById(`weekday${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i]}`);
+            if (checkbox) checkbox.checked = true;
+        }
+    }
+}
+
+// 取得平日/假日設定
+function getWeekdaySettings() {
+    const weekdays = [];
+    for (let i = 0; i <= 6; i++) {
+        const checkbox = document.getElementById(`weekday${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i]}`);
+        if (checkbox && checkbox.checked) {
+            weekdays.push(i);
+        }
+    }
+    return JSON.stringify({ weekdays });
+}
+
+// 更新平日/假日設定（checkbox 變更時觸發）
+function updateWeekdaySettings() {
+    // 這個函數可以在 checkbox 變更時做一些即時反饋，目前不需要特別處理
+    // 設定會在點擊「儲存設定」時一起儲存
 }
 
 // 載入郵件模板列表

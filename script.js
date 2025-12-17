@@ -123,11 +123,66 @@ function changeAddonQuantity(addonName, addonPrice, change) {
 }
 
 // 檢查日期是否為假日（週末）
+// 注意：此函數已被後端 API 取代，保留以向後兼容
 function isWeekend(dateString) {
     if (!dateString) return false;
     const date = new Date(dateString);
     const day = date.getDay();
     return day === 0 || day === 6; // 0 = 週日, 6 = 週六
+}
+
+// 取得平日/假日設定（從系統設定）
+let weekdaySettingsCache = null;
+let weekdaySettingsCacheTime = 0;
+const WEEKDAY_SETTINGS_CACHE_DURATION = 5 * 60 * 1000; // 5 分鐘快取
+
+async function getWeekdaySettings() {
+    // 檢查快取
+    const now = Date.now();
+    if (weekdaySettingsCache && (now - weekdaySettingsCacheTime) < WEEKDAY_SETTINGS_CACHE_DURATION) {
+        return weekdaySettingsCache;
+    }
+    
+    try {
+        const response = await fetch('/api/settings');
+        const result = await response.json();
+        
+        if (result.success && result.data.weekday_settings) {
+            const settingsJson = result.data.weekday_settings;
+            const settings = typeof settingsJson === 'string' ? JSON.parse(settingsJson) : settingsJson;
+            const weekdays = settings.weekdays && Array.isArray(settings.weekdays) 
+                ? settings.weekdays.map(d => parseInt(d))
+                : [1, 2, 3, 4, 5]; // 預設：週一到週五為平日
+            
+            weekdaySettingsCache = weekdays;
+            weekdaySettingsCacheTime = now;
+            return weekdays;
+        }
+    } catch (error) {
+        console.warn('取得平日/假日設定失敗，使用預設值:', error);
+    }
+    
+    // 預設值：週一到週五為平日
+    weekdaySettingsCache = [1, 2, 3, 4, 5];
+    weekdaySettingsCacheTime = now;
+    return weekdaySettingsCache;
+}
+
+// 檢查日期是否為假日（使用自訂的平日/假日設定）
+async function isCustomWeekend(dateString) {
+    if (!dateString) return false;
+    
+    try {
+        const weekdays = await getWeekdaySettings();
+        const date = new Date(dateString);
+        const day = date.getDay(); // 0 = 週日, 1 = 週一, ..., 6 = 週六
+        
+        // 如果該日期不在 weekdays 列表中，則為假日
+        return !weekdays.includes(day);
+    } catch (error) {
+        console.warn('檢查自訂平日/假日設定失敗，使用預設週末判斷:', error);
+        return isWeekend(dateString);
+    }
 }
 
 // 渲染房型選項
@@ -152,12 +207,12 @@ async function renderRoomTypes() {
             if (result.success) {
                 isCheckInHoliday = result.data.isHoliday;
             } else {
-                // 如果 API 失敗，使用週末判斷
-                isCheckInHoliday = isWeekend(checkInDate);
+                // 如果 API 失敗，使用自訂的平日/假日設定判斷
+                isCheckInHoliday = await isCustomWeekend(checkInDate);
             }
         } catch (error) {
-            // 如果發生錯誤，使用週末判斷
-            isCheckInHoliday = isWeekend(checkInDate);
+            // 如果發生錯誤，使用自訂的平日/假日設定判斷
+            isCheckInHoliday = await isCustomWeekend(checkInDate);
         }
     }
     

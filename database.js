@@ -427,7 +427,8 @@ async function initPostgreSQL() {
                 ['hotel_name', '', '旅館名稱（顯示在郵件最下面）'],
                 ['hotel_phone', '', '旅館電話（顯示在郵件最下面）'],
                 ['hotel_address', '', '旅館地址（顯示在郵件最下面）'],
-                ['hotel_email', '', '旅館信箱（顯示在郵件最下面）']
+                ['hotel_email', '', '旅館信箱（顯示在郵件最下面）'],
+                ['weekday_settings', JSON.stringify({ weekdays: [1, 2, 3, 4, 5] }), '平日/假日設定（JSON 格式：{"weekdays": [1,2,3,4,5]}，預設週一到週五為平日）']
             ];
             
             for (const [key, value, description] of defaultSettings) {
@@ -1132,7 +1133,8 @@ function initSQLite() {
                                         ['hotel_name', '', '旅館名稱（顯示在郵件最下面）'],
                                         ['hotel_phone', '', '旅館電話（顯示在郵件最下面）'],
                                         ['hotel_address', '', '旅館地址（顯示在郵件最下面）'],
-                                        ['hotel_email', '', '旅館信箱（顯示在郵件最下面）']
+                                        ['hotel_email', '', '旅館信箱（顯示在郵件最下面）'],
+                                        ['weekday_settings', JSON.stringify({ weekdays: [1, 2, 3, 4, 5] }), '平日/假日設定（JSON 格式：{"weekdays": [1,2,3,4,5]}，預設週一到週五為平日）']
                                     ];
                                     
                                     // 初始化預設設定
@@ -1735,10 +1737,42 @@ async function isHoliday(dateString) {
 }
 
 // 檢查日期是否為週末（週六或週日）
+// 注意：此函數已被 isCustomWeekend() 取代，保留以向後兼容
 function isWeekend(dateString) {
     const date = new Date(dateString);
     const day = date.getDay();
     return day === 0 || day === 6; // 0 = 週日, 6 = 週六
+}
+
+// 檢查日期是否為假日（使用自訂的平日/假日設定）
+async function isCustomWeekend(dateString) {
+    try {
+        // 取得平日/假日設定
+        const settingsJson = await getSetting('weekday_settings');
+        let weekdays = [1, 2, 3, 4, 5]; // 預設：週一到週五為平日
+        
+        if (settingsJson) {
+            try {
+                const settings = typeof settingsJson === 'string' ? JSON.parse(settingsJson) : settingsJson;
+                if (settings.weekdays && Array.isArray(settings.weekdays)) {
+                    weekdays = settings.weekdays.map(d => parseInt(d));
+                }
+            } catch (e) {
+                console.warn('解析 weekday_settings 失敗，使用預設值:', e);
+            }
+        }
+        
+        // 檢查該日期是星期幾
+        const date = new Date(dateString);
+        const day = date.getDay(); // 0 = 週日, 1 = 週一, ..., 6 = 週六
+        
+        // 如果該日期不在 weekdays 列表中，則為假日
+        return !weekdays.includes(day);
+    } catch (error) {
+        console.error('❌ 檢查自訂平日/假日設定失敗:', error.message);
+        // 發生錯誤時，使用預設的週末判斷（週六、週日為假日）
+        return isWeekend(dateString);
+    }
 }
 
 // 檢查日期是否為假日（包括週末和手動設定的假日）
@@ -1749,9 +1783,9 @@ async function isHolidayOrWeekend(dateString, includeWeekend = true) {
         return true;
     }
     
-    // 如果包含週末，檢查是否為週末
+    // 如果包含週末，使用自訂的平日/假日設定來判斷
     if (includeWeekend) {
-        return isWeekend(dateString);
+        return await isCustomWeekend(dateString);
     }
     
     return false;
@@ -1953,10 +1987,42 @@ async function isHoliday(dateString) {
 }
 
 // 檢查日期是否為週末（週六或週日）
+// 注意：此函數已被 isCustomWeekend() 取代，保留以向後兼容
 function isWeekend(dateString) {
     const date = new Date(dateString);
     const day = date.getDay();
     return day === 0 || day === 6; // 0 = 週日, 6 = 週六
+}
+
+// 檢查日期是否為假日（使用自訂的平日/假日設定）
+async function isCustomWeekend(dateString) {
+    try {
+        // 取得平日/假日設定
+        const settingsJson = await getSetting('weekday_settings');
+        let weekdays = [1, 2, 3, 4, 5]; // 預設：週一到週五為平日
+        
+        if (settingsJson) {
+            try {
+                const settings = typeof settingsJson === 'string' ? JSON.parse(settingsJson) : settingsJson;
+                if (settings.weekdays && Array.isArray(settings.weekdays)) {
+                    weekdays = settings.weekdays.map(d => parseInt(d));
+                }
+            } catch (e) {
+                console.warn('解析 weekday_settings 失敗，使用預設值:', e);
+            }
+        }
+        
+        // 檢查該日期是星期幾
+        const date = new Date(dateString);
+        const day = date.getDay(); // 0 = 週日, 1 = 週一, ..., 6 = 週六
+        
+        // 如果該日期不在 weekdays 列表中，則為假日
+        return !weekdays.includes(day);
+    } catch (error) {
+        console.error('❌ 檢查自訂平日/假日設定失敗:', error.message);
+        // 發生錯誤時，使用預設的週末判斷（週六、週日為假日）
+        return isWeekend(dateString);
+    }
 }
 
 // 檢查日期是否為假日（包括週末和手動設定的假日）
@@ -1967,9 +2033,9 @@ async function isHolidayOrWeekend(dateString, includeWeekend = true) {
         return true;
     }
     
-    // 如果包含週末，檢查是否為週末
+    // 如果包含週末，使用自訂的平日/假日設定來判斷
     if (includeWeekend) {
-        return isWeekend(dateString);
+        return await isCustomWeekend(dateString);
     }
     
     return false;

@@ -1027,6 +1027,34 @@ body {
     background: #1d5d7d;
 }
 
+/* 平日/假日設定樣式 */
+#weekdaySun:checked + span,
+#weekdayMon:checked + span,
+#weekdayTue:checked + span,
+#weekdayWed:checked + span,
+#weekdayThu:checked + span,
+#weekdayFri:checked + span,
+#weekdaySat:checked + span {
+    color: #2C8EC4;
+    font-weight: 700;
+}
+
+label:has(input[type="checkbox"]:checked) {
+    border-color: #2C8EC4 !important;
+    background: #f0f8ff;
+}
+
+label:has(input[type="checkbox"]:not(:checked)) {
+    border-color: #e0e0e0;
+    background: white;
+}
+
+label:has(input[type="checkbox"]:hover) {
+    border-color: #2C8EC4;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(44, 142, 196, 0.2);
+}
+
 /* Quill 編輯器自定義樣式 */
 #emailTemplateEditor .ql-container {
     font-family: 'Microsoft JhengHei', 'Noto Sans TC', Arial, sans-serif;
