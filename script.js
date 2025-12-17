@@ -223,7 +223,8 @@ async function renderRoomTypes() {
         
         const holidaySurcharge = room.holiday_surcharge || 0;
         // 根據入住日期判斷顯示平日價格還是假日價格
-        const displayPrice = (checkInDate && isCheckInHoliday && holidaySurcharge !== 0) 
+        // 注意：即使 holidaySurcharge 為 0，如果日期是假日，也應該顯示假日價格（雖然價格相同）
+        const displayPrice = (checkInDate && isCheckInHoliday) 
             ? (room.price + holidaySurcharge) 
             : room.price;
         let priceDisplay = '';

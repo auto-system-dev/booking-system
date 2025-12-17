@@ -1756,10 +1756,13 @@ async function isCustomWeekend(dateString) {
                 const settings = typeof settingsJson === 'string' ? JSON.parse(settingsJson) : settingsJson;
                 if (settings.weekdays && Array.isArray(settings.weekdays)) {
                     weekdays = settings.weekdays.map(d => parseInt(d));
+                    console.log(`📅 使用自訂平日/假日設定: 平日為週 ${weekdays.join(', ')}`);
                 }
             } catch (e) {
-                console.warn('解析 weekday_settings 失敗，使用預設值:', e);
+                console.warn('⚠️ 解析 weekday_settings 失敗，使用預設值:', e);
             }
+        } else {
+            console.log('📅 未找到 weekday_settings，使用預設值（週一到週五為平日）');
         }
         
         // 檢查該日期是星期幾
@@ -1767,7 +1770,9 @@ async function isCustomWeekend(dateString) {
         const day = date.getDay(); // 0 = 週日, 1 = 週一, ..., 6 = 週六
         
         // 如果該日期不在 weekdays 列表中，則為假日
-        return !weekdays.includes(day);
+        const isHoliday = !weekdays.includes(day);
+        console.log(`📅 日期 ${dateString} 是週${['日', '一', '二', '三', '四', '五', '六'][day]}，${isHoliday ? '是' : '不是'}假日`);
+        return isHoliday;
     } catch (error) {
         console.error('❌ 檢查自訂平日/假日設定失敗:', error.message);
         // 發生錯誤時，使用預設的週末判斷（週六、週日為假日）
@@ -2006,10 +2011,13 @@ async function isCustomWeekend(dateString) {
                 const settings = typeof settingsJson === 'string' ? JSON.parse(settingsJson) : settingsJson;
                 if (settings.weekdays && Array.isArray(settings.weekdays)) {
                     weekdays = settings.weekdays.map(d => parseInt(d));
+                    console.log(`📅 使用自訂平日/假日設定: 平日為週 ${weekdays.join(', ')}`);
                 }
             } catch (e) {
-                console.warn('解析 weekday_settings 失敗，使用預設值:', e);
+                console.warn('⚠️ 解析 weekday_settings 失敗，使用預設值:', e);
             }
+        } else {
+            console.log('📅 未找到 weekday_settings，使用預設值（週一到週五為平日）');
         }
         
         // 檢查該日期是星期幾
@@ -2017,7 +2025,9 @@ async function isCustomWeekend(dateString) {
         const day = date.getDay(); // 0 = 週日, 1 = 週一, ..., 6 = 週六
         
         // 如果該日期不在 weekdays 列表中，則為假日
-        return !weekdays.includes(day);
+        const isHoliday = !weekdays.includes(day);
+        console.log(`📅 日期 ${dateString} 是週${['日', '一', '二', '三', '四', '五', '六'][day]}，${isHoliday ? '是' : '不是'}假日`);
+        return isHoliday;
     } catch (error) {
         console.error('❌ 檢查自訂平日/假日設定失敗:', error.message);
         // 發生錯誤時，使用預設的週末判斷（週六、週日為假日）
