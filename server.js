@@ -1119,10 +1119,14 @@ app.post('/api/admin/login', async (req, res) => {
                     });
                 }
                 
-                // 檢查 Cookie 是否被設定
+                // 檢查 Cookie 是否被設定（在 save 回調中檢查）
                 const cookieHeader = res.getHeader('Set-Cookie');
                 console.log('📦 Session Cookie 設定:', cookieHeader ? '✅ 已設定' : '❌ 未設定');
+                if (cookieHeader) {
+                    console.log('   Cookie 內容:', Array.isArray(cookieHeader) ? cookieHeader[0] : cookieHeader);
+                }
                 
+                // 確保回應包含 Cookie
                 res.json({
                     success: true,
                     message: '登入成功',
