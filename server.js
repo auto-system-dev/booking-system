@@ -351,7 +351,11 @@ const sanitizeInput = (req, res, next) => {
     try {
         if (req.body) {
             // 對 weekday_settings 欄位進行特殊處理（允許 JSON 格式）
-            if (req.body.value && req.params && req.params.key === 'weekday_settings') {
+            // 檢查 URL 路徑是否為 weekday_settings 的更新請求
+            const isWeekdaySettingsRequest = req.path && 
+                req.path.includes('/api/admin/settings/weekday_settings');
+            
+            if (req.body.value && isWeekdaySettingsRequest) {
                 // 驗證是否為有效的 JSON 格式
                 try {
                     const parsed = typeof req.body.value === 'string' 
@@ -382,6 +386,7 @@ const sanitizeInput = (req, res, next) => {
                     }
                 } catch (e) {
                     // JSON 解析失敗，繼續正常驗證流程
+                    console.warn('weekday_settings JSON 解析失敗:', e);
                 }
             }
             
