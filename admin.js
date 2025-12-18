@@ -4269,10 +4269,48 @@ function refreshEmailPreview() {
     
     // 使用 iframe 來顯示預覽，確保樣式完全隔離
     const iframe = previewContent;
+    
+    // 確保 iframe 已載入
+    if (!iframe.contentDocument && !iframe.contentWindow) {
+        console.error('❌ iframe 未準備好');
+        return;
+    }
+    
     const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    
+    // 完全清除 iframe 內容
+    iframeDoc.open();
+    iframeDoc.write('');
+    iframeDoc.close();
+    
+    // 重新寫入內容
     iframeDoc.open();
     iframeDoc.write(htmlContent);
     iframeDoc.close();
+    
+    // 驗證樣式是否正確應用
+    setTimeout(() => {
+        const styleElement = iframeDoc.querySelector('style');
+        if (styleElement) {
+            const styleText = styleElement.textContent || styleElement.innerHTML;
+            console.log('✅ iframe 內的樣式長度:', styleText.length);
+            console.log('✅ iframe 內的樣式前 200 字元:', styleText.substring(0, 200));
+            
+            // 檢查是否有正確的樣式類
+            const container = iframeDoc.querySelector('.container');
+            if (container) {
+                const computedStyle = iframe.contentWindow.getComputedStyle(container);
+                console.log('✅ .container 的實際樣式:', {
+                    maxWidth: computedStyle.maxWidth,
+                    margin: computedStyle.margin,
+                    padding: computedStyle.padding,
+                    backgroundColor: computedStyle.backgroundColor
+                });
+            }
+        } else {
+            console.error('❌ iframe 內找不到 style 標籤');
+        }
+    }, 100);
     
     console.log('✅ 預覽已更新');
 }
