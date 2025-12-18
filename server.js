@@ -2345,14 +2345,6 @@ app.put('/api/bookings/:bookingId', adminLimiter, async (req, res) => {
         const { bookingId } = req.params;
         const updateData = { ...req.body };
         
-        // 是否要寄送收款信
-        const sendPaymentReceipt =
-            updateData.send_payment_receipt === 'on' ||
-            updateData.send_payment_receipt === '1' ||
-            updateData.send_payment_receipt === true ||
-            updateData.send_payment_receipt === 'true';
-        delete updateData.send_payment_receipt;
-        
         // 先取得原始訂房資料（用於狀態判斷與寄信）
         const originalBooking = await db.getBookingById(bookingId);
         
@@ -2365,8 +2357,11 @@ app.put('/api/bookings/:bookingId', adminLimiter, async (req, res) => {
         const result = await db.updateBooking(bookingId, updateData);
         
         if (result > 0) {
-            // 如果需要寄送收款信（僅適用於匯款轉帳，且狀態從非已付款改為已付款）
-            if (sendPaymentReceipt && updateData.payment_status === 'paid') {
+            // 自動寄送收款信：當付款狀態從非「已付款」改為「已付款」，且付款方式為「匯款轉帳」時
+            if (updateData.payment_status === 'paid' && 
+                originalBooking && 
+                originalBooking.payment_method === '匯款轉帳' &&
+                originalBooking.payment_status !== 'paid') {
                 try {
                     const updatedBooking = await db.getBookingById(bookingId);
                     if (updatedBooking && updatedBooking.payment_method === '匯款轉帳') {

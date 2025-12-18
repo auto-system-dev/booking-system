@@ -1696,7 +1696,7 @@ function showEditModal(booking) {
             </div>
             <div class="form-group">
                 <label>付款方式</label>
-                <select name="payment_method" id="editPaymentMethod" required onchange="calculateEditPrice(); updateSendPaymentReceiptVisibility()">
+                <select name="payment_method" id="editPaymentMethod" required onchange="calculateEditPrice()">
                     <option value="匯款轉帳" ${booking.payment_method === '匯款轉帳' ? 'selected' : ''}>匯款轉帳</option>
                     <option value="線上刷卡" ${booking.payment_method === '線上刷卡' ? 'selected' : ''}>線上刷卡</option>
                 </select>
@@ -1710,22 +1710,13 @@ function showEditModal(booking) {
             </div>
             <div class="form-group">
                 <label>付款狀態</label>
-                <select name="payment_status" id="editPaymentStatus" required onchange="updateSendPaymentReceiptVisibility()">
+                <select name="payment_status" id="editPaymentStatus" required>
                     <option value="pending" ${(booking.payment_status || 'pending') === 'pending' ? 'selected' : ''}>待付款</option>
                     <option value="paid" ${(booking.payment_status || 'pending') === 'paid' ? 'selected' : ''}>已付款</option>
                     <option value="failed" ${(booking.payment_status || 'pending') === 'failed' ? 'selected' : ''}>付款失敗</option>
                     <option value="refunded" ${(booking.payment_status || 'pending') === 'refunded' ? 'selected' : ''}>已退款</option>
                 </select>
-            </div>
-            <div class="form-group" id="sendPaymentReceiptContainer" style="margin-top: 4px; display: ${(booking.payment_method === '匯款轉帳' && (booking.payment_status || 'pending') === 'paid') ? 'flex' : 'none'}; align-items: center; gap: 8px; flex-wrap: nowrap;">
-                <label style="margin: 0; white-space: nowrap;">收款信</label>
-                <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; white-space: nowrap; flex-shrink: 0;">
-                    <input type="checkbox" name="send_payment_receipt" id="sendPaymentReceiptCheckbox" style="width: 20px; height: 20px; min-width: 20px; cursor: pointer;">
-                    <span style="white-space: nowrap;">寄送收款信給使用者</span>
-                </label>
-            </div>
-            <div id="sendPaymentReceiptHint" style="display: ${(booking.payment_method === '匯款轉帳' && (booking.payment_status || 'pending') === 'paid') ? 'block' : 'none'}; font-size: 12px; color: #666; margin-top: -6px; margin-bottom: 10px;">
-                送出後會寄送收款確認郵件到此筆訂房的客戶 Email。
+                ${booking.payment_method === '匯款轉帳' ? '<small style="display: block; margin-top: 5px; color: #666;">💡 提示：將付款狀態改為「已付款」時，系統會自動發送收款確認信給客戶。</small>' : ''}
             </div>
             <div class="price-summary" style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0;">
                 <h3 style="margin: 0 0 10px 0; font-size: 16px;">價格計算</h3>
@@ -1870,30 +1861,6 @@ async function saveBookingEdit(event, bookingId) {
 }
 
 // 根據付款方式與付款狀態決定是否顯示「收款信」勾選區塊
-function updateSendPaymentReceiptVisibility() {
-    const paymentMethodSelect = document.getElementById('editPaymentMethod');
-    const paymentStatusSelect = document.getElementById('editPaymentStatus');
-    const container = document.getElementById('sendPaymentReceiptContainer');
-    const hint = document.getElementById('sendPaymentReceiptHint');
-    const checkbox = document.getElementById('sendPaymentReceiptCheckbox');
-    
-    if (!paymentMethodSelect || !paymentStatusSelect || !container || !hint) {
-        return;
-    }
-    
-    const method = paymentMethodSelect.value;
-    const status = paymentStatusSelect.value;
-    
-    const shouldShow = method === '匯款轉帳' && status === 'paid';
-    
-    container.style.display = shouldShow ? 'flex' : 'none';
-    hint.style.display = shouldShow ? 'block' : 'none';
-    
-    // 若不顯示時，取消勾選，避免誤發信
-    if (!shouldShow && checkbox) {
-        checkbox.checked = false;
-    }
-}
 
 // 取消訂房
 async function cancelBooking(bookingId) {
