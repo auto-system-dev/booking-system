@@ -4364,7 +4364,18 @@ function refreshEmailPreview() {
                         console.log('✅ .header 的實際樣式:', {
                             backgroundColor: headerStyle.backgroundColor,
                             color: headerStyle.color,
-                            padding: headerStyle.padding
+                            padding: headerStyle.padding,
+                            borderRadius: headerStyle.borderRadius
+                        });
+                    } else {
+                        console.warn('⚠️ 找不到 .header 元素');
+                        // 檢查 iframe 內的所有元素
+                        const allDivs = iframeDoc.querySelectorAll('div');
+                        console.log('📋 iframe 內的所有 div 元素數量:', allDivs.length);
+                        allDivs.forEach((div, index) => {
+                            if (index < 5) { // 只顯示前 5 個
+                                console.log(`📋 div[${index}]:`, div.className, div.outerHTML.substring(0, 100));
+                            }
                         });
                     }
                     
