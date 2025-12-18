@@ -1599,6 +1599,62 @@ app.post('/api/admin/logout', adminLimiter, (req, res) => {
     });
 });
 
+// 修改管理員密碼 API（需要登入）
+app.post('/api/admin/change-password', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: '請輸入目前密碼和新密碼'
+            });
+        }
+        
+        if (newPassword.length < 8) {
+            return res.status(400).json({
+                success: false,
+                message: '新密碼長度至少需要 8 個字元'
+            });
+        }
+        
+        // 驗證目前密碼
+        const admin = await db.verifyAdminPassword(req.session.admin.username, currentPassword);
+        if (!admin) {
+            return res.status(401).json({
+                success: false,
+                message: '目前密碼錯誤'
+            });
+        }
+        
+        // 更新密碼
+        const success = await db.updateAdminPassword(req.session.admin.id, newPassword);
+        
+        if (success) {
+            // 記錄操作日誌
+            await logAction(req, 'change_password', 'admin', req.session.admin.id, {
+                username: req.session.admin.username
+            });
+            
+            res.json({
+                success: true,
+                message: '密碼已成功修改'
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: '修改密碼失敗'
+            });
+        }
+    } catch (error) {
+        console.error('修改密碼錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '修改密碼時發生錯誤：' + error.message
+        });
+    }
+});
+
 // 檢查登入狀態 API（應用管理後台 rate limiting）
 app.get('/api/admin/check-auth', adminLimiter, (req, res) => {
     if (req.session && req.session.admin) {

@@ -2365,6 +2365,67 @@ async function deleteAddon(id) {
 
 // ==================== 系統設定 ====================
 
+// 修改管理員密碼
+async function changePassword() {
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    // 驗證輸入
+    if (!currentPassword) {
+        showError('請輸入目前密碼');
+        return;
+    }
+    
+    if (!newPassword) {
+        showError('請輸入新密碼');
+        return;
+    }
+    
+    if (newPassword.length < 8) {
+        showError('新密碼長度至少需要 8 個字元');
+        return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        showError('新密碼與確認密碼不一致');
+        return;
+    }
+    
+    if (currentPassword === newPassword) {
+        showError('新密碼不能與目前密碼相同');
+        return;
+    }
+    
+    try {
+        const response = await adminFetch('/api/admin/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                currentPassword,
+                newPassword
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('密碼已成功修改');
+            // 清空表單
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+        } else {
+            showError('修改密碼失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('修改密碼錯誤:', error);
+        showError('修改密碼時發生錯誤：' + error.message);
+    }
+}
+
 // 載入系統設定
 async function loadSettings() {
     try {
