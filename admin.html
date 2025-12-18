@@ -567,159 +567,232 @@
                     </button>
                 </div>
 
+                <!-- 分頁導航 -->
+                <div class="tab-container" style="margin-bottom: 20px;">
+                    <button class="tab-button active" onclick="switchSettingsTab('basic')" id="settingsTabBasic">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">info</span>
+                        基本設定
+                    </button>
+                    <button class="tab-button" onclick="switchSettingsTab('payment')" id="settingsTabPayment">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">payment</span>
+                        付款設定
+                    </button>
+                    <button class="tab-button" onclick="switchSettingsTab('email')" id="settingsTabEmail">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">mail</span>
+                        郵件設定
+                    </button>
+                    <button class="tab-button" onclick="switchSettingsTab('security')" id="settingsTabSecurity">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">lock</span>
+                        帳號安全
+                    </button>
+                </div>
+
                 <div class="settings-container">
-                    <div class="settings-card">
-                        <h3>付款方式設定</h3>
-                        <div class="form-group">
-                            <label style="display: flex; align-items: center; gap: 10px;">
-                                <input type="checkbox" id="enableTransfer" style="width: 20px; height: 20px;">
-                                <span>啟用匯款轉帳</span>
-                            </label>
-                            <small>勾選後，客戶在前台可以選擇匯款轉帳付款</small>
-                        </div>
-                        <div class="form-group">
-                            <label style="display: flex; align-items: center; gap: 10px;">
-                                <input type="checkbox" id="enableCard" style="width: 20px; height: 20px;">
-                                <span>啟用線上刷卡</span>
-                            </label>
-                            <small>勾選後，客戶在前台可以選擇線上刷卡付款（需填寫綠界串接碼）</small>
-                        </div>
-                    </div>
-                    
-                    <div class="settings-card" style="margin-top: 20px;">
-                        <h3>付款設定</h3>
-                        <div class="form-group">
-                            <label>訂金百分比</label>
-                            <div class="input-group">
-                                <input type="number" id="depositPercentage" min="0" max="100" step="1" placeholder="30">
-                                <span class="input-suffix">%</span>
+                    <!-- 基本設定分頁 -->
+                    <div id="settingsTabBasicContent" class="tab-content active">
+                        <!-- 付款方式設定 -->
+                        <div class="settings-card">
+                            <h3>付款方式設定</h3>
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" id="enableTransfer" style="width: 20px; height: 20px;">
+                                    <span>啟用匯款轉帳</span>
+                                </label>
+                                <small>勾選後，客戶在前台可以選擇匯款轉帳付款</small>
                             </div>
-                            <small>設定訂金佔總金額的百分比（例如：30 表示 30%）</small>
-                        </div>
-                        <button class="btn-save" onclick="savePaymentSettings()">儲存設定</button>
-                    </div>
-                    
-                    <!-- 匯款帳號設定區塊 -->
-                    <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #e0e0e0;">
-                        <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
-                            <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">account_balance</span>
-                            <h3 style="margin: 0; color: #2c3e50;">匯款帳號設定</h3>
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" id="enableCard" style="width: 20px; height: 20px;">
+                                    <span>啟用線上刷卡</span>
+                                </label>
+                                <small>勾選後，客戶在前台可以選擇線上刷卡付款（需填寫綠界串接碼）</small>
+                            </div>
                         </div>
                         
-                        <div class="settings-card" style="margin-top: 0;">
+                        <!-- 付款設定 -->
+                        <div class="settings-card" style="margin-top: 20px;">
+                            <h3>付款設定</h3>
                             <div class="form-group">
-                                <label>銀行名稱</label>
-                                <input type="text" id="bankName" placeholder="例如：XXX銀行">
-                                <small>銀行全名</small>
+                                <label>訂金百分比</label>
+                                <div class="input-group">
+                                    <input type="number" id="depositPercentage" min="0" max="100" step="1" placeholder="30">
+                                    <span class="input-suffix">%</span>
+                                </div>
+                                <small>設定訂金佔總金額的百分比（例如：30 表示 30%）</small>
                             </div>
-                            <div class="form-group">
-                                <label>分行名稱</label>
-                                <input type="text" id="bankBranch" placeholder="例如：XXX分行">
-                                <small>分行全名</small>
-                            </div>
-                            <div class="form-group">
-                                <label>帳號</label>
-                                <input type="text" id="bankAccount" placeholder="例如：1234567890123">
-                                <small>匯款帳號</small>
-                            </div>
-                            <div class="form-group">
-                                <label>戶名</label>
-                                <input type="text" id="accountName" placeholder="例如：XXX">
-                                <small>帳戶戶名</small>
-                            </div>
-                            <button class="btn-save" onclick="saveRemittanceAccountSettings()">儲存設定</button>
-                        </div>
-                    </div>
-                    
-                    <!-- 綠界支付設定區塊 -->
-                    <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #e0e0e0;">
-                        <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
-                            <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">credit_card</span>
-                            <h3 style="margin: 0; color: #2c3e50;">綠界支付設定</h3>
+                            <button class="btn-save" onclick="savePaymentSettings()">儲存設定</button>
                         </div>
                         
-                        <div class="settings-card" style="margin-top: 0;">
-                            <div class="form-group">
-                                <label>MerchantID（商店代號）</label>
-                                <input type="text" id="ecpayMerchantID" placeholder="例如：2000132">
-                                <small>綠界提供的商店代號</small>
+                        <!-- 旅館資訊區塊 -->
+                        <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #e0e0e0;">
+                            <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
+                                <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">hotel</span>
+                                <h3 style="margin: 0; color: #2c3e50;">旅館資訊</h3>
                             </div>
-                            <div class="form-group">
-                                <label>HashKey（金鑰）</label>
-                                <input type="text" id="ecpayHashKey" placeholder="例如：5294y06JbISpM5x9">
-                                <small>綠界提供的 HashKey</small>
+                            
+                            <div class="settings-card" style="margin-top: 0;">
+                                <div class="form-group">
+                                    <label>旅館名稱</label>
+                                    <input type="text" id="hotelName" placeholder="例如：XX旅館">
+                                    <small>旅館或民宿的名稱</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>旅館電話</label>
+                                    <input type="text" id="hotelPhone" placeholder="例如：02-1234-5678">
+                                    <small>聯絡電話</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>旅館地址</label>
+                                    <input type="text" id="hotelAddress" placeholder="例如：台北市信義區信義路五段7號">
+                                    <small>完整地址</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>旅館信箱</label>
+                                    <input type="email" id="hotelEmail" placeholder="例如：service@hotel.com">
+                                    <small>聯絡信箱</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>管理員通知信箱 <span style="color: red;">*</span></label>
+                                    <input type="email" id="adminEmail" placeholder="例如：admin@hotel.com">
+                                    <small>新訂房通知郵件會寄到此信箱</small>
+                                </div>
+                                <button class="btn-save" onclick="saveHotelInfoSettings()">儲存設定</button>
                             </div>
-                            <div class="form-group">
-                                <label>HashIV（向量）</label>
-                                <input type="text" id="ecpayHashIV" placeholder="例如：v77hoKGq4kWxNNIS">
-                                <small>綠界提供的 HashIV</small>
-                            </div>
-                            <button class="btn-save" onclick="saveEcpaySettings()">儲存設定</button>
                         </div>
                     </div>
-                    
-                    <!-- 旅館資訊區塊 -->
-                    <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #e0e0e0;">
-                        <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
-                            <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">hotel</span>
-                            <h3 style="margin: 0; color: #2c3e50;">旅館資訊</h3>
+
+                    <!-- 付款設定分頁 -->
+                    <div id="settingsTabPaymentContent" class="tab-content">
+                        <!-- 匯款帳號設定區塊 -->
+                        <div style="margin-top: 0;">
+                            <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
+                                <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">account_balance</span>
+                                <h3 style="margin: 0; color: #2c3e50;">匯款帳號設定</h3>
+                            </div>
+                            
+                            <div class="settings-card" style="margin-top: 0;">
+                                <div class="form-group">
+                                    <label>銀行名稱</label>
+                                    <input type="text" id="bankName" placeholder="例如：XXX銀行">
+                                    <small>銀行全名</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>分行名稱</label>
+                                    <input type="text" id="bankBranch" placeholder="例如：XXX分行">
+                                    <small>分行全名</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>帳號</label>
+                                    <input type="text" id="bankAccount" placeholder="例如：1234567890123">
+                                    <small>匯款帳號</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>戶名</label>
+                                    <input type="text" id="accountName" placeholder="例如：XXX">
+                                    <small>帳戶戶名</small>
+                                </div>
+                                <button class="btn-save" onclick="saveRemittanceAccountSettings()">儲存設定</button>
+                            </div>
                         </div>
                         
-                        <div class="settings-card" style="margin-top: 0;">
-                        <div class="form-group">
-                            <label>旅館名稱</label>
-                            <input type="text" id="hotelName" placeholder="例如：XX旅館">
-                            <small>旅館或民宿的名稱</small>
-                        </div>
-                        <div class="form-group">
-                            <label>旅館電話</label>
-                            <input type="text" id="hotelPhone" placeholder="例如：02-1234-5678">
-                            <small>聯絡電話</small>
-                        </div>
-                        <div class="form-group">
-                            <label>旅館地址</label>
-                            <input type="text" id="hotelAddress" placeholder="例如：台北市信義區信義路五段7號">
-                            <small>完整地址</small>
-                        </div>
-                        <div class="form-group">
-                            <label>旅館信箱</label>
-                            <input type="email" id="hotelEmail" placeholder="例如：service@hotel.com">
-                            <small>聯絡信箱</small>
-                        </div>
-                        <div class="form-group">
-                            <label>管理員通知信箱 <span style="color: red;">*</span></label>
-                            <input type="email" id="adminEmail" placeholder="例如：admin@hotel.com">
-                            <small>新訂房通知郵件會寄到此信箱</small>
-                        </div>
-                        <button class="btn-save" onclick="saveHotelInfoSettings()">儲存設定</button>
+                        <!-- 綠界支付設定區塊 -->
+                        <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #e0e0e0;">
+                            <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
+                                <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">credit_card</span>
+                                <h3 style="margin: 0; color: #2c3e50;">綠界支付設定</h3>
+                            </div>
+                            
+                            <div class="settings-card" style="margin-top: 0;">
+                                <div class="form-group">
+                                    <label>MerchantID（商店代號）</label>
+                                    <input type="text" id="ecpayMerchantID" placeholder="例如：2000132">
+                                    <small>綠界提供的商店代號</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>HashKey（金鑰）</label>
+                                    <input type="text" id="ecpayHashKey" placeholder="例如：5294y06JbISpM5x9">
+                                    <small>綠界提供的 HashKey</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>HashIV（向量）</label>
+                                    <input type="text" id="ecpayHashIV" placeholder="例如：v77hoKGq4kWxNNIS">
+                                    <small>綠界提供的 HashIV</small>
+                                </div>
+                                <button class="btn-save" onclick="saveEcpaySettings()">儲存設定</button>
+                            </div>
                         </div>
                     </div>
-                    
-                    <!-- 帳號安全設定區塊 -->
-                    <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #e0e0e0;">
-                        <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
-                            <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">lock</span>
-                            <h3 style="margin: 0; color: #2c3e50;">帳號安全設定</h3>
+
+                    <!-- 郵件設定分頁 -->
+                    <div id="settingsTabEmailContent" class="tab-content">
+                        <!-- Gmail 發信設定區塊 -->
+                        <div style="margin-top: 0;">
+                            <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
+                                <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">mail</span>
+                                <h3 style="margin: 0; color: #2c3e50;">Gmail 發信設定</h3>
+                            </div>
+                            
+                            <div class="settings-card" style="margin-top: 0;">
+                                <div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                                    <p style="margin: 0; color: #1976d2; font-size: 14px;">
+                                        <strong>📌 設定說明：</strong><br>
+                                        使用 Gmail OAuth2 認證發送郵件，請先到 <a href="https://console.cloud.google.com/" target="_blank" style="color: #1976d2; text-decoration: underline;">Google Cloud Console</a> 建立 OAuth2 憑證，然後到 <a href="https://developers.google.com/oauthplayground" target="_blank" style="color: #1976d2; text-decoration: underline;">OAuth2 Playground</a> 取得 Refresh Token。
+                                    </p>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Gmail 帳號 <span style="color: red;">*</span></label>
+                                    <input type="email" id="emailUser" placeholder="例如：your-email@gmail.com">
+                                    <small>用於發送郵件的 Gmail 帳號</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>Client ID <span style="color: red;">*</span></label>
+                                    <input type="text" id="gmailClientID" placeholder="例如：123456789-xxx.apps.googleusercontent.com">
+                                    <small>從 Google Cloud Console 取得的 OAuth2 Client ID</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>Client Secret <span style="color: red;">*</span></label>
+                                    <input type="password" id="gmailClientSecret" placeholder="例如：GOCSPX-xxxxxxxxxxxx">
+                                    <small>從 Google Cloud Console 取得的 OAuth2 Client Secret</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>Refresh Token <span style="color: red;">*</span></label>
+                                    <input type="password" id="gmailRefreshToken" placeholder="例如：1//xxxxxxxxxxxx">
+                                    <small>從 OAuth2 Playground 取得的 Refresh Token</small>
+                                </div>
+                                <button class="btn-save" onclick="saveGmailSettings()">儲存設定</button>
+                            </div>
                         </div>
-                        
-                        <div class="settings-card" style="margin-top: 0;">
-                            <h3>修改管理員密碼</h3>
-                        <div class="form-group">
-                            <label>目前密碼</label>
-                            <input type="password" id="currentPassword" placeholder="請輸入目前密碼" autocomplete="current-password">
-                            <small>請輸入您目前的密碼以驗證身份</small>
-                        </div>
-                        <div class="form-group">
-                            <label>新密碼</label>
-                            <input type="password" id="newPassword" placeholder="請輸入新密碼" autocomplete="new-password">
-                            <small>建議使用至少 8 個字元，包含大小寫字母、數字和符號</small>
-                        </div>
-                        <div class="form-group">
-                            <label>確認新密碼</label>
-                            <input type="password" id="confirmPassword" placeholder="請再次輸入新密碼" autocomplete="new-password">
-                            <small>請再次輸入新密碼以確認</small>
-                        </div>
-                        <button class="btn-save" onclick="changePassword()">修改密碼</button>
+                    </div>
+
+                    <!-- 帳號安全分頁 -->
+                    <div id="settingsTabSecurityContent" class="tab-content">
+                        <!-- 帳號安全設定區塊 -->
+                        <div style="margin-top: 0;">
+                            <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
+                                <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">lock</span>
+                                <h3 style="margin: 0; color: #2c3e50;">帳號安全設定</h3>
+                            </div>
+                            
+                            <div class="settings-card" style="margin-top: 0;">
+                                <h3>修改管理員密碼</h3>
+                                <div class="form-group">
+                                    <label>目前密碼</label>
+                                    <input type="password" id="currentPassword" placeholder="請輸入目前密碼" autocomplete="current-password">
+                                    <small>請輸入您目前的密碼以驗證身份</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>新密碼</label>
+                                    <input type="password" id="newPassword" placeholder="請輸入新密碼" autocomplete="new-password">
+                                    <small>建議使用至少 8 個字元，包含大小寫字母、數字和符號</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>確認新密碼</label>
+                                    <input type="password" id="confirmPassword" placeholder="請再次輸入新密碼" autocomplete="new-password">
+                                    <small>請再次輸入新密碼以確認</small>
+                                </div>
+                                <button class="btn-save" onclick="changePassword()">修改密碼</button>
+                            </div>
                         </div>
                     </div>
                 </div>

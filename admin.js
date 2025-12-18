@@ -307,6 +307,9 @@ function switchSection(section) {
         loadAddons();
     } else if (section === 'settings') {
         loadSettings();
+        // 恢復上次選擇的分頁
+        const savedTab = localStorage.getItem('settingsTab') || 'basic';
+        switchSettingsTab(savedTab);
     } else if (section === 'email-templates') {
         loadEmailTemplates();
     } else if (section === 'statistics') {
@@ -2827,7 +2830,126 @@ async function saveHotelInfoSettings() {
     }
 }
 
+// 儲存 Gmail 發信設定
+async function saveGmailSettings() {
+    const emailUser = document.getElementById('emailUser').value.trim();
+    const gmailClientID = document.getElementById('gmailClientID').value.trim();
+    const gmailClientSecret = document.getElementById('gmailClientSecret').value.trim();
+    const gmailRefreshToken = document.getElementById('gmailRefreshToken').value.trim();
+    
+    // 驗證必填欄位
+    if (!emailUser || !gmailClientID || !gmailClientSecret || !gmailRefreshToken) {
+        showError('請填寫所有必填欄位（Gmail 帳號、Client ID、Client Secret、Refresh Token）');
+        return;
+    }
+    
+    // 驗證 Email 格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailUser)) {
+        showError('請輸入有效的 Gmail 帳號');
+        return;
+    }
+    
+    try {
+        const [
+            emailUserResponse,
+            gmailClientIDResponse,
+            gmailClientSecretResponse,
+            gmailRefreshTokenResponse
+        ] = await Promise.all([
+            adminFetch('/api/admin/settings/email_user', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: emailUser,
+                    description: 'Gmail 發信帳號'
+                })
+            }),
+            adminFetch('/api/admin/settings/gmail_client_id', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: gmailClientID,
+                    description: 'Gmail OAuth2 Client ID'
+                })
+            }),
+            adminFetch('/api/admin/settings/gmail_client_secret', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: gmailClientSecret,
+                    description: 'Gmail OAuth2 Client Secret'
+                })
+            }),
+            adminFetch('/api/admin/settings/gmail_refresh_token', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: gmailRefreshToken,
+                    description: 'Gmail OAuth2 Refresh Token'
+                })
+            })
+        ]);
+        
+        const results = await Promise.all([
+            emailUserResponse.json(),
+            gmailClientIDResponse.json(),
+            gmailClientSecretResponse.json(),
+            gmailRefreshTokenResponse.json()
+        ]);
+        
+        const hasError = results.some(result => !result.success);
+        if (hasError) {
+            const errorMessages = results.filter(r => !r.success).map(r => r.message).join(', ');
+            showError('儲存 Gmail 設定失敗：' + errorMessages);
+        } else {
+            showSuccess('Gmail 發信設定已儲存！請重新啟動伺服器以套用變更。');
+        }
+    } catch (error) {
+        console.error('儲存 Gmail 設定錯誤:', error);
+        showError('儲存 Gmail 設定時發生錯誤：' + error.message);
+    }
+}
+
 // 載入系統設定
+// 切換系統設定分頁
+function switchSettingsTab(tab) {
+    // 隱藏所有分頁內容
+    document.querySelectorAll('#settings-section .tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // 移除所有分頁按鈕的 active 狀態
+    document.querySelectorAll('#settings-section .tab-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // 顯示選中的分頁內容
+    const contentId = `settingsTab${tab.charAt(0).toUpperCase() + tab.slice(1)}Content`;
+    const content = document.getElementById(contentId);
+    if (content) {
+        content.classList.add('active');
+    }
+    
+    // 設定選中的分頁按鈕為 active
+    const buttonId = `settingsTab${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
+    const button = document.getElementById(buttonId);
+    if (button) {
+        button.classList.add('active');
+    }
+    
+    // 儲存當前分頁到 localStorage
+    localStorage.setItem('settingsTab', tab);
+}
+
 async function loadSettings() {
     try {
         const response = await fetch('/api/settings');
@@ -2858,6 +2980,12 @@ async function loadSettings() {
             
             // 管理員通知信箱
             document.getElementById('adminEmail').value = settings.admin_email || '';
+            
+            // Gmail 發信設定
+            document.getElementById('emailUser').value = settings.email_user || '';
+            document.getElementById('gmailClientID').value = settings.gmail_client_id || '';
+            document.getElementById('gmailClientSecret').value = settings.gmail_client_secret || '';
+            document.getElementById('gmailRefreshToken').value = settings.gmail_refresh_token || '';
         } else {
             showError('載入設定失敗：' + (result.message || '未知錯誤'));
         }

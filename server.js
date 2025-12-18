@@ -437,164 +437,188 @@ app.use(sanitizeInput);
 
 // 郵件設定（請根據您的需求修改）
 // 這裡使用 Gmail 作為範例，您也可以使用其他郵件服務
-// 建議使用 .env 檔案儲存敏感資訊，不要直接寫在程式碼中
-
-const emailUser = process.env.EMAIL_USER || 'cheng701107@gmail.com';
-const emailPass = process.env.EMAIL_PASS || 'vtik qvij ravh lirg';
-
-// 檢查是否使用 OAuth2
-const useOAuth2 = process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET && process.env.GMAIL_REFRESH_TOKEN;
+// 優先使用資料庫設定，其次使用環境變數
 
 let transporter;
 let getAccessToken = null; // 將函數聲明在外部作用域
 let sendEmailViaGmailAPI = null; // Gmail API 備用方案
+let oauth2Client = null; // OAuth2 客戶端
+let gmail = null; // Gmail API 客戶端
 
-if (useOAuth2) {
-    // 使用 OAuth2 認證（推薦，解決 Railway 連接超時問題）
-    const { google } = require('googleapis');
-    
-    const oauth2Client = new google.auth.OAuth2(
-        process.env.GMAIL_CLIENT_ID,
-        process.env.GMAIL_CLIENT_SECRET,
-        'https://developers.google.com/oauthplayground' // 重新導向 URI（OAuth2 Playground）
-    );
-    
-    oauth2Client.setCredentials({
-        refresh_token: process.env.GMAIL_REFRESH_TOKEN
-    });
-    
-    // 取得 Access Token（nodemailer 需要同步返回 Promise）
-    let accessTokenCache = null;
-    let tokenExpiry = null;
-    
-    getAccessToken = async function() {
-        try {
-            // 如果 token 還在有效期內，直接返回
-            if (accessTokenCache && tokenExpiry && Date.now() < tokenExpiry) {
-                console.log('✅ 使用快取的 Access Token');
-                return accessTokenCache;
-            }
+// 初始化郵件服務（優先使用資料庫設定）
+async function initEmailService() {
+    try {
+        // 優先使用資料庫設定，其次使用環境變數
+        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
+        const emailPass = process.env.EMAIL_PASS || 'vtik qvij ravh lirg';
+        const gmailClientID = await db.getSetting('gmail_client_id') || process.env.GMAIL_CLIENT_ID;
+        const gmailClientSecret = await db.getSetting('gmail_client_secret') || process.env.GMAIL_CLIENT_SECRET;
+        const gmailRefreshToken = await db.getSetting('gmail_refresh_token') || process.env.GMAIL_REFRESH_TOKEN;
+        
+        // 檢查是否使用 OAuth2
+        const useOAuth2 = gmailClientID && gmailClientSecret && gmailRefreshToken;
+        
+        if (useOAuth2) {
+            // 使用 OAuth2 認證（推薦，解決 Railway 連接超時問題）
+            const { google } = require('googleapis');
             
-            // 取得新的 token
-            console.log('🔄 正在取得新的 Access Token...');
-            const { token } = await oauth2Client.getAccessToken();
-            if (!token) {
-                throw new Error('無法取得 Access Token');
-            }
-            accessTokenCache = token;
-            // Token 通常有效期為 1 小時，提前 5 分鐘刷新
-            tokenExpiry = Date.now() + (55 * 60 * 1000);
-            console.log('✅ Access Token 已成功取得');
-            return token;
-        } catch (error) {
-            console.error('❌ 取得 Access Token 失敗:');
-            console.error('   錯誤訊息:', error.message);
-            console.error('   錯誤詳情:', error);
-            throw error;
-        }
-    };
-    
-    // 嘗試使用 SSL 端口 465（Railway 環境可能更穩定）
-    transporter = nodemailer.createTransport({
-        // 明確指定 SMTP 設定（Railway 環境需要）
-        host: 'smtp.gmail.com',
-        port: 465, // 使用 SSL 端口
-        secure: true, // SSL 連接
-        auth: {
-            type: 'OAuth2',
-            user: emailUser,
-            clientId: process.env.GMAIL_CLIENT_ID,
-            clientSecret: process.env.GMAIL_CLIENT_SECRET,
-            refreshToken: process.env.GMAIL_REFRESH_TOKEN,
-            accessToken: getAccessToken
-        },
-        // 縮短超時時間，快速切換到 Gmail API（Railway 環境 SMTP 連接不穩定）
-        connectionTimeout: 10000, // 10 秒（快速失敗，切換到 Gmail API）
-        greetingTimeout: 5000, // 5 秒
-        socketTimeout: 10000, // 10 秒
-        pool: false, // 不使用連接池（避免連接問題）
-        // 啟用 TLS
-        tls: {
-            rejectUnauthorized: false // Railway 環境可能需要
-        }
-    });
-    
-    console.log('📧 郵件服務已設定（OAuth2 認證）');
-    console.log('   使用帳號:', emailUser);
-    console.log('   認證方式: OAuth2');
-    
-    // Gmail API 備用方案（當 SMTP 連接失敗時使用）
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-    
-    // 使用 Gmail API 發送郵件的備用函數
-    sendEmailViaGmailAPI = async function(mailOptions) {
-        try {
-            console.log('📧 使用 Gmail API 發送郵件（SMTP 備用方案）...');
+            oauth2Client = new google.auth.OAuth2(
+                gmailClientID,
+                gmailClientSecret,
+                'https://developers.google.com/oauthplayground' // 重新導向 URI（OAuth2 Playground）
+            );
             
-            // 構建 MIME 格式的郵件字符串
-            const boundary = '----=_Part_' + Date.now();
-            const mimeMessage = [
-                `From: ${mailOptions.from}`,
-                `To: ${mailOptions.to}`,
-                `Subject: =?UTF-8?B?${Buffer.from(mailOptions.subject, 'utf8').toString('base64')}?=`,
-                `MIME-Version: 1.0`,
-                `Content-Type: multipart/alternative; boundary="${boundary}"`,
-                ``,
-                `--${boundary}`,
-                `Content-Type: text/html; charset=UTF-8`,
-                `Content-Transfer-Encoding: base64`,
-                ``,
-                Buffer.from(mailOptions.html, 'utf8').toString('base64'),
-                ``,
-                `--${boundary}--`
-            ].join('\r\n');
+            oauth2Client.setCredentials({
+                refresh_token: gmailRefreshToken
+            });
             
-            // 轉換為 base64url 格式
-            const messageBase64 = Buffer.from(mimeMessage, 'utf8')
-                .toString('base64')
-                .replace(/\+/g, '-')
-                .replace(/\//g, '_')
-                .replace(/=+$/, '');
+            // 取得 Access Token（nodemailer 需要同步返回 Promise）
+            let accessTokenCache = null;
+            let tokenExpiry = null;
             
-            // 使用 Gmail API 發送
-            const response = await gmail.users.messages.send({
-                userId: 'me',
-                requestBody: {
-                    raw: messageBase64
+            getAccessToken = async function() {
+                try {
+                    // 如果 token 還在有效期內，直接返回
+                    if (accessTokenCache && tokenExpiry && Date.now() < tokenExpiry) {
+                        console.log('✅ 使用快取的 Access Token');
+                        return accessTokenCache;
+                    }
+                    
+                    // 取得新的 token
+                    console.log('🔄 正在取得新的 Access Token...');
+                    const { token } = await oauth2Client.getAccessToken();
+                    if (!token) {
+                        throw new Error('無法取得 Access Token');
+                    }
+                    accessTokenCache = token;
+                    // Token 通常有效期為 1 小時，提前 5 分鐘刷新
+                    tokenExpiry = Date.now() + (55 * 60 * 1000);
+                    console.log('✅ Access Token 已成功取得');
+                    return token;
+                } catch (error) {
+                    console.error('❌ 取得 Access Token 失敗:');
+                    console.error('   錯誤訊息:', error.message);
+                    console.error('   錯誤詳情:', error);
+                    throw error;
+                }
+            };
+            
+            // 嘗試使用 SSL 端口 465（Railway 環境可能更穩定）
+            transporter = nodemailer.createTransport({
+                // 明確指定 SMTP 設定（Railway 環境需要）
+                host: 'smtp.gmail.com',
+                port: 465, // 使用 SSL 端口
+                secure: true, // SSL 連接
+                auth: {
+                    type: 'OAuth2',
+                    user: emailUser,
+                    clientId: gmailClientID,
+                    clientSecret: gmailClientSecret,
+                    refreshToken: gmailRefreshToken,
+                    accessToken: getAccessToken
+                },
+                // 縮短超時時間，快速切換到 Gmail API（Railway 環境 SMTP 連接不穩定）
+                connectionTimeout: 10000, // 10 秒（快速失敗，切換到 Gmail API）
+                greetingTimeout: 5000, // 5 秒
+                socketTimeout: 10000, // 10 秒
+                pool: false, // 不使用連接池（避免連接問題）
+                // 啟用 TLS
+                tls: {
+                    rejectUnauthorized: false // Railway 環境可能需要
                 }
             });
             
-            console.log('✅ Gmail API 郵件已發送 (ID: ' + response.data.id + ')');
-            return { messageId: response.data.id, accepted: [mailOptions.to] };
-        } catch (error) {
-            console.error('❌ Gmail API 發送失敗:', error.message);
-            throw error;
+            console.log('📧 郵件服務已設定（OAuth2 認證）');
+            console.log('   使用帳號:', emailUser);
+            console.log('   認證方式: OAuth2');
+            console.log('   設定來源:', await db.getSetting('email_user') ? '資料庫' : '環境變數');
+            
+            // Gmail API 備用方案（當 SMTP 連接失敗時使用）
+            gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+            
+            // 使用 Gmail API 發送郵件的備用函數
+            sendEmailViaGmailAPI = async function(mailOptions) {
+                try {
+                    console.log('📧 使用 Gmail API 發送郵件（SMTP 備用方案）...');
+                    
+                    // 構建 MIME 格式的郵件字符串
+                    const boundary = '----=_Part_' + Date.now();
+                    const mimeMessage = [
+                        `From: ${mailOptions.from}`,
+                        `To: ${mailOptions.to}`,
+                        `Subject: =?UTF-8?B?${Buffer.from(mailOptions.subject, 'utf8').toString('base64')}?=`,
+                        `MIME-Version: 1.0`,
+                        `Content-Type: multipart/alternative; boundary="${boundary}"`,
+                        ``,
+                        `--${boundary}`,
+                        `Content-Type: text/html; charset=UTF-8`,
+                        `Content-Transfer-Encoding: base64`,
+                        ``,
+                        Buffer.from(mailOptions.html, 'utf8').toString('base64'),
+                        ``,
+                        `--${boundary}--`
+                    ].join('\r\n');
+                    
+                    // 轉換為 base64url 格式
+                    const messageBase64 = Buffer.from(mimeMessage, 'utf8')
+                        .toString('base64')
+                        .replace(/\+/g, '-')
+                        .replace(/\//g, '_')
+                        .replace(/=+$/, '');
+                    
+                    // 使用 Gmail API 發送
+                    const response = await gmail.users.messages.send({
+                        userId: 'me',
+                        requestBody: {
+                            raw: messageBase64
+                        }
+                    });
+                    
+                    console.log('✅ Gmail API 郵件已發送 (ID: ' + response.data.id + ')');
+                    return { messageId: response.data.id, accepted: [mailOptions.to] };
+                } catch (error) {
+                    console.error('❌ Gmail API 發送失敗:', error.message);
+                    throw error;
+                }
+            };
+        } else {
+            // 使用應用程式密碼（備用方案）
+            transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: emailUser,
+                    pass: emailPass
+                },
+                // 增加超時時間和連接設定（Railway 環境需要）
+                connectionTimeout: 60000, // 60 秒
+                greetingTimeout: 30000, // 30 秒
+                socketTimeout: 60000, // 60 秒
+                pool: true, // 使用連接池
+                maxConnections: 1,
+                maxMessages: 3,
+                // 啟用 TLS
+                tls: {
+                    rejectUnauthorized: false // Railway 環境可能需要
+                }
+            });
+            
+            console.log('📧 郵件服務已設定（應用程式密碼）');
+            console.log('   使用帳號:', emailUser);
+            console.log('   設定來源:', await db.getSetting('email_user') ? '資料庫' : '環境變數');
+            console.log('   ⚠️  建議使用 OAuth2 認證以解決連接超時問題');
         }
-    };
-} else {
-    // 使用應用程式密碼（備用方案）
-    transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: emailUser,
-            pass: emailPass
-        },
-        // 增加超時時間和連接設定（Railway 環境需要）
-        connectionTimeout: 60000, // 60 秒
-        greetingTimeout: 30000, // 30 秒
-        socketTimeout: 60000, // 60 秒
-        pool: true, // 使用連接池
-        maxConnections: 1,
-        maxMessages: 3,
-        // 啟用 TLS
-        tls: {
-            rejectUnauthorized: false // Railway 環境可能需要
-        }
-    });
-    
-    console.log('📧 郵件服務已設定（應用程式密碼）');
-    console.log('   使用帳號:', emailUser);
-    console.log('   ⚠️  建議使用 OAuth2 認證以解決連接超時問題');
+    } catch (error) {
+        console.error('❌ 初始化郵件服務失敗:', error);
+        // 使用預設設定
+        transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER || 'cheng701107@gmail.com',
+                pass: process.env.EMAIL_PASS || 'vtik qvij ravh lirg'
+            }
+        });
+        console.log('⚠️  使用預設郵件設定');
+    }
 }
 
 // 房型名稱對照
@@ -4626,6 +4650,9 @@ async function startServer() {
     try {
         // 初始化資料庫
         await db.initDatabase();
+        
+        // 初始化郵件服務（優先使用資料庫設定）
+        await initEmailService();
         
         // 啟動伺服器
         // Railway 需要監聽 0.0.0.0 才能接受外部請求
