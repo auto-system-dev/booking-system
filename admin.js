@@ -208,6 +208,8 @@ let sortDirection = 'asc'; // 排序方向：'asc' 或 'desc'
 // Quill 編輯器實例
 let quillEditor = null;
 let isHtmlMode = false;
+let isPreviewVisible = false; // 預覽是否顯示
+let currentEmailStyle = 'card'; // 當前郵件樣式
 
 // 初始化
 document.addEventListener('DOMContentLoaded', async function() {
@@ -3566,6 +3568,17 @@ async function showEmailTemplateModal(templateKey) {
                     const delta = originalPasteHTML.call(this, html);
                     return delta;
                 };
+                
+                // 監聽編輯器內容變更，自動更新預覽
+                quillEditor.on('text-change', function() {
+                    if (isPreviewVisible && !isHtmlMode) {
+                        // 使用防抖，避免頻繁更新
+                        clearTimeout(window.previewUpdateTimer);
+                        window.previewUpdateTimer = setTimeout(() => {
+                            refreshEmailPreview();
+                        }, 300);
+                    }
+                });
             }
             
             // 將 HTML 內容載入到 Quill 編輯器
@@ -4086,6 +4099,11 @@ function toggleEditorMode() {
             }
         }
         quillEditor.root.innerHTML = htmlContent;
+        
+        // 更新預覽
+        if (isPreviewVisible) {
+            setTimeout(() => refreshEmailPreview(), 100);
+        }
     } else {
         // 從可視化模式切換到 HTML 模式
         isHtmlMode = true;
@@ -4095,6 +4113,48 @@ function toggleEditorMode() {
         if (toggleBtn) {
             toggleBtn.textContent = '切換到可視化模式';
         }
+        
+        // 將 Quill 的內容同步到 textarea
+        const quillHtml = quillEditor.root.innerHTML;
+        const originalContent = textarea.value;
+        
+        // 如果原始內容是完整 HTML，替換 body 內容
+        if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
+            if (originalContent.includes('<body>')) {
+                textarea.value = originalContent.replace(
+                    /<body[^>]*>[\s\S]*?<\/body>/i,
+                    `<body>${quillHtml}</body>`
+                );
+            } else {
+                textarea.value = originalContent.replace(
+                    /<\/head>/i,
+                    `</head><body>${quillHtml}</body>`
+                );
+            }
+        } else {
+            textarea.value = quillHtml;
+        }
+        
+        // 為 textarea 加入 input 事件監聽，自動更新預覽
+        textarea.removeEventListener('input', handleTextareaInput);
+        textarea.addEventListener('input', handleTextareaInput);
+        
+        // 更新預覽
+        if (isPreviewVisible) {
+            setTimeout(() => refreshEmailPreview(), 100);
+        }
+    }
+}
+
+// textarea input 事件處理器
+function handleTextareaInput() {
+    if (isPreviewVisible && isHtmlMode) {
+        clearTimeout(window.previewUpdateTimer);
+        window.previewUpdateTimer = setTimeout(() => {
+            refreshEmailPreview();
+        }, 300);
+    }
+}
         
         // 將 Quill 的內容保存到 textarea
         const quillHtml = quillEditor.root.innerHTML;
@@ -4137,11 +4197,191 @@ function insertVariable(variable) {
         textarea.value = text.substring(0, start) + variable + text.substring(end);
         textarea.focus();
         textarea.setSelectionRange(start + variable.length, start + variable.length);
+        // 更新預覽
+        if (isPreviewVisible) {
+            refreshEmailPreview();
+        }
     } else {
         // 可視化模式：插入到 Quill
         const range = quillEditor.getSelection(true);
         quillEditor.insertText(range.index, variable, 'user');
         quillEditor.setSelection(range.index + variable.length);
+        // 更新預覽
+        if (isPreviewVisible) {
+            setTimeout(() => refreshEmailPreview(), 100);
+        }
+    }
+}
+
+// 切換郵件預覽顯示
+function toggleEmailPreview() {
+    isPreviewVisible = !isPreviewVisible;
+    const previewArea = document.getElementById('emailPreviewArea');
+    const editorArea = document.getElementById('emailEditorArea');
+    const previewBtn = document.getElementById('togglePreviewBtn');
+    const previewBtnText = document.getElementById('previewBtnText');
+    
+    if (isPreviewVisible) {
+        previewArea.style.display = 'block';
+        editorArea.style.flex = '1';
+        previewBtnText.textContent = '隱藏預覽';
+        refreshEmailPreview();
+    } else {
+        previewArea.style.display = 'none';
+        editorArea.style.flex = '1';
+        previewBtnText.textContent = '顯示預覽';
+    }
+}
+
+// 重新整理郵件預覽
+function refreshEmailPreview() {
+    const previewContent = document.getElementById('emailPreviewContent');
+    if (!previewContent) return;
+    
+    let htmlContent = '';
+    if (isHtmlMode) {
+        htmlContent = document.getElementById('emailTemplateContent').value;
+    } else {
+        htmlContent = quillEditor.root.innerHTML;
+        // 如果原始內容是完整 HTML，需要包裝
+        const originalContent = document.getElementById('emailTemplateContent').value;
+        if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
+            // 提取原始 HTML 的 head 和 style
+            const headMatch = originalContent.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+            const bodyMatch = originalContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+            if (headMatch && bodyMatch) {
+                htmlContent = `<!DOCTYPE html><html><head>${headMatch[1]}</head><body>${htmlContent}</body></html>`;
+            } else {
+                htmlContent = wrapEmailContent(htmlContent);
+            }
+        } else {
+            htmlContent = wrapEmailContent(htmlContent);
+        }
+    }
+    
+    // 替換變數為範例資料
+    htmlContent = replaceEmailVariables(htmlContent);
+    
+    // 顯示預覽
+    previewContent.innerHTML = htmlContent;
+}
+
+// 包裝郵件內容為完整 HTML
+function wrapEmailContent(content) {
+    const style = getEmailStyleCSS(currentEmailStyle);
+    return `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${style}</style>
+</head>
+<body>
+    <div class="container">
+        ${content}
+    </div>
+</body>
+</html>`;
+}
+
+// 替換郵件變數為範例資料
+function replaceEmailVariables(html) {
+    const sampleData = {
+        '{{guestName}}': '王小明',
+        '{{bookingId}}': 'BK20241212001',
+        '{{checkInDate}}': '2024/12/20',
+        '{{checkOutDate}}': '2024/12/22',
+        '{{roomType}}': '豪華雙人房',
+        '{{finalAmount}}': '6,000',
+        '{{totalAmount}}': '6,000',
+        '{{paymentDeadline}}': '2024/12/15',
+        '{{daysReserved}}': '3',
+        '{{bankName}}': '台灣銀行',
+        '{{bankBranchDisplay}}': '（台北分行）',
+        '{{bankAccount}}': '123-456-789-012',
+        '{{accountName}}': '某某旅館',
+        '{{addonsList}}': '早餐券 x2、停車券 x1',
+        '{{addonsTotal}}': '500',
+        '{{remainingAmount}}': '4,200',
+        '{{#if addonsList}}': '',
+        '{{/if}}': '',
+        '{{#if isDeposit}}': '',
+        '{{/if}}': ''
+    };
+    
+    let result = html;
+    for (const [key, value] of Object.entries(sampleData)) {
+        result = result.replace(new RegExp(key.replace(/[{}]/g, '\\$&'), 'g'), value);
+    }
+    
+    // 移除條件判斷標籤
+    result = result.replace(/{{#if\s+\w+}}/g, '');
+    result = result.replace(/{{\/if}}/g, '');
+    
+    return result;
+}
+
+// 獲取郵件樣式 CSS
+function getEmailStyleCSS(style) {
+    const styles = {
+        card: `
+            body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #198754; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+            .info-label { font-weight: 600; color: #666; }
+            .info-value { color: #333; }
+            .highlight { background: #e8f5e9; border: 2px solid #198754; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        `,
+        modern: `
+            body { font-family: 'Microsoft JhengHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.7; color: #2c3e50; margin: 0; padding: 0; background: #f0f2f5; }
+            .container { max-width: 650px; margin: 0 auto; padding: 0; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; }
+            .content { padding: 40px 30px; }
+            .info-row { display: flex; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid #e8ecf0; }
+            .info-label { font-weight: 600; color: #7f8c8d; font-size: 14px; }
+            .info-value { color: #2c3e50; font-weight: 500; }
+            .highlight { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border-radius: 12px; padding: 25px; margin: 25px 0; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        `,
+        minimal: `
+            body { font-family: 'Microsoft JhengHei', 'Helvetica Neue', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; background: #ffffff; }
+            .container { max-width: 580px; margin: 0 auto; padding: 40px 30px; }
+            .header { border-bottom: 3px solid #000; padding-bottom: 20px; margin-bottom: 30px; }
+            .content { padding: 0; }
+            .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; }
+            .info-label { font-weight: 400; color: #666; font-size: 14px; letter-spacing: 0.5px; }
+            .info-value { color: #000; font-weight: 500; }
+            .highlight { border: 2px solid #000; padding: 25px; margin: 30px 0; background: #fff; }
+        `,
+        business: `
+            body { font-family: 'Microsoft JhengHei', 'Georgia', serif; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 0; background: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; padding: 0; background: white; border: 1px solid #ddd; }
+            .header { background: #1a1a1a; color: white; padding: 35px 30px; text-align: center; border-bottom: 4px solid #c9a961; }
+            .content { padding: 35px 30px; }
+            .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e5e5; }
+            .info-label { font-weight: 600; color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+            .info-value { color: #1a1a1a; font-weight: 500; }
+            .highlight { background: #faf8f3; border-left: 4px solid #c9a961; padding: 20px; margin: 25px 0; }
+        `,
+        elegant: `
+            body { font-family: 'Microsoft JhengHei', 'Playfair Display', serif; line-height: 1.7; color: #3d3d3d; margin: 0; padding: 0; background: #faf9f7; }
+            .container { max-width: 620px; margin: 0 auto; padding: 0; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+            .header { background: #8b7355; color: white; padding: 45px 35px; text-align: center; }
+            .content { padding: 45px 35px; }
+            .info-row { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #e8e6e3; }
+            .info-label { font-weight: 500; color: #8b7355; font-size: 14px; font-style: italic; }
+            .info-value { color: #3d3d3d; font-weight: 400; }
+            .highlight { background: #f5f3f0; border: 1px solid #d4c4b0; border-radius: 4px; padding: 25px; margin: 30px 0; }
+        `
+    };
+    return styles[style] || styles.card;
+}
+
+// 應用郵件樣式
+function applyEmailStyle(style) {
+    currentEmailStyle = style;
+    if (isPreviewVisible) {
+        refreshEmailPreview();
     }
 }
 
@@ -4150,15 +4390,30 @@ function closeEmailTemplateModal() {
     document.getElementById('emailTemplateModal').classList.remove('active');
     // 重置編輯模式
     isHtmlMode = false;
+    isPreviewVisible = false;
+    currentEmailStyle = 'card';
     const editorContainer = document.getElementById('emailTemplateEditor');
     const textarea = document.getElementById('emailTemplateContent');
+    const previewArea = document.getElementById('emailPreviewArea');
+    const previewBtnText = document.getElementById('previewBtnText');
     if (editorContainer && textarea) {
         editorContainer.style.display = 'block';
         textarea.style.display = 'none';
-        const toggleBtn = document.getElementById('toggleEditorMode');
+        const toggleBtn = document.getElementById('toggleEditorModeBtn');
         if (toggleBtn) {
             toggleBtn.textContent = '切換到 HTML 模式';
         }
+    }
+    if (previewArea) {
+        previewArea.style.display = 'none';
+    }
+    if (previewBtnText) {
+        previewBtnText.textContent = '顯示預覽';
+    }
+    // 重置樣式選擇器
+    const styleSelector = document.getElementById('emailStyleSelector');
+    if (styleSelector) {
+        styleSelector.value = 'card';
     }
 }
 
