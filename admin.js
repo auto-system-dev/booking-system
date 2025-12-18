@@ -354,7 +354,10 @@ function switchRoomTypeTab(tab) {
         
         // 載入假日資料和平日/假日設定
         loadHolidays();
-        loadWeekdaySettingsFromServer();
+        // 使用 setTimeout 確保 DOM 元素已經渲染完成
+        setTimeout(() => {
+            loadWeekdaySettingsFromServer();
+        }, 200);
     }
 }
 
@@ -2387,9 +2390,6 @@ async function loadSettings() {
             document.getElementById('hotelPhone').value = settings.hotel_phone || '';
             document.getElementById('hotelAddress').value = settings.hotel_address || '';
             document.getElementById('hotelEmail').value = settings.hotel_email || '';
-            
-            // 平日/假日設定
-            loadWeekdaySettings(settings.weekday_settings);
         } else {
             showError('載入設定失敗：' + (result.message || '未知錯誤'));
         }
@@ -2620,29 +2620,50 @@ async function saveSettings() {
 // 載入平日/假日設定
 function loadWeekdaySettings(settingsJson) {
     try {
+        console.log('📋 開始解析平日/假日設定:', settingsJson);
+        
         let weekdays = [1, 2, 3, 4, 5]; // 預設：週一到週五為平日
         if (settingsJson) {
             const settings = typeof settingsJson === 'string' ? JSON.parse(settingsJson) : settingsJson;
+            console.log('📋 解析後的設定:', settings);
             if (settings.weekdays && Array.isArray(settings.weekdays)) {
                 weekdays = settings.weekdays.map(d => parseInt(d));
+                console.log('📋 平日列表:', weekdays);
             }
         }
         
         // 設定 checkbox 狀態
         // 注意：未勾選的日期 = 平日，勾選的日期 = 假日
         // 所以如果 weekdays 包含某個日期，該日期是平日，checkbox 應該不勾選
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        let loadedCount = 0;
+        let missingCount = 0;
+        
         for (let i = 0; i <= 6; i++) {
-            const checkbox = document.getElementById(`weekday${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i]}`);
+            const checkboxId = `weekday${dayNames[i]}`;
+            const checkbox = document.getElementById(checkboxId);
             if (checkbox) {
                 // weekdays 列表中的日期是平日（未勾選），不在列表中的是假日（勾選）
                 checkbox.checked = !weekdays.includes(i);
+                loadedCount++;
+                console.log(`✅ ${dayNames[i]} (${i}): ${checkbox.checked ? '假日' : '平日'}`);
+            } else {
+                missingCount++;
+                console.warn(`⚠️ 找不到 checkbox: ${checkboxId} (可能不在當前頁面)`);
             }
         }
+        
+        if (loadedCount > 0) {
+            console.log(`✅ 已載入 ${loadedCount}/7 個 checkbox`);
+        } else if (missingCount > 0) {
+            console.log(`ℹ️ 假日設定 checkbox 不在當前頁面（${missingCount} 個元素未找到）`);
+        }
     } catch (error) {
-        console.error('載入平日/假日設定錯誤:', error);
+        console.error('❌ 載入平日/假日設定錯誤:', error);
         // 使用預設值：週一到週五為平日（不勾選），週六週日為假日（勾選）
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         for (let i = 0; i <= 6; i++) {
-            const checkbox = document.getElementById(`weekday${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i]}`);
+            const checkbox = document.getElementById(`weekday${dayNames[i]}`);
             if (checkbox) {
                 // 週一到週五（1-5）不勾選（平日），週日（0）和週六（6）勾選（假日）
                 checkbox.checked = (i === 0 || i === 6);
@@ -2671,46 +2692,77 @@ function updateWeekdaySettings() {
 }
 
 // 從伺服器載入平日/假日設定
-async function loadWeekdaySettingsFromServer() {
+async function loadWeekdaySettingsFromServer(retryCount = 0) {
     try {
+        // 檢查 DOM 元素是否準備好
+        const firstCheckbox = document.getElementById('weekdaySun');
+        if (!firstCheckbox && retryCount < 5) {
+            console.log(`⏳ DOM 元素尚未準備好，${100 * (retryCount + 1)}ms 後重試...`);
+            setTimeout(() => {
+                loadWeekdaySettingsFromServer(retryCount + 1);
+            }, 100 * (retryCount + 1));
+            return;
+        }
+        
+        if (!firstCheckbox) {
+            console.error('❌ 無法找到 weekday checkbox 元素');
+            return;
+        }
+        
+        console.log('🔄 開始載入平日/假日設定...');
         const response = await fetch('/api/settings');
         const result = await response.json();
         
-        if (result.success && result.data.weekday_settings) {
-            loadWeekdaySettings(result.data.weekday_settings);
+        console.log('📥 收到設定資料:', result);
+        
+        if (result.success) {
+            const weekdaySettings = result.data.weekday_settings;
+            console.log('📅 weekday_settings 值:', weekdaySettings);
+            
+            // 無論是否有資料，都調用 loadWeekdaySettings
+            loadWeekdaySettings(weekdaySettings);
+            console.log('✅ 平日/假日設定已載入');
+        } else {
+            console.error('❌ 載入設定失敗:', result.message);
+            loadWeekdaySettings(null);
         }
     } catch (error) {
-        console.error('載入平日/假日設定錯誤:', error);
+        console.error('❌ 載入平日/假日設定錯誤:', error);
+        loadWeekdaySettings(null);
     }
 }
 
 // 儲存平日/假日設定（獨立按鈕）
 async function saveWeekdaySettings() {
     try {
+        const settingsValue = getWeekdaySettings();
+        console.log('💾 準備儲存平日/假日設定:', settingsValue);
+        
         const response = await adminFetch('/api/admin/settings/weekday_settings', {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                value: getWeekdaySettings(),
+                value: settingsValue,
                 description: '平日/假日設定（JSON 格式：{"weekdays": [1,2,3,4,5]}）'
             })
         });
         
         const result = await response.json();
+        console.log('💾 儲存結果:', result);
         
         if (result.success) {
             showSuccess('平日/假日設定已儲存');
             // 重新載入設定以確保 UI 同步
             setTimeout(() => {
                 loadWeekdaySettingsFromServer();
-            }, 300);
+            }, 500);
         } else {
             showError('儲存失敗：' + (result.message || '未知錯誤'));
         }
     } catch (error) {
-        console.error('儲存平日/假日設定錯誤:', error);
+        console.error('❌ 儲存平日/假日設定錯誤:', error);
         showError('儲存時發生錯誤：' + error.message);
     }
 }
