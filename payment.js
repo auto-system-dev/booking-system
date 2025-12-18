@@ -77,12 +77,29 @@ function createCheckMacValue(params, hashKey, hashIV) {
 // 建立支付表單資料
 function createPaymentForm(bookingData, paymentInfo, customConfig = null) {
     // 如果提供了自訂設定，使用自訂設定；否則使用預設設定
-    const config = customConfig ? {
-        MerchantID: customConfig.MerchantID,
-        HashKey: customConfig.HashKey,
-        HashIV: customConfig.HashIV,
-        ActionUrl: getConfig().ActionUrl // ActionUrl 仍使用環境設定
-    } : getConfig();
+    let config;
+    if (customConfig) {
+        // 根據 MerchantID 判斷使用測試或正式環境的 ActionUrl
+        // 測試環境的 MerchantID 是 2000132
+        const isTestMerchantID = customConfig.MerchantID === '2000132' || 
+                                 customConfig.MerchantID === process.env.ECPAY_MERCHANT_ID ||
+                                 (!process.env.ECPAY_MERCHANT_ID_PROD && customConfig.MerchantID === '2000132');
+        
+        const actionUrl = isTestMerchantID 
+            ? ECPAY_CONFIG.test.ActionUrl 
+            : ECPAY_CONFIG.production.ActionUrl;
+        
+        config = {
+            MerchantID: customConfig.MerchantID,
+            HashKey: customConfig.HashKey,
+            HashIV: customConfig.HashIV,
+            ActionUrl: actionUrl
+        };
+        
+        console.log(`🔍 使用 ${isTestMerchantID ? '測試' : '正式'}環境 ActionUrl: ${actionUrl}`);
+    } else {
+        config = getConfig();
+    }
     
     const { finalAmount, bookingId, guestName, guestEmail, guestPhone } = bookingData;
     
