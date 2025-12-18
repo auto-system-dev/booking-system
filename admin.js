@@ -4222,6 +4222,38 @@ function refreshEmailPreview() {
     
     console.log('🔄 更新預覽，當前樣式:', currentEmailStyle);
     
+    // 如果不是 HTML 模式，先將 Quill 的內容同步到 textarea（保留結構）
+    if (!isHtmlMode && quillEditor) {
+        const quillHtml = quillEditor.root.innerHTML;
+        const textarea = document.getElementById('emailTemplateContent');
+        const originalContent = textarea.value;
+        
+        // 如果原始內容是完整 HTML，需要更新 body 內的 .container 內容
+        if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
+            if (originalContent.includes('<body>')) {
+                const bodyMatch = originalContent.match(/(<body[^>]*>)([\s\S]*?)(<\/body>)/i);
+                if (bodyMatch) {
+                    const bodyContent = bodyMatch[2];
+                    // 嘗試找到 .container 並替換其內容
+                    const containerMatch = bodyContent.match(/(<div[^>]*class\s*=\s*["']container["'][^>]*>)([\s\S]*?)(<\/div>)/i);
+                    if (containerMatch) {
+                        // 保留 .container 的標籤，只替換內容
+                        const newContainerContent = containerMatch[1] + quillHtml + containerMatch[3];
+                        const newBodyContent = bodyContent.replace(
+                            /<div[^>]*class\s*=\s*["']container["'][^>]*>[\s\S]*?<\/div>/i,
+                            newContainerContent
+                        );
+                        textarea.value = originalContent.replace(
+                            /<body[^>]*>[\s\S]*?<\/body>/i,
+                            bodyMatch[1] + newBodyContent + bodyMatch[3]
+                        );
+                        console.log('✅ 已同步 Quill 內容到 textarea（保留結構）');
+                    }
+                }
+            }
+        }
+    }
+    
     // 始終從 textarea 獲取完整的原始 HTML（包含完整結構）
     const fullHtml = document.getElementById('emailTemplateContent').value;
     let bodyContent = '';
