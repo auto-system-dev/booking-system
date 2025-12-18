@@ -4208,6 +4208,8 @@ function refreshEmailPreview() {
     const previewContent = document.getElementById('emailPreviewContent');
     if (!previewContent) return;
     
+    console.log('🔄 更新預覽，當前樣式:', currentEmailStyle);
+    
     let bodyContent = '';
     if (isHtmlMode) {
         const fullHtml = document.getElementById('emailTemplateContent').value;
@@ -4216,24 +4218,13 @@ function refreshEmailPreview() {
             const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
             if (bodyMatch) {
                 bodyContent = bodyMatch[1];
-                // 如果 body 內容包含 .container，提取 .container 內的內容
-                const containerMatch = bodyContent.match(/<div[^>]*class\s*=\s*["']container["'][^>]*>([\s\S]*?)<\/div>/i);
-                if (containerMatch) {
-                    bodyContent = containerMatch[1];
-                }
             } else {
                 bodyContent = fullHtml;
             }
         } else if (fullHtml.includes('<!DOCTYPE html>') || fullHtml.includes('<html')) {
-            // 如果沒有 body 標籤，提取 html 標籤內的內容
             const htmlMatch = fullHtml.match(/<html[^>]*>([\s\S]*?)<\/html>/i);
             if (htmlMatch) {
                 bodyContent = htmlMatch[1].replace(/<head[^>]*>[\s\S]*?<\/head>/i, '').trim();
-                // 如果包含 .container，提取 .container 內的內容
-                const containerMatch = bodyContent.match(/<div[^>]*class\s*=\s*["']container["'][^>]*>([\s\S]*?)<\/div>/i);
-                if (containerMatch) {
-                    bodyContent = containerMatch[1];
-                }
             } else {
                 bodyContent = fullHtml;
             }
@@ -4242,15 +4233,24 @@ function refreshEmailPreview() {
         }
     } else {
         bodyContent = quillEditor.root.innerHTML;
-        // 如果 Quill 內容包含 .container，提取 .container 內的內容
-        const containerMatch = bodyContent.match(/<div[^>]*class\s*=\s*["']container["'][^>]*>([\s\S]*?)<\/div>/i);
-        if (containerMatch) {
-            bodyContent = containerMatch[1];
-        }
+    }
+    
+    // 移除所有 style 標籤和 script 標籤
+    bodyContent = bodyContent.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+    bodyContent = bodyContent.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+    
+    // 提取 .container 內的內容（處理嵌套的 div）
+    const containerMatch = bodyContent.match(/<div[^>]*class\s*=\s*["']container["'][^>]*>([\s\S]*?)<\/div>/i);
+    if (containerMatch) {
+        bodyContent = containerMatch[1];
+        console.log('✅ 已提取 .container 內容');
     }
     
     // 無論如何都使用當前選擇的樣式包裝內容
     let htmlContent = wrapEmailContent(bodyContent);
+    
+    console.log('📧 包裝後的 HTML 長度:', htmlContent.length);
+    console.log('📧 使用的樣式:', currentEmailStyle);
     
     // 替換變數為範例資料
     htmlContent = replaceEmailVariables(htmlContent);
@@ -4261,6 +4261,8 @@ function refreshEmailPreview() {
     iframeDoc.open();
     iframeDoc.write(htmlContent);
     iframeDoc.close();
+    
+    console.log('✅ 預覽已更新');
 }
 
 // 包裝郵件內容為完整 HTML
@@ -4379,9 +4381,14 @@ function getEmailStyleCSS(style) {
 
 // 應用郵件樣式
 function applyEmailStyle(style) {
+    console.log('🎨 應用樣式:', style);
     currentEmailStyle = style;
+    console.log('🎨 當前樣式變數已更新為:', currentEmailStyle);
     if (isPreviewVisible) {
+        console.log('🎨 預覽已顯示，立即更新預覽');
         refreshEmailPreview();
+    } else {
+        console.log('🎨 預覽未顯示，樣式已保存');
     }
 }
 
