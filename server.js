@@ -4485,6 +4485,15 @@ async function cancelExpiredReservations() {
                                 emailFailedCount++;
                             }
                         }
+
+                        // 只有成功發送才更新郵件狀態（追加「取消信」）
+                        if (emailSent) {
+                            try {
+                                await db.updateEmailStatus(booking.booking_id, 'cancel_notification', true);
+                            } catch (updateError) {
+                                console.error(`❌ 更新取消信郵件狀態失敗 (${booking.booking_id}):`, updateError.message);
+                            }
+                        }
                     } catch (emailError) {
                         console.error(`❌ 發送取消通知時發生錯誤 (${booking.booking_id}):`, emailError.message);
                         emailFailedCount++;

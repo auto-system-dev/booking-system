@@ -1550,6 +1550,7 @@ function getEmailStatusDisplay(emailSent) {
         'checkin_reminder': { name: '入住信', class: 'status-email-checkin' },
         'feedback_request': { name: '退房信', class: 'status-email-feedback' },
         'payment_reminder': { name: '繳款信', class: 'status-email-payment' },
+        'cancel_notification': { name: '取消信', class: 'status-email-cancel' },
         '1': { name: '確認信', class: 'status-email-confirmation' },  // 舊格式：數字 1 表示已發送確認信
         '0': { name: '未發送', class: 'status-unsent' }   // 舊格式：數字 0 表示未發送
     };
