@@ -236,7 +236,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         loadDashboard();
     } else if (urlHash === '#room-types') {
         switchSection('room-types');
-        loadRoomTypes();
+        // loadRoomTypes() 會在 switchSection 中根據分頁狀態決定是否載入
     } else if (urlHash === '#settings') {
         switchSection('settings');
         loadSettings();
@@ -297,9 +297,12 @@ function switchSection(section) {
     if (section === 'dashboard') {
         loadDashboard();
     } else if (section === 'room-types') {
-        // 載入房型管理時，顯示房型分頁
-        switchRoomTypeTab('room-types');
-        loadRoomTypes();
+        // 載入房型管理時，檢查 localStorage 恢復分頁狀態
+        const savedTab = localStorage.getItem('roomTypeTab') || 'room-types';
+        switchRoomTypeTab(savedTab);
+        if (savedTab === 'room-types') {
+            loadRoomTypes();
+        }
     } else if (section === 'addons') {
         loadAddons();
     } else if (section === 'settings') {
@@ -321,6 +324,9 @@ function switchSection(section) {
 
 // 切換房型管理分頁
 function switchRoomTypeTab(tab) {
+    // 保存當前分頁到 localStorage
+    localStorage.setItem('roomTypeTab', tab);
+    
     // 更新分頁按鈕狀態
     document.querySelectorAll('.tab-button').forEach(btn => {
         btn.classList.remove('active');
