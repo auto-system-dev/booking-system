@@ -4322,18 +4322,49 @@ function refreshEmailPreview() {
     console.log('📋 內容是否包含 .container:', bodyContent.includes('class="container') || bodyContent.includes("class='container"));
     
     // 提取 .container 內的內容（處理嵌套的 div）
-    // 使用非貪婪匹配，但需要處理嵌套的 div
-    let containerMatch = bodyContent.match(/<div[^>]*class\s*=\s*["']container["'][^>]*>([\s\S]*?)<\/div>/i);
-    if (containerMatch) {
-        let containerContent = containerMatch[1];
-        // 檢查是否有嵌套的 container div
-        let nestedContainerMatch = containerContent.match(/<div[^>]*class\s*=\s*["']container["'][^>]*>([\s\S]*?)<\/div>/i);
-        if (nestedContainerMatch) {
-            containerContent = nestedContainerMatch[1];
+    // 使用智能方法找到 .container 的完整範圍
+    const containerStartIndex = bodyContent.search(/<div[^>]*class\s*=\s*["']container["'][^>]*>/i);
+    if (containerStartIndex !== -1) {
+        // 找到開始標籤
+        const containerStartTagMatch = bodyContent.substring(containerStartIndex).match(/(<div[^>]*class\s*=\s*["']container["'][^>]*>)/i);
+        if (containerStartTagMatch) {
+            const containerStartPos = containerStartIndex + containerStartTagMatch[0].length;
+            
+            // 計算嵌套的 div 數量來找到正確的結束位置
+            let divCount = 1;
+            let pos = containerStartPos;
+            let containerEndPos = -1;
+            
+            while (pos < bodyContent.length && divCount > 0) {
+                const nextOpenDiv = bodyContent.indexOf('<div', pos);
+                const nextCloseDiv = bodyContent.indexOf('</div>', pos);
+                
+                if (nextCloseDiv === -1) {
+                    containerEndPos = bodyContent.length;
+                    break;
+                }
+                
+                if (nextOpenDiv !== -1 && nextOpenDiv < nextCloseDiv) {
+                    divCount++;
+                    pos = nextOpenDiv + 4;
+                } else {
+                    divCount--;
+                    if (divCount === 0) {
+                        containerEndPos = nextCloseDiv;
+                        break;
+                    }
+                    pos = nextCloseDiv + 6;
+                }
+            }
+            
+            if (containerEndPos !== -1) {
+                bodyContent = bodyContent.substring(containerStartPos, containerEndPos);
+                console.log('✅ 已提取 .container 內容，長度:', bodyContent.length);
+                console.log('📋 提取的 .container 內容前 200 字元:', bodyContent.substring(0, 200));
+            } else {
+                console.log('⚠️ 未找到 .container 的結束標籤');
+            }
         }
-        bodyContent = containerContent;
-        console.log('✅ 已提取 .container 內容，長度:', bodyContent.length);
-        console.log('📋 提取的 .container 內容前 200 字元:', bodyContent.substring(0, 200));
     } else {
         console.log('⚠️ 未找到 .container，使用原始內容');
     }
