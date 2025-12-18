@@ -4216,6 +4216,11 @@ function refreshEmailPreview() {
             const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
             if (bodyMatch) {
                 bodyContent = bodyMatch[1];
+                // 如果 body 內容包含 .container，提取 .container 內的內容
+                const containerMatch = bodyContent.match(/<div[^>]*class\s*=\s*["']container["'][^>]*>([\s\S]*?)<\/div>/i);
+                if (containerMatch) {
+                    bodyContent = containerMatch[1];
+                }
             } else {
                 bodyContent = fullHtml;
             }
@@ -4224,6 +4229,11 @@ function refreshEmailPreview() {
             const htmlMatch = fullHtml.match(/<html[^>]*>([\s\S]*?)<\/html>/i);
             if (htmlMatch) {
                 bodyContent = htmlMatch[1].replace(/<head[^>]*>[\s\S]*?<\/head>/i, '').trim();
+                // 如果包含 .container，提取 .container 內的內容
+                const containerMatch = bodyContent.match(/<div[^>]*class\s*=\s*["']container["'][^>]*>([\s\S]*?)<\/div>/i);
+                if (containerMatch) {
+                    bodyContent = containerMatch[1];
+                }
             } else {
                 bodyContent = fullHtml;
             }
@@ -4232,6 +4242,11 @@ function refreshEmailPreview() {
         }
     } else {
         bodyContent = quillEditor.root.innerHTML;
+        // 如果 Quill 內容包含 .container，提取 .container 內的內容
+        const containerMatch = bodyContent.match(/<div[^>]*class\s*=\s*["']container["'][^>]*>([\s\S]*?)<\/div>/i);
+        if (containerMatch) {
+            bodyContent = containerMatch[1];
+        }
     }
     
     // 無論如何都使用當前選擇的樣式包裝內容
