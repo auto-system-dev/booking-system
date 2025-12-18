@@ -629,27 +629,40 @@
                         </div>
                     </div>
                     
-                    <div class="settings-card" style="margin-top: 20px;">
-                        <h3>綠界支付設定</h3>
-                        <div class="form-group">
-                            <label>MerchantID（商店代號）</label>
-                            <input type="text" id="ecpayMerchantID" placeholder="例如：2000132">
-                            <small>綠界提供的商店代號</small>
+                    <!-- 綠界支付設定區塊 -->
+                    <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #e0e0e0;">
+                        <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
+                            <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">credit_card</span>
+                            <h3 style="margin: 0; color: #2c3e50;">綠界支付設定</h3>
                         </div>
-                        <div class="form-group">
-                            <label>HashKey（金鑰）</label>
-                            <input type="text" id="ecpayHashKey" placeholder="例如：5294y06JbISpM5x9">
-                            <small>綠界提供的 HashKey</small>
-                        </div>
-                        <div class="form-group">
-                            <label>HashIV（向量）</label>
-                            <input type="text" id="ecpayHashIV" placeholder="例如：v77hoKGq4kWxNNIS">
-                            <small>綠界提供的 HashIV</small>
+                        
+                        <div class="settings-card" style="margin-top: 0;">
+                            <div class="form-group">
+                                <label>MerchantID（商店代號）</label>
+                                <input type="text" id="ecpayMerchantID" placeholder="例如：2000132">
+                                <small>綠界提供的商店代號</small>
+                            </div>
+                            <div class="form-group">
+                                <label>HashKey（金鑰）</label>
+                                <input type="text" id="ecpayHashKey" placeholder="例如：5294y06JbISpM5x9">
+                                <small>綠界提供的 HashKey</small>
+                            </div>
+                            <div class="form-group">
+                                <label>HashIV（向量）</label>
+                                <input type="text" id="ecpayHashIV" placeholder="例如：v77hoKGq4kWxNNIS">
+                                <small>綠界提供的 HashIV</small>
+                            </div>
                         </div>
                     </div>
                     
-                    <div class="settings-card" style="margin-top: 20px;">
-                        <h3>旅館資訊</h3>
+                    <!-- 旅館資訊區塊 -->
+                    <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #e0e0e0;">
+                        <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
+                            <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">hotel</span>
+                            <h3 style="margin: 0; color: #2c3e50;">旅館資訊</h3>
+                        </div>
+                        
+                        <div class="settings-card" style="margin-top: 0;">
                         <div class="form-group">
                             <label>旅館名稱</label>
                             <input type="text" id="hotelName" placeholder="例如：XX旅館">
@@ -671,6 +684,7 @@
                             <small>聯絡信箱</small>
                         </div>
                         <button class="btn-save" onclick="saveSettings()">儲存設定</button>
+                        </div>
                     </div>
                     
                     <!-- 帳號安全設定區塊 -->
