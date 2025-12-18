@@ -3609,6 +3609,18 @@ async function showEmailTemplateModal(templateKey) {
             // 先顯示模態框
             modal.classList.add('active');
             
+            // 初始化樣式選擇器和預覽狀態
+            currentEmailStyle = 'card';
+            isPreviewVisible = false;
+            const styleSelector = document.getElementById('emailStyleSelector');
+            if (styleSelector) {
+                styleSelector.value = 'card';
+                // 確保事件監聽器正確綁定
+                styleSelector.onchange = function() {
+                    applyEmailStyle(this.value);
+                };
+            }
+            
             // 預設使用可視化模式（用戶要求）
             isHtmlMode = false;
             editorContainer.style.display = 'block';
