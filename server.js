@@ -997,18 +997,18 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
                 let ecpayMerchantID, ecpayHashKey, ecpayHashIV;
                 
                 if (isProduction) {
-                    // 正式環境：優先使用正式環境變數，其次使用資料庫設定
-                    ecpayMerchantID = process.env.ECPAY_MERCHANT_ID_PROD || await db.getSetting('ecpay_merchant_id_prod') || await db.getSetting('ecpay_merchant_id');
-                    ecpayHashKey = process.env.ECPAY_HASH_KEY_PROD || await db.getSetting('ecpay_hash_key_prod') || await db.getSetting('ecpay_hash_key');
-                    ecpayHashIV = process.env.ECPAY_HASH_IV_PROD || await db.getSetting('ecpay_hash_iv_prod') || await db.getSetting('ecpay_hash_iv');
+                    // 正式環境：優先使用資料庫設定，其次使用環境變數
+                    ecpayMerchantID = await db.getSetting('ecpay_merchant_id') || process.env.ECPAY_MERCHANT_ID_PROD || '2000132';
+                    ecpayHashKey = await db.getSetting('ecpay_hash_key') || process.env.ECPAY_HASH_KEY_PROD || '';
+                    ecpayHashIV = await db.getSetting('ecpay_hash_iv') || process.env.ECPAY_HASH_IV_PROD || '';
                     
                     console.log('💰 使用正式環境設定');
                     if (!ecpayMerchantID || ecpayMerchantID === '2000132') {
                         console.warn('⚠️  警告：正式環境仍在使用測試環境的 MerchantID！');
-                        console.warn('   請設定 ECPAY_MERCHANT_ID_PROD 環境變數或在資料庫中設定 ecpay_merchant_id_prod');
+                        console.warn('   請在系統設定中設定綠界支付參數，或設定 ECPAY_MERCHANT_ID_PROD 環境變數');
                     }
                 } else {
-                    // 測試環境：使用測試環境設定
+                    // 測試環境：優先使用資料庫設定，其次使用環境變數
                     ecpayMerchantID = await db.getSetting('ecpay_merchant_id') || process.env.ECPAY_MERCHANT_ID || '2000132';
                     ecpayHashKey = await db.getSetting('ecpay_hash_key') || process.env.ECPAY_HASH_KEY || '5294y06JbISpM5x9';
                     ecpayHashIV = await db.getSetting('ecpay_hash_iv') || process.env.ECPAY_HASH_IV || 'v77hoKGq4kWxNNIS';
@@ -1030,7 +1030,7 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
                     if (!ecpayHashIV) missingParams.push('HashIV');
                     
                     console.error('❌ 綠界設定不完整，缺少:', missingParams.join(', '));
-                    throw new Error(`綠界支付設定不完整，請設定：${missingParams.join(', ')}。${isProduction ? '正式環境請設定 ECPAY_MERCHANT_ID_PROD、ECPAY_HASH_KEY_PROD、ECPAY_HASH_IV_PROD' : '測試環境請設定 ECPAY_MERCHANT_ID、ECPAY_HASH_KEY、ECPAY_HASH_IV'}`);
+                    throw new Error(`綠界支付設定不完整，請設定：${missingParams.join(', ')}。請在系統設定的「綠界支付設定」中設定，或使用環境變數 ${isProduction ? 'ECPAY_MERCHANT_ID_PROD、ECPAY_HASH_KEY_PROD、ECPAY_HASH_IV_PROD' : 'ECPAY_MERCHANT_ID、ECPAY_HASH_KEY、ECPAY_HASH_IV'}`);
                 }
                 
                 // 傳入綠界設定給 payment 模組
@@ -2892,13 +2892,13 @@ app.post('/api/payment/return', paymentLimiter, async (req, res) => {
         console.log('回傳資料:', req.body);
         console.log('========================================\n');
         
-        // 取得綠界設定用於驗證
+        // 取得綠界設定用於驗證（優先使用資料庫設定）
         const isProduction = process.env.NODE_ENV === 'production';
         let ecpayHashKey, ecpayHashIV;
         
         if (isProduction) {
-            ecpayHashKey = process.env.ECPAY_HASH_KEY_PROD || await db.getSetting('ecpay_hash_key_prod') || await db.getSetting('ecpay_hash_key');
-            ecpayHashIV = process.env.ECPAY_HASH_IV_PROD || await db.getSetting('ecpay_hash_iv_prod') || await db.getSetting('ecpay_hash_iv');
+            ecpayHashKey = await db.getSetting('ecpay_hash_key') || process.env.ECPAY_HASH_KEY_PROD || '';
+            ecpayHashIV = await db.getSetting('ecpay_hash_iv') || process.env.ECPAY_HASH_IV_PROD || '';
         } else {
             ecpayHashKey = await db.getSetting('ecpay_hash_key') || process.env.ECPAY_HASH_KEY || '5294y06JbISpM5x9';
             ecpayHashIV = await db.getSetting('ecpay_hash_iv') || process.env.ECPAY_HASH_IV || 'v77hoKGq4kWxNNIS';
@@ -2942,12 +2942,13 @@ const handlePaymentResult = async (req, res) => {
         const returnData = req.method === 'POST' ? req.body : req.query;
         
         // 取得綠界設定用於驗證
+        // 取得綠界設定用於驗證（優先使用資料庫設定）
         const isProduction = process.env.NODE_ENV === 'production';
         let ecpayHashKey, ecpayHashIV;
         
         if (isProduction) {
-            ecpayHashKey = process.env.ECPAY_HASH_KEY_PROD || await db.getSetting('ecpay_hash_key_prod') || await db.getSetting('ecpay_hash_key');
-            ecpayHashIV = process.env.ECPAY_HASH_IV_PROD || await db.getSetting('ecpay_hash_iv_prod') || await db.getSetting('ecpay_hash_iv');
+            ecpayHashKey = await db.getSetting('ecpay_hash_key') || process.env.ECPAY_HASH_KEY_PROD || '';
+            ecpayHashIV = await db.getSetting('ecpay_hash_iv') || process.env.ECPAY_HASH_IV_PROD || '';
         } else {
             ecpayHashKey = await db.getSetting('ecpay_hash_key') || process.env.ECPAY_HASH_KEY || '5294y06JbISpM5x9';
             ecpayHashIV = await db.getSetting('ecpay_hash_iv') || process.env.ECPAY_HASH_IV || 'v77hoKGq4kWxNNIS';
