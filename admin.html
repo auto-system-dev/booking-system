@@ -584,6 +584,7 @@
                             </label>
                             <small>勾選後，客戶在前台可以選擇線上刷卡付款（需填寫綠界串接碼）</small>
                         </div>
+                        <button class="btn-save" onclick="savePaymentMethodSettings()">儲存設定</button>
                     </div>
                     
                     <div class="settings-card" style="margin-top: 20px;">
@@ -626,6 +627,7 @@
                                 <input type="text" id="accountName" placeholder="例如：XXX">
                                 <small>帳戶戶名</small>
                             </div>
+                            <button class="btn-save" onclick="saveRemittanceAccountSettings()">儲存設定</button>
                         </div>
                     </div>
                     
@@ -652,6 +654,7 @@
                                 <input type="text" id="ecpayHashIV" placeholder="例如：v77hoKGq4kWxNNIS">
                                 <small>綠界提供的 HashIV</small>
                             </div>
+                            <button class="btn-save" onclick="saveEcpaySettings()">儲存設定</button>
                         </div>
                     </div>
                     
@@ -683,7 +686,7 @@
                             <input type="email" id="hotelEmail" placeholder="例如：service@hotel.com">
                             <small>聯絡信箱</small>
                         </div>
-                        <button class="btn-save" onclick="saveSettings()">儲存設定</button>
+                        <button class="btn-save" onclick="saveHotelInfoSettings()">儲存設定</button>
                         </div>
                     </div>
                     

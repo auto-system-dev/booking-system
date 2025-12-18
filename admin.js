@@ -2426,6 +2426,271 @@ async function changePassword() {
     }
 }
 
+// 儲存付款方式設定
+async function savePaymentMethodSettings() {
+    const enableTransfer = document.getElementById('enableTransfer').checked ? '1' : '0';
+    const enableCard = document.getElementById('enableCard').checked ? '1' : '0';
+    
+    // 驗證：如果啟用線上刷卡，必須填寫綠界設定
+    const ecpayMerchantID = document.getElementById('ecpayMerchantID').value;
+    const ecpayHashKey = document.getElementById('ecpayHashKey').value;
+    const ecpayHashIV = document.getElementById('ecpayHashIV').value;
+    
+    if (enableCard === '1' && (!ecpayMerchantID || !ecpayHashKey || !ecpayHashIV)) {
+        showError('啟用線上刷卡時，必須填寫完整的綠界串接碼（MerchantID、HashKey、HashIV）');
+        return;
+    }
+    
+    try {
+        const [enableTransferResponse, enableCardResponse] = await Promise.all([
+            adminFetch('/api/admin/settings/enable_transfer', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: enableTransfer,
+                    description: '啟用匯款轉帳（1=啟用，0=停用）'
+                })
+            }),
+            adminFetch('/api/admin/settings/enable_card', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: enableCard,
+                    description: '啟用線上刷卡（1=啟用，0=停用）'
+                })
+            })
+        ]);
+        
+        const results = await Promise.all([
+            enableTransferResponse.json(),
+            enableCardResponse.json()
+        ]);
+        
+        const allSuccess = results.every(r => r.success);
+        if (allSuccess) {
+            showSuccess('付款方式設定已儲存');
+        } else {
+            const errorMsg = results.find(r => !r.success)?.message || '請稍後再試';
+            showError('儲存失敗：' + errorMsg);
+        }
+    } catch (error) {
+        console.error('儲存付款方式設定錯誤:', error);
+        showError('儲存時發生錯誤：' + error.message);
+    }
+}
+
+// 儲存匯款帳號設定
+async function saveRemittanceAccountSettings() {
+    const bankName = document.getElementById('bankName').value;
+    const bankBranch = document.getElementById('bankBranch').value;
+    const bankAccount = document.getElementById('bankAccount').value;
+    const accountName = document.getElementById('accountName').value;
+    
+    try {
+        const [bankNameResponse, bankBranchResponse, bankAccountResponse, accountNameResponse] = await Promise.all([
+            adminFetch('/api/admin/settings/bank_name', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: bankName,
+                    description: '銀行名稱（顯示在匯款轉帳確認郵件中）'
+                })
+            }),
+            adminFetch('/api/admin/settings/bank_branch', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: bankBranch,
+                    description: '分行名稱（顯示在匯款轉帳確認郵件中）'
+                })
+            }),
+            adminFetch('/api/admin/settings/bank_account', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: bankAccount,
+                    description: '匯款帳號（顯示在匯款轉帳確認郵件中）'
+                })
+            }),
+            adminFetch('/api/admin/settings/account_name', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: accountName,
+                    description: '帳戶戶名（顯示在匯款轉帳確認郵件中）'
+                })
+            })
+        ]);
+        
+        const results = await Promise.all([
+            bankNameResponse.json(),
+            bankBranchResponse.json(),
+            bankAccountResponse.json(),
+            accountNameResponse.json()
+        ]);
+        
+        const allSuccess = results.every(r => r.success);
+        if (allSuccess) {
+            showSuccess('匯款帳號設定已儲存');
+        } else {
+            const errorMsg = results.find(r => !r.success)?.message || '請稍後再試';
+            showError('儲存失敗：' + errorMsg);
+        }
+    } catch (error) {
+        console.error('儲存匯款帳號設定錯誤:', error);
+        showError('儲存時發生錯誤：' + error.message);
+    }
+}
+
+// 儲存綠界支付設定
+async function saveEcpaySettings() {
+    const ecpayMerchantID = document.getElementById('ecpayMerchantID').value;
+    const ecpayHashKey = document.getElementById('ecpayHashKey').value;
+    const ecpayHashIV = document.getElementById('ecpayHashIV').value;
+    
+    // 驗證：如果啟用線上刷卡，必須填寫綠界設定
+    const enableCard = document.getElementById('enableCard').checked;
+    if (enableCard && (!ecpayMerchantID || !ecpayHashKey || !ecpayHashIV)) {
+        showError('啟用線上刷卡時，必須填寫完整的綠界串接碼（MerchantID、HashKey、HashIV）');
+        return;
+    }
+    
+    try {
+        const [ecpayMerchantIDResponse, ecpayHashKeyResponse, ecpayHashIVResponse] = await Promise.all([
+            adminFetch('/api/admin/settings/ecpay_merchant_id', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: ecpayMerchantID,
+                    description: '綠界商店代號（MerchantID）'
+                })
+            }),
+            adminFetch('/api/admin/settings/ecpay_hash_key', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: ecpayHashKey,
+                    description: '綠界金鑰（HashKey）'
+                })
+            }),
+            adminFetch('/api/admin/settings/ecpay_hash_iv', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: ecpayHashIV,
+                    description: '綠界向量（HashIV）'
+                })
+            })
+        ]);
+        
+        const results = await Promise.all([
+            ecpayMerchantIDResponse.json(),
+            ecpayHashKeyResponse.json(),
+            ecpayHashIVResponse.json()
+        ]);
+        
+        const allSuccess = results.every(r => r.success);
+        if (allSuccess) {
+            showSuccess('綠界支付設定已儲存');
+        } else {
+            const errorMsg = results.find(r => !r.success)?.message || '請稍後再試';
+            showError('儲存失敗：' + errorMsg);
+        }
+    } catch (error) {
+        console.error('儲存綠界支付設定錯誤:', error);
+        showError('儲存時發生錯誤：' + error.message);
+    }
+}
+
+// 儲存旅館資訊設定
+async function saveHotelInfoSettings() {
+    const hotelName = document.getElementById('hotelName').value;
+    const hotelPhone = document.getElementById('hotelPhone').value;
+    const hotelAddress = document.getElementById('hotelAddress').value;
+    const hotelEmail = document.getElementById('hotelEmail').value;
+    
+    try {
+        const [hotelNameResponse, hotelPhoneResponse, hotelAddressResponse, hotelEmailResponse] = await Promise.all([
+            adminFetch('/api/admin/settings/hotel_name', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: hotelName,
+                    description: '旅館名稱'
+                })
+            }),
+            adminFetch('/api/admin/settings/hotel_phone', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: hotelPhone,
+                    description: '旅館電話'
+                })
+            }),
+            adminFetch('/api/admin/settings/hotel_address', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: hotelAddress,
+                    description: '旅館地址'
+                })
+            }),
+            adminFetch('/api/admin/settings/hotel_email', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: hotelEmail,
+                    description: '旅館信箱'
+                })
+            })
+        ]);
+        
+        const results = await Promise.all([
+            hotelNameResponse.json(),
+            hotelPhoneResponse.json(),
+            hotelAddressResponse.json(),
+            hotelEmailResponse.json()
+        ]);
+        
+        const allSuccess = results.every(r => r.success);
+        if (allSuccess) {
+            showSuccess('旅館資訊已儲存');
+        } else {
+            const errorMsg = results.find(r => !r.success)?.message || '請稍後再試';
+            showError('儲存失敗：' + errorMsg);
+        }
+    } catch (error) {
+        console.error('儲存旅館資訊錯誤:', error);
+        showError('儲存時發生錯誤：' + error.message);
+    }
+}
+
 // 載入系統設定
 async function loadSettings() {
     try {
