@@ -2889,8 +2889,23 @@ app.post('/api/payment/return', paymentLimiter, async (req, res) => {
         console.log('回傳資料:', req.body);
         console.log('========================================\n');
         
-        // 驗證回傳資料
-        const isValid = payment.verifyReturnData(req.body);
+        // 取得綠界設定用於驗證
+        const isProduction = process.env.NODE_ENV === 'production';
+        let ecpayHashKey, ecpayHashIV;
+        
+        if (isProduction) {
+            ecpayHashKey = process.env.ECPAY_HASH_KEY_PROD || await db.getSetting('ecpay_hash_key_prod') || await db.getSetting('ecpay_hash_key');
+            ecpayHashIV = process.env.ECPAY_HASH_IV_PROD || await db.getSetting('ecpay_hash_iv_prod') || await db.getSetting('ecpay_hash_iv');
+        } else {
+            ecpayHashKey = await db.getSetting('ecpay_hash_key') || process.env.ECPAY_HASH_KEY || '5294y06JbISpM5x9';
+            ecpayHashIV = await db.getSetting('ecpay_hash_iv') || process.env.ECPAY_HASH_IV || 'v77hoKGq4kWxNNIS';
+        }
+        
+        // 驗證回傳資料（使用正確的設定）
+        const isValid = payment.verifyReturnData(req.body, {
+            HashKey: ecpayHashKey,
+            HashIV: ecpayHashIV
+        });
         
         if (!isValid) {
             console.error('❌ 回傳資料驗證失敗');
@@ -2923,9 +2938,24 @@ const handlePaymentResult = async (req, res) => {
         // 根據請求方法取得資料
         const returnData = req.method === 'POST' ? req.body : req.query;
         
-        // 驗證回傳資料
+        // 取得綠界設定用於驗證
+        const isProduction = process.env.NODE_ENV === 'production';
+        let ecpayHashKey, ecpayHashIV;
+        
+        if (isProduction) {
+            ecpayHashKey = process.env.ECPAY_HASH_KEY_PROD || await db.getSetting('ecpay_hash_key_prod') || await db.getSetting('ecpay_hash_key');
+            ecpayHashIV = process.env.ECPAY_HASH_IV_PROD || await db.getSetting('ecpay_hash_iv_prod') || await db.getSetting('ecpay_hash_iv');
+        } else {
+            ecpayHashKey = await db.getSetting('ecpay_hash_key') || process.env.ECPAY_HASH_KEY || '5294y06JbISpM5x9';
+            ecpayHashIV = await db.getSetting('ecpay_hash_iv') || process.env.ECPAY_HASH_IV || 'v77hoKGq4kWxNNIS';
+        }
+        
+        // 驗證回傳資料（使用正確的設定）
         console.log('開始驗證回傳資料...');
-        const isValid = payment.verifyReturnData(returnData);
+        const isValid = payment.verifyReturnData(returnData, {
+            HashKey: ecpayHashKey,
+            HashIV: ecpayHashIV
+        });
         
         if (!isValid) {
             console.error('❌ 付款驗證失敗');
@@ -3052,37 +3082,67 @@ const handlePaymentResult = async (req, res) => {
                             <meta charset="UTF-8">
                             <style>
                                 body {
-                                    font-family: 'Microsoft JhengHei', Arial, sans-serif;
+                                    font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                                     display: flex;
                                     justify-content: center;
                                     align-items: center;
                                     min-height: 100vh;
                                     margin: 0;
-                                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                    padding: 20px;
+                                    background-image: url('Background%20image.jpg');
+                                    background-size: cover;
+                                    background-position: center;
+                                    background-repeat: no-repeat;
+                                    background-attachment: fixed;
                                 }
                                 .container {
                                     background: white;
                                     padding: 40px;
-                                    border-radius: 20px;
-                                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                                    border-radius: 24px;
+                                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
                                     text-align: center;
                                     max-width: 500px;
+                                    animation: slideUp 0.5s ease-out;
+                                }
+                                @keyframes slideUp {
+                                    from {
+                                        opacity: 0;
+                                        transform: translateY(30px);
+                                    }
+                                    to {
+                                        opacity: 1;
+                                        transform: translateY(0);
+                                    }
                                 }
                                 .error-icon {
                                     font-size: 80px;
                                     color: #f44336;
                                     margin-bottom: 20px;
                                 }
-                                h1 { color: #333; margin-bottom: 10px; }
-                                p { color: #666; margin: 10px 0; }
+                                h1 { 
+                                    color: #333; 
+                                    margin-bottom: 10px; 
+                                    font-size: 24px;
+                                    font-weight: 600;
+                                }
+                                p { 
+                                    color: #666; 
+                                    margin: 10px 0; 
+                                    font-size: 16px;
+                                }
                                 .btn {
                                     display: inline-block;
                                     margin-top: 20px;
                                     padding: 12px 30px;
-                                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                    background: #262A33;
                                     color: white;
                                     text-decoration: none;
                                     border-radius: 8px;
+                                    font-weight: 500;
+                                    transition: background 0.3s;
+                                }
+                                .btn:hover {
+                                    background: #1a1d24;
                                 }
                             </style>
                         </head>
@@ -3313,37 +3373,67 @@ const handlePaymentResult = async (req, res) => {
                         <title>付款失敗</title>
                         <style>
                             body {
-                                font-family: 'Microsoft JhengHei', Arial, sans-serif;
+                                font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                                 display: flex;
                                 justify-content: center;
                                 align-items: center;
                                 min-height: 100vh;
                                 margin: 0;
-                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                padding: 20px;
+                                background-image: url('Background%20image.jpg');
+                                background-size: cover;
+                                background-position: center;
+                                background-repeat: no-repeat;
+                                background-attachment: fixed;
                             }
                             .container {
                                 background: white;
                                 padding: 40px;
-                                border-radius: 20px;
-                                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                                border-radius: 24px;
+                                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
                                 text-align: center;
                                 max-width: 500px;
+                                animation: slideUp 0.5s ease-out;
+                            }
+                            @keyframes slideUp {
+                                from {
+                                    opacity: 0;
+                                    transform: translateY(30px);
+                                }
+                                to {
+                                    opacity: 1;
+                                    transform: translateY(0);
+                                }
                             }
                             .error-icon {
                                 font-size: 80px;
                                 color: #f44336;
                                 margin-bottom: 20px;
                             }
-                            h1 { color: #333; margin-bottom: 10px; }
-                            p { color: #666; margin: 10px 0; }
+                            h1 { 
+                                color: #333; 
+                                margin-bottom: 10px; 
+                                font-size: 24px;
+                                font-weight: 600;
+                            }
+                            p { 
+                                color: #666; 
+                                margin: 10px 0; 
+                                font-size: 16px;
+                            }
                             .btn {
                                 display: inline-block;
                                 margin-top: 20px;
                                 padding: 12px 30px;
-                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                background: #262A33;
                                 color: white;
                                 text-decoration: none;
                                 border-radius: 8px;
+                                font-weight: 500;
+                                transition: background 0.3s;
+                            }
+                            .btn:hover {
+                                background: #1a1d24;
                             }
                         </style>
                     </head>

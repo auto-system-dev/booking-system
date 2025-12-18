@@ -152,8 +152,12 @@ function createPaymentForm(bookingData, paymentInfo, customConfig = null) {
 }
 
 // 驗證回傳資料
-function verifyReturnData(returnData) {
-    const config = getConfig();
+function verifyReturnData(returnData, customConfig = null) {
+    // 如果提供了自訂設定，使用自訂設定；否則使用預設設定
+    const config = customConfig ? {
+        HashKey: customConfig.HashKey,
+        HashIV: customConfig.HashIV
+    } : getConfig();
     
     // 複製資料（避免修改原始資料）
     const data = { ...returnData };
