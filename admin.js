@@ -1550,6 +1550,7 @@ function getEmailStatusDisplay(emailSent) {
         'checkin_reminder': { name: '入住信', class: 'status-email-checkin' },
         'feedback_request': { name: '退房信', class: 'status-email-feedback' },
         'payment_reminder': { name: '繳款信', class: 'status-email-payment' },
+        'payment_received': { name: '收款信', class: 'status-email-received' },
         'cancel_notification': { name: '取消信', class: 'status-email-cancel' },
         '1': { name: '確認信', class: 'status-email-confirmation' },  // 舊格式：數字 1 表示已發送確認信
         '0': { name: '未發送', class: 'status-unsent' }   // 舊格式：數字 0 表示未發送
@@ -1709,12 +1710,22 @@ function showEditModal(booking) {
             </div>
             <div class="form-group">
                 <label>付款狀態</label>
-                <select name="payment_status" required>
+                <select name="payment_status" id="editPaymentStatus" required onchange="updateSendPaymentReceiptVisibility()">
                     <option value="pending" ${(booking.payment_status || 'pending') === 'pending' ? 'selected' : ''}>待付款</option>
                     <option value="paid" ${(booking.payment_status || 'pending') === 'paid' ? 'selected' : ''}>已付款</option>
                     <option value="failed" ${(booking.payment_status || 'pending') === 'failed' ? 'selected' : ''}>付款失敗</option>
                     <option value="refunded" ${(booking.payment_status || 'pending') === 'refunded' ? 'selected' : ''}>已退款</option>
                 </select>
+            </div>
+            <div class="form-group" id="sendPaymentReceiptContainer" style="margin-top: 4px; display: ${(booking.payment_method === '匯款轉帳' && (booking.payment_status || 'pending') === 'paid') ? 'flex' : 'none'}; align-items: center; gap: 8px;">
+                <label style="margin: 0;">收款信</label>
+                <label style="display: flex; align-items: center; gap: 6px; font-weight: normal;">
+                    <input type="checkbox" name="send_payment_receipt" id="sendPaymentReceiptCheckbox">
+                    <span>寄送收款信給使用者</span>
+                </label>
+            </div>
+            <div id="sendPaymentReceiptHint" style="display: ${(booking.payment_method === '匯款轉帳' && (booking.payment_status || 'pending') === 'paid') ? 'block' : 'none'}; font-size: 12px; color: #666; margin-top: -6px; margin-bottom: 10px;">
+                送出後會寄送收款確認郵件到此筆訂房的客戶 Email。
             </div>
             <div class="price-summary" style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0;">
                 <h3 style="margin: 0 0 10px 0; font-size: 16px;">價格計算</h3>

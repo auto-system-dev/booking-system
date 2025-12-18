@@ -1404,6 +1404,84 @@ async function generateCustomerEmail(data) {
     `;
 }
 
+// 生成收款確認郵件（匯款轉帳收到款項時）
+async function generatePaymentReceivedEmail(booking) {
+    const hotelInfoFooter = await getHotelInfoFooter();
+    const checkInDate = new Date(booking.check_in_date);
+    const checkOutDate = new Date(booking.check_out_date);
+    
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #198754; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+            .info-label { font-weight: 600; color: #666; }
+            .info-value { color: #333; }
+            .highlight { background: #e8f5e9; border: 2px solid #198754; border-radius: 8px; padding: 20px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>✅ 已收到您的匯款</h1>
+                <p>感謝您的付款！</p>
+            </div>
+            <div class="content">
+                <p>親愛的 ${booking.guest_name}，</p>
+                <p style="margin-bottom: 20px;">我們已確認收到您本次訂房的匯款，以下是您的訂房與付款資訊：</p>
+                
+                <div class="highlight">
+                    <div class="info-row">
+                        <span class="info-label">訂房編號</span>
+                        <span class="info-value"><strong>${booking.booking_id}</strong></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">入住日期</span>
+                        <span class="info-value">${checkInDate.toLocaleDateString('zh-TW')}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">退房日期</span>
+                        <span class="info-value">${checkOutDate.toLocaleDateString('zh-TW')}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">房型</span>
+                        <span class="info-value">${booking.room_type}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">總金額</span>
+                        <span class="info-value">NT$ ${Number(booking.total_amount || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">本次已收金額</span>
+                        <span class="info-value" style="color: #198754; font-weight: 700;">NT$ ${Number(booking.final_amount || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="info-row" style="border-bottom: none;">
+                        <span class="info-label">付款方式</span>
+                        <span class="info-value">${booking.payment_method}</span>
+                    </div>
+                </div>
+                
+                <p>若您後續仍需變更或取消訂房，請儘早與我們聯繫，我們將盡力協助您。</p>
+                
+                <div class="footer">
+                    <p>再次感謝您的預訂，期待您的光臨！</p>
+                    <p>此為系統自動發送郵件，請勿直接回覆</p>
+                </div>
+                ${hotelInfoFooter}
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+}
+
 // 生成管理員通知郵件
 function generateAdminEmail(data) {
     return `
@@ -2265,20 +2343,87 @@ app.get('/api/dashboard', adminLimiter, async (req, res) => {
 app.put('/api/bookings/:bookingId', adminLimiter, async (req, res) => {
     try {
         const { bookingId } = req.params;
-        const updateData = req.body;
+        const updateData = { ...req.body };
+        
+        // 是否要寄送收款信
+        const sendPaymentReceipt =
+            updateData.send_payment_receipt === 'on' ||
+            updateData.send_payment_receipt === '1' ||
+            updateData.send_payment_receipt === true ||
+            updateData.send_payment_receipt === 'true';
+        delete updateData.send_payment_receipt;
+        
+        // 先取得原始訂房資料（用於狀態判斷與寄信）
+        const originalBooking = await db.getBookingById(bookingId);
         
         // 如果付款狀態更新為已付款，且訂房狀態為保留，自動改為有效
-        if (updateData.payment_status === 'paid') {
-            const booking = await db.getBookingById(bookingId);
-            if (booking && booking.status === 'reserved') {
-                updateData.status = 'active';
-                console.log(`✅ 付款狀態更新為已付款，自動將訂房狀態從「保留」改為「有效」`);
-            }
+        if (updateData.payment_status === 'paid' && originalBooking && originalBooking.status === 'reserved') {
+            updateData.status = 'active';
+            console.log(`✅ 付款狀態更新為已付款，自動將訂房狀態從「保留」改為「有效」`);
         }
         
         const result = await db.updateBooking(bookingId, updateData);
         
         if (result > 0) {
+            // 如果需要寄送收款信（僅適用於匯款轉帳，且狀態從非已付款改為已付款）
+            if (sendPaymentReceipt && updateData.payment_status === 'paid') {
+                try {
+                    const updatedBooking = await db.getBookingById(bookingId);
+                    if (updatedBooking && updatedBooking.payment_method === '匯款轉帳') {
+                        console.log(`📧 準備寄送收款信給 ${updatedBooking.guest_email} (${updatedBooking.booking_id})`);
+                        
+                        const emailUser =
+                            (await db.getSetting('email_user')) ||
+                            process.env.EMAIL_USER ||
+                            'cheng701107@gmail.com';
+                        
+                        const mailOptions = {
+                            from: emailUser,
+                            to: updatedBooking.guest_email,
+                            subject: '【收款確認】我們已收到您的款項',
+                            html: await generatePaymentReceivedEmail(updatedBooking)
+                        };
+                        
+                        let emailSent = false;
+                        
+                        if (sendEmailViaGmailAPI) {
+                            try {
+                                await sendEmailViaGmailAPI(mailOptions);
+                                console.log(`✅ 收款信已發送給 ${updatedBooking.guest_name} (${updatedBooking.booking_id}) - Gmail API`);
+                                emailSent = true;
+                            } catch (gmailError) {
+                                console.log(`⚠️  收款信 Gmail API 發送失敗，嘗試 SMTP... (${updatedBooking.booking_id})`);
+                                try {
+                                    await transporter.sendMail(mailOptions);
+                                    console.log(`✅ 收款信已發送給 ${updatedBooking.guest_name} (${updatedBooking.booking_id}) - SMTP`);
+                                    emailSent = true;
+                                } catch (smtpError) {
+                                    console.error(`❌ 收款信發送失敗 (${updatedBooking.booking_id}):`, smtpError.message);
+                                }
+                            }
+                        } else {
+                            try {
+                                await transporter.sendMail(mailOptions);
+                                console.log(`✅ 收款信已發送給 ${updatedBooking.guest_name} (${updatedBooking.booking_id}) - SMTP`);
+                                emailSent = true;
+                            } catch (smtpError) {
+                                console.error(`❌ 收款信發送失敗 (${updatedBooking.booking_id}):`, smtpError.message);
+                            }
+                        }
+                        
+                        if (emailSent) {
+                            try {
+                                await db.updateEmailStatus(updatedBooking.booking_id, 'payment_received', true);
+                            } catch (updateError) {
+                                console.error(`❌ 更新收款信郵件狀態失敗 (${updatedBooking.booking_id}):`, updateError.message);
+                            }
+                        }
+                    }
+                } catch (emailError) {
+                    console.error(`❌ 寄送收款信流程發生錯誤 (${bookingId}):`, emailError.message);
+                }
+            }
+            
             res.json({
                 success: true,
                 message: '訂房資料已更新'

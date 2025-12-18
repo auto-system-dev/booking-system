@@ -340,6 +340,11 @@ body {
     color: #856404;
 }
 
+.status-email-received {
+    background: #e0f3ff;
+    color: #0b5ed7;
+}
+
 .status-email-cancel {
     background: #f8d7da;
     color: #842029;
