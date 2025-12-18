@@ -1696,7 +1696,7 @@ function showEditModal(booking) {
             </div>
             <div class="form-group">
                 <label>付款方式</label>
-                <select name="payment_method" id="editPaymentMethod" required onchange="calculateEditPrice()">
+                <select name="payment_method" id="editPaymentMethod" required onchange="calculateEditPrice(); updateSendPaymentReceiptVisibility()">
                     <option value="匯款轉帳" ${booking.payment_method === '匯款轉帳' ? 'selected' : ''}>匯款轉帳</option>
                     <option value="線上刷卡" ${booking.payment_method === '線上刷卡' ? 'selected' : ''}>線上刷卡</option>
                 </select>
@@ -1866,6 +1866,32 @@ async function saveBookingEdit(event, bookingId) {
         console.error('Error:', error);
         console.error('Error stack:', error.stack);
         showError('更新時發生錯誤：' + error.message);
+    }
+}
+
+// 根據付款方式與付款狀態決定是否顯示「收款信」勾選區塊
+function updateSendPaymentReceiptVisibility() {
+    const paymentMethodSelect = document.getElementById('editPaymentMethod');
+    const paymentStatusSelect = document.getElementById('editPaymentStatus');
+    const container = document.getElementById('sendPaymentReceiptContainer');
+    const hint = document.getElementById('sendPaymentReceiptHint');
+    const checkbox = document.getElementById('sendPaymentReceiptCheckbox');
+    
+    if (!paymentMethodSelect || !paymentStatusSelect || !container || !hint) {
+        return;
+    }
+    
+    const method = paymentMethodSelect.value;
+    const status = paymentStatusSelect.value;
+    
+    const shouldShow = method === '匯款轉帳' && status === 'paid';
+    
+    container.style.display = shouldShow ? 'flex' : 'none';
+    hint.style.display = shouldShow ? 'block' : 'none';
+    
+    // 若不顯示時，取消勾選，避免誤發信
+    if (!shouldShow && checkbox) {
+        checkbox.checked = false;
     }
 }
 
