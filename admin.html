@@ -590,39 +590,6 @@
                 <div class="settings-container">
                     <!-- 基本設定分頁 -->
                     <div id="settingsTabBasicContent" class="tab-content active">
-                        <!-- 付款方式設定 -->
-                        <div class="settings-card">
-                            <h3>付款方式設定</h3>
-                            <div class="form-group">
-                                <label style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="checkbox" id="enableTransfer" style="width: 20px; height: 20px;">
-                                    <span>啟用匯款轉帳</span>
-                                </label>
-                                <small>勾選後，客戶在前台可以選擇匯款轉帳付款</small>
-                            </div>
-                            <div class="form-group">
-                                <label style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="checkbox" id="enableCard" style="width: 20px; height: 20px;">
-                                    <span>啟用線上刷卡</span>
-                                </label>
-                                <small>勾選後，客戶在前台可以選擇線上刷卡付款（需填寫綠界串接碼）</small>
-                            </div>
-                        </div>
-                        
-                        <!-- 付款設定 -->
-                        <div class="settings-card" style="margin-top: 20px;">
-                            <h3>付款設定</h3>
-                            <div class="form-group">
-                                <label>訂金百分比</label>
-                                <div class="input-group">
-                                    <input type="number" id="depositPercentage" min="0" max="100" step="1" placeholder="30">
-                                    <span class="input-suffix">%</span>
-                                </div>
-                                <small>設定訂金佔總金額的百分比（例如：30 表示 30%）</small>
-                            </div>
-                            <button class="btn-save" onclick="savePaymentSettings()">儲存設定</button>
-                        </div>
-                        
                         <!-- 旅館資訊區塊 -->
                         <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #e0e0e0;">
                             <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
@@ -663,6 +630,39 @@
 
                     <!-- 付款設定分頁 -->
                     <div id="settingsTabPaymentContent" class="tab-content">
+                        <!-- 付款方式設定 -->
+                        <div class="settings-card">
+                            <h3>付款方式設定</h3>
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" id="enableTransfer" style="width: 20px; height: 20px;">
+                                    <span>啟用匯款轉帳</span>
+                                </label>
+                                <small>勾選後，客戶在前台可以選擇匯款轉帳付款</small>
+                            </div>
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" id="enableCard" style="width: 20px; height: 20px;">
+                                    <span>啟用線上刷卡</span>
+                                </label>
+                                <small>勾選後，客戶在前台可以選擇線上刷卡付款（需填寫綠界串接碼）</small>
+                            </div>
+                        </div>
+                        
+                        <!-- 付款設定 -->
+                        <div class="settings-card" style="margin-top: 20px;">
+                            <h3>付款設定</h3>
+                            <div class="form-group">
+                                <label>訂金百分比</label>
+                                <div class="input-group">
+                                    <input type="number" id="depositPercentage" min="0" max="100" step="1" placeholder="30">
+                                    <span class="input-suffix">%</span>
+                                </div>
+                                <small>設定訂金佔總金額的百分比（例如：30 表示 30%）</small>
+                            </div>
+                            <button class="btn-save" onclick="savePaymentSettings()">儲存設定</button>
+                        </div>
+                        
                         <!-- 匯款帳號設定區塊 -->
                         <div style="margin-top: 0;">
                             <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
