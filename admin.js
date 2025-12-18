@@ -4251,10 +4251,13 @@ function refreshEmailPreview() {
 // 包裝郵件內容為完整 HTML
 function wrapEmailContent(content) {
     const style = getEmailStyleCSS(currentEmailStyle);
+    // 確保內容不包含任何現有的 style 標籤，避免樣式衝突
+    content = content.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
     return `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>${style}</style>
 </head>
 <body>
