@@ -2426,10 +2426,17 @@ async function changePassword() {
     }
 }
 
-// 儲存付款方式設定
-async function savePaymentMethodSettings() {
+// 儲存付款設定（包含付款方式設定和訂金百分比）
+async function savePaymentSettings() {
+    const depositPercentage = document.getElementById('depositPercentage').value;
     const enableTransfer = document.getElementById('enableTransfer').checked ? '1' : '0';
     const enableCard = document.getElementById('enableCard').checked ? '1' : '0';
+    
+    // 驗證訂金百分比
+    if (!depositPercentage || depositPercentage < 0 || depositPercentage > 100) {
+        showError('請輸入有效的訂金百分比（0-100）');
+        return;
+    }
     
     // 驗證：如果啟用線上刷卡，必須填寫綠界設定
     const ecpayMerchantID = document.getElementById('ecpayMerchantID').value;
@@ -2442,7 +2449,17 @@ async function savePaymentMethodSettings() {
     }
     
     try {
-        const [enableTransferResponse, enableCardResponse] = await Promise.all([
+        const [depositResponse, enableTransferResponse, enableCardResponse] = await Promise.all([
+            adminFetch('/api/admin/settings/deposit_percentage', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: depositPercentage,
+                    description: '訂金百分比（例如：30 表示 30%）'
+                })
+            }),
             adminFetch('/api/admin/settings/enable_transfer', {
                 method: 'PUT',
                 headers: {
@@ -2466,19 +2483,20 @@ async function savePaymentMethodSettings() {
         ]);
         
         const results = await Promise.all([
+            depositResponse.json(),
             enableTransferResponse.json(),
             enableCardResponse.json()
         ]);
         
         const allSuccess = results.every(r => r.success);
         if (allSuccess) {
-            showSuccess('付款方式設定已儲存');
+            showSuccess('付款設定已儲存');
         } else {
             const errorMsg = results.find(r => !r.success)?.message || '請稍後再試';
             showError('儲存失敗：' + errorMsg);
         }
     } catch (error) {
-        console.error('儲存付款方式設定錯誤:', error);
+        console.error('儲存付款設定錯誤:', error);
         showError('儲存時發生錯誤：' + error.message);
     }
 }
