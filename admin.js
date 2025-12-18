@@ -4240,8 +4240,12 @@ function refreshEmailPreview() {
     // 替換變數為範例資料
     htmlContent = replaceEmailVariables(htmlContent);
     
-    // 顯示預覽
-    previewContent.innerHTML = htmlContent;
+    // 使用 iframe 來顯示預覽，確保樣式完全隔離
+    const iframe = previewContent;
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    iframeDoc.open();
+    iframeDoc.write(htmlContent);
+    iframeDoc.close();
 }
 
 // 包裝郵件內容為完整 HTML
