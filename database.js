@@ -1713,28 +1713,35 @@ async function updateCustomer(email, updateData) {
             throw new Error('至少需要提供姓名或電話');
         }
         
-        const updates = [];
+        // 構建 SET 子句和參數值
+        const setParts = [];
         const values = [];
         
         if (guest_name) {
-            updates.push(usePostgreSQL ? 'guest_name = $' + (values.length + 1) : 'guest_name = ?');
+            setParts.push(usePostgreSQL ? `guest_name = $${values.length + 1}` : 'guest_name = ?');
             values.push(guest_name);
         }
         
         if (guest_phone) {
-            updates.push(usePostgreSQL ? 'guest_phone = $' + (values.length + 1) : 'guest_phone = ?');
+            setParts.push(usePostgreSQL ? `guest_phone = $${values.length + 1}` : 'guest_phone = ?');
             values.push(guest_phone);
         }
         
+        // 添加 WHERE 條件（email 參數）
+        const whereClause = usePostgreSQL ? `WHERE guest_email = $${values.length + 1}` : 'WHERE guest_email = ?';
         values.push(email);
         
-        const sql = usePostgreSQL
-            ? `UPDATE bookings SET ${updates.join(', ')} WHERE guest_email = $${values.length}`
-            : `UPDATE bookings SET ${updates.join(', ')} WHERE guest_email = ?`;
+        // 構建完整的 SQL
+        const sql = `UPDATE bookings SET ${setParts.join(', ')} ${whereClause}`;
+        
+        console.log('🔍 SQL:', sql);
+        console.log('🔍 Values:', values);
+        console.log('🔍 Email to update:', email);
         
         const result = await query(sql, values);
-        console.log(`✅ 客戶資料已更新 (email: ${email}, 更新了 ${result.changes || result.rowCount || 0} 筆訂房記錄)`);
-        return result.changes || result.rowCount || 0;
+        const updatedCount = result.changes || result.rowCount || 0;
+        console.log(`✅ 客戶資料已更新 (email: ${email}, 更新了 ${updatedCount} 筆訂房記錄)`);
+        return updatedCount;
     } catch (error) {
         console.error('❌ 更新客戶資料失敗:', error.message);
         throw error;
