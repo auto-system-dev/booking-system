@@ -4208,26 +4208,34 @@ function refreshEmailPreview() {
     const previewContent = document.getElementById('emailPreviewContent');
     if (!previewContent) return;
     
-    let htmlContent = '';
+    let bodyContent = '';
     if (isHtmlMode) {
-        htmlContent = document.getElementById('emailTemplateContent').value;
-    } else {
-        htmlContent = quillEditor.root.innerHTML;
-        // 如果原始內容是完整 HTML，需要包裝
-        const originalContent = document.getElementById('emailTemplateContent').value;
-        if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
-            // 提取原始 HTML 的 head 和 style
-            const headMatch = originalContent.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
-            const bodyMatch = originalContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-            if (headMatch && bodyMatch) {
-                htmlContent = `<!DOCTYPE html><html><head>${headMatch[1]}</head><body>${htmlContent}</body></html>`;
+        const fullHtml = document.getElementById('emailTemplateContent').value;
+        // 提取 body 內容
+        if (fullHtml.includes('<body>')) {
+            const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+            if (bodyMatch) {
+                bodyContent = bodyMatch[1];
             } else {
-                htmlContent = wrapEmailContent(htmlContent);
+                bodyContent = fullHtml;
+            }
+        } else if (fullHtml.includes('<!DOCTYPE html>') || fullHtml.includes('<html')) {
+            // 如果沒有 body 標籤，提取 html 標籤內的內容
+            const htmlMatch = fullHtml.match(/<html[^>]*>([\s\S]*?)<\/html>/i);
+            if (htmlMatch) {
+                bodyContent = htmlMatch[1].replace(/<head[^>]*>[\s\S]*?<\/head>/i, '').trim();
+            } else {
+                bodyContent = fullHtml;
             }
         } else {
-            htmlContent = wrapEmailContent(htmlContent);
+            bodyContent = fullHtml;
         }
+    } else {
+        bodyContent = quillEditor.root.innerHTML;
     }
+    
+    // 無論如何都使用當前選擇的樣式包裝內容
+    let htmlContent = wrapEmailContent(bodyContent);
     
     // 替換變數為範例資料
     htmlContent = replaceEmailVariables(htmlContent);
