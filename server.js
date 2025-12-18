@@ -575,9 +575,18 @@ async function initEmailService() {
                     });
                     
                     console.log('✅ Gmail API 郵件已發送 (ID: ' + response.data.id + ')');
+                    console.log('   發送給:', mailOptions.to);
+                    console.log('   發件人:', mailOptions.from);
                     return { messageId: response.data.id, accepted: [mailOptions.to] };
                 } catch (error) {
-                    console.error('❌ Gmail API 發送失敗:', error.message);
+                    console.error('❌ Gmail API 發送失敗:');
+                    console.error('   發送給:', mailOptions.to);
+                    console.error('   發件人:', mailOptions.from);
+                    console.error('   錯誤訊息:', error.message);
+                    console.error('   錯誤詳情:', error);
+                    if (error.response) {
+                        console.error('   API 回應:', error.response.data);
+                    }
                     throw error;
                 }
             };
@@ -814,7 +823,21 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
         // 發送通知郵件給管理員（所有付款方式都需要）
         // 優先使用資料庫設定，其次使用環境變數，最後使用預設值
         const adminEmail = await db.getSetting('admin_email') || process.env.ADMIN_EMAIL || 'cheng701107@gmail.com';
-        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
+        // 確保 emailUser 與 OAuth2 認證帳號一致（Gmail API 要求）
+        let emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
+        
+        // 驗證 emailUser 是否與 OAuth2 認證帳號一致
+        if (sendEmailViaGmailAPI && transporter && transporter.options && transporter.options.auth) {
+            const oauthUser = transporter.options.auth.user;
+            if (oauthUser && emailUser !== oauthUser) {
+                console.warn('⚠️  警告：email_user 與 OAuth2 認證帳號不一致！');
+                console.warn(`   email_user: ${emailUser}`);
+                console.warn(`   OAuth2 認證帳號: ${oauthUser}`);
+                console.warn('   使用 OAuth2 認證帳號作為發件人（Gmail API 要求）');
+                // 使用 OAuth2 認證的帳號作為發件人（Gmail API 要求）
+                emailUser = oauthUser;
+            }
+        }
         
         const adminMailOptions = {
             from: emailUser,
@@ -840,12 +863,12 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
             
             try {
                 console.log('📧 正在發送郵件（匯款轉帳）...');
-            console.log('   發送給客戶:', guestEmail);
-            console.log('   使用帳號:', process.env.EMAIL_USER || 'cheng701107@gmail.com');
-            console.log('   認證方式:', useOAuth2 ? 'OAuth2' : '應用程式密碼');
+                console.log('   發送給客戶:', guestEmail);
+                console.log('   使用帳號:', emailUser);
+                console.log('   認證方式:', sendEmailViaGmailAPI ? 'OAuth2 (Gmail API)' : 'SMTP');
             
             // 如果是 OAuth2，先測試取得 Access Token
-            if (useOAuth2 && getAccessToken) {
+            if (sendEmailViaGmailAPI && getAccessToken) {
                 try {
                     console.log('🔍 測試 OAuth2 Access Token...');
                     const testToken = await getAccessToken();
@@ -854,6 +877,7 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
                     }
                 } catch (tokenError) {
                     console.error('❌ OAuth2 Access Token 測試失敗:', tokenError.message);
+                    console.error('   詳細錯誤:', tokenError);
                     throw new Error('OAuth2 認證失敗: ' + tokenError.message);
                 }
             }
@@ -888,11 +912,14 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
             emailSent = true;
         } catch (emailError) {
             emailErrorMsg = emailError.message || '未知錯誤';
-            console.error('❌ 郵件發送失敗:');
+            console.error('❌ 客戶郵件發送失敗:');
+            console.error('   發送給:', guestEmail);
+            console.error('   使用帳號:', emailUser);
             console.error('   錯誤訊息:', emailErrorMsg);
             console.error('   錯誤代碼:', emailError.code);
             console.error('   錯誤命令:', emailError.command);
             console.error('   完整錯誤:', emailError);
+            console.error('   錯誤堆疊:', emailError.stack);
             
             // 如果是認證錯誤，提供更詳細的說明
             if (emailError.code === 'EAUTH' || emailError.message.includes('Invalid login')) {
