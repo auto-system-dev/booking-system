@@ -4234,20 +4234,55 @@ function refreshEmailPreview() {
                 const bodyMatch = originalContent.match(/(<body[^>]*>)([\s\S]*?)(<\/body>)/i);
                 if (bodyMatch) {
                     const bodyContent = bodyMatch[2];
-                    // 嘗試找到 .container 並替換其內容
-                    const containerMatch = bodyContent.match(/(<div[^>]*class\s*=\s*["']container["'][^>]*>)([\s\S]*?)(<\/div>)/i);
-                    if (containerMatch) {
-                        // 保留 .container 的標籤，只替換內容
-                        const newContainerContent = containerMatch[1] + quillHtml + containerMatch[3];
-                        const newBodyContent = bodyContent.replace(
-                            /<div[^>]*class\s*=\s*["']container["'][^>]*>[\s\S]*?<\/div>/i,
-                            newContainerContent
-                        );
-                        textarea.value = originalContent.replace(
-                            /<body[^>]*>[\s\S]*?<\/body>/i,
-                            bodyMatch[1] + newBodyContent + bodyMatch[3]
-                        );
-                        console.log('✅ 已同步 Quill 內容到 textarea（保留結構）');
+                    // 使用智能方法找到 .container 的完整範圍（處理嵌套的 div）
+                    const containerStartIndex = bodyContent.search(/<div[^>]*class\s*=\s*["']container["'][^>]*>/i);
+                    if (containerStartIndex !== -1) {
+                        // 找到開始標籤
+                        const containerStartTagMatch = bodyContent.substring(containerStartIndex).match(/(<div[^>]*class\s*=\s*["']container["'][^>]*>)/i);
+                        if (containerStartTagMatch) {
+                            const containerStartTag = containerStartTagMatch[1];
+                            const containerStartPos = containerStartIndex + containerStartTagMatch[0].length;
+                            
+                            // 計算嵌套的 div 數量來找到正確的結束位置
+                            let divCount = 1;
+                            let pos = containerStartPos;
+                            let containerEndPos = -1;
+                            
+                            while (pos < bodyContent.length && divCount > 0) {
+                                const nextOpenDiv = bodyContent.indexOf('<div', pos);
+                                const nextCloseDiv = bodyContent.indexOf('</div>', pos);
+                                
+                                if (nextCloseDiv === -1) {
+                                    containerEndPos = bodyContent.length;
+                                    break;
+                                }
+                                
+                                if (nextOpenDiv !== -1 && nextOpenDiv < nextCloseDiv) {
+                                    divCount++;
+                                    pos = nextOpenDiv + 4;
+                                } else {
+                                    divCount--;
+                                    if (divCount === 0) {
+                                        containerEndPos = nextCloseDiv;
+                                        break;
+                                    }
+                                    pos = nextCloseDiv + 6;
+                                }
+                            }
+                            
+                            if (containerEndPos !== -1) {
+                                // 替換 .container 的內容
+                                const beforeContainer = bodyContent.substring(0, containerStartIndex);
+                                const afterContainer = bodyContent.substring(containerEndPos + 6); // +6 for '</div>'
+                                const newBodyContent = beforeContainer + containerStartTag + quillHtml + '</div>' + afterContainer;
+                                
+                                textarea.value = originalContent.replace(
+                                    /<body[^>]*>[\s\S]*?<\/body>/i,
+                                    bodyMatch[1] + newBodyContent + bodyMatch[3]
+                                );
+                                console.log('✅ 已同步 Quill 內容到 textarea（保留結構）');
+                            }
+                        }
                     }
                 }
             }
