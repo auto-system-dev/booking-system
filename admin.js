@@ -2923,12 +2923,14 @@ async function saveGmailSettings() {
 // 切換系統設定分頁
 function switchSettingsTab(tab) {
     // 隱藏所有分頁內容
-    document.querySelectorAll('#settings-section .tab-content').forEach(content => {
+    const allTabContents = document.querySelectorAll('#settings-section .tab-content');
+    allTabContents.forEach(content => {
         content.classList.remove('active');
     });
     
     // 移除所有分頁按鈕的 active 狀態
-    document.querySelectorAll('#settings-section .tab-button').forEach(btn => {
+    const allTabButtons = document.querySelectorAll('#settings-section .tab-button');
+    allTabButtons.forEach(btn => {
         btn.classList.remove('active');
     });
     
@@ -2937,6 +2939,8 @@ function switchSettingsTab(tab) {
     const content = document.getElementById(contentId);
     if (content) {
         content.classList.add('active');
+    } else {
+        console.error('找不到分頁內容:', contentId);
     }
     
     // 設定選中的分頁按鈕為 active
@@ -2944,6 +2948,8 @@ function switchSettingsTab(tab) {
     const button = document.getElementById(buttonId);
     if (button) {
         button.classList.add('active');
+    } else {
+        console.error('找不到分頁按鈕:', buttonId);
     }
     
     // 儲存當前分頁到 localStorage

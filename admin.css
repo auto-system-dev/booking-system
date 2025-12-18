@@ -1089,11 +1089,11 @@ label:has(input[type="checkbox"]:hover) {
 }
 
 .tab-content {
-    display: block;
+    display: none;
 }
 
-.tab-content[style*="display: none"] {
-    display: none !important;
+.tab-content.active {
+    display: block;
 }
 
 /* Quill 編輯器自定義樣式 */
