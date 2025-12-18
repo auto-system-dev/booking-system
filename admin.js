@@ -4222,29 +4222,27 @@ function refreshEmailPreview() {
     
     console.log('🔄 更新預覽，當前樣式:', currentEmailStyle);
     
+    // 始終從 textarea 獲取完整的原始 HTML（包含完整結構）
+    const fullHtml = document.getElementById('emailTemplateContent').value;
     let bodyContent = '';
-    if (isHtmlMode) {
-        const fullHtml = document.getElementById('emailTemplateContent').value;
-        // 提取 body 內容
-        if (fullHtml.includes('<body>')) {
-            const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-            if (bodyMatch) {
-                bodyContent = bodyMatch[1];
-            } else {
-                bodyContent = fullHtml;
-            }
-        } else if (fullHtml.includes('<!DOCTYPE html>') || fullHtml.includes('<html')) {
-            const htmlMatch = fullHtml.match(/<html[^>]*>([\s\S]*?)<\/html>/i);
-            if (htmlMatch) {
-                bodyContent = htmlMatch[1].replace(/<head[^>]*>[\s\S]*?<\/head>/i, '').trim();
-            } else {
-                bodyContent = fullHtml;
-            }
+    
+    // 從完整 HTML 中提取 body 內容
+    if (fullHtml.includes('<body>')) {
+        const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+        if (bodyMatch) {
+            bodyContent = bodyMatch[1];
+        } else {
+            bodyContent = fullHtml;
+        }
+    } else if (fullHtml.includes('<!DOCTYPE html>') || fullHtml.includes('<html')) {
+        const htmlMatch = fullHtml.match(/<html[^>]*>([\s\S]*?)<\/html>/i);
+        if (htmlMatch) {
+            bodyContent = htmlMatch[1].replace(/<head[^>]*>[\s\S]*?<\/head>/i, '').trim();
         } else {
             bodyContent = fullHtml;
         }
     } else {
-        bodyContent = quillEditor.root.innerHTML;
+        bodyContent = fullHtml;
     }
     
     // 移除所有 style 標籤和 script 標籤
