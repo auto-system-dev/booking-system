@@ -3323,6 +3323,11 @@ const handlePaymentResult = async (req, res) => {
                                 color: #fff;
                                 padding: 24px 20px 16px;
                             }
+                            .container-header h1 {
+                                color: #fff !important;
+                                margin: 0 0 16px;
+                                font-size: 24px;
+                            }
                             .success-icon {
                                 font-size: 56px;
                                 color: #4caf50;
