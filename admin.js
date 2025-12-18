@@ -4352,6 +4352,7 @@ function getEmailStyleCSS(style) {
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
             .header { background: #198754; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
             .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #198754; }
             .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
             .info-label { font-weight: 600; color: #666; }
             .info-value { color: #333; }
@@ -4362,6 +4363,7 @@ function getEmailStyleCSS(style) {
             .container { max-width: 650px; margin: 0 auto; padding: 0; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
             .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; }
             .content { padding: 40px 30px; }
+            .info-box { background: #f8f9fa; padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #667eea; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
             .info-row { display: flex; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid #e8ecf0; }
             .info-label { font-weight: 600; color: #7f8c8d; font-size: 14px; }
             .info-value { color: #2c3e50; font-weight: 500; }
@@ -4372,6 +4374,7 @@ function getEmailStyleCSS(style) {
             .container { max-width: 580px; margin: 0 auto; padding: 40px 30px; }
             .header { border-bottom: 3px solid #000; padding-bottom: 20px; margin-bottom: 30px; }
             .content { padding: 0; }
+            .info-box { background: #fff; padding: 25px; margin: 30px 0; border-left: 3px solid #000; }
             .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; }
             .info-label { font-weight: 400; color: #666; font-size: 14px; letter-spacing: 0.5px; }
             .info-value { color: #000; font-weight: 500; }
@@ -4382,6 +4385,7 @@ function getEmailStyleCSS(style) {
             .container { max-width: 600px; margin: 0 auto; padding: 0; background: white; border: 1px solid #ddd; }
             .header { background: #1a1a1a; color: white; padding: 35px 30px; text-align: center; border-bottom: 4px solid #c9a961; }
             .content { padding: 35px 30px; }
+            .info-box { background: #faf8f3; padding: 25px; margin: 25px 0; border-left: 4px solid #c9a961; }
             .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e5e5e5; }
             .info-label { font-weight: 600; color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
             .info-value { color: #1a1a1a; font-weight: 500; }
@@ -4392,6 +4396,7 @@ function getEmailStyleCSS(style) {
             .container { max-width: 620px; margin: 0 auto; padding: 0; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
             .header { background: #8b7355; color: white; padding: 45px 35px; text-align: center; }
             .content { padding: 45px 35px; }
+            .info-box { background: #f5f3f0; padding: 30px; margin: 30px 0; border-left: 3px solid #8b7355; border-radius: 4px; }
             .info-row { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #e8e6e3; }
             .info-label { font-weight: 500; color: #8b7355; font-size: 14px; font-style: italic; }
             .info-value { color: #3d3d3d; font-weight: 400; }
