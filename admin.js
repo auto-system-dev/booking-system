@@ -342,6 +342,9 @@ function switchRoomTypeTab(tab) {
         document.getElementById('addRoomTypeBtn').style.display = 'inline-flex';
         document.getElementById('roomTypeRefreshBtn').style.display = 'inline-flex';
         document.getElementById('holidayRefreshBtn').style.display = 'none';
+        
+        // 載入房型列表
+        loadRoomTypes();
     } else if (tab === 'holidays') {
         document.getElementById('holidaysTab').classList.add('active');
         document.getElementById('roomTypesTabContent').style.display = 'none';
