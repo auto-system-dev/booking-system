@@ -4453,8 +4453,25 @@ function refreshEmailPreview() {
         // 如果從原始 HTML 提取到了完整的結構，使用原始結構
         if (headerHtml && contentStartTag && contentHtml) {
             // 使用原始結構，但將 Quill 編輯的內容合併進去
-            // 如果 bodyContent 有實際內容（不只是 header），使用它；否則使用原始的 contentHtml
-            const actualContent = bodyContent.trim().length > 100 ? bodyContent : contentHtml;
+            // 檢查 bodyContent 是否包含實際內容（不只是 header 或空白）
+            let cleanedBodyContent = bodyContent.replace(/<div[^>]*class\s*=\s*["']header["'][^>]*>[\s\S]*?<\/div>/i, '').trim();
+            
+            // 移除可能的空白標籤和空白字符
+            cleanedBodyContent = cleanedBodyContent.replace(/^\s*<div[^>]*class\s*=\s*["']content["'][^>]*>/i, '').replace(/<\/div>\s*$/i, '').trim();
+            
+            // 檢查是否有實際的文字內容（不只是 HTML 標籤）
+            const textContent = cleanedBodyContent.replace(/<[^>]+>/g, '').trim();
+            
+            // 如果 bodyContent 有實際內容（長度 > 100 且不是只有空白），使用它；否則使用原始的 contentHtml
+            const actualContent = (cleanedBodyContent.length > 100 && textContent.length > 10) 
+                ? cleanedBodyContent 
+                : contentHtml;
+            
+            console.log('📋 bodyContent 清理後長度:', cleanedBodyContent.length);
+            console.log('📋 bodyContent 文字內容長度:', textContent.length);
+            console.log('📋 原始 contentHtml 長度:', contentHtml.length);
+            console.log('📋 將使用的實際內容長度:', actualContent.length);
+            
             bodyContent = headerHtml + contentStartTag + actualContent + '</div>';
             console.log('✅ 使用原始 HTML 結構，合併編輯內容，新內容長度:', bodyContent.length);
         } else {
