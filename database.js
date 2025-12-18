@@ -428,6 +428,7 @@ async function initPostgreSQL() {
                 ['hotel_phone', '', '旅館電話（顯示在郵件最下面）'],
                 ['hotel_address', '', '旅館地址（顯示在郵件最下面）'],
                 ['hotel_email', '', '旅館信箱（顯示在郵件最下面）'],
+                ['admin_email', process.env.ADMIN_EMAIL || 'cheng701107@gmail.com', '管理員通知信箱（新訂房通知郵件會寄到此信箱）'],
                 ['weekday_settings', JSON.stringify({ weekdays: [1, 2, 3, 4, 5] }), '平日/假日設定（JSON 格式：{"weekdays": [1,2,3,4,5]}，預設週一到週五為平日）']
             ];
             
@@ -1134,6 +1135,7 @@ function initSQLite() {
                                         ['hotel_phone', '', '旅館電話（顯示在郵件最下面）'],
                                         ['hotel_address', '', '旅館地址（顯示在郵件最下面）'],
                                         ['hotel_email', '', '旅館信箱（顯示在郵件最下面）'],
+                                        ['admin_email', process.env.ADMIN_EMAIL || 'cheng701107@gmail.com', '管理員通知信箱（新訂房通知郵件會寄到此信箱）'],
                                         ['weekday_settings', JSON.stringify({ weekdays: [1, 2, 3, 4, 5] }), '平日/假日設定（JSON 格式：{"weekdays": [1,2,3,4,5]}，預設週一到週五為平日）']
                                     ];
                                     

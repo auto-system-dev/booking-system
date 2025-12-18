@@ -788,9 +788,12 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
         bookingData.bankInfo = bankInfo;
         
         // 發送通知郵件給管理員（所有付款方式都需要）
+        // 優先使用資料庫設定，其次使用環境變數，最後使用預設值
+        const adminEmail = await db.getSetting('admin_email') || process.env.ADMIN_EMAIL || 'cheng701107@gmail.com';
+        
         const adminMailOptions = {
             from: process.env.EMAIL_USER || 'your-email@gmail.com',
-            to: process.env.ADMIN_EMAIL || 'cheng701107@gmail.com', // 管理員 Email
+            to: adminEmail, // 管理員 Email
             subject: `【新訂房通知】${guestName} - ${bookingData.bookingId}`,
             html: generateAdminEmail(bookingData)
         };

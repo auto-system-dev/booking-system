@@ -2737,9 +2737,23 @@ async function saveHotelInfoSettings() {
     const hotelPhone = document.getElementById('hotelPhone').value;
     const hotelAddress = document.getElementById('hotelAddress').value;
     const hotelEmail = document.getElementById('hotelEmail').value;
+    const adminEmail = document.getElementById('adminEmail').value;
+    
+    // 驗證管理員信箱
+    if (!adminEmail) {
+        showError('請填寫管理員通知信箱');
+        return;
+    }
+    
+    // 驗證 Email 格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(adminEmail)) {
+        showError('請輸入有效的管理員通知信箱');
+        return;
+    }
     
     try {
-        const [hotelNameResponse, hotelPhoneResponse, hotelAddressResponse, hotelEmailResponse] = await Promise.all([
+        const [hotelNameResponse, hotelPhoneResponse, hotelAddressResponse, hotelEmailResponse, adminEmailResponse] = await Promise.all([
             adminFetch('/api/admin/settings/hotel_name', {
                 method: 'PUT',
                 headers: {
@@ -2779,6 +2793,16 @@ async function saveHotelInfoSettings() {
                     value: hotelEmail,
                     description: '旅館信箱'
                 })
+            }),
+            adminFetch('/api/admin/settings/admin_email', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: adminEmail,
+                    description: '管理員通知信箱（新訂房通知郵件會寄到此信箱）'
+                })
             })
         ]);
         
@@ -2786,7 +2810,8 @@ async function saveHotelInfoSettings() {
             hotelNameResponse.json(),
             hotelPhoneResponse.json(),
             hotelAddressResponse.json(),
-            hotelEmailResponse.json()
+            hotelEmailResponse.json(),
+            adminEmailResponse.json()
         ]);
         
         const allSuccess = results.every(r => r.success);
@@ -2830,6 +2855,9 @@ async function loadSettings() {
             document.getElementById('hotelPhone').value = settings.hotel_phone || '';
             document.getElementById('hotelAddress').value = settings.hotel_address || '';
             document.getElementById('hotelEmail').value = settings.hotel_email || '';
+            
+            // 管理員通知信箱
+            document.getElementById('adminEmail').value = settings.admin_email || '';
         } else {
             showError('載入設定失敗：' + (result.message || '未知錯誤'));
         }
