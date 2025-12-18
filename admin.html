@@ -662,11 +662,15 @@
                         <button class="btn-save" onclick="saveSettings()">儲存設定</button>
                     </div>
                     
-                    <!-- 分隔線 -->
-                    <hr style="margin: 30px 0; border: none; border-top: 2px solid #e74c3c; opacity: 0.7;">
-                    
-                    <div class="settings-card" style="margin-top: 20px;">
-                        <h3>修改管理員密碼</h3>
+                    <!-- 帳號安全設定區塊 -->
+                    <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #e0e0e0;">
+                        <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
+                            <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">lock</span>
+                            <h3 style="margin: 0; color: #2c3e50;">帳號安全設定</h3>
+                        </div>
+                        
+                        <div class="settings-card" style="margin-top: 0;">
+                            <h3>修改管理員密碼</h3>
                         <div class="form-group">
                             <label>目前密碼</label>
                             <input type="password" id="currentPassword" placeholder="請輸入目前密碼" autocomplete="current-password">
@@ -683,6 +687,7 @@
                             <small>請再次輸入新密碼以確認</small>
                         </div>
                         <button class="btn-save" onclick="changePassword()">修改密碼</button>
+                        </div>
                     </div>
                 </div>
             </section>
