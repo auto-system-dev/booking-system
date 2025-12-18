@@ -4251,11 +4251,25 @@ function refreshEmailPreview() {
     bodyContent = bodyContent.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
     bodyContent = bodyContent.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
     
+    // 檢查內容結構
+    console.log('📋 提取的內容前 500 字元:', bodyContent.substring(0, 500));
+    console.log('📋 內容是否包含 .header:', bodyContent.includes('class="header') || bodyContent.includes("class='header"));
+    console.log('📋 內容是否包含 .container:', bodyContent.includes('class="container') || bodyContent.includes("class='container"));
+    
     // 提取 .container 內的內容（處理嵌套的 div）
-    const containerMatch = bodyContent.match(/<div[^>]*class\s*=\s*["']container["'][^>]*>([\s\S]*?)<\/div>/i);
+    // 使用非貪婪匹配，但需要處理嵌套的 div
+    let containerMatch = bodyContent.match(/<div[^>]*class\s*=\s*["']container["'][^>]*>([\s\S]*?)<\/div>/i);
     if (containerMatch) {
-        bodyContent = containerMatch[1];
-        console.log('✅ 已提取 .container 內容');
+        let containerContent = containerMatch[1];
+        // 檢查是否有嵌套的 container div
+        let nestedContainerMatch = containerContent.match(/<div[^>]*class\s*=\s*["']container["'][^>]*>([\s\S]*?)<\/div>/i);
+        if (nestedContainerMatch) {
+            containerContent = nestedContainerMatch[1];
+        }
+        bodyContent = containerContent;
+        console.log('✅ 已提取 .container 內容，長度:', bodyContent.length);
+    } else {
+        console.log('⚠️ 未找到 .container，使用原始內容');
     }
     
     // 無論如何都使用當前選擇的樣式包裝內容
