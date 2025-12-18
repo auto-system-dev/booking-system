@@ -4306,12 +4306,17 @@ function refreshEmailPreview() {
     const hasHeader = bodyContent.includes('class="header') || bodyContent.includes("class='header");
     const hasContent = bodyContent.includes('class="content') || bodyContent.includes("class='content");
     
-    // 如果沒有完整的結構，嘗試從原始 HTML 中提取結構
+    console.log('📋 檢查結構 - hasHeader:', hasHeader, 'hasContent:', hasContent);
+    
+    // 如果沒有完整的結構，嘗試從原始 HTML 中提取結構或自動重建
     if (!hasHeader || !hasContent) {
-        console.log('⚠️ 內容缺少 .header 或 .content 結構，嘗試從原始 HTML 提取');
+        console.log('⚠️ 內容缺少 .header 或 .content 結構，嘗試重建');
         const fullHtml = document.getElementById('emailTemplateContent').value;
         
         // 從原始 HTML 中提取 .header 和 .content 的結構
+        let headerHtml = '';
+        let contentStartTag = '';
+        
         if (fullHtml.includes('<body>')) {
             const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
             if (bodyMatch) {
@@ -4321,23 +4326,45 @@ function refreshEmailPreview() {
                     const originalContainerContent = containerMatch[1];
                     // 檢查原始內容是否有 .header 和 .content
                     const originalHeaderMatch = originalContainerContent.match(/(<div[^>]*class\s*=\s*["']header["'][^>]*>[\s\S]*?<\/div>)/i);
-                    const originalContentMatch = originalContainerContent.match(/(<div[^>]*class\s*=\s*["']content["'][^>]*>[\s\S]*?<\/div>)/i);
+                    const originalContentMatch = originalContainerContent.match(/(<div[^>]*class\s*=\s*["']content["'][^>]*>)/i);
                     
-                    if (originalHeaderMatch && originalContentMatch) {
-                        // 使用原始的 .header 結構，但替換 .content 內的內容為當前編輯的內容
-                        const headerHtml = originalHeaderMatch[1];
-                        const contentStart = originalContentMatch[1].match(/(<div[^>]*class\s*=\s*["']content["'][^>]*>)/i);
-                        const contentEnd = '</div>';
-                        
-                        if (contentStart) {
-                            // 重建完整的結構
-                            bodyContent = headerHtml + contentStart[1] + bodyContent + contentEnd;
-                            console.log('✅ 已重建 .header 和 .content 結構');
-                        }
+                    if (originalHeaderMatch) {
+                        headerHtml = originalHeaderMatch[1];
+                        console.log('✅ 從原始 HTML 提取到 .header 結構');
+                    }
+                    
+                    if (originalContentMatch) {
+                        contentStartTag = originalContentMatch[1];
+                        console.log('✅ 從原始 HTML 提取到 .content 開始標籤');
                     }
                 }
             }
         }
+        
+        // 如果從原始 HTML 提取失敗，自動創建結構
+        if (!headerHtml) {
+            // 檢查內容中是否有標題（h1 或包含「入住提醒」等）
+            const titleMatch = bodyContent.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+            if (titleMatch) {
+                headerHtml = `<div class="header"><h1>${titleMatch[1]}</h1></div>`;
+                // 從 bodyContent 中移除標題
+                bodyContent = bodyContent.replace(/<h1[^>]*>[\s\S]*?<\/h1>/i, '');
+                console.log('✅ 自動創建 .header 結構');
+            } else {
+                // 如果沒有標題，創建一個默認的
+                headerHtml = '<div class="header"><h1>入住提醒</h1></div>';
+                console.log('✅ 創建默認 .header 結構');
+            }
+        }
+        
+        if (!contentStartTag) {
+            contentStartTag = '<div class="content">';
+            console.log('✅ 創建 .content 開始標籤');
+        }
+        
+        // 重建完整的結構
+        bodyContent = headerHtml + contentStartTag + bodyContent + '</div>';
+        console.log('✅ 已重建 .header 和 .content 結構，新內容長度:', bodyContent.length);
     }
     
     // 無論如何都使用當前選擇的樣式包裝內容
