@@ -714,10 +714,96 @@ function renderCustomers() {
             <td style="text-align: center;">
                 <div class="action-buttons">
                     <button class="btn-view" onclick="viewCustomerDetails('${escapeHtml(customer.guest_email)}')">查看</button>
+                    <button class="btn-edit" onclick="editCustomer('${escapeHtml(customer.guest_email)}', '${escapeHtml(customer.guest_name || '')}', '${escapeHtml(customer.guest_phone || '')}')">修改</button>
+                    <button class="btn-delete" onclick="deleteCustomer('${escapeHtml(customer.guest_email)}', ${customer.booking_count || 0})">刪除</button>
                 </div>
             </td>
         </tr>
     `).join('');
+}
+
+// 開啟修改客戶資料模態框
+function editCustomer(email, name, phone) {
+    document.getElementById('editCustomerEmail').value = email;
+    document.getElementById('editCustomerName').value = name || '';
+    document.getElementById('editCustomerPhone').value = phone || '';
+    document.getElementById('customerEditModal').style.display = 'block';
+}
+
+// 關閉修改客戶資料模態框
+function closeCustomerEditModal() {
+    document.getElementById('customerEditModal').style.display = 'none';
+    document.getElementById('customerEditForm').reset();
+}
+
+// 儲存客戶資料修改
+async function saveCustomerEdit(event) {
+    event.preventDefault();
+    
+    const email = document.getElementById('editCustomerEmail').value;
+    const guest_name = document.getElementById('editCustomerName').value.trim();
+    const guest_phone = document.getElementById('editCustomerPhone').value.trim();
+    
+    if (!guest_name || !guest_phone) {
+        showError('請填寫完整的客戶資料');
+        return;
+    }
+    
+    try {
+        const response = await adminFetch(`/api/customers/${encodeURIComponent(email)}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                guest_name,
+                guest_phone
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('客戶資料已更新');
+            closeCustomerEditModal();
+            loadCustomers(); // 重新載入客戶列表
+        } else {
+            showError('更新失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('更新客戶資料錯誤:', error);
+        showError('更新時發生錯誤：' + error.message);
+    }
+}
+
+// 刪除客戶
+async function deleteCustomer(email, bookingCount) {
+    if (bookingCount > 0) {
+        showError('該客戶有訂房記錄，無法刪除');
+        return;
+    }
+    
+    if (!confirm(`確定要刪除客戶 ${email} 嗎？此操作無法復原。`)) {
+        return;
+    }
+    
+    try {
+        const response = await adminFetch(`/api/customers/${encodeURIComponent(email)}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('客戶已刪除');
+            loadCustomers(); // 重新載入客戶列表
+        } else {
+            showError('刪除失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('刪除客戶錯誤:', error);
+        showError('刪除時發生錯誤：' + error.message);
+    }
 }
 
 // 篩選客戶

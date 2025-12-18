@@ -1869,6 +1869,56 @@ app.get('/api/customers', requireAuth, adminLimiter, async (req, res) => {
     }
 });
 
+// API: 更新客戶資料
+app.put('/api/customers/:email', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        const { email } = req.params;
+        const { guest_name, guest_phone } = req.body;
+        
+        if (!guest_name && !guest_phone) {
+            return res.status(400).json({
+                success: false,
+                message: '至少需要提供姓名或電話'
+            });
+        }
+        
+        const updatedCount = await db.updateCustomer(email, { guest_name, guest_phone });
+        
+        res.json({
+            success: true,
+            message: '客戶資料已更新',
+            updated_count: updatedCount
+        });
+    } catch (error) {
+        console.error('更新客戶資料錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '更新客戶資料失敗：' + error.message
+        });
+    }
+});
+
+// API: 刪除客戶
+app.delete('/api/customers/:email', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        const { email } = req.params;
+        
+        await db.deleteCustomer(email);
+        
+        res.json({
+            success: true,
+            message: '客戶已刪除'
+        });
+    } catch (error) {
+        console.error('刪除客戶錯誤:', error);
+        const statusCode = error.message.includes('訂房記錄') ? 400 : 500;
+        res.status(statusCode).json({
+            success: false,
+            message: error.message || '刪除客戶失敗'
+        });
+    }
+});
+
 // API: 取得單一客戶詳情（包含所有訂房記錄）
 app.get('/api/customers/:email', publicLimiter, async (req, res) => {
     try {

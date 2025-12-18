@@ -1704,6 +1704,63 @@ async function getCustomerByEmail(email) {
     }
 }
 
+// 更新客戶資料（更新所有該 email 的訂房記錄）
+async function updateCustomer(email, updateData) {
+    try {
+        const { guest_name, guest_phone } = updateData;
+        
+        if (!guest_name && !guest_phone) {
+            throw new Error('至少需要提供姓名或電話');
+        }
+        
+        const updates = [];
+        const values = [];
+        
+        if (guest_name) {
+            updates.push(usePostgreSQL ? 'guest_name = $' + (values.length + 1) : 'guest_name = ?');
+            values.push(guest_name);
+        }
+        
+        if (guest_phone) {
+            updates.push(usePostgreSQL ? 'guest_phone = $' + (values.length + 1) : 'guest_phone = ?');
+            values.push(guest_phone);
+        }
+        
+        values.push(email);
+        
+        const sql = usePostgreSQL
+            ? `UPDATE bookings SET ${updates.join(', ')} WHERE guest_email = $${values.length}`
+            : `UPDATE bookings SET ${updates.join(', ')} WHERE guest_email = ?`;
+        
+        const result = await query(sql, values);
+        console.log(`✅ 客戶資料已更新 (email: ${email}, 更新了 ${result.changes || result.rowCount || 0} 筆訂房記錄)`);
+        return result.changes || result.rowCount || 0;
+    } catch (error) {
+        console.error('❌ 更新客戶資料失敗:', error.message);
+        throw error;
+    }
+}
+
+// 刪除客戶（僅在沒有訂房記錄時允許）
+async function deleteCustomer(email) {
+    try {
+        // 檢查是否有訂房記錄
+        const bookings = await getBookingsByEmail(email);
+        
+        if (bookings && bookings.length > 0) {
+            throw new Error('該客戶有訂房記錄，無法刪除');
+        }
+        
+        // 如果沒有訂房記錄，客戶資料會自動從聚合查詢中消失
+        // 因為客戶資料是從 bookings 表中聚合出來的
+        console.log(`✅ 客戶已刪除 (email: ${email})`);
+        return true;
+    } catch (error) {
+        console.error('❌ 刪除客戶失敗:', error.message);
+        throw error;
+    }
+}
+
 // ==================== 假日管理 ====================
 
 // 取得所有假日
@@ -2873,6 +2930,8 @@ module.exports = {
     // 客戶管理
     getAllCustomers,
     getCustomerByEmail,
+    updateCustomer,
+    deleteCustomer,
     // 加購商品管理
     getAllAddons,
     getAllAddonsAdmin,
