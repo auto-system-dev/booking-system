@@ -4280,9 +4280,16 @@ function refreshEmailPreview() {
 // 包裝郵件內容為完整 HTML
 function wrapEmailContent(content) {
     const style = getEmailStyleCSS(currentEmailStyle);
+    console.log('🎨 獲取的樣式 CSS 長度:', style.length);
+    console.log('🎨 樣式 CSS 前 200 字元:', style.substring(0, 200));
+    
     // 確保內容不包含任何現有的 style 標籤，避免樣式衝突
     content = content.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
-    return `<!DOCTYPE html>
+    
+    // 移除所有內聯樣式（style 屬性），讓樣式完全由 CSS 類控制
+    content = content.replace(/\s+style\s*=\s*["'][^"']*["']/gi, '');
+    
+    const wrappedHtml = `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -4295,6 +4302,9 @@ function wrapEmailContent(content) {
     </div>
 </body>
 </html>`;
+    
+    console.log('📦 包裝後的 HTML 前 500 字元:', wrappedHtml.substring(0, 500));
+    return wrappedHtml;
 }
 
 // 替換郵件變數為範例資料
