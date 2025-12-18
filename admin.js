@@ -4277,40 +4277,69 @@ function refreshEmailPreview() {
     }
     
     const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    const iframeWin = iframe.contentWindow;
     
-    // 完全清除 iframe 內容
-    iframeDoc.open();
-    iframeDoc.write('');
-    iframeDoc.close();
-    
-    // 重新寫入內容
+    // 完全清除 iframe 內容並重新寫入
     iframeDoc.open();
     iframeDoc.write(htmlContent);
     iframeDoc.close();
     
+    // 強制重新計算樣式
+    if (iframeWin) {
+        iframeWin.location.reload = function() {}; // 防止重新載入
+    }
+    
     // 驗證樣式是否正確應用
     setTimeout(() => {
-        const styleElement = iframeDoc.querySelector('style');
-        if (styleElement) {
-            const styleText = styleElement.textContent || styleElement.innerHTML;
-            console.log('✅ iframe 內的樣式長度:', styleText.length);
-            console.log('✅ iframe 內的樣式前 200 字元:', styleText.substring(0, 200));
-            
-            // 檢查是否有正確的樣式類
-            const container = iframeDoc.querySelector('.container');
-            if (container) {
-                const computedStyle = iframe.contentWindow.getComputedStyle(container);
-                console.log('✅ .container 的實際樣式:', {
-                    maxWidth: computedStyle.maxWidth,
-                    margin: computedStyle.margin,
-                    padding: computedStyle.padding,
-                    backgroundColor: computedStyle.backgroundColor
-                });
+        try {
+            const styleElement = iframeDoc.querySelector('style');
+            if (styleElement) {
+                const styleText = styleElement.textContent || styleElement.innerHTML;
+                console.log('✅ iframe 內的樣式長度:', styleText.length);
+                console.log('✅ iframe 內的樣式前 200 字元:', styleText.substring(0, 200));
+                
+                // 檢查是否有正確的樣式類
+                const container = iframeDoc.querySelector('.container');
+                const header = iframeDoc.querySelector('.header');
+                const body = iframeDoc.querySelector('body');
+                
+                if (container && iframeWin) {
+                    const computedStyle = iframeWin.getComputedStyle(container);
+                    const headerStyle = header ? iframeWin.getComputedStyle(header) : null;
+                    const bodyStyle = body ? iframeWin.getComputedStyle(body) : null;
+                    
+                    console.log('✅ .container 的實際樣式:', {
+                        maxWidth: computedStyle.maxWidth,
+                        margin: computedStyle.margin,
+                        padding: computedStyle.padding,
+                        backgroundColor: computedStyle.backgroundColor,
+                        borderRadius: computedStyle.borderRadius
+                    });
+                    
+                    if (headerStyle) {
+                        console.log('✅ .header 的實際樣式:', {
+                            backgroundColor: headerStyle.backgroundColor,
+                            color: headerStyle.color,
+                            padding: headerStyle.padding
+                        });
+                    }
+                    
+                    if (bodyStyle) {
+                        console.log('✅ body 的實際樣式:', {
+                            backgroundColor: bodyStyle.backgroundColor,
+                            fontFamily: bodyStyle.fontFamily
+                        });
+                    }
+                } else {
+                    console.warn('⚠️ 找不到 .container 元素');
+                }
+            } else {
+                console.error('❌ iframe 內找不到 style 標籤');
             }
-        } else {
-            console.error('❌ iframe 內找不到 style 標籤');
+        } catch (error) {
+            console.error('❌ 檢查樣式時發生錯誤:', error);
         }
-    }, 100);
+    }, 200);
     
     console.log('✅ 預覽已更新');
 }
