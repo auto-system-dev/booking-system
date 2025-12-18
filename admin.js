@@ -673,6 +673,13 @@ async function loadCustomers() {
     try {
         const response = await adminFetch('/api/customers');
         
+        // 處理 401 未授權錯誤
+        if (response.status === 401) {
+            console.warn('客戶列表 API 返回 401，Session 可能已過期，重新檢查登入狀態');
+            await checkAuthStatus();
+            return;
+        }
+        
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
