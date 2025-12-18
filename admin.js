@@ -4155,36 +4155,6 @@ function handleTextareaInput() {
         }, 300);
     }
 }
-        
-        // 將 Quill 的內容保存到 textarea
-        const quillHtml = quillEditor.root.innerHTML;
-        const originalContent = textarea.value;
-        
-        if (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html')) {
-            if (originalContent.includes('<body>')) {
-                textarea.value = originalContent.replace(
-                    /<body[^>]*>([\s\S]*?)<\/body>/i,
-                    `<body>${quillHtml}</body>`
-                );
-            } else {
-                textarea.value = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
-    </style>
-</head>
-<body>
-${quillHtml}
-</body>
-</html>`;
-            }
-        } else {
-            textarea.value = quillHtml;
-        }
-    }
-}
 
 // 插入變數到編輯器
 function insertVariable(variable) {
