@@ -4328,17 +4328,57 @@ function refreshEmailPreview() {
                     const originalContainerContent = containerMatch[1];
                     // 檢查原始內容是否有 .header 和 .content
                     const originalHeaderMatch = originalContainerContent.match(/(<div[^>]*class\s*=\s*["']header["'][^>]*>[\s\S]*?<\/div>)/i);
-                    const originalContentMatch = originalContainerContent.match(/(<div[^>]*class\s*=\s*["']content["'][^>]*>)([\s\S]*?)(<\/div>)/i);
+                    
+                    // 使用更智能的方法提取 .content（處理嵌套的 div）
+                    const contentStartIndex = originalContainerContent.search(/<div[^>]*class\s*=\s*["']content["'][^>]*>/i);
+                    if (contentStartIndex !== -1) {
+                        // 找到開始標籤
+                        const contentStartTagMatch = originalContainerContent.substring(contentStartIndex).match(/(<div[^>]*class\s*=\s*["']content["'][^>]*>)/i);
+                        if (contentStartTagMatch) {
+                            contentStartTag = contentStartTagMatch[1];
+                            const contentStartPos = contentStartIndex + contentStartTagMatch[0].length;
+                            
+                            // 從開始標籤後開始，計算嵌套的 div 數量來找到正確的結束位置
+                            let divCount = 1; // 已經有一個開始的 <div class="content">
+                            let pos = contentStartPos;
+                            let contentEndPos = -1;
+                            
+                            while (pos < originalContainerContent.length && divCount > 0) {
+                                const nextOpenDiv = originalContainerContent.indexOf('<div', pos);
+                                const nextCloseDiv = originalContainerContent.indexOf('</div>', pos);
+                                
+                                if (nextCloseDiv === -1) {
+                                    // 沒有找到結束標籤，使用到字符串末尾
+                                    contentEndPos = originalContainerContent.length;
+                                    break;
+                                }
+                                
+                                if (nextOpenDiv !== -1 && nextOpenDiv < nextCloseDiv) {
+                                    // 先遇到 <div，增加計數
+                                    divCount++;
+                                    pos = nextOpenDiv + 4; // 跳過 '<div'
+                                } else {
+                                    // 先遇到 </div>，減少計數
+                                    divCount--;
+                                    if (divCount === 0) {
+                                        contentEndPos = nextCloseDiv;
+                                        break;
+                                    }
+                                    pos = nextCloseDiv + 6; // 跳過 '</div>'
+                                }
+                            }
+                            
+                            if (contentEndPos !== -1) {
+                                contentHtml = originalContainerContent.substring(contentStartPos, contentEndPos);
+                                console.log('✅ 從原始 HTML 提取到 .content 結構，內容長度:', contentHtml.length);
+                                console.log('📋 提取的 .content 內容前 200 字元:', contentHtml.substring(0, 200));
+                            }
+                        }
+                    }
                     
                     if (originalHeaderMatch) {
                         headerHtml = originalHeaderMatch[1];
-                        console.log('✅ 從原始 HTML 提取到 .header 結構');
-                    }
-                    
-                    if (originalContentMatch) {
-                        contentStartTag = originalContentMatch[1];
-                        contentHtml = originalContentMatch[2]; // 提取 .content 內的實際內容
-                        console.log('✅ 從原始 HTML 提取到 .content 結構，內容長度:', contentHtml.length);
+                        console.log('✅ 從原始 HTML 提取到 .header 結構，長度:', headerHtml.length);
                     }
                 }
             }
