@@ -1717,11 +1717,11 @@ function showEditModal(booking) {
                     <option value="refunded" ${(booking.payment_status || 'pending') === 'refunded' ? 'selected' : ''}>已退款</option>
                 </select>
             </div>
-            <div class="form-group" id="sendPaymentReceiptContainer" style="margin-top: 4px; display: ${(booking.payment_method === '匯款轉帳' && (booking.payment_status || 'pending') === 'paid') ? 'flex' : 'none'}; align-items: center; gap: 8px;">
-                <label style="margin: 0;">收款信</label>
-                <label style="display: flex; align-items: center; gap: 6px; font-weight: normal;">
-                    <input type="checkbox" name="send_payment_receipt" id="sendPaymentReceiptCheckbox">
-                    <span>寄送收款信給使用者</span>
+            <div class="form-group" id="sendPaymentReceiptContainer" style="margin-top: 4px; display: ${(booking.payment_method === '匯款轉帳' && (booking.payment_status || 'pending') === 'paid') ? 'flex' : 'none'}; align-items: center; gap: 8px; flex-wrap: nowrap;">
+                <label style="margin: 0; white-space: nowrap;">收款信</label>
+                <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; white-space: nowrap; flex-shrink: 0;">
+                    <input type="checkbox" name="send_payment_receipt" id="sendPaymentReceiptCheckbox" style="width: 20px; height: 20px; min-width: 20px; cursor: pointer;">
+                    <span style="white-space: nowrap;">寄送收款信給使用者</span>
                 </label>
             </div>
             <div id="sendPaymentReceiptHint" style="display: ${(booking.payment_method === '匯款轉帳' && (booking.payment_status || 'pending') === 'paid') ? 'block' : 'none'}; font-size: 12px; color: #666; margin-top: -6px; margin-bottom: 10px;">
