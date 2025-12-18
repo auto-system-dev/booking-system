@@ -4302,6 +4302,44 @@ function refreshEmailPreview() {
         console.log('⚠️ 未找到 .container，使用原始內容');
     }
     
+    // 檢查內容是否包含 .header 和 .content 結構
+    const hasHeader = bodyContent.includes('class="header') || bodyContent.includes("class='header");
+    const hasContent = bodyContent.includes('class="content') || bodyContent.includes("class='content");
+    
+    // 如果沒有完整的結構，嘗試從原始 HTML 中提取結構
+    if (!hasHeader || !hasContent) {
+        console.log('⚠️ 內容缺少 .header 或 .content 結構，嘗試從原始 HTML 提取');
+        const fullHtml = document.getElementById('emailTemplateContent').value;
+        
+        // 從原始 HTML 中提取 .header 和 .content 的結構
+        if (fullHtml.includes('<body>')) {
+            const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+            if (bodyMatch) {
+                const originalBody = bodyMatch[1];
+                const containerMatch = originalBody.match(/<div[^>]*class\s*=\s*["']container["'][^>]*>([\s\S]*?)<\/div>/i);
+                if (containerMatch) {
+                    const originalContainerContent = containerMatch[1];
+                    // 檢查原始內容是否有 .header 和 .content
+                    const originalHeaderMatch = originalContainerContent.match(/(<div[^>]*class\s*=\s*["']header["'][^>]*>[\s\S]*?<\/div>)/i);
+                    const originalContentMatch = originalContainerContent.match(/(<div[^>]*class\s*=\s*["']content["'][^>]*>[\s\S]*?<\/div>)/i);
+                    
+                    if (originalHeaderMatch && originalContentMatch) {
+                        // 使用原始的 .header 結構，但替換 .content 內的內容為當前編輯的內容
+                        const headerHtml = originalHeaderMatch[1];
+                        const contentStart = originalContentMatch[1].match(/(<div[^>]*class\s*=\s*["']content["'][^>]*>)/i);
+                        const contentEnd = '</div>';
+                        
+                        if (contentStart) {
+                            // 重建完整的結構
+                            bodyContent = headerHtml + contentStart[1] + bodyContent + contentEnd;
+                            console.log('✅ 已重建 .header 和 .content 結構');
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
     // 無論如何都使用當前選擇的樣式包裝內容
     let htmlContent = wrapEmailContent(bodyContent);
     
