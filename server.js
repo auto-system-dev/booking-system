@@ -814,9 +814,10 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
         // 發送通知郵件給管理員（所有付款方式都需要）
         // 優先使用資料庫設定，其次使用環境變數，最後使用預設值
         const adminEmail = await db.getSetting('admin_email') || process.env.ADMIN_EMAIL || 'cheng701107@gmail.com';
+        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
         
         const adminMailOptions = {
-            from: process.env.EMAIL_USER || 'your-email@gmail.com',
+            from: emailUser,
             to: adminEmail, // 管理員 Email
             subject: `【新訂房通知】${guestName} - ${bookingData.bookingId}`,
             html: generateAdminEmail(bookingData)
@@ -831,7 +832,7 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
         if (paymentMethod === 'transfer') {
             // 發送確認郵件給客戶（匯款轉帳）
             const customerMailOptions = {
-                from: process.env.EMAIL_USER || 'your-email@gmail.com',
+                from: emailUser,
                 to: guestEmail,
                 subject: '【訂房確認】您的訂房已成功',
                 html: await generateCustomerEmail(bookingData)
@@ -3059,8 +3060,9 @@ const handlePaymentResult = async (req, res) => {
                                         addonsList: addonsList
                                     };
                                     
+                                    const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
                                     const customerMailOptions = {
-                                        from: process.env.EMAIL_USER || 'your-email@gmail.com',
+                                        from: emailUser,
                                         to: booking.guest_email,
                                         subject: '【訂房確認】您的訂房已成功',
                                         html: await generateCustomerEmail(bookingData)
@@ -3262,8 +3264,9 @@ const handlePaymentResult = async (req, res) => {
                         };
                         
                         // 發送確認郵件
+                        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
                         const customerMailOptions = {
-                            from: process.env.EMAIL_USER || 'your-email@gmail.com',
+                            from: emailUser,
                             to: booking.guest_email,
                             subject: '【訂房確認】您的訂房已成功',
                             html: await generateCustomerEmail(bookingData)
@@ -4225,12 +4228,14 @@ async function sendPaymentReminderEmails() {
             accountName: await db.getSetting('account_name') || ''
         };
         
+        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
+        
         for (const booking of bookings) {
             try {
                 const { subject, content } = await replaceTemplateVariables(template, booking, bankInfo);
                 
                 const mailOptions = {
-                    from: process.env.EMAIL_USER || 'your-email@gmail.com',
+                    from: emailUser,
                     to: booking.guest_email,
                     subject: subject,
                     html: content
@@ -4390,6 +4395,7 @@ async function cancelExpiredReservations() {
         }
         
         const now = new Date();
+        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
         let cancelledCount = 0;
         let emailSentCount = 0;
         let emailFailedCount = 0;
@@ -4412,7 +4418,7 @@ async function cancelExpiredReservations() {
                     try {
                         const cancellationEmail = await generateCancellationEmail(booking);
                         const mailOptions = {
-                            from: process.env.EMAIL_USER || 'your-email@gmail.com',
+                            from: emailUser,
                             to: booking.guest_email,
                             subject: '【訂房取消通知】您的訂房已自動取消',
                             html: cancellationEmail
@@ -4504,12 +4510,14 @@ async function sendCheckinReminderEmails() {
         const bookings = await db.getBookingsForCheckinReminder(daysBeforeCheckin);
         console.log(`找到 ${bookings.length} 筆需要發送入住提醒的訂房`);
         
+        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
+        
         for (const booking of bookings) {
             try {
                 const { subject, content } = await replaceTemplateVariables(template, booking);
                 
                 const mailOptions = {
-                    from: process.env.EMAIL_USER || 'your-email@gmail.com',
+                    from: emailUser,
                     to: booking.guest_email,
                     subject: subject,
                     html: content
@@ -4591,12 +4599,14 @@ async function sendFeedbackRequestEmails() {
         const bookings = await db.getBookingsForFeedbackRequest(daysAfterCheckout);
         console.log(`找到 ${bookings.length} 筆需要發送回訪信的訂房`);
         
+        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
+        
         for (const booking of bookings) {
             try {
                 const { subject, content } = await replaceTemplateVariables(template, booking);
                 
                 const mailOptions = {
-                    from: process.env.EMAIL_USER || 'your-email@gmail.com',
+                    from: emailUser,
                     to: booking.guest_email,
                     subject: subject,
                     html: content
