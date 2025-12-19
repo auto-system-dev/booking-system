@@ -5460,41 +5460,61 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
         content = content.replace(new RegExp(key, 'g'), variables[key]);
     });
     
-    // 處理訂金提示（如果不是訂金，則移除整個區塊）
-    if (isDeposit) {
-        // 替換 {{#if isDeposit}} ... {{/if}} 區塊
-        content = content.replace(/\{\{#if isDeposit\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
-    } else {
-        // 移除 {{#if isDeposit}} ... {{/if}} 區塊
-        content = content.replace(/\{\{#if isDeposit\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+    // 處理嵌套條件區塊的輔助函數
+    function processConditionalBlock(content, condition, conditionName) {
+        // 處理帶有 {{else}} 的條件區塊：{{#if condition}}...{{else}}...{{/if}}
+        const elsePattern = new RegExp(`\\{\\{#if ${conditionName}\\}\\}([\\s\\S]*?)\\{\\{else\\}\\}([\\s\\S]*?)\\{\\{/if\\}\\}`, 'g');
+        if (condition) {
+            // 條件為真：保留 {{#if}} 到 {{else}} 之間的內容，移除 {{else}} 到 {{/if}} 之間的內容
+            content = content.replace(elsePattern, '$1');
+        } else {
+            // 條件為假：移除 {{#if}} 到 {{else}} 之間的內容，保留 {{else}} 到 {{/if}} 之間的內容
+            content = content.replace(elsePattern, '$2');
+        }
+        
+        // 處理沒有 {{else}} 的條件區塊：{{#if condition}}...{{/if}}
+        const simplePattern = new RegExp(`\\{\\{#if ${conditionName}\\}\\}([\\s\\S]*?)\\{\\{/if\\}\\}`, 'g');
+        if (condition) {
+            // 條件為真：保留內容
+            content = content.replace(simplePattern, '$1');
+        } else {
+            // 條件為假：移除整個區塊
+            content = content.replace(simplePattern, '');
+        }
+        
+        return content;
     }
     
-    // 處理匯款轉帳提示（如果是匯款轉帳，則顯示；否則移除整個區塊）
-    if (isTransfer) {
-        // 替換 {{#if isTransfer}} ... {{/if}} 區塊
-        content = content.replace(/\{\{#if isTransfer\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
-    } else {
-        // 移除 {{#if isTransfer}} ... {{/if}} 區塊
-        content = content.replace(/\{\{#if isTransfer\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+    // 處理訂金提示
+    content = processConditionalBlock(content, isDeposit, 'isDeposit');
+    
+    // 處理匯款轉帳提示
+    content = processConditionalBlock(content, isTransfer, 'isTransfer');
+    
+    // 處理銀行資訊提示
+    const hasBankInfo = bankInfo && bankInfo.account;
+    content = processConditionalBlock(content, hasBankInfo, 'bankInfo');
+    
+    // 處理嵌套的銀行資訊條件（bankName, accountName）
+    if (hasBankInfo) {
+        // 處理 {{#if bankName}} ... {{/if}}
+        if (bankInfo.bankName) {
+            content = content.replace(/\{\{#if bankName\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+        } else {
+            content = content.replace(/\{\{#if bankName\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+        }
+        
+        // 處理 {{#if accountName}} ... {{/if}}
+        if (bankInfo.accountName) {
+            content = content.replace(/\{\{#if accountName\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+        } else {
+            content = content.replace(/\{\{#if accountName\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+        }
     }
     
-    // 處理銀行資訊提示（如果有銀行資訊，則顯示；否則移除整個區塊）
-    if (bankInfo && bankInfo.account) {
-        // 替換 {{#if bankInfo}} ... {{/if}} 區塊
-        content = content.replace(/\{\{#if bankInfo\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
-    } else {
-        // 移除 {{#if bankInfo}} ... {{/if}} 區塊
-        content = content.replace(/\{\{#if bankInfo\}\}[\s\S]*?\{\{\/if\}\}/g, '');
-    }
-    
-    // 處理加購商品顯示（如果有加購商品，則顯示；否則移除整個區塊）
-    if (addonsList && addonsList.trim() !== '') {
-        // 替換 {{#if addonsList}} ... {{/if}} 區塊
-        content = content.replace(/\{\{#if addonsList\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
-    } else {
-        // 移除 {{#if addonsList}} ... {{/if}} 區塊
-        content = content.replace(/\{\{#if addonsList\}\}[\s\S]*?\{\{\/if\}\}/g, '');
-    }
+    // 處理加購商品顯示
+    const hasAddons = addonsList && addonsList.trim() !== '';
+    content = processConditionalBlock(content, hasAddons, 'addonsList');
     
     // 添加旅館資訊 footer
     const hotelInfoFooter = await getHotelInfoFooter();
