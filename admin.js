@@ -3583,6 +3583,7 @@ async function showEmailTemplateModal(templateKey) {
             
             // 將 HTML 內容載入到 Quill 編輯器
             // 需要先提取 body 內容（因為模板可能包含完整的 HTML 結構）
+            // 重要：只提取 .content div 內的內容，不要包含 .header div，避免重複標題
             let htmlContent = template.content || '';
             
             console.log('載入模板內容，原始長度:', htmlContent.length);
@@ -3594,6 +3595,56 @@ async function showEmailTemplateModal(templateKey) {
                     htmlContent = bodyMatch[1];
                     console.log('提取 body 內容後，長度:', htmlContent.length);
                 }
+            }
+            
+            // 檢查是否有 .content div，如果有，只提取 .content div 內的內容
+            const contentDivStartRegex = /<div[^>]*class\s*=\s*["'][^"']*content[^"']*["'][^>]*>/i;
+            const contentStartMatch = htmlContent.match(contentDivStartRegex);
+            
+            if (contentStartMatch) {
+                const startIndex = contentStartMatch.index;
+                const startTag = contentStartMatch[0];
+                const afterStartTag = htmlContent.substring(startIndex + startTag.length);
+                
+                // 計算嵌套的 div 層級，找到對應的結束標籤
+                let divCount = 1;
+                let currentIndex = 0;
+                let endIndex = -1;
+                
+                while (currentIndex < afterStartTag.length && divCount > 0) {
+                    const openDiv = afterStartTag.indexOf('<div', currentIndex);
+                    const closeDiv = afterStartTag.indexOf('</div>', currentIndex);
+                    
+                    if (closeDiv === -1) break;
+                    
+                    if (openDiv !== -1 && openDiv < closeDiv) {
+                        divCount++;
+                        currentIndex = openDiv + 4;
+                    } else {
+                        divCount--;
+                        if (divCount === 0) {
+                            endIndex = closeDiv;
+                            break;
+                        }
+                        currentIndex = closeDiv + 6;
+                    }
+                }
+                
+                if (endIndex !== -1) {
+                    // 只提取 .content div 內的內容，移除 .header div
+                    htmlContent = afterStartTag.substring(0, endIndex);
+                    // 移除可能的 .header div（如果還在內容中）
+                    htmlContent = htmlContent.replace(/<div[^>]*class\s*=\s*["'][^"']*header[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, '');
+                    console.log('✅ 已提取 .content div 內的內容，移除 .header，長度:', htmlContent.length);
+                } else {
+                    // 如果無法找到結束標籤，至少移除 .header div
+                    htmlContent = htmlContent.replace(/<div[^>]*class\s*=\s*["'][^"']*header[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, '');
+                    console.log('⚠️ 無法找到 .content div 結束標籤，已移除 .header div');
+                }
+            } else {
+                // 如果沒有 .content div，至少移除 .header div
+                htmlContent = htmlContent.replace(/<div[^>]*class\s*=\s*["'][^"']*header[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, '');
+                console.log('⚠️ 未找到 .content div，已移除 .header div');
             }
             
             // 確保 Quill 編輯器已初始化
@@ -3705,12 +3756,30 @@ async function saveEmailTemplate(event) {
         content = document.getElementById('emailTemplateContent').value;
     } else {
         // 可視化模式：從 Quill 獲取 HTML，然後包裝成完整的 HTML 文檔
-        const quillHtml = quillEditor.root.innerHTML;
+        let quillHtml = quillEditor.root.innerHTML;
+        
+        // 重要：確保 quillHtml 不包含 .header div 或重複的標題，只保留 .content div 內的實際內容
+        // 移除可能的 .header div（如果用戶在編輯器中添加了）
+        quillHtml = quillHtml.replace(/<div[^>]*class\s*=\s*["'][^"']*header[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, '');
+        // 移除可能的 .container div（如果用戶在編輯器中添加了）
+        quillHtml = quillHtml.replace(/<div[^>]*class\s*=\s*["'][^"']*container[^"']*["'][^>]*>/gi, '');
+        quillHtml = quillHtml.replace(/<\/div>\s*<\/div>\s*$/i, '');
+        // 移除可能的單獨 h1 標題（如果用戶在編輯器中添加了，但這應該在 .header 中）
+        // 注意：這裡只移除明顯是標題的 h1，不要移除內容中的 h1
+        // 我們假設如果 h1 在開頭且包含「入住提醒」等關鍵字，可能是重複的標題
+        const titlePatterns = ['入住提醒', '匯款期限提醒', '感謝您的入住', '訂房確認成功'];
+        for (const pattern of titlePatterns) {
+            const titleRegex = new RegExp(`<h1[^>]*>\\s*[🏨]*\\s*${pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*</h1>\\s*`, 'i');
+            if (titleRegex.test(quillHtml)) {
+                quillHtml = quillHtml.replace(titleRegex, '');
+                console.log(`✅ 已移除重複的標題: ${pattern}`);
+            }
+        }
         
         // 獲取原始完整內容（用於保留 HTML 結構）
         const originalContent = document.getElementById('emailTemplateContent').value;
         
-        console.log('儲存時 - Quill HTML 長度:', quillHtml.length);
+        console.log('儲存時 - Quill HTML 長度（清理後）:', quillHtml.length);
         console.log('儲存時 - 原始內容長度:', originalContent.length);
         
         // 檢查原始內容是否包含完整的 HTML 結構
