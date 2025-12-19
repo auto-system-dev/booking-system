@@ -941,13 +941,26 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
         // 只有匯款轉帳才在建立訂房時發送確認郵件給客戶
         // 線上刷卡要等付款完成後才發送確認郵件
         if (paymentMethod === 'transfer') {
-            // 發送確認郵件給客戶（匯款轉帳）
-            const customerMailOptions = {
-                from: emailUser,
-                to: guestEmail,
-                subject: '【訂房確認】您的訂房已成功',
-                html: await generateCustomerEmail(bookingData)
-            };
+            // 發送確認郵件給客戶（匯款轉帳）- 使用數據庫模板
+            let customerMailOptions = null;
+            try {
+                const { subject, content } = await generateEmailFromTemplate('booking_confirmation', bookingData, bankInfo);
+                customerMailOptions = {
+                    from: emailUser,
+                    to: guestEmail,
+                    subject: subject,
+                    html: content
+                };
+            } catch (customerTemplateError) {
+                console.error('⚠️ 無法從數據庫讀取訂房確認模板，使用備用方案:', customerTemplateError.message);
+                // 備用方案：使用原來的函數
+                customerMailOptions = {
+                    from: emailUser,
+                    to: guestEmail,
+                    subject: '【訂房確認】您的訂房已成功',
+                    html: await generateCustomerEmail(bookingData)
+                };
+            }
             
             try {
                 console.log('📧 正在發送郵件（匯款轉帳）...');
@@ -3350,8 +3363,8 @@ const handlePaymentResult = async (req, res) => {
                                     const customerMailOptions = {
                                         from: emailUser,
                                         to: booking.guest_email,
-                                        subject: '【訂房確認】您的訂房已成功',
-                                        html: await generateCustomerEmail(bookingData)
+                                        subject: (await generateEmailFromTemplate('booking_confirmation', bookingData)).subject,
+                                        html: (await generateEmailFromTemplate('booking_confirmation', bookingData)).content
                                     };
                                     
                                     let emailSent = false;
@@ -3549,14 +3562,27 @@ const handlePaymentResult = async (req, res) => {
                             addonsList: addonsList
                         };
                         
-                        // 發送確認郵件
+                        // 發送確認郵件 - 使用數據庫模板
                         const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
-                        const customerMailOptions = {
-                            from: emailUser,
-                            to: booking.guest_email,
-                            subject: '【訂房確認】您的訂房已成功',
-                            html: await generateCustomerEmail(bookingData)
-                        };
+                        let customerMailOptions = null;
+                        try {
+                            const { subject, content } = await generateEmailFromTemplate('booking_confirmation', bookingData);
+                            customerMailOptions = {
+                                from: emailUser,
+                                to: booking.guest_email,
+                                subject: subject,
+                                html: content
+                            };
+                        } catch (templateError) {
+                            console.error('⚠️ 無法從數據庫讀取訂房確認模板，使用備用方案:', templateError.message);
+                            // 備用方案：使用原來的函數
+                            customerMailOptions = {
+                                from: emailUser,
+                                to: booking.guest_email,
+                                subject: '【訂房確認】您的訂房已成功',
+                                html: await generateCustomerEmail(bookingData)
+                            };
+                        }
                         
                         let emailSent = false;
                         if (sendEmailViaGmailAPI) {
@@ -5091,8 +5117,28 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 
 // ==================== 自動郵件發送功能 ====================
 
+// 從數據庫讀取模板並替換變數（通用函數）
+async function generateEmailFromTemplate(templateKey, booking, bankInfo = null, additionalData = {}) {
+    try {
+        // 從數據庫讀取模板
+        const template = await db.getEmailTemplateByKey(templateKey);
+        if (!template) {
+            throw new Error(`找不到郵件模板: ${templateKey}`);
+        }
+        if (!template.is_enabled) {
+            throw new Error(`郵件模板 ${templateKey} 未啟用`);
+        }
+        
+        // 使用現有的 replaceTemplateVariables 函數處理
+        return await replaceTemplateVariables(template, booking, bankInfo, additionalData);
+    } catch (error) {
+        console.error(`生成郵件失敗 (${templateKey}):`, error);
+        throw error;
+    }
+}
+
 // 替換郵件模板中的變數
-async function replaceTemplateVariables(template, booking, bankInfo = null) {
+async function replaceTemplateVariables(template, booking, bankInfo = null, additionalData = {}) {
     let content = template.content;
     
     // 確保模板包含完整的 HTML 結構和 CSS 樣式
@@ -5363,12 +5409,35 @@ async function replaceTemplateVariables(template, booking, bankInfo = null) {
         }
     }
     
+    // 計算住宿天數
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const nights = Math.max(1, Math.round((new Date(booking.check_out_date) - new Date(booking.check_in_date)) / msPerDay));
+    
+    // 計算訂房編號後5碼
+    const bookingIdLast5 = booking.booking_id ? booking.booking_id.slice(-5) : '';
+    
+    // 判斷是否為匯款轉帳
+    const isTransfer = booking.payment_method === '匯款轉帳' || booking.payment_method === 'transfer';
+    
+    // 判斷是否為訂金支付（檢查 payment_amount 欄位是否包含「訂金」）
+    const isDeposit = booking.payment_amount && booking.payment_amount.includes('訂金');
+    
+    // 格式化日期時間
+    const bookingDate = booking.created_at ? new Date(booking.created_at).toLocaleDateString('zh-TW') : '';
+    const bookingDateTime = booking.created_at ? new Date(booking.created_at).toLocaleString('zh-TW') : '';
+    
+    // 格式化價格
+    const pricePerNight = booking.price_per_night || 0;
+    
     const variables = {
-        '{{guestName}}': booking.guest_name,
-        '{{bookingId}}': booking.booking_id,
+        '{{guestName}}': booking.guest_name || '',
+        '{{bookingId}}': booking.booking_id || '',
+        '{{bookingIdLast5}}': bookingIdLast5,
         '{{checkInDate}}': checkInDate,
         '{{checkOutDate}}': checkOutDate,
-        '{{roomType}}': booking.room_type,
+        '{{roomType}}': booking.room_type || '',
+        '{{nights}}': nights.toString(),
+        '{{pricePerNight}}': pricePerNight.toLocaleString(),
         '{{totalAmount}}': totalAmount.toLocaleString(),
         '{{finalAmount}}': finalAmount.toLocaleString(),
         '{{remainingAmount}}': remainingAmount.toLocaleString(),
@@ -5380,7 +5449,14 @@ async function replaceTemplateVariables(template, booking, bankInfo = null) {
         '{{daysReserved}}': daysReserved.toString(),
         '{{paymentDeadline}}': paymentDeadline,
         '{{addonsList}}': addonsList,
-        '{{addonsTotal}}': addonsTotal.toLocaleString()
+        '{{addonsTotal}}': addonsTotal.toLocaleString(),
+        '{{paymentMethod}}': booking.payment_method || '',
+        '{{paymentAmount}}': booking.payment_amount || '',
+        '{{guestPhone}}': booking.guest_phone || '',
+        '{{guestEmail}}': booking.guest_email || '',
+        '{{bookingDate}}': bookingDate,
+        '{{bookingDateTime}}': bookingDateTime,
+        ...additionalData // 合併額外的變數
     };
     
     Object.keys(variables).forEach(key => {
@@ -5394,6 +5470,24 @@ async function replaceTemplateVariables(template, booking, bankInfo = null) {
     } else {
         // 移除 {{#if isDeposit}} ... {{/if}} 區塊
         content = content.replace(/\{\{#if isDeposit\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+    }
+    
+    // 處理匯款轉帳提示（如果是匯款轉帳，則顯示；否則移除整個區塊）
+    if (isTransfer) {
+        // 替換 {{#if isTransfer}} ... {{/if}} 區塊
+        content = content.replace(/\{\{#if isTransfer\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+    } else {
+        // 移除 {{#if isTransfer}} ... {{/if}} 區塊
+        content = content.replace(/\{\{#if isTransfer\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+    }
+    
+    // 處理銀行資訊提示（如果有銀行資訊，則顯示；否則移除整個區塊）
+    if (bankInfo && bankInfo.account) {
+        // 替換 {{#if bankInfo}} ... {{/if}} 區塊
+        content = content.replace(/\{\{#if bankInfo\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+    } else {
+        // 移除 {{#if bankInfo}} ... {{/if}} 區塊
+        content = content.replace(/\{\{#if bankInfo\}\}[\s\S]*?\{\{\/if\}\}/g, '');
     }
     
     // 處理加購商品顯示（如果有加購商品，則顯示；否則移除整個區塊）
@@ -5666,13 +5760,27 @@ async function cancelExpiredReservations() {
                     
                     // 發送取消通知 Email
                     try {
-                        const cancellationEmail = await generateCancellationEmail(booking);
-                        const mailOptions = {
-                            from: emailUser,
-                            to: booking.guest_email,
-                            subject: '【訂房取消通知】您的訂房已自動取消',
-                            html: cancellationEmail
-                        };
+                        // 使用數據庫模板發送取消通知郵件
+                        let mailOptions = null;
+                        try {
+                            const { subject, content } = await generateEmailFromTemplate('cancel_notification', booking);
+                            mailOptions = {
+                                from: emailUser,
+                                to: booking.guest_email,
+                                subject: subject,
+                                html: content
+                            };
+                        } catch (templateError) {
+                            console.error('⚠️ 無法從數據庫讀取取消通知模板，使用備用方案:', templateError.message);
+                            // 備用方案：使用原來的函數
+                            const cancellationEmail = await generateCancellationEmail(booking);
+                            mailOptions = {
+                                from: emailUser,
+                                to: booking.guest_email,
+                                subject: '【訂房取消通知】您的訂房已自動取消',
+                                html: cancellationEmail
+                            };
+                        }
                         
                         let emailSent = false;
                         

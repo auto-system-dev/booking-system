@@ -3417,7 +3417,11 @@ function renderEmailTemplates(templates) {
     const templateNames = {
         'payment_reminder': '匯款提醒',
         'checkin_reminder': '入住提醒',
-        'feedback_request': '感謝入住'
+        'feedback_request': '感謝入住',
+        'booking_confirmation': '訂房確認（客戶）',
+        'booking_confirmation_admin': '訂房確認（管理員）',
+        'payment_completed': '付款完成確認',
+        'cancel_notification': '取消通知'
     };
     
     container.innerHTML = templates.map(template => `
