@@ -3944,7 +3944,13 @@ app.put('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res)
             if (key === 'payment_reminder') {
                 headerColor = '#e74c3c'; // 紅色（匯款提醒）
             } else if (key === 'booking_confirmation') {
-                headerColor = '#198754'; // 綠色（訂房確認）
+                headerColor = '#198754'; // 綠色（訂房確認（客戶））
+            } else if (key === 'booking_confirmation_admin') {
+                headerColor = '#e74c3c'; // 紅色（訂房確認（管理員））
+            } else if (key === 'payment_completed') {
+                headerColor = '#198754'; // 綠色（付款完成確認）
+            } else if (key === 'cancel_notification') {
+                headerColor = '#e74c3c'; // 紅色（取消通知）
             }
             
             const defaultStyle = `
@@ -4097,7 +4103,13 @@ app.put('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res)
             if (key === 'payment_reminder') {
                 headerColor = '#e74c3c'; // 紅色（匯款提醒）
             } else if (key === 'booking_confirmation') {
-                headerColor = '#198754'; // 綠色（訂房確認）
+                headerColor = '#198754'; // 綠色（訂房確認（客戶））
+            } else if (key === 'booking_confirmation_admin') {
+                headerColor = '#e74c3c'; // 紅色（訂房確認（管理員））
+            } else if (key === 'payment_completed') {
+                headerColor = '#198754'; // 綠色（付款完成確認）
+            } else if (key === 'cancel_notification') {
+                headerColor = '#e74c3c'; // 紅色（取消通知）
             }
             
             const completeStyle = `
