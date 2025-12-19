@@ -3,21 +3,34 @@
 // 檢查登入狀態
 async function checkAuthStatus() {
     try {
+        console.log('🔐 檢查登入狀態...');
+        
         // 檢查狀態時也取得 CSRF Token
         await getCsrfToken();
         
         const response = await adminFetch('/api/admin/check-auth');
+        
+        if (!response || !response.ok) {
+            console.warn('⚠️ 檢查登入狀態 API 回應異常:', response?.status);
+            showLoginPage();
+            return;
+        }
+        
         const result = await response.json();
+        console.log('🔐 登入狀態檢查結果:', result);
         
         if (result.success && result.authenticated) {
             // 已登入，顯示管理後台
+            console.log('✅ 已登入，顯示管理後台');
             showAdminPage(result.admin);
         } else {
             // 未登入，顯示登入頁面
+            console.log('ℹ️ 未登入，顯示登入頁面');
             showLoginPage();
         }
     } catch (error) {
-        console.error('檢查登入狀態錯誤:', error);
+        console.error('❌ 檢查登入狀態錯誤:', error);
+        // 出錯時顯示登入頁面
         showLoginPage();
     }
 }
@@ -32,14 +45,46 @@ function showLoginPage() {
 
 // 顯示管理後台
 function showAdminPage(admin) {
-    const loginPage = document.getElementById('loginPage');
-    const adminPage = document.getElementById('adminPage');
-    if (loginPage) loginPage.style.display = 'none';
-    if (adminPage) adminPage.style.display = 'flex';
-    
-    if (admin && admin.username) {
-        const usernameEl = document.getElementById('currentAdminUsername');
-        if (usernameEl) usernameEl.textContent = admin.username;
+    try {
+        const loginPage = document.getElementById('loginPage');
+        const adminPage = document.getElementById('adminPage');
+        
+        if (!adminPage) {
+            console.error('❌ 找不到 adminPage 元素');
+            return;
+        }
+        
+        if (loginPage) {
+            loginPage.style.display = 'none';
+        }
+        
+        // 確保 adminPage 顯示
+        adminPage.style.display = 'flex';
+        
+        // 驗證是否成功顯示
+        const computedStyle = window.getComputedStyle(adminPage);
+        if (computedStyle.display === 'none') {
+            console.error('❌ adminPage 仍然隱藏，強制顯示');
+            adminPage.style.display = 'flex';
+            adminPage.style.visibility = 'visible';
+        }
+        
+        if (admin && admin.username) {
+            const usernameEl = document.getElementById('currentAdminUsername');
+            if (usernameEl) {
+                usernameEl.textContent = admin.username;
+            }
+        }
+        
+        console.log('✅ 管理後台頁面已顯示');
+    } catch (error) {
+        console.error('❌ 顯示管理後台時發生錯誤:', error);
+        // 即使出錯也嘗試顯示頁面
+        const adminPage = document.getElementById('adminPage');
+        if (adminPage) {
+            adminPage.style.display = 'flex';
+            adminPage.style.visibility = 'visible';
+        }
     }
 }
 
@@ -213,22 +258,39 @@ let currentEmailStyle = 'card'; // 當前郵件樣式
 
 // 初始化
 document.addEventListener('DOMContentLoaded', async function() {
-    // 檢查登入狀態
-    await checkAuthStatus();
-    
-    // 導航切換
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-            const section = this.dataset.section;
-            switchSection(section);
-        });
-    });
+    try {
+        console.log('📋 開始初始化管理後台...');
+        
+        // 檢查登入狀態
+        await checkAuthStatus();
+        
+        // 導航切換
+        const navItems = document.querySelectorAll('.nav-item');
+        if (navItems.length === 0) {
+            console.warn('⚠️ 找不到導航項目');
+        } else {
+            navItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const section = this.dataset.section;
+                    switchSection(section);
+                });
+            });
+        }
 
-    // 載入資料（只有在已登入時才載入）
-    if (document.getElementById('adminPage').style.display !== 'none') {
-        loadBookings();
-        loadStatistics();
+        // 載入資料（只有在已登入時才載入）
+        const adminPage = document.getElementById('adminPage');
+        if (adminPage && adminPage.style.display !== 'none') {
+            console.log('📊 載入初始資料...');
+            loadBookings();
+            loadStatistics();
+        } else {
+            console.log('ℹ️ 未登入或頁面未顯示，跳過資料載入');
+        }
+    } catch (error) {
+        console.error('❌ 初始化錯誤:', error);
+        // 即使出錯也嘗試顯示登入頁面
+        showLoginPage();
     }
     
     // 根據 URL hash 載入對應區塊
