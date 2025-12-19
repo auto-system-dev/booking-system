@@ -5627,14 +5627,8 @@ function getEmailStyleCSS(style) {
     // 根據當前模板類型選擇正確的標題欄顏色
     const form = document.getElementById('emailTemplateForm');
     const templateKey = form ? form.dataset.templateKey : null;
-    let headerColor = '#262A33'; // 預設深灰色（入住提醒、感謝入住）
-    
-    if (templateKey === 'payment_reminder') {
-        headerColor = '#e74c3c'; // 紅色（匯款提醒）
-    } else if (templateKey === 'booking_confirmation') {
-        headerColor = '#198754'; // 綠色（訂房確認）
-    }
-    // 其他模板（入住提醒、感謝入住）使用深灰色 #262A33
+    // 使用統一的函數獲取標題顏色
+    const headerColor = getHeaderColorForTemplate(templateKey);
     
     const styles = {
         card: `
