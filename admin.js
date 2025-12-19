@@ -4832,59 +4832,154 @@ function refreshEmailPreview() {
         const textarea = document.getElementById('emailTemplateContent');
         const originalContent = textarea.value;
         
-        // 如果原始內容是完整 HTML，需要更新 body 內的 .container 內容
+        // 如果原始內容是完整 HTML，需要更新 body 內的 .content div 內容（不是整個 .container）
         if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
             if (originalContent.includes('<body>')) {
                 const bodyMatch = originalContent.match(/(<body[^>]*>)([\s\S]*?)(<\/body>)/i);
                 if (bodyMatch) {
                     const bodyContent = bodyMatch[2];
-                    // 使用智能方法找到 .container 的完整範圍（處理嵌套的 div）
-                    const containerStartIndex = bodyContent.search(/<div[^>]*class\s*=\s*["']container["'][^>]*>/i);
-                    if (containerStartIndex !== -1) {
-                        // 找到開始標籤
-                        const containerStartTagMatch = bodyContent.substring(containerStartIndex).match(/(<div[^>]*class\s*=\s*["']container["'][^>]*>)/i);
-                        if (containerStartTagMatch) {
-                            const containerStartTag = containerStartTagMatch[1];
-                            const containerStartPos = containerStartIndex + containerStartTagMatch[0].length;
+                    
+                    // 優先找到 .content div，只替換 .content div 內的內容，保留 .header
+                    const contentDivStartRegex = /<div[^>]*class\s*=\s*["'][^"']*content[^"']*["'][^>]*>/i;
+                    const contentStartMatch = bodyContent.match(contentDivStartRegex);
+                    
+                    if (contentStartMatch) {
+                        const startIndex = contentStartMatch.index;
+                        const startTag = contentStartMatch[0];
+                        const afterStartTag = bodyContent.substring(startIndex + startTag.length);
+                        
+                        // 計算嵌套的 div 層級，找到對應的結束標籤
+                        let divCount = 1;
+                        let currentIndex = 0;
+                        let endIndex = -1;
+                        
+                        while (currentIndex < afterStartTag.length && divCount > 0) {
+                            const openDiv = afterStartTag.indexOf('<div', currentIndex);
+                            const closeDiv = afterStartTag.indexOf('</div>', currentIndex);
                             
-                            // 計算嵌套的 div 數量來找到正確的結束位置
-                            let divCount = 1;
-                            let pos = containerStartPos;
-                            let containerEndPos = -1;
+                            if (closeDiv === -1) break;
                             
-                            while (pos < bodyContent.length && divCount > 0) {
-                                const nextOpenDiv = bodyContent.indexOf('<div', pos);
-                                const nextCloseDiv = bodyContent.indexOf('</div>', pos);
-                                
-                                if (nextCloseDiv === -1) {
-                                    containerEndPos = bodyContent.length;
+                            if (openDiv !== -1 && openDiv < closeDiv) {
+                                divCount++;
+                                currentIndex = openDiv + 4;
+                            } else {
+                                divCount--;
+                                if (divCount === 0) {
+                                    endIndex = closeDiv;
                                     break;
                                 }
-                                
-                                if (nextOpenDiv !== -1 && nextOpenDiv < nextCloseDiv) {
-                                    divCount++;
-                                    pos = nextOpenDiv + 4;
-                                } else {
-                                    divCount--;
-                                    if (divCount === 0) {
-                                        containerEndPos = nextCloseDiv;
-                                        break;
+                                currentIndex = closeDiv + 6;
+                            }
+                        }
+                        
+                        if (endIndex !== -1) {
+                            // 找到了對應的結束標籤，只替換 .content div 內的內容
+                            const beforeContent = bodyContent.substring(0, startIndex + startTag.length);
+                            const afterContent = bodyContent.substring(startIndex + startTag.length + endIndex);
+                            const newBodyContent = beforeContent + quillHtml + afterContent;
+                            
+                            textarea.value = originalContent.replace(
+                                /<body[^>]*>[\s\S]*?<\/body>/i,
+                                bodyMatch[1] + newBodyContent + bodyMatch[3]
+                            );
+                            console.log('✅ 已同步 Quill 內容到 textarea（只替換 .content div 內的內容，保留 .header）');
+                        } else {
+                            // 如果無法找到結束標籤，嘗試使用 .container 的方式
+                            console.warn('⚠️ 無法找到 .content div 的結束標籤，嘗試使用 .container 方式');
+                            const containerStartIndex = bodyContent.search(/<div[^>]*class\s*=\s*["']container["'][^>]*>/i);
+                            if (containerStartIndex !== -1) {
+                                const containerStartTagMatch = bodyContent.substring(containerStartIndex).match(/(<div[^>]*class\s*=\s*["']container["'][^>]*>)/i);
+                                if (containerStartTagMatch) {
+                                    const containerStartTag = containerStartTagMatch[1];
+                                    const containerStartPos = containerStartIndex + containerStartTagMatch[0].length;
+                                    
+                                    let divCount = 1;
+                                    let pos = containerStartPos;
+                                    let containerEndPos = -1;
+                                    
+                                    while (pos < bodyContent.length && divCount > 0) {
+                                        const nextOpenDiv = bodyContent.indexOf('<div', pos);
+                                        const nextCloseDiv = bodyContent.indexOf('</div>', pos);
+                                        
+                                        if (nextCloseDiv === -1) {
+                                            containerEndPos = bodyContent.length;
+                                            break;
+                                        }
+                                        
+                                        if (nextOpenDiv !== -1 && nextOpenDiv < nextCloseDiv) {
+                                            divCount++;
+                                            pos = nextOpenDiv + 4;
+                                        } else {
+                                            divCount--;
+                                            if (divCount === 0) {
+                                                containerEndPos = nextCloseDiv;
+                                                break;
+                                            }
+                                            pos = nextCloseDiv + 6;
+                                        }
                                     }
-                                    pos = nextCloseDiv + 6;
+                                    
+                                    if (containerEndPos !== -1) {
+                                        const beforeContainer = bodyContent.substring(0, containerStartIndex);
+                                        const afterContainer = bodyContent.substring(containerEndPos + 6);
+                                        const newBodyContent = beforeContainer + containerStartTag + quillHtml + '</div>' + afterContainer;
+                                        
+                                        textarea.value = originalContent.replace(
+                                            /<body[^>]*>[\s\S]*?<\/body>/i,
+                                            bodyMatch[1] + newBodyContent + bodyMatch[3]
+                                        );
+                                        console.log('✅ 已同步 Quill 內容到 textarea（使用 .container 方式）');
+                                    }
                                 }
                             }
-                            
-                            if (containerEndPos !== -1) {
-                                // 替換 .container 的內容
-                                const beforeContainer = bodyContent.substring(0, containerStartIndex);
-                                const afterContainer = bodyContent.substring(containerEndPos + 6); // +6 for '</div>'
-                                const newBodyContent = beforeContainer + containerStartTag + quillHtml + '</div>' + afterContainer;
+                        }
+                    } else {
+                        // 如果沒有 .content div，嘗試使用 .container 的方式
+                        console.warn('⚠️ 未找到 .content div，嘗試使用 .container 方式');
+                        const containerStartIndex = bodyContent.search(/<div[^>]*class\s*=\s*["']container["'][^>]*>/i);
+                        if (containerStartIndex !== -1) {
+                            const containerStartTagMatch = bodyContent.substring(containerStartIndex).match(/(<div[^>]*class\s*=\s*["']container["'][^>]*>)/i);
+                            if (containerStartTagMatch) {
+                                const containerStartTag = containerStartTagMatch[1];
+                                const containerStartPos = containerStartIndex + containerStartTagMatch[0].length;
                                 
-                                textarea.value = originalContent.replace(
-                                    /<body[^>]*>[\s\S]*?<\/body>/i,
-                                    bodyMatch[1] + newBodyContent + bodyMatch[3]
-                                );
-                                console.log('✅ 已同步 Quill 內容到 textarea（保留結構）');
+                                let divCount = 1;
+                                let pos = containerStartPos;
+                                let containerEndPos = -1;
+                                
+                                while (pos < bodyContent.length && divCount > 0) {
+                                    const nextOpenDiv = bodyContent.indexOf('<div', pos);
+                                    const nextCloseDiv = bodyContent.indexOf('</div>', pos);
+                                    
+                                    if (nextCloseDiv === -1) {
+                                        containerEndPos = bodyContent.length;
+                                        break;
+                                    }
+                                    
+                                    if (nextOpenDiv !== -1 && nextOpenDiv < nextCloseDiv) {
+                                        divCount++;
+                                        pos = nextOpenDiv + 4;
+                                    } else {
+                                        divCount--;
+                                        if (divCount === 0) {
+                                            containerEndPos = nextCloseDiv;
+                                            break;
+                                        }
+                                        pos = nextCloseDiv + 6;
+                                    }
+                                }
+                                
+                                if (containerEndPos !== -1) {
+                                    const beforeContainer = bodyContent.substring(0, containerStartIndex);
+                                    const afterContainer = bodyContent.substring(containerEndPos + 6);
+                                    const newBodyContent = beforeContainer + containerStartTag + quillHtml + '</div>' + afterContainer;
+                                    
+                                    textarea.value = originalContent.replace(
+                                        /<body[^>]*>[\s\S]*?<\/body>/i,
+                                        bodyMatch[1] + newBodyContent + bodyMatch[3]
+                                    );
+                                    console.log('✅ 已同步 Quill 內容到 textarea（使用 .container 方式）');
+                                }
                             }
                         }
                     }
@@ -4962,9 +5057,61 @@ function refreshEmailPreview() {
             }
             
             if (containerEndPos !== -1) {
-                bodyContent = bodyContent.substring(containerStartPos, containerEndPos);
-                console.log('✅ 已提取 .container 內容，長度:', bodyContent.length);
-                console.log('📋 提取的 .container 內容前 200 字元:', bodyContent.substring(0, 200));
+                // 提取 .container 內容後，需要進一步提取 .content div 內的實際內容
+                const containerContent = bodyContent.substring(containerStartPos, containerEndPos);
+                
+                // 嘗試提取 .content div 內的內容
+                const contentDivStartRegex = /<div[^>]*class\s*=\s*["'][^"']*content[^"']*["'][^>]*>/i;
+                const contentStartMatch = containerContent.match(contentDivStartRegex);
+                
+                if (contentStartMatch) {
+                    const contentStartIndex = contentStartMatch.index;
+                    const contentStartTag = contentStartMatch[0];
+                    const afterContentStart = containerContent.substring(contentStartIndex + contentStartTag.length);
+                    
+                    // 計算嵌套的 div 層級，找到 .content div 的結束標籤
+                    let divCount = 1;
+                    let pos = 0;
+                    let contentEndPos = -1;
+                    
+                    while (pos < afterContentStart.length && divCount > 0) {
+                        const openDiv = afterContentStart.indexOf('<div', pos);
+                        const closeDiv = afterContentStart.indexOf('</div>', pos);
+                        
+                        if (closeDiv === -1) break;
+                        
+                        if (openDiv !== -1 && openDiv < closeDiv) {
+                            divCount++;
+                            pos = openDiv + 4;
+                        } else {
+                            divCount--;
+                            if (divCount === 0) {
+                                contentEndPos = closeDiv;
+                                break;
+                            }
+                            pos = closeDiv + 6;
+                        }
+                    }
+                    
+                    if (contentEndPos !== -1) {
+                        // 提取 .content div 內的實際內容，但保留 .header
+                        const contentInner = afterContentStart.substring(0, contentEndPos);
+                        const headerMatch = containerContent.match(/(<div[^>]*class\s*=\s*["'][^"']*header[^"']*["'][^>]*>[\s\S]*?<\/div>)/i);
+                        const headerHtml = headerMatch ? headerMatch[1] : '';
+                        
+                        bodyContent = headerHtml + contentStartTag + contentInner + '</div>';
+                        console.log('✅ 已提取 .container 內容，並提取 .content div 內的實際內容，長度:', bodyContent.length);
+                        console.log('📋 提取的內容前 300 字元:', bodyContent.substring(0, 300));
+                    } else {
+                        // 如果無法找到 .content div 的結束標籤，使用整個 container 內容
+                        bodyContent = containerContent;
+                        console.log('⚠️ 未找到 .content div 的結束標籤，使用整個 .container 內容');
+                    }
+                } else {
+                    // 如果沒有 .content div，使用整個 container 內容
+                    bodyContent = containerContent;
+                    console.log('⚠️ 未找到 .content div，使用整個 .container 內容');
+                }
             } else {
                 console.log('⚠️ 未找到 .container 的結束標籤');
             }
@@ -5066,15 +5213,24 @@ function refreshEmailPreview() {
             // 檢查是否有實際的文字內容（不只是 HTML 標籤）
             const textContent = cleanedBodyContent.replace(/<[^>]+>/g, '').trim();
             
-            // 如果 bodyContent 有實際內容（長度 > 100 且不是只有空白），使用它；否則使用原始的 contentHtml
-            const actualContent = (cleanedBodyContent.length > 100 && textContent.length > 10) 
-                ? cleanedBodyContent 
-                : contentHtml;
+            // 優先使用 Quill 編輯器中的內容（bodyContent），因為這是最新的編輯內容
+            // 但如果 bodyContent 為空或太短，則使用原始的 contentHtml
+            let actualContent = cleanedBodyContent;
+            
+            // 檢查 bodyContent 是否有實際內容
+            if (cleanedBodyContent.length < 50 || textContent.length < 5) {
+                // 如果 bodyContent 太短或沒有實際內容，使用原始的 contentHtml
+                actualContent = contentHtml;
+                console.log('⚠️ bodyContent 太短或沒有實際內容，使用原始的 contentHtml');
+            } else {
+                console.log('✅ 使用 Quill 編輯器中的內容（bodyContent）');
+            }
             
             console.log('📋 bodyContent 清理後長度:', cleanedBodyContent.length);
             console.log('📋 bodyContent 文字內容長度:', textContent.length);
             console.log('📋 原始 contentHtml 長度:', contentHtml.length);
             console.log('📋 將使用的實際內容長度:', actualContent.length);
+            console.log('📋 將使用的實際內容前 300 字元:', actualContent.substring(0, 300));
             
             bodyContent = headerHtml + contentStartTag + actualContent + '</div>';
             console.log('✅ 使用原始 HTML 結構，合併編輯內容，新內容長度:', bodyContent.length);
