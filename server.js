@@ -498,7 +498,22 @@ async function initEmailService() {
                 } catch (error) {
                     console.error('❌ 取得 Access Token 失敗:');
                     console.error('   錯誤訊息:', error.message);
+                    console.error('   錯誤代碼:', error.code);
                     console.error('   錯誤詳情:', error);
+                    
+                    // 如果是 invalid_grant 錯誤，提供更詳細的說明
+                    if (error.message && (error.message.includes('invalid_grant') || error.message.includes('Invalid grant'))) {
+                        console.error('⚠️  OAuth2 Refresh Token 無效或已過期！');
+                        console.error('   這通常是因為：');
+                        console.error('   1. GMAIL_REFRESH_TOKEN 已過期（通常有效期為 6 個月）');
+                        console.error('   2. Refresh Token 已被撤銷');
+                        console.error('   3. 用戶在 Google 帳號中撤銷了應用程式存取權限');
+                        console.error('   解決方法：');
+                        console.error('   1. 在 Google Cloud Console 重新生成 Refresh Token');
+                        console.error('   2. 更新資料庫或環境變數中的 GMAIL_REFRESH_TOKEN');
+                        console.error('   3. 確認 GMAIL_CLIENT_ID 和 GMAIL_CLIENT_SECRET 是否正確');
+                    }
+                    
                     throw error;
                 }
             };
@@ -4507,7 +4522,41 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         };
         
         if (sendEmailViaGmailAPI) {
-            await sendEmailViaGmailAPI(mailOptions);
+            try {
+                await sendEmailViaGmailAPI(mailOptions);
+            } catch (emailError) {
+                console.error('❌ 測試郵件發送失敗:');
+                console.error('   發送給:', email);
+                console.error('   錯誤訊息:', emailError.message);
+                console.error('   錯誤代碼:', emailError.code);
+                console.error('   完整錯誤:', emailError);
+                
+                // 如果是認證錯誤，提供更詳細的說明
+                if (emailError.message && (emailError.message.includes('invalid_grant') || emailError.message.includes('Invalid grant'))) {
+                    console.error('⚠️  OAuth2 認證失敗！');
+                    console.error('   這通常是因為 Gmail Refresh Token 已過期或被撤銷');
+                    console.error('   請檢查：');
+                    console.error('   1. GMAIL_REFRESH_TOKEN 是否正確');
+                    console.error('   2. Refresh Token 是否已過期');
+                    console.error('   3. 是否需要在 Google Cloud Console 重新生成 Refresh Token');
+                    
+                    return res.status(500).json({
+                        success: false,
+                        message: '發送測試郵件失敗：OAuth2 認證錯誤（invalid_grant）。請檢查 Gmail Refresh Token 是否有效，或聯繫管理員重新配置郵件服務。'
+                    });
+                } else if (emailError.response && emailError.response.data) {
+                    console.error('   API 回應:', emailError.response.data);
+                    return res.status(500).json({
+                        success: false,
+                        message: '發送測試郵件失敗：' + (emailError.response.data.error?.message || emailError.message || '未知錯誤')
+                    });
+                } else {
+                    return res.status(500).json({
+                        success: false,
+                        message: '發送測試郵件失敗：' + (emailError.message || '未知錯誤')
+                    });
+                }
+            }
         } else {
             return res.status(500).json({
                 success: false,
@@ -4521,9 +4570,11 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         });
     } catch (error) {
         console.error('發送測試郵件錯誤:', error);
+        console.error('錯誤詳情:', error.message);
+        console.error('錯誤堆疊:', error.stack);
         res.status(500).json({
             success: false,
-            message: '發送測試郵件失敗：' + error.message
+            message: '發送測試郵件失敗：' + (error.message || '未知錯誤')
         });
     }
 });
