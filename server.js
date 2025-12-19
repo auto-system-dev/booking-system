@@ -924,14 +924,45 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
             if (sendEmailViaGmailAPI && getAccessToken) {
                 try {
                     console.log('🔍 測試 OAuth2 Access Token...');
+                    console.log('   使用 Client ID:', gmailClientID ? gmailClientID.substring(0, 20) + '...' : '未設定');
+                    console.log('   使用 Client Secret:', gmailClientSecret ? gmailClientSecret.substring(0, 10) + '...' : '未設定');
+                    console.log('   使用 Refresh Token:', gmailRefreshToken ? gmailRefreshToken.substring(0, 20) + '...' : '未設定');
                     const testToken = await getAccessToken();
                     if (testToken) {
                         console.log('✅ OAuth2 Access Token 測試成功');
                     }
                 } catch (tokenError) {
                     console.error('❌ OAuth2 Access Token 測試失敗:', tokenError.message);
+                    console.error('   錯誤代碼:', tokenError.code);
                     console.error('   詳細錯誤:', tokenError);
-                    throw new Error('OAuth2 認證失敗: ' + tokenError.message);
+                    
+                    // 如果是 unauthorized_client 錯誤，提供詳細的解決建議
+                    if (tokenError.message && (tokenError.message.includes('unauthorized_client') || tokenError.message.includes('Unauthorized client'))) {
+                        console.error('⚠️  OAuth2 Client 認證失敗！');
+                        console.error('   可能原因：');
+                        console.error('   1. GMAIL_CLIENT_ID 或 GMAIL_CLIENT_SECRET 不正確');
+                        console.error('   2. Refresh Token 是從不同的 Client ID/Secret 生成的');
+                        console.error('   3. OAuth2 應用程式設定有問題');
+                        console.error('   4. Gmail API 未啟用');
+                        console.error('   5. 已授權的重新導向 URI 未包含：https://developers.google.com/oauthplayground');
+                        console.error('   解決方法：');
+                        console.error('   1. 檢查 Google Cloud Console → API 和服務 → 憑證');
+                        console.error('   2. 確認 Client ID 和 Client Secret 是否正確');
+                        console.error('   3. 確認 Refresh Token 是從相同的 Client ID/Secret 生成的');
+                        console.error('   4. 確認 OAuth 同意畫面已正確設定');
+                        console.error('   5. 確認 Gmail API 已啟用');
+                        console.error('   6. 確認已授權的重新導向 URI 包含：https://developers.google.com/oauthplayground');
+                        console.error('   7. 如果問題持續，請重新生成 Refresh Token');
+                    } else if (tokenError.message && (tokenError.message.includes('invalid_grant') || tokenError.message.includes('Invalid grant'))) {
+                        console.error('⚠️  OAuth2 Refresh Token 無效或已過期！');
+                        console.error('   解決方法：');
+                        console.error('   1. 在 OAuth2 Playground 重新生成 Refresh Token');
+                        console.error('   2. 更新資料庫或環境變數中的 GMAIL_REFRESH_TOKEN');
+                    }
+                    
+                    console.error('⚠️  服務將繼續啟動，但 Gmail API 可能無法使用');
+                    console.error('   如果使用 SMTP，請確保 EMAIL_PASS（應用程式密碼）已正確設定');
+                    // 不拋出錯誤，讓服務繼續啟動（可能使用 SMTP 備用方案）
                 }
             }
             
