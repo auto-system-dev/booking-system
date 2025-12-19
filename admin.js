@@ -3836,10 +3836,95 @@ async function saveEmailTemplate(event) {
                         
                         if (endIndex !== -1) {
                             // 找到了對應的結束標籤，替換 .content div 內的內容
+                            // 但需要確保保留原始內容中的 CSS 類別（如 .info-box 和 .highlight）
+                            const originalContentInner = afterStartTag.substring(0, endIndex);
+                            
+                            // 檢查 Quill HTML 是否包含 CSS 類別
+                            const hasInfoBoxInQuill = quillHtml.includes('class="info-box') || quillHtml.includes("class='info-box");
+                            const hasHighlightInQuill = quillHtml.includes('class="highlight') || quillHtml.includes("class='highlight");
+                            const hasInfoBoxInOriginal = originalContentInner.includes('class="info-box') || originalContentInner.includes("class='info-box");
+                            const hasHighlightInOriginal = originalContentInner.includes('class="highlight') || originalContentInner.includes("class='highlight");
+                            
+                            let finalQuillHtml = quillHtml;
+                            
+                            // 如果原始內容有 CSS 類別，但 Quill HTML 沒有，需要保留原始結構
+                            if ((hasInfoBoxInOriginal || hasHighlightInOriginal) && (!hasInfoBoxInQuill && !hasHighlightInQuill)) {
+                                console.log('⚠️ Quill HTML 缺少 CSS 類別，保留原始結構並更新內容...');
+                                
+                                // 使用原始結構，但用 Quill 的內容替換每個 div 內的內容
+                                finalQuillHtml = originalContentInner;
+                                
+                                // 提取所有帶有類別的 div，並用 Quill 的對應內容替換
+                                const styledDivRegex = /<div[^>]*class\s*=\s*["'](info-box|highlight)["'][^>]*>([\s\S]*?)<\/div>/gi;
+                                let styledDivMatch;
+                                
+                                while ((styledDivMatch = styledDivRegex.exec(originalContentInner)) !== null) {
+                                    const fullDiv = styledDivMatch[0];
+                                    const divClass = styledDivMatch[1];
+                                    const originalDivContent = styledDivMatch[2];
+                                    
+                                    // 提取原始 div 內容中的關鍵文字
+                                    const originalText = originalDivContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+                                    
+                                    // 在 Quill HTML 中查找包含這些文字的內容
+                                    if (originalText.length > 10) {
+                                        // 使用關鍵字匹配
+                                        const keywords = originalText.split(/\s+/).filter(w => w.length > 2).slice(0, 5);
+                                        if (keywords.length > 0) {
+                                            // 在 Quill HTML 中查找包含這些關鍵字的內容區塊
+                                            // 使用更寬鬆的匹配
+                                            const keywordPattern = keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*?');
+                                            const quillMatch = quillHtml.match(new RegExp(`([\\s\\S]{0,3000}${keywordPattern}[\\s\\S]{0,3000})`, 'i'));
+                                            
+                                            if (quillMatch) {
+                                                const quillContent = quillMatch[1].trim();
+                                                
+                                                // 提取 div 的開始標籤
+                                                const divStartTag = fullDiv.match(/(<div[^>]*class\s*=\s*["'](info-box|highlight)["'][^>]*>)/i)?.[1];
+                                                if (divStartTag) {
+                                                    // 替換原始 div 的內容
+                                                    finalQuillHtml = finalQuillHtml.replace(
+                                                        fullDiv,
+                                                        divStartTag + quillContent + '</div>'
+                                                    );
+                                                    console.log(`✅ 已保留 .${divClass} 類別並更新內容`);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // 處理不在 styled div 中的其他內容
+                                // 提取原始內容中所有非 styled div 的內容
+                                const otherContent = originalContentInner.replace(/<div[^>]*class\s*=\s*["'](info-box|highlight)["'][^>]*>[\s\S]*?<\/div>/gi, '').trim();
+                                
+                                if (otherContent.length > 20) {
+                                    // 在 Quill HTML 中查找這些內容（排除已經在 styled div 中的）
+                                    const otherText = otherContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+                                    const otherKeywords = otherText.split(/\s+/).filter(w => w.length > 2).slice(0, 5);
+                                    
+                                    if (otherKeywords.length > 0) {
+                                        const otherPattern = otherKeywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*?');
+                                        const otherMatch = quillHtml.match(new RegExp(`([\\s\\S]{0,5000}${otherPattern}[\\s\\S]{0,5000})`, 'i'));
+                                        
+                                        if (otherMatch) {
+                                            const otherQuillContent = otherMatch[1].trim();
+                                            // 檢查是否已經在 finalQuillHtml 中（通過檢查關鍵字）
+                                            const alreadyIncluded = otherKeywords.some(k => finalQuillHtml.includes(k));
+                                            if (!alreadyIncluded) {
+                                                // 將其他內容插入到開頭
+                                                finalQuillHtml = otherQuillContent + finalQuillHtml;
+                                                console.log('✅ 已添加其他內容');
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
                             const beforeContent = originalContent.substring(0, startIndex + startTag.length);
                             const afterContent = originalContent.substring(startIndex + startTag.length + endIndex);
-                            content = beforeContent + quillHtml + afterContent;
-                            console.log('✅ 使用原始 HTML 結構，只替換 .content div 內的內容（保留 .container 和 .header）');
+                            content = beforeContent + finalQuillHtml + afterContent;
+                            console.log('✅ 使用原始 HTML 結構，只替換 .content div 內的內容（保留 .container 和 .header，並嘗試保留 CSS 類別）');
                         } else {
                             // 如果無法找到對應的結束標籤，嘗試從資料庫讀取
                             console.warn('⚠️ 無法找到 .content div 的結束標籤，嘗試從資料庫讀取原始模板');
