@@ -4487,8 +4487,13 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         
         // 處理 {{hotelInfoFooter}} 變數
         const hotelInfoFooter = await getHotelInfoFooter();
+        let hasHotelInfoFooterVariable = false;
         if (hotelInfoFooter) {
-            testContent = testContent.replace(/\{\{hotelInfoFooter\}\}/g, hotelInfoFooter);
+            // 檢查模板中是否已經有 {{hotelInfoFooter}} 變數
+            if (testContent.includes('{{hotelInfoFooter}}')) {
+                testContent = testContent.replace(/\{\{hotelInfoFooter\}\}/g, hotelInfoFooter);
+                hasHotelInfoFooterVariable = true;
+            }
         } else {
             testContent = testContent.replace(/\{\{hotelInfoFooter\}\}/g, '');
         }
