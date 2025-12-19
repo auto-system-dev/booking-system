@@ -3427,14 +3427,10 @@ function renderEmailTemplates(templates) {
                     <h3 style="margin: 0 0 5px 0; color: #333;">${template.template_name || templateNames[template.template_key] || template.template_key}</h3>
                     <p style="margin: 0; color: #666; font-size: 14px;">模板代碼：${template.template_key}</p>
                 </div>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <span class="status-badge ${template.is_enabled === 1 ? 'status-sent' : 'status-unsent'}" style="margin-right: 0;">
+                <div>
+                    <span class="status-badge ${template.is_enabled === 1 ? 'status-sent' : 'status-unsent'}" style="margin-right: 10px;">
                         ${template.is_enabled === 1 ? '啟用' : '停用'}
                     </span>
-                    <button class="btn-secondary" onclick="resetEmailTemplateToDefault('${template.template_key}', '${escapeHtml(template.template_name || templateNames[template.template_key] || template.template_key)}')" style="padding: 6px 12px; font-size: 13px; display: flex; align-items: center; gap: 4px;" title="重置為預設圖卡樣式">
-                        <span class="material-symbols-outlined" style="font-size: 16px;">restart_alt</span>
-                        重置
-                    </button>
                     <button class="btn-edit" onclick="showEmailTemplateModal('${template.template_key}')">編輯</button>
                 </div>
             </div>
@@ -4726,19 +4722,22 @@ ${quillHtml}
 }
 
 // 重置郵件模板為預設圖卡樣式
-// 重置單個郵件模板為預設圖卡樣式
-async function resetEmailTemplateToDefault(templateKey, templateName) {
+// 重置當前編輯的郵件模板為預設圖卡樣式（從編輯模態框中調用）
+async function resetCurrentTemplateToDefault() {
+    const form = document.getElementById('emailTemplateForm');
+    if (!form || !form.dataset.templateKey) {
+        showError('無法獲取當前模板資訊');
+        return;
+    }
+    
+    const templateKey = form.dataset.templateKey;
+    const templateName = document.getElementById('emailTemplateModalTitle')?.textContent?.replace('編輯郵件模板：', '') || templateKey;
+    
     if (!confirm(`確定要將郵件模板「${templateName}」重置為預設的圖卡樣式嗎？此操作將覆蓋現有的模板內容。`)) {
         return;
     }
     
     try {
-        // 檢查是否有打開的編輯模態框
-        const modal = document.getElementById('emailTemplateModal');
-        const form = document.getElementById('emailTemplateForm');
-        const currentTemplateKey = form ? form.dataset.templateKey : null;
-        const isModalOpen = modal && modal.classList.contains('active') && currentTemplateKey === templateKey;
-        
         const response = await fetch('/api/email-templates/reset-to-default', {
             method: 'POST',
             headers: {
@@ -4752,10 +4751,39 @@ async function resetEmailTemplateToDefault(templateKey, templateName) {
         if (result.success) {
             alert(`✅ ${result.message}`);
             
-            // 如果模態框是打開的且是當前模板，重新載入模板內容
-            if (isModalOpen) {
-                await showEmailTemplateModal(templateKey);
-            }
+            // 重新載入當前模板內容
+            await showEmailTemplateModal(templateKey);
+            
+            // 重新載入模板列表（如果列表可見）
+            await loadEmailTemplates();
+        } else {
+            showError('重置失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('重置郵件模板錯誤:', error);
+        showError('重置失敗：' + error.message);
+    }
+}
+
+// 重置單個郵件模板為預設圖卡樣式（從模板卡片中調用，保留以備將來需要）
+async function resetEmailTemplateToDefault(templateKey, templateName) {
+    if (!confirm(`確定要將郵件模板「${templateName}」重置為預設的圖卡樣式嗎？此操作將覆蓋現有的模板內容。`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/email-templates/reset-to-default', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ templateKey })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`✅ ${result.message}`);
             
             // 重新載入模板列表
             await loadEmailTemplates();

@@ -892,7 +892,13 @@
                     </div>
                     <div class="form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <label style="margin: 0;">郵件內容</label>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <label style="margin: 0;">郵件內容</label>
+                                <button type="button" id="resetTemplateStyleBtn" class="btn-secondary" style="padding: 5px 15px; font-size: 12px; display: flex; align-items: center; gap: 4px;" onclick="resetCurrentTemplateToDefault()" title="重置為預設圖卡樣式">
+                                    <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle;">restart_alt</span>
+                                    <span>重置圖卡樣式</span>
+                                </button>
+                            </div>
                             <div style="display: flex; gap: 10px; align-items: center;">
                                 <button type="button" id="togglePreviewBtn" class="btn-secondary" style="padding: 5px 15px; font-size: 12px;" onclick="toggleEmailPreview()">
                                     <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle;">preview</span>
