@@ -3830,14 +3830,95 @@ async function saveEmailTemplate(event) {
         console.log('儲存時 - Quill HTML 長度（清理後）:', quillHtml.length);
         console.log('儲存時 - 原始內容長度:', originalContent.length);
         
-        // 檢查原始內容是否包含完整的 HTML 結構
-        if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
-            // 如果原始內容是完整 HTML，只替換 .content div 內的內容，保留 .container 和 .header 結構
-            if (originalContent.includes('<body>')) {
-                // 檢查是否有 .content div（圖卡樣式的結構）
-                // 使用更寬鬆的匹配，包括 class 屬性中可能包含其他類名的情況
-                const hasContentDiv = /class\s*=\s*["'][^"']*content[^"']*["']/i.test(originalContent) ||
-                                     /class\s*=\s*["'][^"']*content[^"']*["']/i.test(originalContent);
+        // 對於這四個新模板，優先從資料庫讀取原始模板結構，確保保留完整的圖卡樣式
+        const newTemplates = ['booking_confirmation', 'booking_confirmation_admin', 'payment_completed', 'cancel_notification'];
+        const isNewTemplate = newTemplates.includes(templateKey);
+        
+        // 如果是新模板，優先從資料庫讀取原始模板結構
+        if (isNewTemplate) {
+            try {
+                console.log(`📧 新模板 ${templateKey}：優先從資料庫讀取原始模板結構以保留圖卡樣式`);
+                const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
+                const templateResult = await templateResponse.json();
+                if (templateResult.success && templateResult.data && templateResult.data.content) {
+                    const templateContent = templateResult.data.content;
+                    // 檢查資料庫模板是否有 .content div
+                    const templateHasContentDiv = /class\s*=\s*["'][^"']*content[^"']*["']/i.test(templateContent);
+                    
+                    if (templateHasContentDiv) {
+                        // 使用資料庫模板的完整結構，只替換 .content div 內的內容
+                        const templateContentDivStartRegex = /<div[^>]*class\s*=\s*["'][^"']*content[^"']*["'][^>]*>/i;
+                        const templateStartMatch = templateContent.match(templateContentDivStartRegex);
+                        
+                        if (templateStartMatch) {
+                            const templateStartIndex = templateStartMatch.index;
+                            const templateStartTag = templateStartMatch[0];
+                            const templateAfterStartTag = templateContent.substring(templateStartIndex + templateStartTag.length);
+                            
+                            // 計算嵌套的 div 層級，找到對應的結束標籤
+                            let templateDivCount = 1;
+                            let templateCurrentIndex = 0;
+                            let templateEndIndex = -1;
+                            
+                            while (templateCurrentIndex < templateAfterStartTag.length && templateDivCount > 0) {
+                                const templateOpenDiv = templateAfterStartTag.indexOf('<div', templateCurrentIndex);
+                                const templateCloseDiv = templateAfterStartTag.indexOf('</div>', templateCurrentIndex);
+                                
+                                if (templateCloseDiv === -1) break;
+                                
+                                if (templateOpenDiv !== -1 && templateOpenDiv < templateCloseDiv) {
+                                    templateDivCount++;
+                                    templateCurrentIndex = templateOpenDiv + 4;
+                                } else {
+                                    templateDivCount--;
+                                    if (templateDivCount === 0) {
+                                        templateEndIndex = templateCloseDiv;
+                                        break;
+                                    }
+                                    templateCurrentIndex = templateCloseDiv + 6;
+                                }
+                            }
+                            
+                            if (templateEndIndex !== -1) {
+                                // 成功找到 .content div，只替換其內容，保留完整的 HTML 結構和 CSS 樣式
+                                const templateBeforeContent = templateContent.substring(0, templateStartIndex + templateStartTag.length);
+                                const templateAfterContent = templateContent.substring(templateStartIndex + templateStartTag.length + templateEndIndex);
+                                content = templateBeforeContent + quillHtml + templateAfterContent;
+                                console.log('✅ 新模板：使用資料庫模板的完整結構，只替換 .content div 內的內容（保留圖卡樣式）');
+                            } else {
+                                // 如果無法找到結束標籤，使用資料庫模板的完整結構（後端會修復）
+                                content = templateContent;
+                                console.log('✅ 新模板：使用資料庫模板的完整結構（無法找到 .content div 結束標籤，後端會修復）');
+                            }
+                        } else {
+                            // 如果無法找到開始標籤，使用資料庫模板的完整結構（後端會修復）
+                            content = templateContent;
+                            console.log('✅ 新模板：使用資料庫模板的完整結構（無法找到 .content div 開始標籤，後端會修復）');
+                        }
+                    } else {
+                        // 如果資料庫模板也沒有 .content div，使用資料庫模板的完整結構（後端會修復）
+                        content = templateContent;
+                        console.log('✅ 新模板：使用資料庫模板的完整結構（資料庫模板沒有 .content div，後端會修復）');
+                    }
+                } else {
+                    // 如果無法取得資料庫模板，使用原始內容的邏輯
+                    console.warn('⚠️ 新模板：無法取得資料庫模板，使用原始內容邏輯');
+                }
+            } catch (e) {
+                console.error('⚠️ 新模板：獲取資料庫模板失敗，使用原始內容邏輯:', e);
+            }
+        }
+        
+        // 如果還沒有設置 content（非新模板或新模板獲取失敗），使用原始邏輯
+        if (!content) {
+            // 檢查原始內容是否包含完整的 HTML 結構
+            if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
+                // 如果原始內容是完整 HTML，只替換 .content div 內的內容，保留 .container 和 .header 結構
+                if (originalContent.includes('<body>')) {
+                    // 檢查是否有 .content div（圖卡樣式的結構）
+                    // 使用更寬鬆的匹配，包括 class 屬性中可能包含其他類名的情況
+                    const hasContentDiv = /class\s*=\s*["'][^"']*content[^"']*["']/i.test(originalContent) ||
+                                         /class\s*=\s*["'][^"']*content[^"']*["']/i.test(originalContent);
                 
                 console.log('檢查 .content div:', {
                     hasContentDiv,
@@ -4351,8 +4432,7 @@ async function saveEmailTemplate(event) {
                 } catch (e) {
                     console.error('獲取資料庫模板失敗:', e);
                     // 如果失敗，創建完整的圖卡樣式 HTML
-                    const headerColor = templateKey === 'payment_reminder' ? '#e74c3c' : 
-                                       templateKey === 'booking_confirmation' ? '#198754' : '#262A33';
+                    const headerColor = getHeaderColorForTemplate(templateKey);
                     const defaultStyle = `
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -4434,8 +4514,7 @@ async function saveEmailTemplate(event) {
                     }
                 } else {
                     // 如果無法取得資料庫模板，創建完整的圖卡樣式 HTML
-                    const headerColor = templateKey === 'payment_reminder' ? '#e74c3c' : 
-                                       templateKey === 'booking_confirmation' ? '#198754' : '#262A33';
+                    const headerColor = getHeaderColorForTemplate(templateKey);
                     const defaultStyle = `
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -4469,8 +4548,7 @@ async function saveEmailTemplate(event) {
             } catch (e) {
                 console.error('獲取資料庫模板失敗:', e);
                 // 如果失敗，創建完整的圖卡樣式 HTML
-                const headerColor = templateKey === 'payment_reminder' ? '#e74c3c' : 
-                                   templateKey === 'booking_confirmation' ? '#198754' : '#262A33';
+                const headerColor = getHeaderColorForTemplate(templateKey);
                 const defaultStyle = `
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
