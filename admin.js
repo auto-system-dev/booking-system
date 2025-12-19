@@ -5012,21 +5012,47 @@ function refreshEmailPreview() {
         } else {
             // 如果從原始 HTML 提取失敗，自動創建結構
             if (!headerHtml) {
-                // 檢查內容中是否有標題（h1 或包含「入住提醒」等）
-                const titleMatch = bodyContent.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-                if (titleMatch) {
-                    headerHtml = `<div class="header"><h1>${titleMatch[1]}</h1></div>`;
-                    // 從 bodyContent 中移除標題
-                    bodyContent = bodyContent.replace(/<h1[^>]*>[\s\S]*?<\/h1>/i, '');
-                    console.log('✅ 自動創建 .header 結構');
+                // 先檢查 bodyContent 中是否已經有 .header div（可能在 .container 內）
+                const existingHeaderMatch = bodyContent.match(/(<div[^>]*class\s*=\s*["'][^"']*header[^"']*["'][^>]*>[\s\S]*?<\/div>)/i);
+                
+                if (existingHeaderMatch) {
+                    // 如果已經有 .header div，使用它並從 bodyContent 中移除
+                    headerHtml = existingHeaderMatch[1];
+                    bodyContent = bodyContent.replace(/(<div[^>]*class\s*=\s*["'][^"']*header[^"']*["'][^>]*>[\s\S]*?<\/div>)/i, '');
+                    console.log('✅ 從 bodyContent 中提取到 .header 結構');
                 } else {
-                    // 如果沒有標題，創建一個默認的
-                    headerHtml = '<div class="header"><h1>入住提醒</h1></div>';
-                    console.log('✅ 創建默認 .header 結構');
+                    // 檢查內容中是否有標題（h1），但只在 .header div 內查找，不要從 .content div 內提取
+                    // 先移除可能的 .content div 內容，只檢查結構部分
+                    const structurePart = bodyContent.replace(/<div[^>]*class\s*=\s*["'][^"']*content[^"']*["'][^>]*>[\s\S]*?<\/div>/i, '');
+                    const titleMatch = structurePart.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+                    
+                    if (titleMatch) {
+                        headerHtml = `<div class="header"><h1>${titleMatch[1]}</h1></div>`;
+                        // 只從結構部分移除標題，不要影響 .content div 內的內容
+                        bodyContent = bodyContent.replace(/<h1[^>]*>[\s\S]*?<\/h1>/i, '');
+                        console.log('✅ 自動創建 .header 結構（從結構部分提取標題）');
+                    } else {
+                        // 如果沒有標題，根據模板類型創建默認標題
+                        const form = document.getElementById('emailTemplateForm');
+                        const templateKey = form ? form.dataset.templateKey : null;
+                        let defaultTitle = '郵件';
+                        if (templateKey === 'checkin_reminder') {
+                            defaultTitle = '入住提醒';
+                        } else if (templateKey === 'payment_reminder') {
+                            defaultTitle = '匯款期限提醒';
+                        } else if (templateKey === 'feedback_request') {
+                            defaultTitle = '感謝您的入住';
+                        } else if (templateKey === 'booking_confirmation') {
+                            defaultTitle = '訂房確認成功';
+                        }
+                        headerHtml = `<div class="header"><h1>🏨 ${defaultTitle}</h1></div>`;
+                        console.log('✅ 創建默認 .header 結構:', defaultTitle);
+                    }
                 }
             } else {
                 // 如果提取到了 header，但 bodyContent 可能還包含 header，需要移除
-                bodyContent = bodyContent.replace(/<div[^>]*class\s*=\s*["']header["'][^>]*>[\s\S]*?<\/div>/i, '');
+                // 只移除 .header div，不要移除 .content div 內的文字
+                bodyContent = bodyContent.replace(/(<div[^>]*class\s*=\s*["'][^"']*header[^"']*["'][^>]*>[\s\S]*?<\/div>)/i, '');
                 console.log('✅ 已移除 bodyContent 中的重複 header');
             }
             
@@ -5207,13 +5233,25 @@ function replaceEmailVariables(html) {
 
 // 獲取郵件樣式 CSS
 function getEmailStyleCSS(style) {
+    // 根據當前模板類型選擇正確的標題欄顏色
+    const form = document.getElementById('emailTemplateForm');
+    const templateKey = form ? form.dataset.templateKey : null;
+    let headerColor = '#262A33'; // 預設深灰色（入住提醒、感謝入住）
+    
+    if (templateKey === 'payment_reminder') {
+        headerColor = '#e74c3c'; // 紅色（匯款提醒）
+    } else if (templateKey === 'booking_confirmation') {
+        headerColor = '#198754'; // 綠色（訂房確認）
+    }
+    // 其他模板（入住提醒、感謝入住）使用深灰色 #262A33
+    
     const styles = {
         card: `
             body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #198754; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .header { background: ${headerColor}; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
             .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #198754; }
+            .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${headerColor}; }
             .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
             .info-label { font-weight: 600; color: #666; }
             .info-value { color: #333; }
