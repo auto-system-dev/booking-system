@@ -5419,9 +5419,6 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     // 判斷是否為匯款轉帳
     const isTransfer = booking.payment_method === '匯款轉帳' || booking.payment_method === 'transfer';
     
-    // 判斷是否為訂金支付（檢查 payment_amount 欄位是否包含「訂金」）
-    const isDeposit = booking.payment_amount && booking.payment_amount.includes('訂金');
-    
     // 格式化日期時間
     const bookingDate = booking.created_at ? new Date(booking.created_at).toLocaleDateString('zh-TW') : '';
     const bookingDateTime = booking.created_at ? new Date(booking.created_at).toLocaleString('zh-TW') : '';
