@@ -3859,21 +3859,35 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
                                      (testContent.includes('<html') && testContent.includes('</html>'));
         
         // 檢查是否包含必要的 CSS 樣式（特別是 .header 樣式）
+        // 更嚴格地檢查：必須包含 .header 樣式定義，且包含背景色設定
         const hasHeaderStyle = testContent.includes('.header') && 
                                (testContent.includes('background') || testContent.includes('background-color'));
         
         // 檢查是否包含 <style> 標籤
         const hasStyleTag = testContent.includes('<style>') || testContent.includes('<style ');
         
-        // 如果缺少完整結構或樣式，使用資料庫中的完整模板
-        if (!hasFullHtmlStructure || !hasHeaderStyle || !hasStyleTag) {
+        // 對於入住提醒郵件，特別檢查是否包含深灰色背景色 #262A33
+        // 如果使用編輯器內容，可能 CSS 樣式被移除或修改，應該使用資料庫中的完整模板
+        const isCheckinReminder = key === 'checkin_reminder';
+        const hasCorrectHeaderColor = !isCheckinReminder || testContent.includes('#262A33');
+        
+        // 如果缺少完整結構或樣式，或樣式不正確，使用資料庫中的完整模板
+        // 特別地，如果使用編輯器內容且是入住提醒，強制使用資料庫模板以確保樣式正確
+        const shouldUseDatabaseTemplate = !hasFullHtmlStructure || !hasHeaderStyle || !hasStyleTag || 
+                                         (isCheckinReminder && useEditorContent && !hasCorrectHeaderColor);
+        
+        if (shouldUseDatabaseTemplate) {
             console.log('⚠️ 測試郵件內容缺少完整結構或樣式，檢查項目:', {
                 hasFullHtmlStructure,
                 hasHeaderStyle,
                 hasStyleTag,
+                hasCorrectHeaderColor,
+                isCheckinReminder,
+                useEditorContent,
                 contentLength: testContent.length,
                 hasHtmlTag: testContent.includes('<html'),
-                hasStyleTag: testContent.includes('<style')
+                hasStyleTag: testContent.includes('<style'),
+                hasHeaderColor: testContent.includes('#262A33')
             });
             
             // 嘗試從資料庫讀取原始模板
@@ -3943,7 +3957,13 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
                 console.log('⚠️ 測試郵件內容缺少完整 HTML 結構，已包裝為完整 HTML');
             }
         } else {
-            console.log('✅ 測試郵件內容包含完整的 HTML 結構和樣式');
+            console.log('✅ 測試郵件內容包含完整的 HTML 結構和樣式', {
+                hasFullHtmlStructure,
+                hasHeaderStyle,
+                hasStyleTag,
+                hasCorrectHeaderColor: isCheckinReminder ? testContent.includes('#262A33') : 'N/A',
+                contentLength: testContent.length
+            });
         }
         
         // 替換模板變數
