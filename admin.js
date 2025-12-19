@@ -4175,8 +4175,7 @@ async function saveEmailTemplate(event) {
                             }
                         } else {
                             // 如果無法取得資料庫模板，創建完整的圖卡樣式 HTML
-                            const headerColor = templateKey === 'payment_reminder' ? '#e74c3c' : 
-                                               templateKey === 'booking_confirmation' ? '#198754' : '#262A33';
+                            const headerColor = getHeaderColorForTemplate(templateKey);
                             const defaultStyle = `
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -4284,8 +4283,7 @@ async function saveEmailTemplate(event) {
                             console.log('✅ 使用資料庫模板的完整結構（包含完整 CSS 樣式）');
                         } else {
                             // 如果資料庫模板也不完整，創建完整的圖卡樣式 HTML
-                            const headerColor = templateKey === 'payment_reminder' ? '#e74c3c' : 
-                                               templateKey === 'booking_confirmation' ? '#198754' : '#262A33';
+                            const headerColor = getHeaderColorForTemplate(templateKey);
                             const defaultStyle = `
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
