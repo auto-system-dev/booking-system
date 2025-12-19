@@ -3829,36 +3829,81 @@ app.put('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res)
 </body>
 </html>`;
             } else if (!hasHeaderStyle || !hasStyleTag) {
-                // 如果有 HTML 結構但缺少樣式，添加樣式
-                if (finalContent.includes('<head>')) {
-                    // 在 <head> 中添加 <style> 標籤
-                    if (!hasStyleTag) {
-                        finalContent = finalContent.replace(
-                            /<head[^>]*>/i,
-                            `<head>
-    <meta charset="UTF-8">
-    <style>${defaultStyle}</style>`
-                        );
-                    } else {
-                        // 如果已有 <style> 標籤但缺少 .header 樣式，添加樣式
-                        const styleMatch = finalContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-                        if (styleMatch && !styleMatch[1].includes('.header')) {
-                            finalContent = finalContent.replace(
-                                /<style[^>]*>([\s\S]*?)<\/style>/i,
-                                `<style>${styleMatch[1]}\n${defaultStyle}</style>`
-                            );
+                // 如果有 HTML 結構但缺少樣式，檢查是否有 .content div 結構
+                const hasContentDiv = finalContent.includes('class="content"') || finalContent.includes("class='content'");
+                const hasContainerDiv = finalContent.includes('class="container"') || finalContent.includes("class='container'");
+                const hasHeaderDiv = finalContent.includes('class="header"') || finalContent.includes("class='header'");
+                
+                // 如果缺少 .container、.header 或 .content div，需要重建結構
+                if (!hasContainerDiv || !hasHeaderDiv || !hasContentDiv) {
+                    console.log('⚠️ 保存的模板缺少 .container、.header 或 .content div，重建結構...');
+                    
+                    // 提取實際內容
+                    let bodyContent = finalContent;
+                    if (finalContent.includes('<body>')) {
+                        const bodyMatch = finalContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                        if (bodyMatch && bodyMatch[1]) {
+                            // 移除可能的 .container、.header、.content div，只保留實際內容
+                            bodyContent = bodyMatch[1]
+                                .replace(/<div[^>]*class\s*=\s*["']container["'][^>]*>/gi, '')
+                                .replace(/<div[^>]*class\s*=\s*["']header["'][^>]*>[\s\S]*?<\/div>/gi, '')
+                                .replace(/<div[^>]*class\s*=\s*["']content["'][^>]*>/gi, '')
+                                .replace(/<\/div>\s*<\/div>\s*$/i, '')
+                                .trim();
                         }
                     }
+                    
+                    // 重建完整的圖卡樣式結構
+                    finalContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${defaultStyle}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏨 ${template_name}</h1>
+        </div>
+        <div class="content">
+            ${bodyContent}
+        </div>
+    </div>
+</body>
+</html>`;
+                    console.log('✅ 已重建完整的圖卡樣式結構');
                 } else {
-                    // 如果沒有 <head>，添加完整的 head 和樣式
-                    finalContent = finalContent.replace(
-                        /<html[^>]*>/i,
-                        `<html>
+                    // 如果有完整的結構但缺少樣式，只添加樣式
+                    if (finalContent.includes('<head>')) {
+                        // 在 <head> 中添加 <style> 標籤
+                        if (!hasStyleTag) {
+                            finalContent = finalContent.replace(
+                                /<head[^>]*>/i,
+                                `<head>
+    <meta charset="UTF-8">
+    <style>${defaultStyle}</style>`
+                            );
+                        } else {
+                            // 如果已有 <style> 標籤但缺少 .header 樣式，添加樣式
+                            const styleMatch = finalContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+                            if (styleMatch && !styleMatch[1].includes('.header')) {
+                                finalContent = finalContent.replace(
+                                    /<style[^>]*>([\s\S]*?)<\/style>/i,
+                                    `<style>${styleMatch[1]}\n${defaultStyle}</style>`
+                                );
+                            }
+                        }
+                    } else {
+                        // 如果沒有 <head>，添加完整的 head 和樣式
+                        finalContent = finalContent.replace(
+                            /<html[^>]*>/i,
+                            `<html>
 <head>
     <meta charset="UTF-8">
     <style>${defaultStyle}</style>
 </head>`
-                    );
+                        );
+                    }
                 }
             }
             

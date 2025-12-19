@@ -3715,27 +3715,96 @@ async function saveEmailTemplate(event) {
         
         // 檢查原始內容是否包含完整的 HTML 結構
         if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
-            // 如果原始內容是完整 HTML，替換 body 內容
+            // 如果原始內容是完整 HTML，只替換 .content div 內的內容，保留 .container 和 .header 結構
             if (originalContent.includes('<body>')) {
-                // 使用更精確的正則表達式來替換 body 內容
-                content = originalContent.replace(
-                    /<body[^>]*>[\s\S]*?<\/body>/i,
-                    `<body>${quillHtml}</body>`
-                );
-                console.log('使用原始 HTML 結構，替換 body 內容');
-            } else if (originalContent.includes('<html')) {
-                // 如果有 html 標籤但沒有 body，在 html 標籤內添加 body
-                content = originalContent.replace(
-                    /<html[^>]*>([\s\S]*?)<\/html>/i,
-                    (match, innerContent) => {
-                        if (innerContent.includes('<body>')) {
-                            return match.replace(/<body[^>]*>[\s\S]*?<\/body>/i, `<body>${quillHtml}</body>`);
-                        } else {
-                            return `<html${match.match(/<html([^>]*)>/)?.[1] || ''}>${innerContent}<body>${quillHtml}</body></html>`;
+                // 檢查是否有 .content div（圖卡樣式的結構）
+                const hasContentDiv = originalContent.includes('class="content"') || originalContent.includes("class='content'");
+                
+                if (hasContentDiv) {
+                    // 只替換 .content div 內的內容，保留 .container 和 .header
+                    // 使用更精確的正則表達式，匹配 .content div 的開始標籤到結束標籤之間的內容
+                    const contentDivRegex = /(<div[^>]*class\s*=\s*["']content["'][^>]*>)([\s\S]*?)(<\/div>)/i;
+                    const match = originalContent.match(contentDivRegex);
+                    
+                    if (match) {
+                        // 找到 .content div，只替換其內容
+                        content = originalContent.replace(
+                            contentDivRegex,
+                            `$1${quillHtml}$3`
+                        );
+                        console.log('✅ 使用原始 HTML 結構，只替換 .content div 內的內容（保留 .container 和 .header）');
+                    } else {
+                        // 如果正則匹配失敗，嘗試從資料庫讀取原始模板
+                        console.warn('⚠️ 無法匹配 .content div，嘗試從資料庫讀取原始模板');
+                        try {
+                            const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
+                            const templateResult = await templateResponse.json();
+                            if (templateResult.success && templateResult.data && templateResult.data.content) {
+                                const templateContent = templateResult.data.content;
+                                const templateContentDivRegex = /(<div[^>]*class\s*=\s*["']content["'][^>]*>)([\s\S]*?)(<\/div>)/i;
+                                const templateMatch = templateContent.match(templateContentDivRegex);
+                                if (templateMatch) {
+                                    content = templateContent.replace(
+                                        templateContentDivRegex,
+                                        `$1${quillHtml}$3`
+                                    );
+                                    console.log('✅ 使用資料庫模板結構，只替換 .content div 內的內容');
+                                } else {
+                                    // 如果資料庫模板也沒有 .content div，使用原始替換方式
+                                    content = originalContent.replace(
+                                        /<body[^>]*>[\s\S]*?<\/body>/i,
+                                        `<body>${quillHtml}</body>`
+                                    );
+                                    console.log('⚠️ 資料庫模板也沒有 .content div，使用原始替換方式');
+                                }
+                            } else {
+                                content = originalContent.replace(
+                                    /<body[^>]*>[\s\S]*?<\/body>/i,
+                                    `<body>${quillHtml}</body>`
+                                );
+                                console.log('⚠️ 無法取得資料庫模板，使用原始替換方式');
+                            }
+                        } catch (e) {
+                            console.error('獲取資料庫模板失敗:', e);
+                            content = originalContent.replace(
+                                /<body[^>]*>[\s\S]*?<\/body>/i,
+                                `<body>${quillHtml}</body>`
+                            );
                         }
                     }
-                );
-                console.log('在 HTML 標籤內添加 body');
+                } else {
+                    // 如果沒有 .content div，使用更精確的正則表達式來替換 body 內容
+                    content = originalContent.replace(
+                        /<body[^>]*>[\s\S]*?<\/body>/i,
+                        `<body>${quillHtml}</body>`
+                    );
+                    console.log('使用原始 HTML 結構，替換 body 內容（沒有 .content div）');
+                }
+            } else if (originalContent.includes('<html')) {
+                // 如果有 html 標籤但沒有 body，在 html 標籤內添加 body
+                // 檢查是否有 .content div（圖卡樣式的結構）
+                const hasContentDiv = originalContent.includes('class="content"') || originalContent.includes("class='content'");
+                
+                if (hasContentDiv && originalContent.includes('<body>')) {
+                    // 只替換 .content div 內的內容，保留 .container 和 .header
+                    content = originalContent.replace(
+                        /(<div[^>]*class\s*=\s*["']content["'][^>]*>)([\s\S]*?)(<\/div>\s*<\/div>\s*<\/body>)/i,
+                        `$1${quillHtml}$3`
+                    );
+                    console.log('✅ 在 HTML 標籤內，只替換 .content div 內的內容（保留 .container 和 .header）');
+                } else {
+                    content = originalContent.replace(
+                        /<html[^>]*>([\s\S]*?)<\/html>/i,
+                        (match, innerContent) => {
+                            if (innerContent.includes('<body>')) {
+                                return match.replace(/<body[^>]*>[\s\S]*?<\/body>/i, `<body>${quillHtml}</body>`);
+                            } else {
+                                return `<html${match.match(/<html([^>]*)>/)?.[1] || ''}>${innerContent}<body>${quillHtml}</body></html>`;
+                            }
+                        }
+                    );
+                    console.log('在 HTML 標籤內添加 body');
+                }
             } else {
                 // 如果沒有 body，嘗試從資料庫讀取原始模板以保留完整的 CSS 樣式
                 try {
