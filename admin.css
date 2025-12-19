@@ -1107,10 +1107,17 @@ label:has(input[type="checkbox"]:hover) {
 }
 
 /* Quill 編輯器自定義樣式 */
+#emailTemplateEditor {
+    position: relative;
+    z-index: 1;
+}
+
 #emailTemplateEditor .ql-container {
     font-family: 'Microsoft JhengHei', 'Noto Sans TC', Arial, sans-serif;
     font-size: 14px;
     min-height: 350px;
+    position: relative;
+    z-index: 1;
 }
 
 #emailTemplateEditor .ql-editor {
