@@ -4692,8 +4692,7 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             console.log('✅ 緊急修復完成，確保測試郵件包含完整的圖卡樣式');
         }
         
-        // 添加旅館資訊 footer
-        const hotelInfoFooter = await getHotelInfoFooter();
+        // 添加旅館資訊 footer（重用之前已宣告的 hotelInfoFooter 變數）
         if (hotelInfoFooter) {
             testContent = testContent.replace('</body>', hotelInfoFooter + '</body>');
         }
