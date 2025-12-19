@@ -3851,8 +3851,22 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         };
         
         // 確保測試郵件包含完整的 HTML 結構和 CSS 樣式
-        // 檢查是否包含完整的 HTML 結構和必要的 CSS 樣式
+        // 對於測試郵件，如果使用編輯器內容，強制檢查並使用資料庫中的完整模板以確保樣式正確
         let testContent = content;
+        
+        // 如果使用編輯器內容，強制使用資料庫中的完整模板以確保樣式正確
+        // 因為編輯器可能只提取了部分內容，缺少完整的 CSS 樣式
+        if (useEditorContent) {
+            console.log('⚠️ 測試郵件使用編輯器內容，強制使用資料庫中的完整模板以確保樣式正確');
+            const originalTemplate = await db.getEmailTemplateByKey(key);
+            if (originalTemplate && originalTemplate.content) {
+                // 使用資料庫中的完整模板
+                testContent = originalTemplate.content;
+                console.log('✅ 已使用資料庫中的完整模板（包含完整的 CSS 樣式）');
+            } else {
+                console.warn('⚠️ 無法取得資料庫模板，使用編輯器內容');
+            }
+        }
         
         // 檢查是否包含完整的 HTML 結構
         const hasFullHtmlStructure = testContent.includes('<!DOCTYPE html>') || 
@@ -3867,16 +3881,14 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         const hasStyleTag = testContent.includes('<style>') || testContent.includes('<style ');
         
         // 對於入住提醒郵件，特別檢查是否包含深灰色背景色 #262A33
-        // 如果使用編輯器內容，可能 CSS 樣式被移除或修改，應該使用資料庫中的完整模板
         const isCheckinReminder = key === 'checkin_reminder';
         const hasCorrectHeaderColor = !isCheckinReminder || testContent.includes('#262A33');
         
-        // 如果缺少完整結構或樣式，或樣式不正確，使用資料庫中的完整模板
-        // 特別地，如果使用編輯器內容且是入住提醒，強制使用資料庫模板以確保樣式正確
-        const shouldUseDatabaseTemplate = !hasFullHtmlStructure || !hasHeaderStyle || !hasStyleTag || 
-                                         (isCheckinReminder && useEditorContent && !hasCorrectHeaderColor);
+        // 如果缺少完整結構或樣式，使用資料庫中的完整模板
+        const shouldUseDatabaseTemplate = !hasFullHtmlStructure || !hasHeaderStyle || !hasStyleTag || !hasCorrectHeaderColor;
         
-        if (shouldUseDatabaseTemplate) {
+        if (shouldUseDatabaseTemplate && !useEditorContent) {
+            // 只有在不使用編輯器內容時才進行修復（因為已經在上面處理過了）
             console.log('⚠️ 測試郵件內容缺少完整結構或樣式，檢查項目:', {
                 hasFullHtmlStructure,
                 hasHeaderStyle,
