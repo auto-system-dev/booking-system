@@ -7,6 +7,7 @@ const nodemailer = require('nodemailer');
 const cors = require('cors');
 const path = require('path');
 const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
 const rateLimit = require('express-rate-limit');
 const db = require('./database');
 const payment = require('./payment');
@@ -4726,9 +4727,13 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             console.log('✅ 緊急修復完成，確保測試郵件包含完整的圖卡樣式');
         }
         
-        // 添加旅館資訊 footer（重用之前已宣告的 hotelInfoFooter 變數）
-        if (hotelInfoFooter) {
-            testContent = testContent.replace('</body>', hotelInfoFooter + '</body>');
+        // 只有在模板中沒有 {{hotelInfoFooter}} 變數時，才添加旅館資訊 footer（避免重複）
+        if (hotelInfoFooter && !hasHotelInfoFooterVariable) {
+            // 檢查是否已經有 hotelInfoFooter 內容（避免重複添加）
+            const hotelInfoFooterPattern = /<div[^>]*class\s*=\s*["'][^"']*hotel-info[^"']*["'][^>]*>/i;
+            if (!hotelInfoFooterPattern.test(testContent)) {
+                testContent = testContent.replace('</body>', hotelInfoFooter + '</body>');
+            }
         }
         
         // 最終驗證：發送前最後一次檢查
