@@ -4235,25 +4235,45 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             });
         }
         
-        // 創建測試資料來替換模板變數
+        // 生成隨機數的輔助函數
+        const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+        const randomAmount = (min, max) => randomInt(min, max).toLocaleString();
+        
+        // 計算日期
+        const today = new Date();
+        const checkInDate = new Date(today.getTime() + randomInt(1, 30) * 24 * 60 * 60 * 1000);
+        const checkOutDate = new Date(checkInDate.getTime() + randomInt(1, 7) * 24 * 60 * 60 * 1000);
+        const nights = Math.max(1, Math.round((checkOutDate - checkInDate) / (24 * 60 * 60 * 1000)));
+        const paymentDeadlineDate = new Date(today.getTime() + randomInt(1, 7) * 24 * 60 * 60 * 1000);
+        
+        // 創建測試資料來替換模板變數（使用隨機數生成缺失的參數）
         const testData = {
-            guestName: '測試用戶',
-            bookingId: 'TEST' + Date.now().toString().slice(-6),
-            checkInDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('zh-TW'),
-            checkOutDate: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000).toLocaleDateString('zh-TW'),
-            roomType: '標準雙人房',
-            totalAmount: '10,000',
-            finalAmount: '3,000',
-            remainingAmount: '7,000',
-            bankName: '測試銀行',
-            bankBranch: '測試分行',
-            bankBranchDisplay: ' - 測試分行',
-            bankAccount: '1234567890123',
-            accountName: '測試戶名',
-            daysReserved: '3',
-            paymentDeadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString('zh-TW'),
-            addonsList: '加床 x1 (NT$ 500)',
-            addonsTotal: '500'
+            guestName: '測試用戶' + randomInt(1, 999),
+            bookingId: 'TEST' + Date.now().toString().slice(-6) + randomInt(100, 999),
+            checkInDate: checkInDate.toLocaleDateString('zh-TW'),
+            checkOutDate: checkOutDate.toLocaleDateString('zh-TW'),
+            nights: nights.toString(),
+            roomType: ['標準雙人房', '豪華雙人房', '標準單人房', '豪華單人房', '家庭房'][randomInt(0, 4)],
+            pricePerNight: randomAmount(2000, 5000),
+            totalAmount: randomAmount(5000, 20000),
+            finalAmount: randomAmount(2000, 8000),
+            remainingAmount: randomAmount(1000, 10000),
+            bankName: ['台灣銀行', '中國信託', '第一銀行', '華南銀行', '玉山銀行'][randomInt(0, 4)],
+            bankBranch: ['台北分行', '台中分行', '高雄分行', '新竹分行'][randomInt(0, 3)],
+            bankBranchDisplay: ' - ' + ['台北分行', '台中分行', '高雄分行', '新竹分行'][randomInt(0, 3)],
+            bankAccount: Array.from({length: 14}, () => randomInt(0, 9)).join(''),
+            accountName: '測試戶名' + randomInt(1, 99),
+            daysReserved: randomInt(1, 7).toString(),
+            paymentDeadline: paymentDeadlineDate.toLocaleDateString('zh-TW'),
+            addonsList: ['加床 x1 (NT$ 500)', '早餐券 x2 (NT$ 300)', '停車券 x1 (NT$ 200)', '加床 x2 (NT$ 1,000)'][randomInt(0, 3)],
+            addonsTotal: randomAmount(200, 1500),
+            paymentMethod: ['匯款轉帳', '線上刷卡', '現金'][randomInt(0, 2)],
+            paymentAmount: ['全額', '訂金 30%', '訂金 50%'][randomInt(0, 2)],
+            guestPhone: '09' + Array.from({length: 8}, () => randomInt(0, 9)).join(''),
+            guestEmail: 'test' + randomInt(1000, 9999) + '@example.com',
+            bookingDate: today.toLocaleDateString('zh-TW'),
+            bookingDateTime: today.toLocaleString('zh-TW'),
+            bookingIdLast5: (Date.now().toString().slice(-6) + randomInt(100, 999)).slice(-5)
         };
         
         // 確保測試郵件包含完整的 HTML 結構和 CSS 樣式
@@ -4384,17 +4404,57 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             });
         }
         
-        // 替換模板變數
+        // 替換模板變數（先替換所有變數）
         Object.keys(testData).forEach(key => {
             const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
             testContent = testContent.replace(regex, testData[key]);
         });
         
         // 處理條件區塊（顯示所有條件區塊用於測試）
-        // 移除 {{#if isDeposit}} 條件，直接顯示內容
-        testContent = testContent.replace(/\{\{#if isDeposit\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
-        // 移除 {{#if addonsList}} 條件，直接顯示內容
+        // 先處理嵌套條件（從內到外）
+        // 1. 處理 {{#if bankName}} 和 {{#if accountName}}
+        testContent = testContent.replace(/\{\{#if bankName\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+        testContent = testContent.replace(/\{\{#if accountName\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+        
+        // 2. 處理 {{#if addonsList}}
         testContent = testContent.replace(/\{\{#if addonsList\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+        
+        // 3. 處理 {{#if isDeposit}}
+        testContent = testContent.replace(/\{\{#if isDeposit\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+        
+        // 4. 處理 {{#if bankInfo}} ... {{else}} ... {{/if}}
+        testContent = testContent.replace(/\{\{#if bankInfo\}\}([\s\S]*?)\{\{else\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+        
+        // 5. 處理 {{#if isTransfer}}
+        testContent = testContent.replace(/\{\{#if isTransfer\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+        
+        // 6. 最後清理：移除所有殘留的條件標籤（防止遺漏）
+        let maxCleanupIterations = 50;
+        let cleanupIteration = 0;
+        let lastCleanupContent = '';
+        
+        while (cleanupIteration < maxCleanupIterations) {
+            lastCleanupContent = testContent;
+            
+            // 移除所有 {{#if ...}} 標籤（匹配任何條件名稱）
+            testContent = testContent.replace(/\{\{#if\s+[^}]+\}\}/gi, '');
+            // 移除所有 {{/if}} 標籤
+            testContent = testContent.replace(/\{\{\/if\}\}/gi, '');
+            // 移除所有 {{else}} 標籤
+            testContent = testContent.replace(/\{\{else\}\}/gi, '');
+            
+            // 如果沒有變化，跳出循環
+            if (testContent === lastCleanupContent) {
+                break;
+            }
+            cleanupIteration++;
+        }
+        
+        // 再次替換所有變數（確保條件區塊處理後剩餘的變數也被替換）
+        Object.keys(testData).forEach(key => {
+            const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+            testContent = testContent.replace(regex, testData[key]);
+        });
         
         // 替換主旨中的變數
         let testSubject = subject;
