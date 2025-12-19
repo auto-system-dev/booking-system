@@ -4613,6 +4613,26 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
                         success: false,
                         message: '發送測試郵件失敗：OAuth2 認證錯誤（invalid_grant）。請檢查 Gmail Refresh Token 是否有效，或聯繫管理員重新配置郵件服務。'
                     });
+                } else if (emailError.message && (emailError.message.includes('unauthorized_client') || emailError.message.includes('Unauthorized client'))) {
+                    console.error('⚠️  OAuth2 Client 認證失敗！');
+                    console.error('   可能原因：');
+                    console.error('   1. GMAIL_CLIENT_ID 或 GMAIL_CLIENT_SECRET 不正確');
+                    console.error('   2. Refresh Token 是從不同的 Client ID/Secret 生成的');
+                    console.error('   3. OAuth2 應用程式設定有問題');
+                    console.error('   4. Gmail API 未啟用');
+                    console.error('   5. 已授權的重新導向 URI 未包含：https://developers.google.com/oauthplayground');
+                    console.error('   解決方法：');
+                    console.error('   1. 檢查 Google Cloud Console → API 和服務 → 憑證');
+                    console.error('   2. 確認 Client ID 和 Client Secret 是否正確');
+                    console.error('   3. 確認 Refresh Token 是從相同的 Client ID/Secret 生成的');
+                    console.error('   4. 確認 OAuth 同意畫面已正確設定');
+                    console.error('   5. 確認 Gmail API 已啟用');
+                    console.error('   6. 確認已授權的重新導向 URI 包含：https://developers.google.com/oauthplayground');
+                    
+                    return res.status(500).json({
+                        success: false,
+                        message: '發送測試郵件失敗：OAuth2 客戶端認證錯誤（unauthorized_client）。請檢查 Gmail Client ID、Client Secret 和 Refresh Token 是否正確配置，或聯繫管理員重新配置郵件服務。'
+                    });
                 } else if (emailError.response && emailError.response.data) {
                     console.error('   API 回應:', emailError.response.data);
                     return res.status(500).json({
@@ -4638,9 +4658,37 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             message: '測試郵件已成功發送'
         });
     } catch (error) {
-        console.error('發送測試郵件錯誤:', error);
-        console.error('錯誤詳情:', error.message);
-        console.error('錯誤堆疊:', error.stack);
+        console.error('❌ 發送測試郵件錯誤:', error);
+        console.error('   錯誤詳情:', error.message);
+        console.error('   錯誤代碼:', error.code);
+        console.error('   錯誤堆疊:', error.stack);
+        
+        // 如果是 OAuth2 相關錯誤，提供更詳細的說明
+        if (error.message && (error.message.includes('unauthorized_client') || error.message.includes('Unauthorized client'))) {
+            console.error('⚠️  OAuth2 Client 認證失敗！');
+            console.error('   可能原因：');
+            console.error('   1. GMAIL_CLIENT_ID 或 GMAIL_CLIENT_SECRET 不正確');
+            console.error('   2. Refresh Token 是從不同的 Client ID/Secret 生成的');
+            console.error('   3. OAuth2 應用程式設定有問題');
+            console.error('   4. Gmail API 未啟用');
+            console.error('   5. 已授權的重新導向 URI 未包含：https://developers.google.com/oauthplayground');
+            
+            return res.status(500).json({
+                success: false,
+                message: '發送測試郵件失敗：OAuth2 客戶端認證錯誤（unauthorized_client）。請檢查 Gmail Client ID、Client Secret 和 Refresh Token 是否正確配置，或聯繫管理員重新配置郵件服務。'
+            });
+        } else if (error.message && (error.message.includes('invalid_grant') || error.message.includes('Invalid grant'))) {
+            console.error('⚠️  OAuth2 Refresh Token 無效或已過期！');
+            console.error('   解決方法：');
+            console.error('   1. 在 OAuth2 Playground 重新生成 Refresh Token');
+            console.error('   2. 更新資料庫或環境變數中的 GMAIL_REFRESH_TOKEN');
+            
+            return res.status(500).json({
+                success: false,
+                message: '發送測試郵件失敗：OAuth2 認證錯誤（invalid_grant）。請檢查 Gmail Refresh Token 是否有效，或聯繫管理員重新配置郵件服務。'
+            });
+        }
+        
         res.status(500).json({
             success: false,
             message: '發送測試郵件失敗：' + (error.message || '未知錯誤')
