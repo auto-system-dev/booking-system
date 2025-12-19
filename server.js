@@ -4657,8 +4657,18 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
                 preFooterCheckHasContent
             });
             // 即使不應該發生，也要強制修復
-            const headerColor = key === 'payment_reminder' ? '#e74c3c' : 
-                               key === 'booking_confirmation' ? '#198754' : '#262A33';
+            let headerColor = '#262A33'; // 預設深灰色
+            if (key === 'payment_reminder') {
+                headerColor = '#e74c3c'; // 紅色（匯款提醒）
+            } else if (key === 'booking_confirmation') {
+                headerColor = '#198754'; // 綠色（訂房確認（客戶））
+            } else if (key === 'booking_confirmation_admin') {
+                headerColor = '#e74c3c'; // 紅色（訂房確認（管理員））
+            } else if (key === 'payment_completed') {
+                headerColor = '#198754'; // 綠色（付款完成確認）
+            } else if (key === 'cancel_notification') {
+                headerColor = '#e74c3c'; // 紅色（取消通知）
+            }
             const emergencyStyle = `
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
