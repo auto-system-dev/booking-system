@@ -3484,9 +3484,44 @@ async function showEmailTemplateModal(templateKey) {
             const editorContainer = document.getElementById('emailTemplateEditor');
             const textarea = document.getElementById('emailTemplateContent');
             
-            title.textContent = `編輯郵件模板：${template.template_name || templateKey}`;
-            document.getElementById('emailTemplateName').value = template.template_name || '';
-            document.getElementById('emailTemplateSubject').value = template.subject || '';
+            // 檢查並修復錯誤的模板名稱和主旨（防止 email 地址格式）
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            let templateName = template.template_name || '';
+            let templateSubject = template.subject || '';
+            
+            // 如果模板名稱是 email 地址格式，使用預設名稱
+            if (emailRegex.test(templateName.trim())) {
+                console.warn('⚠️ 檢測到錯誤的模板名稱格式（email 地址），使用預設名稱');
+                const templateNames = {
+                    'payment_reminder': '匯款提醒',
+                    'checkin_reminder': '入住提醒',
+                    'feedback_request': '感謝入住',
+                    'booking_confirmation': '訂房確認（客戶）',
+                    'booking_confirmation_admin': '訂房確認（管理員）',
+                    'payment_completed': '付款完成確認',
+                    'cancel_notification': '取消通知'
+                };
+                templateName = templateNames[templateKey] || templateKey;
+            }
+            
+            // 如果主旨是 email 地址格式，使用預設主旨
+            if (emailRegex.test(templateSubject.trim())) {
+                console.warn('⚠️ 檢測到錯誤的郵件主旨格式（email 地址），使用預設主旨');
+                const defaultSubjects = {
+                    'payment_reminder': '【重要提醒】匯款期限即將到期',
+                    'checkin_reminder': '【入住提醒】歡迎您明天入住',
+                    'feedback_request': '【感謝入住】分享您的住宿體驗',
+                    'booking_confirmation': '【訂房確認】您的訂房已成功',
+                    'booking_confirmation_admin': '【新訂房通知】{{guestName}} - {{bookingId}}',
+                    'payment_completed': '【訂房確認】您的訂房已成功',
+                    'cancel_notification': '【訂房取消通知】您的訂房已自動取消'
+                };
+                templateSubject = defaultSubjects[templateKey] || '郵件主旨';
+            }
+            
+            title.textContent = `編輯郵件模板：${templateName}`;
+            document.getElementById('emailTemplateName').value = templateName;
+            document.getElementById('emailTemplateSubject').value = templateSubject;
             document.getElementById('emailTemplateEnabled').checked = template.is_enabled === 1;
             
             // 根據模板類型顯示/隱藏設定欄位
