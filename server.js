@@ -3789,6 +3789,9 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         const { key } = req.params;
         const { email, useEditorContent } = req.body;
         
+        // 獲取 emailUser 設定
+        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
+        
         if (!email) {
             return res.status(400).json({
                 success: false,

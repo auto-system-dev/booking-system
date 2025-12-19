@@ -760,11 +760,13 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     }
     clearFieldError('guestName');
     
-    // 4. 手機驗證
+    // 4. 手機驗證（與後端驗證邏輯一致）
     const phoneInput = document.getElementById('guestPhone');
-    const phone = phoneInput.value.trim();
+    const phoneRaw = phoneInput.value.trim();
+    // 移除所有非數字字元（與後端 sanitizePhone 邏輯一致）
+    const phone = phoneRaw.replace(/[-\s]/g, '');
     const taiwanPhoneRegex = /^09\d{8}$/;
-    if (!phone) {
+    if (!phoneRaw) {
         showFieldError('guestPhone', '請填寫手機號碼');
         return;
     } else if (!taiwanPhoneRegex.test(phone)) {
@@ -773,15 +775,20 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     }
     clearFieldError('guestPhone');
     
-    // 5. Email 驗證
+    // 5. Email 驗證（與後端驗證邏輯一致）
     const emailInput = document.getElementById('guestEmail');
-    const email = emailInput.value.trim();
+    const emailRaw = emailInput.value.trim();
+    // 轉為小寫並檢查長度（與後端 sanitizeEmail 邏輯一致）
+    const email = emailRaw.toLowerCase();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
+    if (!emailRaw) {
         showFieldError('guestEmail', '請填寫 Email');
         return;
     } else if (!emailRegex.test(email)) {
         showFieldError('guestEmail', '請輸入有效的 Email 格式（例如：example@email.com）');
+        return;
+    } else if (email.length > 255) {
+        showFieldError('guestEmail', 'Email 長度不能超過 255 字元');
         return;
     }
     clearFieldError('guestEmail');
@@ -808,14 +815,14 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     }
     window.__skipCapacityCheck = false;
     
-    // 收集表單資料
+    // 收集表單資料（使用驗證後清理過的資料）
     const formData = {
         checkInDate: document.getElementById('checkInDate').value,
         checkOutDate: document.getElementById('checkOutDate').value,
         roomType: document.querySelector('input[name="roomType"]:checked').value,
-        guestName: document.getElementById('guestName').value,
-        guestPhone: document.getElementById('guestPhone').value,
-        guestEmail: document.getElementById('guestEmail').value,
+        guestName: document.getElementById('guestName').value.trim(),
+        guestPhone: phone, // 使用驗證後清理過的手機號碼（已移除 - 和空格）
+        guestEmail: email, // 使用驗證後清理過的 Email（已轉小寫）
         adults,
         children,
         paymentAmount: document.querySelector('input[name="paymentAmount"]:checked').value,
@@ -904,7 +911,26 @@ document.getElementById('bookingForm').addEventListener('submit', async function
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         } else {
-            alert('訂房失敗：' + (result.message || '請稍後再試'));
+            // 顯示更詳細的錯誤訊息
+            const errorMsg = result.message || '請稍後再試';
+            console.error('訂房失敗:', errorMsg, result);
+            
+            // 根據錯誤類型顯示不同的訊息
+            if (errorMsg.includes('Email') || errorMsg.includes('email')) {
+                showFieldError('guestEmail', errorMsg);
+            } else if (errorMsg.includes('手機') || errorMsg.includes('phone')) {
+                showFieldError('guestPhone', errorMsg);
+            } else if (errorMsg.includes('日期') || errorMsg.includes('date')) {
+                showFieldError('dateRange', errorMsg);
+            } else if (errorMsg.includes('姓名') || errorMsg.includes('name')) {
+                showFieldError('guestName', errorMsg);
+            } else if (errorMsg.includes('房型') || errorMsg.includes('room')) {
+                showSectionError('roomTypeGrid', errorMsg);
+            } else {
+                // 其他錯誤顯示 alert
+                alert('訂房失敗：' + errorMsg);
+            }
+            
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<span>確認訂房</span>';
         }
