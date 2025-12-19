@@ -3850,21 +3850,57 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             addonsTotal: '500'
         };
         
-        // 確保測試郵件包含完整的 HTML 結構
-        // 如果內容不包含完整的 HTML 結構（缺少 <!DOCTYPE html> 或 <html>），則包裝它
+        // 確保測試郵件包含完整的 HTML 結構和 CSS 樣式
+        // 檢查是否包含完整的 HTML 結構和必要的 CSS 樣式
         let testContent = content;
         
         // 檢查是否包含完整的 HTML 結構
         const hasFullHtmlStructure = testContent.includes('<!DOCTYPE html>') || 
-                                     (testContent.includes('<html>') && testContent.includes('</html>'));
+                                     (testContent.includes('<html') && testContent.includes('</html>'));
         
-        if (!hasFullHtmlStructure) {
-            // 如果沒有完整的 HTML 結構，嘗試從資料庫讀取原始模板
+        // 檢查是否包含必要的 CSS 樣式（特別是 .header 樣式）
+        const hasHeaderStyle = testContent.includes('.header') && 
+                               (testContent.includes('background') || testContent.includes('background-color'));
+        
+        // 檢查是否包含 <style> 標籤
+        const hasStyleTag = testContent.includes('<style>') || testContent.includes('<style ');
+        
+        // 如果缺少完整結構或樣式，使用資料庫中的完整模板
+        if (!hasFullHtmlStructure || !hasHeaderStyle || !hasStyleTag) {
+            console.log('⚠️ 測試郵件內容缺少完整結構或樣式，檢查項目:', {
+                hasFullHtmlStructure,
+                hasHeaderStyle,
+                hasStyleTag,
+                contentLength: testContent.length,
+                hasHtmlTag: testContent.includes('<html'),
+                hasStyleTag: testContent.includes('<style')
+            });
+            
+            // 嘗試從資料庫讀取原始模板
             const originalTemplate = await db.getEmailTemplateByKey(key);
             if (originalTemplate && originalTemplate.content) {
-                // 使用原始模板的完整結構，但替換變數
-                testContent = originalTemplate.content;
-                console.log('⚠️ 測試郵件內容缺少完整 HTML 結構，使用資料庫中的完整模板');
+                // 使用原始模板的完整結構，但保留編輯器中的內容（如果有）
+                // 如果編輯器內容包含在 body 中，嘗試提取並替換到原始模板
+                if (hasFullHtmlStructure && testContent.includes('<body>')) {
+                    // 提取 body 內容
+                    const bodyMatch = testContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                    if (bodyMatch && bodyMatch[1]) {
+                        // 使用原始模板的結構，但替換 body 內容
+                        testContent = originalTemplate.content.replace(
+                            /<body[^>]*>[\s\S]*?<\/body>/i,
+                            `<body>${bodyMatch[1]}</body>`
+                        );
+                        console.log('✅ 使用原始模板結構，保留編輯器中的 body 內容');
+                    } else {
+                        // 如果無法提取 body 內容，使用完整原始模板
+                        testContent = originalTemplate.content;
+                        console.log('✅ 使用資料庫中的完整模板');
+                    }
+                } else {
+                    // 如果沒有完整的 HTML 結構，直接使用原始模板
+                    testContent = originalTemplate.content;
+                    console.log('✅ 使用資料庫中的完整模板（缺少 HTML 結構）');
+                }
             } else {
                 // 如果無法取得原始模板，包裝現有內容為完整 HTML
                 const defaultStyle = `
@@ -3877,6 +3913,16 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
                     .info-label { font-weight: 600; color: #666; }
                     .info-value { color: #333; }
                 `;
+                
+                // 提取實際內容（移除可能的 HTML 標籤）
+                let bodyContent = testContent;
+                if (testContent.includes('<body>')) {
+                    const bodyMatch = testContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                    if (bodyMatch && bodyMatch[1]) {
+                        bodyContent = bodyMatch[1];
+                    }
+                }
+                
                 testContent = `<!DOCTYPE html>
 <html>
 <head>
@@ -3889,13 +3935,15 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             <h1>🏨 入住提醒</h1>
         </div>
         <div class="content">
-            ${testContent}
+            ${bodyContent}
         </div>
     </div>
 </body>
 </html>`;
                 console.log('⚠️ 測試郵件內容缺少完整 HTML 結構，已包裝為完整 HTML');
             }
+        } else {
+            console.log('✅ 測試郵件內容包含完整的 HTML 結構和樣式');
         }
         
         // 替換模板變數
