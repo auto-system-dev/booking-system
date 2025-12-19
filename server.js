@@ -3755,10 +3755,120 @@ app.put('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res)
             });
         }
         
+        // 確保保存的模板包含完整的 HTML 結構和 CSS 樣式
+        let finalContent = content;
+        
+        // 檢查是否包含完整的 HTML 結構
+        const hasFullHtmlStructure = finalContent.includes('<!DOCTYPE html>') || 
+                                     (finalContent.includes('<html') && finalContent.includes('</html>'));
+        
+        // 檢查是否包含必要的 CSS 樣式（特別是 .header 樣式）
+        const hasHeaderStyle = finalContent.includes('.header') && 
+                               (finalContent.includes('background') || finalContent.includes('background-color'));
+        
+        // 檢查是否包含 <style> 標籤
+        const hasStyleTag = finalContent.includes('<style>') || finalContent.includes('<style ');
+        
+        // 如果缺少完整結構或樣式，自動修復
+        if (!hasFullHtmlStructure || !hasHeaderStyle || !hasStyleTag) {
+            console.log('⚠️ 保存的模板缺少完整結構或樣式，自動修復中...', {
+                key,
+                hasFullHtmlStructure,
+                hasHeaderStyle,
+                hasStyleTag,
+                contentLength: finalContent.length
+            });
+            
+            // 根據模板類型選擇對應的樣式
+            let headerColor = '#262A33'; // 預設深灰色（入住提醒、感謝入住）
+            
+            if (key === 'payment_reminder') {
+                headerColor = '#e74c3c'; // 紅色（匯款提醒）
+            } else if (key === 'booking_confirmation') {
+                headerColor = '#198754'; // 綠色（訂房確認）
+            }
+            
+            const defaultStyle = `
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: ${headerColor}; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${headerColor}; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
+        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
+    `;
+            
+            // 如果沒有完整的 HTML 結構，包裝現有內容
+            if (!hasFullHtmlStructure) {
+                // 提取實際內容（移除可能的 HTML 標籤）
+                let bodyContent = finalContent;
+                if (finalContent.includes('<body>')) {
+                    const bodyMatch = finalContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                    if (bodyMatch && bodyMatch[1]) {
+                        bodyContent = bodyMatch[1];
+                    }
+                }
+                
+                finalContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${defaultStyle}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏨 ${template_name}</h1>
+        </div>
+        <div class="content">
+            ${bodyContent}
+        </div>
+    </div>
+</body>
+</html>`;
+            } else if (!hasHeaderStyle || !hasStyleTag) {
+                // 如果有 HTML 結構但缺少樣式，添加樣式
+                if (finalContent.includes('<head>')) {
+                    // 在 <head> 中添加 <style> 標籤
+                    if (!hasStyleTag) {
+                        finalContent = finalContent.replace(
+                            /<head[^>]*>/i,
+                            `<head>
+    <meta charset="UTF-8">
+    <style>${defaultStyle}</style>`
+                        );
+                    } else {
+                        // 如果已有 <style> 標籤但缺少 .header 樣式，添加樣式
+                        const styleMatch = finalContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+                        if (styleMatch && !styleMatch[1].includes('.header')) {
+                            finalContent = finalContent.replace(
+                                /<style[^>]*>([\s\S]*?)<\/style>/i,
+                                `<style>${styleMatch[1]}\n${defaultStyle}</style>`
+                            );
+                        }
+                    }
+                } else {
+                    // 如果沒有 <head>，添加完整的 head 和樣式
+                    finalContent = finalContent.replace(
+                        /<html[^>]*>/i,
+                        `<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${defaultStyle}</style>
+</head>`
+                    );
+                }
+            }
+            
+            console.log('✅ 模板已自動修復，添加完整的 HTML 結構和 CSS 樣式');
+        }
+        
         const result = await db.updateEmailTemplate(key, {
             template_name,
             subject,
-            content,
+            content: finalContent,  // 使用修復後的內容
             is_enabled: is_enabled !== false,
             days_before_checkin,
             send_hour_checkin,

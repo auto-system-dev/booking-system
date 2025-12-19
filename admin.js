@@ -3737,36 +3737,240 @@ async function saveEmailTemplate(event) {
                 );
                 console.log('在 HTML 標籤內添加 body');
             } else {
-                // 如果沒有 body，創建完整的 HTML 結構
+                // 如果沒有 body，嘗試從資料庫讀取原始模板以保留完整的 CSS 樣式
+                try {
+                    const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
+                    const templateResult = await templateResponse.json();
+                    if (templateResult.success && templateResult.data && templateResult.data.content) {
+                        const templateContent = templateResult.data.content;
+                        // 如果資料庫模板有完整的 HTML 結構，使用其結構但替換 body 內容
+                        if (templateContent.includes('<body>')) {
+                            content = templateContent.replace(
+                                /<body[^>]*>[\s\S]*?<\/body>/i,
+                                `<body>${quillHtml}</body>`
+                            );
+                            console.log('✅ 使用資料庫模板的完整結構（包含完整 CSS 樣式）');
+                        } else {
+                            // 如果資料庫模板也不完整，創建完整的圖卡樣式 HTML
+                            const headerColor = templateKey === 'payment_reminder' ? '#e74c3c' : 
+                                               templateKey === 'booking_confirmation' ? '#198754' : '#262A33';
+                            const defaultStyle = `
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: ${headerColor}; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${headerColor}; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
+        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
+    `;
+                            content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${defaultStyle}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏨 ${templateResult.data.template_name || '郵件'}</h1>
+        </div>
+        <div class="content">
+            ${quillHtml}
+        </div>
+    </div>
+</body>
+</html>`;
+                            console.log('✅ 創建完整的圖卡樣式 HTML 結構');
+                        }
+                    } else {
+                        // 如果無法取得資料庫模板，創建完整的圖卡樣式 HTML
+                        const headerColor = templateKey === 'payment_reminder' ? '#e74c3c' : 
+                                           templateKey === 'booking_confirmation' ? '#198754' : '#262A33';
+                        const defaultStyle = `
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: ${headerColor}; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${headerColor}; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
+        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
+    `;
+                        content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${defaultStyle}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏨 郵件</h1>
+        </div>
+        <div class="content">
+            ${quillHtml}
+        </div>
+    </div>
+</body>
+</html>`;
+                        console.log('✅ 創建完整的圖卡樣式 HTML 結構（無法取得資料庫模板）');
+                    }
+                } catch (e) {
+                    console.error('獲取資料庫模板失敗:', e);
+                    // 如果失敗，創建完整的圖卡樣式 HTML
+                    const headerColor = templateKey === 'payment_reminder' ? '#e74c3c' : 
+                                       templateKey === 'booking_confirmation' ? '#198754' : '#262A33';
+                    const defaultStyle = `
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: ${headerColor}; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${headerColor}; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
+        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
+    `;
+                    content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${defaultStyle}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏨 郵件</h1>
+        </div>
+        <div class="content">
+            ${quillHtml}
+        </div>
+    </div>
+</body>
+</html>`;
+                    console.log('✅ 創建完整的圖卡樣式 HTML 結構（錯誤處理）');
+                }
+            }
+        } else {
+            // 如果原始內容不是完整 HTML，嘗試從資料庫讀取原始模板以保留完整的 CSS 樣式
+            try {
+                const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
+                const templateResult = await templateResponse.json();
+                if (templateResult.success && templateResult.data && templateResult.data.content) {
+                    const templateContent = templateResult.data.content;
+                    // 如果資料庫模板有完整的 HTML 結構，使用其結構但替換 body 內容
+                    if (templateContent.includes('<body>')) {
+                        content = templateContent.replace(
+                            /<body[^>]*>[\s\S]*?<\/body>/i,
+                            `<body>${quillHtml}</body>`
+                        );
+                        console.log('✅ 使用資料庫模板的完整結構（包含完整 CSS 樣式）');
+                    } else {
+                        // 如果資料庫模板也不完整，創建完整的圖卡樣式 HTML
+                        const headerColor = templateKey === 'payment_reminder' ? '#e74c3c' : 
+                                           templateKey === 'booking_confirmation' ? '#198754' : '#262A33';
+                        const defaultStyle = `
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: ${headerColor}; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${headerColor}; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
+        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
+    `;
+                        content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${defaultStyle}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏨 ${templateResult.data.template_name || '郵件'}</h1>
+        </div>
+        <div class="content">
+            ${quillHtml}
+        </div>
+    </div>
+</body>
+</html>`;
+                        console.log('✅ 創建完整的圖卡樣式 HTML 結構');
+                    }
+                } else {
+                    // 如果無法取得資料庫模板，創建完整的圖卡樣式 HTML
+                    const headerColor = templateKey === 'payment_reminder' ? '#e74c3c' : 
+                                       templateKey === 'booking_confirmation' ? '#198754' : '#262A33';
+                    const defaultStyle = `
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: ${headerColor}; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${headerColor}; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
+        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
+    `;
+                    content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${defaultStyle}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏨 郵件</h1>
+        </div>
+        <div class="content">
+            ${quillHtml}
+        </div>
+    </div>
+</body>
+</html>`;
+                    console.log('✅ 創建完整的圖卡樣式 HTML 結構（無法取得資料庫模板）');
+                }
+            } catch (e) {
+                console.error('獲取資料庫模板失敗:', e);
+                // 如果失敗，創建完整的圖卡樣式 HTML
+                const headerColor = templateKey === 'payment_reminder' ? '#e74c3c' : 
+                                   templateKey === 'booking_confirmation' ? '#198754' : '#262A33';
+                const defaultStyle = `
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: ${headerColor}; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${headerColor}; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
+        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
+    `;
                 content = `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
-    </style>
+    <style>${defaultStyle}</style>
 </head>
 <body>
-${quillHtml}
+    <div class="container">
+        <div class="header">
+            <h1>🏨 郵件</h1>
+        </div>
+        <div class="content">
+            ${quillHtml}
+        </div>
+    </div>
 </body>
 </html>`;
-                console.log('創建新的完整 HTML 結構');
+                console.log('✅ 創建完整的圖卡樣式 HTML 結構（錯誤處理）');
             }
-        } else {
-            // 如果原始內容不是完整 HTML，創建新的完整 HTML
-            content = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
-    </style>
-</head>
-<body>
-${quillHtml}
-</body>
-</html>`;
-            console.log('原始內容不是完整 HTML，創建新結構');
         }
         
         console.log('最終儲存內容長度:', content.length);
