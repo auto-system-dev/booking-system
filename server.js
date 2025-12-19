@@ -3850,8 +3850,55 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             addonsTotal: '500'
         };
         
-        // 替換模板變數
+        // 確保測試郵件包含完整的 HTML 結構
+        // 如果內容不包含完整的 HTML 結構（缺少 <!DOCTYPE html> 或 <html>），則包裝它
         let testContent = content;
+        
+        // 檢查是否包含完整的 HTML 結構
+        const hasFullHtmlStructure = testContent.includes('<!DOCTYPE html>') || 
+                                     (testContent.includes('<html>') && testContent.includes('</html>'));
+        
+        if (!hasFullHtmlStructure) {
+            // 如果沒有完整的 HTML 結構，嘗試從資料庫讀取原始模板
+            const originalTemplate = await db.getEmailTemplateByKey(key);
+            if (originalTemplate && originalTemplate.content) {
+                // 使用原始模板的完整結構，但替換變數
+                testContent = originalTemplate.content;
+                console.log('⚠️ 測試郵件內容缺少完整 HTML 結構，使用資料庫中的完整模板');
+            } else {
+                // 如果無法取得原始模板，包裝現有內容為完整 HTML
+                const defaultStyle = `
+                    body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: #262A33; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+                    .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #262A33; }
+                    .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+                    .info-label { font-weight: 600; color: #666; }
+                    .info-value { color: #333; }
+                `;
+                testContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${defaultStyle}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏨 入住提醒</h1>
+        </div>
+        <div class="content">
+            ${testContent}
+        </div>
+    </div>
+</body>
+</html>`;
+                console.log('⚠️ 測試郵件內容缺少完整 HTML 結構，已包裝為完整 HTML');
+            }
+        }
+        
+        // 替換模板變數
         Object.keys(testData).forEach(key => {
             const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
             testContent = testContent.replace(regex, testData[key]);
