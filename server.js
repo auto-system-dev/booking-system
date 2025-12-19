@@ -5485,36 +5485,36 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
         return content;
     }
     
-    // 處理訂金提示
-    content = processConditionalBlock(content, isDeposit, 'isDeposit');
+    // 按順序處理條件區塊（從內到外，確保嵌套條件先被處理）
+    // 1. 先處理最內層的嵌套條件（bankName, accountName）
+    if (bankInfo && bankInfo.bankName) {
+        content = content.replace(/\{\{#if bankName\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+    } else {
+        content = content.replace(/\{\{#if bankName\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+    }
     
-    // 處理匯款轉帳提示
-    content = processConditionalBlock(content, isTransfer, 'isTransfer');
+    if (bankInfo && bankInfo.accountName) {
+        content = content.replace(/\{\{#if accountName\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+    } else {
+        content = content.replace(/\{\{#if accountName\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+    }
     
-    // 處理銀行資訊提示
+    // 2. 處理中間層條件（addonsList, bankInfo）
+    const hasAddons = addonsList && addonsList.trim() !== '';
+    content = processConditionalBlock(content, hasAddons, 'addonsList');
+    
     const hasBankInfo = bankInfo && bankInfo.account;
     content = processConditionalBlock(content, hasBankInfo, 'bankInfo');
     
-    // 處理嵌套的銀行資訊條件（bankName, accountName）
-    if (hasBankInfo) {
-        // 處理 {{#if bankName}} ... {{/if}}
-        if (bankInfo.bankName) {
-            content = content.replace(/\{\{#if bankName\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
-        } else {
-            content = content.replace(/\{\{#if bankName\}\}[\s\S]*?\{\{\/if\}\}/g, '');
-        }
-        
-        // 處理 {{#if accountName}} ... {{/if}}
-        if (bankInfo.accountName) {
-            content = content.replace(/\{\{#if accountName\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
-        } else {
-            content = content.replace(/\{\{#if accountName\}\}[\s\S]*?\{\{\/if\}\}/g, '');
-        }
-    }
+    // 3. 處理外層條件（isDeposit, isTransfer）
+    content = processConditionalBlock(content, isDeposit, 'isDeposit');
+    content = processConditionalBlock(content, isTransfer, 'isTransfer');
     
-    // 處理加購商品顯示
-    const hasAddons = addonsList && addonsList.trim() !== '';
-    content = processConditionalBlock(content, hasAddons, 'addonsList');
+    // 4. 最後清理：移除所有殘留的條件標籤（防止遺漏）
+    // 這是最後一道防線，確保所有條件標籤都被移除
+    content = content.replace(/\{\{#if\s+\w+\}\}/g, '');
+    content = content.replace(/\{\{\/if\}\}/g, '');
+    content = content.replace(/\{\{else\}\}/g, '');
     
     // 添加旅館資訊 footer
     const hotelInfoFooter = await getHotelInfoFooter();
