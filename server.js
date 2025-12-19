@@ -62,7 +62,40 @@ if (!process.env.SESSION_SECRET) {
     console.warn('   請在 Railway 環境變數中設定 SESSION_SECRET');
 }
 
+// 配置 Session Store
+// 在生產環境使用 PostgreSQL，開發環境可以使用 MemoryStore
+const usePostgreSQL = !!process.env.DATABASE_URL;
+let sessionStore = null;
+
+if (usePostgreSQL) {
+    // 使用 PostgreSQL 作為 Session Store（適合生產環境）
+    try {
+        const { Pool } = require('pg');
+        const pgPool = new Pool({
+            connectionString: process.env.DATABASE_URL,
+            ssl: process.env.DATABASE_URL.includes('railway') ? { rejectUnauthorized: false } : false
+        });
+        
+        sessionStore = new pgSession({
+            pool: pgPool,
+            tableName: 'session', // Session 表名稱
+            createTableIfMissing: true // 自動創建表（如果不存在）
+        });
+        
+        console.log('✅ 使用 PostgreSQL Session Store（適合生產環境）');
+    } catch (error) {
+        console.error('❌ 無法建立 PostgreSQL Session Store，回退到 MemoryStore:', error.message);
+        console.warn('⚠️  警告：MemoryStore 不適合生產環境，可能導致記憶體洩漏');
+        sessionStore = undefined; // 使用預設的 MemoryStore
+    }
+} else {
+    // 開發環境可以使用 MemoryStore
+    console.log('ℹ️  使用 MemoryStore（僅適合開發環境）');
+    sessionStore = undefined; // 使用預設的 MemoryStore
+}
+
 app.use(session({
+    store: sessionStore, // 使用 PostgreSQL Store 或 MemoryStore
     secret: process.env.SESSION_SECRET || 'your-secret-key-change-this-in-production',
     resave: false,
     saveUninitialized: true, // 改為 true，確保 Session 被儲存並設定 Cookie

@@ -3329,7 +3329,10 @@ module.exports = {
     getAdminLogsCount,
     // 個資保護
     anonymizeCustomerData,
-    deleteCustomerData
+    deleteCustomerData,
+    // PostgreSQL 連接池（供 session store 使用）
+    getPgPool: () => pgPool,
+    usePostgreSQL
 };
 
 // ==================== 個資保護功能 ====================
