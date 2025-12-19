@@ -3763,20 +3763,34 @@ app.put('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res)
                                      (finalContent.includes('<html') && finalContent.includes('</html>'));
         
         // 檢查是否包含必要的 CSS 樣式（特別是 .header 樣式）
+        // 更嚴格的檢查：必須有 .header 樣式定義，且包含 background 或 background-color
         const hasHeaderStyle = finalContent.includes('.header') && 
-                               (finalContent.includes('background') || finalContent.includes('background-color'));
+                               (finalContent.includes('background') || finalContent.includes('background-color')) &&
+                               finalContent.includes('.content') &&
+                               finalContent.includes('.container');
         
         // 檢查是否包含 <style> 標籤
         const hasStyleTag = finalContent.includes('<style>') || finalContent.includes('<style ');
         
+        // 檢查樣式是否完整（必須包含所有必要的 CSS 類別）
+        const hasCompleteStyles = hasStyleTag && 
+                                 finalContent.includes('.header') &&
+                                 finalContent.includes('.content') &&
+                                 finalContent.includes('.container') &&
+                                 (finalContent.match(/\.header\s*\{[\s\S]*?\}/i) || finalContent.includes('.header {'));
+        
         // 如果缺少完整結構或樣式，自動修復
-        if (!hasFullHtmlStructure || !hasHeaderStyle || !hasStyleTag) {
+        if (!hasFullHtmlStructure || !hasHeaderStyle || !hasStyleTag || !hasCompleteStyles) {
             console.log('⚠️ 保存的模板缺少完整結構或樣式，自動修復中...', {
                 key,
                 hasFullHtmlStructure,
                 hasHeaderStyle,
                 hasStyleTag,
-                contentLength: finalContent.length
+                hasCompleteStyles,
+                contentLength: finalContent.length,
+                hasHeaderClass: finalContent.includes('class="header') || finalContent.includes("class='header"),
+                hasContentClass: finalContent.includes('class="content') || finalContent.includes("class='content"),
+                hasContainerClass: finalContent.includes('class="container') || finalContent.includes("class='container")
             });
             
             // 根據模板類型選擇對應的樣式
@@ -3908,6 +3922,98 @@ app.put('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res)
             }
             
             console.log('✅ 模板已自動修復，添加完整的 HTML 結構和 CSS 樣式');
+        }
+        
+        // 最終檢查：確保保存的內容一定有完整的樣式和結構
+        // 即使通過了前面的檢查，也要再次驗證
+        const finalCheckHasFullHtml = finalContent.includes('<!DOCTYPE html>') || 
+                                      (finalContent.includes('<html') && finalContent.includes('</html>'));
+        const finalCheckHasStyleTag = finalContent.includes('<style>') || finalContent.includes('<style ');
+        const finalCheckHasHeaderStyle = finalContent.includes('.header') && 
+                                        (finalContent.includes('background') || finalContent.includes('background-color'));
+        const finalCheckHasContainer = finalContent.includes('class="container') || finalContent.includes("class='container");
+        const finalCheckHasHeader = finalContent.includes('class="header') || finalContent.includes("class='header");
+        const finalCheckHasContent = finalContent.includes('class="content') || finalContent.includes("class='content");
+        
+        if (!finalCheckHasFullHtml || !finalCheckHasStyleTag || !finalCheckHasHeaderStyle || 
+            !finalCheckHasContainer || !finalCheckHasHeader || !finalCheckHasContent) {
+            console.log('⚠️ 最終檢查：保存的模板仍缺少完整結構或樣式，強制修復...', {
+                finalCheckHasFullHtml,
+                finalCheckHasStyleTag,
+                finalCheckHasHeaderStyle,
+                finalCheckHasContainer,
+                finalCheckHasHeader,
+                finalCheckHasContent
+            });
+            
+            // 根據模板類型選擇對應的樣式
+            let headerColor = '#262A33'; // 預設深灰色（入住提醒、感謝入住）
+            
+            if (key === 'payment_reminder') {
+                headerColor = '#e74c3c'; // 紅色（匯款提醒）
+            } else if (key === 'booking_confirmation') {
+                headerColor = '#198754'; // 綠色（訂房確認）
+            }
+            
+            const completeStyle = `
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: ${headerColor}; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${headerColor}; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
+        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
+    `;
+            
+            // 提取實際內容
+            let bodyContent = finalContent;
+            if (finalContent.includes('<body>')) {
+                const bodyMatch = finalContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                if (bodyMatch && bodyMatch[1]) {
+                    // 移除可能的 .container、.header、.content div，只保留實際內容
+                    bodyContent = bodyMatch[1]
+                        .replace(/<div[^>]*class\s*=\s*["']container["'][^>]*>/gi, '')
+                        .replace(/<div[^>]*class\s*=\s*["']header["'][^>]*>[\s\S]*?<\/div>/gi, '')
+                        .replace(/<div[^>]*class\s*=\s*["']content["'][^>]*>/gi, '')
+                        .replace(/<\/div>\s*<\/div>\s*$/i, '')
+                        .trim();
+                }
+            } else if (finalContent.includes('<html')) {
+                // 如果只有 HTML 標籤但沒有 body，提取 HTML 內容
+                const htmlMatch = finalContent.match(/<html[^>]*>([\s\S]*?)<\/html>/i);
+                if (htmlMatch && htmlMatch[1]) {
+                    bodyContent = htmlMatch[1]
+                        .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
+                        .replace(/<div[^>]*class\s*=\s*["']container["'][^>]*>/gi, '')
+                        .replace(/<div[^>]*class\s*=\s*["']header["'][^>]*>[\s\S]*?<\/div>/gi, '')
+                        .replace(/<div[^>]*class\s*=\s*["']content["'][^>]*>/gi, '')
+                        .replace(/<\/div>\s*<\/div>\s*$/i, '')
+                        .trim();
+                }
+            }
+            
+            // 重建完整的圖卡樣式結構
+            finalContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${completeStyle}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏨 ${template_name}</h1>
+        </div>
+        <div class="content">
+            ${bodyContent}
+        </div>
+    </div>
+</body>
+</html>`;
+            
+            console.log('✅ 最終修復完成，確保保存的模板包含完整的圖卡樣式');
         }
         
         const result = await db.updateEmailTemplate(key, {
@@ -4596,19 +4702,39 @@ async function replaceTemplateVariables(template, booking, bankInfo = null) {
                                  (content.includes('<html') && content.includes('</html>'));
     
     // 檢查是否包含必要的 CSS 樣式（特別是 .header 樣式）
+    // 更嚴格的檢查：必須有 .header 樣式定義，且包含 background 或 background-color
     const hasHeaderStyle = content.includes('.header') && 
-                           (content.includes('background') || content.includes('background-color'));
+                           (content.includes('background') || content.includes('background-color')) &&
+                           content.includes('.content') &&
+                           content.includes('.container');
     
     // 檢查是否包含 <style> 標籤
     const hasStyleTag = content.includes('<style>') || content.includes('<style ');
     
+    // 檢查樣式是否完整（必須包含所有必要的 CSS 類別）
+    const hasCompleteStyles = hasStyleTag && 
+                             content.includes('.header') &&
+                             content.includes('.content') &&
+                             content.includes('.container') &&
+                             (content.match(/\.header\s*\{[\s\S]*?\}/i) || content.includes('.header {'));
+    
+    // 檢查是否有完整的 HTML 結構元素
+    const hasContainer = content.includes('class="container') || content.includes("class='container");
+    const hasHeader = content.includes('class="header') || content.includes("class='header");
+    const hasContent = content.includes('class="content') || content.includes("class='content");
+    
     // 如果缺少完整結構或樣式，自動修復
-    if (!hasFullHtmlStructure || !hasHeaderStyle || !hasStyleTag) {
+    if (!hasFullHtmlStructure || !hasHeaderStyle || !hasStyleTag || !hasCompleteStyles || 
+        !hasContainer || !hasHeader || !hasContent) {
         console.log('⚠️ 郵件模板缺少完整結構或樣式，自動修復中...', {
             templateKey: template.key || template.template_key,
             hasFullHtmlStructure,
             hasHeaderStyle,
             hasStyleTag,
+            hasCompleteStyles,
+            hasContainer,
+            hasHeader,
+            hasContent,
             contentLength: content.length
         });
         
@@ -4697,6 +4823,99 @@ async function replaceTemplateVariables(template, booking, bankInfo = null) {
         }
         
         console.log('✅ 郵件模板已自動修復，添加完整的 HTML 結構和 CSS 樣式');
+    }
+    
+    // 最終檢查：確保返回的內容一定有完整的樣式和結構
+    const finalCheckHasFullHtml = content.includes('<!DOCTYPE html>') || 
+                                  (content.includes('<html') && content.includes('</html>'));
+    const finalCheckHasStyleTag = content.includes('<style>') || content.includes('<style ');
+    const finalCheckHasHeaderStyle = content.includes('.header') && 
+                                     (content.includes('background') || content.includes('background-color'));
+    const finalCheckHasContainer = content.includes('class="container') || content.includes("class='container");
+    const finalCheckHasHeader = content.includes('class="header') || content.includes("class='header");
+    const finalCheckHasContent = content.includes('class="content') || content.includes("class='content");
+    
+    if (!finalCheckHasFullHtml || !finalCheckHasStyleTag || !finalCheckHasHeaderStyle || 
+        !finalCheckHasContainer || !finalCheckHasHeader || !finalCheckHasContent) {
+        console.log('⚠️ 最終檢查：郵件模板仍缺少完整結構或樣式，強制修復...', {
+            templateKey: template.key || template.template_key,
+            finalCheckHasFullHtml,
+            finalCheckHasStyleTag,
+            finalCheckHasHeaderStyle,
+            finalCheckHasContainer,
+            finalCheckHasHeader,
+            finalCheckHasContent
+        });
+        
+        // 根據模板類型選擇對應的樣式
+        const templateKey = template.key || template.template_key;
+        let headerColor = '#262A33'; // 預設深灰色（入住提醒、感謝入住）
+        
+        if (templateKey === 'payment_reminder') {
+            headerColor = '#e74c3c'; // 紅色（匯款提醒）
+        } else if (templateKey === 'booking_confirmation') {
+            headerColor = '#198754'; // 綠色（訂房確認）
+        }
+        
+        const completeStyle = `
+            body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: ${headerColor}; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${headerColor}; }
+            .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+            .info-label { font-weight: 600; color: #666; }
+            .info-value { color: #333; }
+            .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
+        `;
+        
+        // 提取實際內容
+        let bodyContent = content;
+        if (content.includes('<body>')) {
+            const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+            if (bodyMatch && bodyMatch[1]) {
+                // 移除可能的 .container、.header、.content div，只保留實際內容
+                bodyContent = bodyMatch[1]
+                    .replace(/<div[^>]*class\s*=\s*["']container["'][^>]*>/gi, '')
+                    .replace(/<div[^>]*class\s*=\s*["']header["'][^>]*>[\s\S]*?<\/div>/gi, '')
+                    .replace(/<div[^>]*class\s*=\s*["']content["'][^>]*>/gi, '')
+                    .replace(/<\/div>\s*<\/div>\s*$/i, '')
+                    .trim();
+            }
+        } else if (content.includes('<html')) {
+            // 如果只有 HTML 標籤但沒有 body，提取 HTML 內容
+            const htmlMatch = content.match(/<html[^>]*>([\s\S]*?)<\/html>/i);
+            if (htmlMatch && htmlMatch[1]) {
+                bodyContent = htmlMatch[1]
+                    .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
+                    .replace(/<div[^>]*class\s*=\s*["']container["'][^>]*>/gi, '')
+                    .replace(/<div[^>]*class\s*=\s*["']header["'][^>]*>[\s\S]*?<\/div>/gi, '')
+                    .replace(/<div[^>]*class\s*=\s*["']content["'][^>]*>/gi, '')
+                    .replace(/<\/div>\s*<\/div>\s*$/i, '')
+                    .trim();
+            }
+        }
+        
+        // 重建完整的圖卡樣式結構
+        content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${completeStyle}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏨 ${template.name || '郵件'}</h1>
+        </div>
+        <div class="content">
+            ${bodyContent}
+        </div>
+    </div>
+</body>
+</html>`;
+        
+        console.log('✅ 最終修復完成，確保郵件包含完整的圖卡樣式');
     }
     
     const checkInDate = new Date(booking.check_in_date).toLocaleDateString('zh-TW');
