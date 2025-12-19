@@ -5512,9 +5512,32 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     
     // 4. 最後清理：移除所有殘留的條件標籤（防止遺漏）
     // 這是最後一道防線，確保所有條件標籤都被移除
-    content = content.replace(/\{\{#if\s+\w+\}\}/g, '');
-    content = content.replace(/\{\{\/if\}\}/g, '');
-    content = content.replace(/\{\{else\}\}/g, '');
+    // 使用更全面的正則表達式來匹配所有可能的條件標籤格式
+    let maxCleanupIterations = 20;
+    let cleanupIteration = 0;
+    let lastCleanupContent = '';
+    
+    while (cleanupIteration < maxCleanupIterations) {
+        lastCleanupContent = content;
+        
+        // 移除所有 {{#if ...}} 標籤（匹配任何條件名稱）
+        content = content.replace(/\{\{#if\s+[^}]+\}\}/g, '');
+        // 移除所有 {{/if}} 標籤
+        content = content.replace(/\{\{\/if\}\}/g, '');
+        // 移除所有 {{else}} 標籤
+        content = content.replace(/\{\{else\}\}/g, '');
+        
+        // 如果沒有變化，跳出循環
+        if (content === lastCleanupContent) {
+            break;
+        }
+        cleanupIteration++;
+    }
+    
+    // 再次替換所有變數（確保條件區塊處理後剩餘的變數也被替換）
+    Object.keys(variables).forEach(key => {
+        content = content.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), variables[key]);
+    });
     
     // 添加旅館資訊 footer
     const hotelInfoFooter = await getHotelInfoFooter();
