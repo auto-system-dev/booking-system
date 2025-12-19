@@ -3427,10 +3427,14 @@ function renderEmailTemplates(templates) {
                     <h3 style="margin: 0 0 5px 0; color: #333;">${template.template_name || templateNames[template.template_key] || template.template_key}</h3>
                     <p style="margin: 0; color: #666; font-size: 14px;">模板代碼：${template.template_key}</p>
                 </div>
-                <div>
-                    <span class="status-badge ${template.is_enabled === 1 ? 'status-sent' : 'status-unsent'}" style="margin-right: 10px;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span class="status-badge ${template.is_enabled === 1 ? 'status-sent' : 'status-unsent'}" style="margin-right: 0;">
                         ${template.is_enabled === 1 ? '啟用' : '停用'}
                     </span>
+                    <button class="btn-secondary" onclick="resetEmailTemplateToDefault('${template.template_key}', '${escapeHtml(template.template_name || templateNames[template.template_key] || template.template_key)}')" style="padding: 6px 12px; font-size: 13px; display: flex; align-items: center; gap: 4px;" title="重置為預設圖卡樣式">
+                        <span class="material-symbols-outlined" style="font-size: 16px;">restart_alt</span>
+                        重置
+                    </button>
                     <button class="btn-edit" onclick="showEmailTemplateModal('${template.template_key}')">編輯</button>
                 </div>
             </div>
@@ -4722,8 +4726,9 @@ ${quillHtml}
 }
 
 // 重置郵件模板為預設圖卡樣式
-async function resetEmailTemplatesToDefault() {
-    if (!confirm('確定要將所有郵件模板重置為預設的圖卡樣式嗎？此操作將覆蓋所有現有的模板內容。')) {
+// 重置單個郵件模板為預設圖卡樣式
+async function resetEmailTemplateToDefault(templateKey, templateName) {
+    if (!confirm(`確定要將郵件模板「${templateName}」重置為預設的圖卡樣式嗎？此操作將覆蓋現有的模板內容。`)) {
         return;
     }
     
@@ -4731,23 +4736,24 @@ async function resetEmailTemplatesToDefault() {
         // 檢查是否有打開的編輯模態框
         const modal = document.getElementById('emailTemplateModal');
         const form = document.getElementById('emailTemplateForm');
-        const templateKey = form ? form.dataset.templateKey : null;
-        const isModalOpen = modal && modal.classList.contains('active');
+        const currentTemplateKey = form ? form.dataset.templateKey : null;
+        const isModalOpen = modal && modal.classList.contains('active') && currentTemplateKey === templateKey;
         
         const response = await fetch('/api/email-templates/reset-to-default', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-            }
+            },
+            body: JSON.stringify({ templateKey })
         });
         
         const result = await response.json();
         
         if (result.success) {
-            alert('✅ 所有郵件模板已成功重置為預設圖卡樣式！');
+            alert(`✅ ${result.message}`);
             
-            // 如果模態框是打開的，重新載入當前模板內容
-            if (isModalOpen && templateKey) {
+            // 如果模態框是打開的且是當前模板，重新載入模板內容
+            if (isModalOpen) {
                 await showEmailTemplateModal(templateKey);
             }
             

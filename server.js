@@ -5028,8 +5028,19 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             }
         ];
         
-        // 更新所有模板為預設圖卡樣式
-        for (const template of defaultTemplates) {
+        // 檢查是否指定了單個模板重置
+        const { templateKey } = req.body;
+        
+        if (templateKey) {
+            // 只重置指定的模板
+            const template = defaultTemplates.find(t => t.key === templateKey);
+            if (!template) {
+                return res.status(400).json({
+                    success: false,
+                    message: '找不到指定的模板'
+                });
+            }
+            
             await db.updateEmailTemplate(template.key, {
                 template_name: template.name,
                 subject: template.subject,
@@ -5042,12 +5053,33 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
                 days_reserved: template.days_reserved,
                 send_hour_payment_reminder: template.send_hour_payment_reminder
             });
+            
+            res.json({
+                success: true,
+                message: `郵件模板「${template.name}」已重置為預設圖卡樣式`
+            });
+        } else {
+            // 更新所有模板為預設圖卡樣式
+            for (const template of defaultTemplates) {
+                await db.updateEmailTemplate(template.key, {
+                    template_name: template.name,
+                    subject: template.subject,
+                    content: template.content,
+                    is_enabled: 1,
+                    days_before_checkin: template.days_before_checkin,
+                    send_hour_checkin: template.send_hour_checkin,
+                    days_after_checkout: template.days_after_checkout,
+                    send_hour_feedback: template.send_hour_feedback,
+                    days_reserved: template.days_reserved,
+                    send_hour_payment_reminder: template.send_hour_payment_reminder
+                });
+            }
+            
+            res.json({
+                success: true,
+                message: '所有郵件模板已重置為預設圖卡樣式'
+            });
         }
-        
-        res.json({
-            success: true,
-            message: '所有郵件模板已重置為預設圖卡樣式'
-        });
     } catch (error) {
         console.error('重置郵件模板錯誤:', error);
         res.status(500).json({
