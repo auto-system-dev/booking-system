@@ -4456,6 +4456,14 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             testContent = testContent.replace(regex, testData[key]);
         });
         
+        // 處理 {{hotelInfoFooter}} 變數
+        const hotelInfoFooter = await getHotelInfoFooter();
+        if (hotelInfoFooter) {
+            testContent = testContent.replace(/\{\{hotelInfoFooter\}\}/g, hotelInfoFooter);
+        } else {
+            testContent = testContent.replace(/\{\{hotelInfoFooter\}\}/g, '');
+        }
+        
         // 替換主旨中的變數
         let testSubject = subject;
         Object.keys(testData).forEach(key => {
