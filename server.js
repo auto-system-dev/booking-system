@@ -4352,6 +4352,116 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 // 替換郵件模板中的變數
 async function replaceTemplateVariables(template, booking, bankInfo = null) {
     let content = template.content;
+    
+    // 確保模板包含完整的 HTML 結構和 CSS 樣式
+    // 檢查是否包含完整的 HTML 結構
+    const hasFullHtmlStructure = content.includes('<!DOCTYPE html>') || 
+                                 (content.includes('<html') && content.includes('</html>'));
+    
+    // 檢查是否包含必要的 CSS 樣式（特別是 .header 樣式）
+    const hasHeaderStyle = content.includes('.header') && 
+                           (content.includes('background') || content.includes('background-color'));
+    
+    // 檢查是否包含 <style> 標籤
+    const hasStyleTag = content.includes('<style>') || content.includes('<style ');
+    
+    // 如果缺少完整結構或樣式，自動修復
+    if (!hasFullHtmlStructure || !hasHeaderStyle || !hasStyleTag) {
+        console.log('⚠️ 郵件模板缺少完整結構或樣式，自動修復中...', {
+            templateKey: template.key || template.template_key,
+            hasFullHtmlStructure,
+            hasHeaderStyle,
+            hasStyleTag,
+            contentLength: content.length
+        });
+        
+        // 根據模板類型選擇對應的樣式
+        const templateKey = template.key || template.template_key;
+        let headerColor = '#262A33'; // 預設深灰色（入住提醒、感謝入住）
+        
+        if (templateKey === 'payment_reminder') {
+            headerColor = '#e74c3c'; // 紅色（匯款提醒）
+        } else if (templateKey === 'booking_confirmation') {
+            headerColor = '#198754'; // 綠色（訂房確認）
+        }
+        
+        const defaultStyle = `
+            body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: ${headerColor}; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${headerColor}; }
+            .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+            .info-label { font-weight: 600; color: #666; }
+            .info-value { color: #333; }
+            .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
+        `;
+        
+        // 如果沒有完整的 HTML 結構，包裝現有內容
+        if (!hasFullHtmlStructure) {
+            // 提取實際內容（移除可能的 HTML 標籤）
+            let bodyContent = content;
+            if (content.includes('<body>')) {
+                const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                if (bodyMatch && bodyMatch[1]) {
+                    bodyContent = bodyMatch[1];
+                }
+            }
+            
+            content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${defaultStyle}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏨 ${template.name || '郵件'}</h1>
+        </div>
+        <div class="content">
+            ${bodyContent}
+        </div>
+    </div>
+</body>
+</html>`;
+        } else if (!hasHeaderStyle || !hasStyleTag) {
+            // 如果有 HTML 結構但缺少樣式，添加樣式
+            if (content.includes('<head>')) {
+                // 在 <head> 中添加 <style> 標籤
+                if (!hasStyleTag) {
+                    content = content.replace(
+                        /<head[^>]*>/i,
+                        `<head>
+    <meta charset="UTF-8">
+    <style>${defaultStyle}</style>`
+                    );
+                } else {
+                    // 如果已有 <style> 標籤但缺少 .header 樣式，添加樣式
+                    const styleMatch = content.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+                    if (styleMatch && !styleMatch[1].includes('.header')) {
+                        content = content.replace(
+                            /<style[^>]*>([\s\S]*?)<\/style>/i,
+                            `<style>${styleMatch[1]}\n${defaultStyle}</style>`
+                        );
+                    }
+                }
+            } else {
+                // 如果沒有 <head>，添加完整的 head 和樣式
+                content = content.replace(
+                    /<html[^>]*>/i,
+                    `<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${defaultStyle}</style>
+</head>`
+                );
+            }
+        }
+        
+        console.log('✅ 郵件模板已自動修復，添加完整的 HTML 結構和 CSS 樣式');
+    }
+    
     const checkInDate = new Date(booking.check_in_date).toLocaleDateString('zh-TW');
     const checkOutDate = new Date(booking.check_out_date).toLocaleDateString('zh-TW');
     
