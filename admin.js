@@ -3789,7 +3789,16 @@ async function showEmailTemplateModal(templateKey) {
             const toggleBtn = document.getElementById('toggleEditorModeBtn');
             if (toggleBtn) {
                 toggleBtn.textContent = '切換到 HTML 模式';
-                toggleBtn.onclick = toggleEditorMode;
+                // 確保 toggleEditorMode 函數已定義
+                if (typeof toggleEditorMode === 'function') {
+                    toggleBtn.onclick = toggleEditorMode;
+                } else {
+                    console.error('toggleEditorMode 函數未定義');
+                    toggleBtn.onclick = function() {
+                        console.error('toggleEditorMode 函數未定義，無法切換編輯模式');
+                        alert('編輯模式切換功能暫時無法使用，請重新載入頁面');
+                    };
+                }
             }
             
             // 先設置 textarea（作為備份）
@@ -6064,6 +6073,5 @@ function showSuccess(message) {
         errorDiv.remove();
     }, 3000);
 }
-
 
 }
