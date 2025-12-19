@@ -3660,17 +3660,9 @@ async function showEmailTemplateModal(templateKey) {
             // 先顯示模態框
             modal.classList.add('active');
             
-            // 初始化樣式選擇器和預覽狀態
+            // 初始化預覽狀態（固定使用預設的圖卡樣式）
             currentEmailStyle = 'card';
             isPreviewVisible = false;
-            const styleSelector = document.getElementById('emailStyleSelector');
-            if (styleSelector) {
-                styleSelector.value = 'card';
-                // 確保事件監聽器正確綁定
-                styleSelector.onchange = function() {
-                    applyEmailStyle(this.value);
-                };
-            }
             
             // 預設使用可視化模式（用戶要求）
             isHtmlMode = false;
@@ -5615,16 +5607,15 @@ function getEmailStyleCSS(style) {
     return styles[style] || styles.card;
 }
 
-// 應用郵件樣式
+// 應用郵件樣式（已移除樣式選擇器，固定使用預設的圖卡樣式）
+// 此函數保留以備將來需要，但始終使用 'card' 樣式
 function applyEmailStyle(style) {
-    console.log('🎨 應用樣式:', style);
-    currentEmailStyle = style;
-    console.log('🎨 當前樣式變數已更新為:', currentEmailStyle);
+    // 固定使用預設的圖卡樣式
+    currentEmailStyle = 'card';
+    console.log('🎨 固定使用預設的圖卡樣式');
     if (isPreviewVisible) {
         console.log('🎨 預覽已顯示，立即更新預覽');
         refreshEmailPreview();
-    } else {
-        console.log('🎨 預覽未顯示，樣式已保存');
     }
 }
 
@@ -5653,11 +5644,7 @@ function closeEmailTemplateModal() {
     if (previewBtnText) {
         previewBtnText.textContent = '顯示預覽';
     }
-    // 重置樣式選擇器
-    const styleSelector = document.getElementById('emailStyleSelector');
-    if (styleSelector) {
-        styleSelector.value = 'card';
-    }
+    // 郵件樣式選擇器已移除，固定使用預設的圖卡樣式
 }
 
 // ==================== 假日管理 ====================
