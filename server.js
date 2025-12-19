@@ -4107,6 +4107,76 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             testSubject = testSubject.replace(regex, testData[key]);
         });
         
+        // 最後檢查：確保測試郵件包含完整的 CSS 樣式（即使之前已經檢查過）
+        // 這是最後一道防線，確保發送的郵件一定有圖卡樣式
+        const finalCheckHasHeaderStyle = testContent.includes('.header') && 
+                                         (testContent.includes('background') || testContent.includes('background-color'));
+        const finalCheckHasStyleTag = testContent.includes('<style>') || testContent.includes('<style ');
+        const finalCheckHasHeaderColor = isCheckinReminder ? testContent.includes('#262A33') : true;
+        
+        if (!finalCheckHasHeaderStyle || !finalCheckHasStyleTag || !finalCheckHasHeaderColor) {
+            console.log('⚠️ 最終檢查：測試郵件仍缺少完整樣式，強制修復...', {
+                finalCheckHasHeaderStyle,
+                finalCheckHasStyleTag,
+                finalCheckHasHeaderColor
+            });
+            
+            // 根據模板類型選擇對應的樣式
+            let headerColor = '#262A33'; // 預設深灰色
+            if (key === 'payment_reminder') {
+                headerColor = '#e74c3c'; // 紅色
+            } else if (key === 'booking_confirmation') {
+                headerColor = '#198754'; // 綠色
+            }
+            
+            const completeStyle = `
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: ${headerColor}; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${headerColor}; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
+        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
+    `;
+            
+            // 提取 body 內容
+            let bodyContent = testContent;
+            if (testContent.includes('<body>')) {
+                const bodyMatch = testContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                if (bodyMatch && bodyMatch[1]) {
+                    // 移除可能的 container 和 header，只保留實際內容
+                    bodyContent = bodyMatch[1]
+                        .replace(/<div[^>]*class\s*=\s*["']container["'][^>]*>/gi, '')
+                        .replace(/<div[^>]*class\s*=\s*["']header["'][^>]*>[\s\S]*?<\/div>/gi, '')
+                        .replace(/<div[^>]*class\s*=\s*["']content["'][^>]*>/gi, '')
+                        .replace(/<\/div>\s*<\/div>\s*<\/body>/i, '</div></div></body>');
+                }
+            }
+            
+            // 重建完整的圖卡樣式 HTML
+            testContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${completeStyle}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏨 ${template.name || '郵件'}</h1>
+        </div>
+        <div class="content">
+            ${bodyContent}
+        </div>
+    </div>
+</body>
+</html>`;
+            
+            console.log('✅ 最終修復完成，測試郵件現在包含完整的圖卡樣式');
+        }
+        
         // 添加旅館資訊 footer
         const hotelInfoFooter = await getHotelInfoFooter();
         if (hotelInfoFooter) {
