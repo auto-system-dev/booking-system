@@ -355,6 +355,41 @@ const sanitizeInput = (req, res, next) => {
             const isWeekdaySettingsRequest = req.path && 
                 req.path.includes('/api/admin/settings/weekday_settings');
             
+            // 對郵件模板的 content 欄位進行特殊處理（HTML 內容，跳過 SQL Injection 檢測）
+            // 包括保存模板（PUT）和發送測試郵件（POST /test）
+            const isEmailTemplateRequest = req.path && 
+                (req.path.includes('/api/email-templates/') && 
+                 (req.method === 'PUT' || (req.method === 'POST' && req.path.includes('/test'))));
+            
+            if (isEmailTemplateRequest && req.body.content) {
+                // 郵件模板的 content 欄位是 HTML 內容，跳過 SQL Injection 檢測
+                // 但仍需要清理其他欄位
+                // 注意：content 欄位是 HTML，不應該進行 XSS 檢測（因為它本身就是 HTML）
+                const { content, ...rest } = req.body;
+                req.body = {
+                    ...sanitizeObject(rest, {
+                        checkSQLInjection: true,
+                        checkXSS: true
+                    }),
+                    content: content // 保留原始 HTML 內容，不進行任何檢測或清理
+                };
+                // 繼續處理 query 和 params
+                if (req.query) {
+                    req.query = sanitizeObject(req.query, {
+                        checkSQLInjection: true,
+                        checkXSS: true
+                    });
+                }
+                if (req.params) {
+                    req.params = sanitizeObject(req.params, {
+                        checkSQLInjection: true,
+                        checkXSS: true
+                    });
+                }
+                next();
+                return;
+            }
+            
             if (req.body.value && isWeekdaySettingsRequest) {
                 // 驗證是否為有效的 JSON 格式
                 try {
