@@ -3405,6 +3405,23 @@ async function loadEmailTemplates() {
     }
 }
 
+// 根據模板類型獲取標題顏色（統一的輔助函數）
+function getHeaderColorForTemplate(templateKey) {
+    if (templateKey === 'payment_reminder') {
+        return '#e74c3c'; // 紅色（匯款提醒）
+    } else if (templateKey === 'booking_confirmation') {
+        return '#198754'; // 綠色（訂房確認（客戶））
+    } else if (templateKey === 'booking_confirmation_admin') {
+        return '#e74c3c'; // 紅色（訂房確認（管理員））
+    } else if (templateKey === 'payment_completed') {
+        return '#198754'; // 綠色（付款完成確認）
+    } else if (templateKey === 'cancel_notification') {
+        return '#e74c3c'; // 紅色（取消通知）
+    } else {
+        return '#262A33'; // 預設深灰色（入住提醒、感謝入住）
+    }
+}
+
 // 渲染郵件模板列表
 function renderEmailTemplates(templates) {
     const container = document.getElementById('emailTemplatesList');
@@ -4125,8 +4142,7 @@ async function saveEmailTemplate(event) {
                                 }
                             } else {
                                 // 如果資料庫模板也沒有 .content div，創建完整的圖卡樣式 HTML
-                                const headerColor = templateKey === 'payment_reminder' ? '#e74c3c' : 
-                                                   templateKey === 'booking_confirmation' ? '#198754' : '#262A33';
+                                const headerColor = getHeaderColorForTemplate(templateKey);
                                 const defaultStyle = `
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
