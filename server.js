@@ -5520,12 +5520,15 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     while (cleanupIteration < maxCleanupIterations) {
         lastCleanupContent = content;
         
-        // 移除所有 {{#if ...}} 標籤（匹配任何條件名稱，包括空白字符）
+        // 移除所有 {{#if ...}} 標籤（匹配任何條件名稱，包括有或沒有空白字符）
+        // 使用更全面的正則表達式，匹配 {{#if condition}} 或 {{#if condition }} 等格式
         content = content.replace(/\{\{#if\s+[^}]+\}\}/gi, '');
         // 移除所有 {{/if}} 標籤（不區分大小寫）
         content = content.replace(/\{\{\/if\}\}/gi, '');
         // 移除所有 {{else}} 標籤（不區分大小寫）
         content = content.replace(/\{\{else\}\}/gi, '');
+        // 額外清理：移除任何殘留的 {{#if}} 格式（即使沒有條件名稱）
+        content = content.replace(/\{\{#if\}\}/gi, '');
         
         // 如果沒有變化，跳出循環
         if (content === lastCleanupContent) {
