@@ -6359,11 +6359,3 @@ function showSuccess(message) {
         showLoginPage: typeof window.showLoginPage
     });
 })();
-
-console.log('✅ 關鍵函數已暴露到全局作用域:', {
-    handleLogin: typeof window.handleLogin,
-    handleLogout: typeof window.handleLogout,
-    checkAuthStatus: typeof window.checkAuthStatus,
-    showAdminPage: typeof window.showAdminPage,
-    showLoginPage: typeof window.showLoginPage
-});
