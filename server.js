@@ -6279,11 +6279,23 @@ async function sendFeedbackRequestEmails() {
 // 啟動伺服器
 async function startServer() {
     try {
+        console.log('📋 開始啟動伺服器...');
+        console.log('📋 環境變數檢查:', {
+            PORT: process.env.PORT || '未設定（將使用 3000）',
+            NODE_ENV: process.env.NODE_ENV || '未設定',
+            DATABASE_URL: process.env.DATABASE_URL ? '已設定' : '未設定',
+            RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT || '未設定'
+        });
+        
         // 初始化資料庫
+        console.log('💾 初始化資料庫...');
         await db.initDatabase();
+        console.log('✅ 資料庫初始化完成');
         
         // 初始化郵件服務（優先使用資料庫設定）
+        console.log('📧 初始化郵件服務...');
         await initEmailService();
+        console.log('✅ 郵件服務初始化完成');
         
         // 啟動伺服器
         // Railway 需要監聽 0.0.0.0 才能接受外部請求
@@ -6355,5 +6367,22 @@ app.use(express.static(__dirname));
 app.use(errorHandler);
 
 // 啟動應用程式
-startServer();
+startServer().catch((error) => {
+    console.error('❌ 應用程式啟動失敗:', error);
+    console.error('錯誤堆疊:', error.stack);
+    process.exit(1);
+});
+
+// 處理未捕獲的錯誤
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ 未處理的 Promise 拒絕:', reason);
+    console.error('Promise:', promise);
+    console.error('錯誤堆疊:', reason?.stack);
+});
+
+process.on('uncaughtException', (error) => {
+    console.error('❌ 未捕獲的異常:', error);
+    console.error('錯誤堆疊:', error.stack);
+    process.exit(1);
+});
 
