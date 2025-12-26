@@ -1,5 +1,16 @@
 // 管理後台 JavaScript
 
+// 全局錯誤處理
+window.addEventListener('error', function(event) {
+    console.error('❌ 全局錯誤:', event.error);
+    console.error('錯誤位置:', event.filename, ':', event.lineno);
+});
+
+// 未捕獲的 Promise 錯誤處理
+window.addEventListener('unhandledrejection', function(event) {
+    console.error('❌ 未處理的 Promise 錯誤:', event.reason);
+});
+
 // 檢查登入狀態
 async function checkAuthStatus() {
     try {
@@ -55,6 +66,7 @@ function showLoginPage() {
 // 顯示管理後台
 function showAdminPage(admin) {
     try {
+        console.log('🚀 開始顯示管理後台...');
         const loginPage = document.getElementById('loginPage');
         const adminPage = document.getElementById('adminPage');
         
@@ -63,54 +75,90 @@ function showAdminPage(admin) {
             return;
         }
         
+        // 先隱藏登入頁面
         if (loginPage) {
             loginPage.style.display = 'none';
             loginPage.style.visibility = 'hidden';
+            loginPage.style.opacity = '0';
+            console.log('✅ 登入頁面已隱藏');
         }
         
-        // 強制移除內聯樣式並設置顯示
+        // 強制移除所有內聯樣式並設置顯示
         adminPage.removeAttribute('style');
-        adminPage.style.display = 'flex';
-        adminPage.style.visibility = 'visible';
-        adminPage.style.opacity = '1';
+        adminPage.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important; min-height: 100vh !important;');
+        
+        // 強制顯示側邊欄和主內容區
+        const sidebar = adminPage.querySelector('.sidebar');
+        const mainContent = adminPage.querySelector('.main-content');
+        if (sidebar) {
+            sidebar.style.display = 'flex';
+            sidebar.style.visibility = 'visible';
+        }
+        if (mainContent) {
+            mainContent.style.display = 'block';
+            mainContent.style.visibility = 'visible';
+        }
         
         // 驗證是否成功顯示
         const computedStyle = window.getComputedStyle(adminPage);
         console.log('🔍 adminPage 計算樣式:', {
             display: computedStyle.display,
             visibility: computedStyle.visibility,
-            opacity: computedStyle.opacity
+            opacity: computedStyle.opacity,
+            height: computedStyle.height
         });
         
-        if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
-            console.error('❌ adminPage 仍然隱藏，使用 !important 強制顯示');
-            adminPage.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important;');
+        // 確保至少有一個 section 是顯示的
+        let activeSection = document.querySelector('.content-section.active');
+        if (!activeSection) {
+            console.warn('⚠️ 沒有找到 active 的 section，設置 bookings-section 為 active');
+            // 移除所有 active 類
+            document.querySelectorAll('.content-section').forEach(sec => {
+                sec.classList.remove('active');
+            });
+            // 設置 bookings-section 為 active
+            const bookingsSection = document.getElementById('bookings-section');
+            if (bookingsSection) {
+                bookingsSection.classList.add('active');
+                activeSection = bookingsSection;
+                console.log('✅ 已設置 bookings-section 為 active');
+            }
         }
         
+        // 強制顯示 active section
+        if (activeSection) {
+            activeSection.style.display = 'block';
+            activeSection.style.visibility = 'visible';
+            console.log('✅ Active section 已顯示:', activeSection.id);
+        }
+        
+        // 設置管理員名稱
         if (admin && admin.username) {
             const usernameEl = document.getElementById('currentAdminUsername');
             if (usernameEl) {
                 usernameEl.textContent = admin.username;
+                console.log('✅ 管理員名稱已設置:', admin.username);
             }
         }
         
-        // 確保至少有一個 section 是顯示的
-        const activeSection = document.querySelector('.content-section.active');
-        if (!activeSection) {
-            console.warn('⚠️ 沒有找到 active 的 section，設置 bookings-section 為 active');
-            const bookingsSection = document.getElementById('bookings-section');
-            if (bookingsSection) {
-                bookingsSection.classList.add('active');
+        // 再次驗證頁面是否可見
+        setTimeout(() => {
+            const finalStyle = window.getComputedStyle(adminPage);
+            if (finalStyle.display === 'none' || finalStyle.visibility === 'hidden') {
+                console.error('❌ 頁面仍然隱藏，嘗試最後的修復');
+                adminPage.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important; min-height: 100vh !important; position: relative !important;');
+            } else {
+                console.log('✅ 管理後台頁面已成功顯示');
             }
-        }
+        }, 100);
         
-        console.log('✅ 管理後台頁面已顯示');
     } catch (error) {
         console.error('❌ 顯示管理後台時發生錯誤:', error);
+        console.error('錯誤堆疊:', error.stack);
         // 即使出錯也嘗試顯示頁面
         const adminPage = document.getElementById('adminPage');
         if (adminPage) {
-            adminPage.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important;');
+            adminPage.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important; min-height: 100vh !important;');
         }
     }
 }
@@ -144,18 +192,38 @@ async function handleLogin(event) {
         if (result.success) {
             // 登入成功
             console.log('✅ 登入成功，準備顯示管理後台');
+            
+            // 立即顯示管理後台
             showAdminPage(result.admin);
+            
+            // 強制刷新頁面顯示（確保所有樣式都正確應用）
+            requestAnimationFrame(() => {
+                const adminPage = document.getElementById('adminPage');
+                if (adminPage) {
+                    adminPage.style.display = 'flex';
+                    adminPage.style.visibility = 'visible';
+                    adminPage.style.opacity = '1';
+                }
+            });
             
             // 等待一小段時間確保頁面已顯示，再載入資料
             setTimeout(() => {
                 console.log('📊 開始載入資料...');
+                const adminPage = document.getElementById('adminPage');
+                const computedStyle = window.getComputedStyle(adminPage);
+                console.log('🔍 最終檢查 - adminPage 顯示狀態:', {
+                    display: computedStyle.display,
+                    visibility: computedStyle.visibility,
+                    opacity: computedStyle.opacity
+                });
+                
                 loadBookings().catch(err => {
                     console.error('❌ 載入訂房記錄失敗:', err);
                 });
                 loadStatistics().catch(err => {
                     console.error('❌ 載入統計資料失敗:', err);
                 });
-            }, 100);
+            }, 200);
         } else {
             // 登入失敗
             if (errorDiv) {
