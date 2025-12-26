@@ -3,6 +3,10 @@
 // 立即執行，確認腳本已載入
 console.log('✅ admin.js 腳本已載入', new Date().toISOString());
 
+// 預先聲明函數變數，確保可以在 HTML 的 onclick/onsubmit 中使用
+// 這些函數將在下面定義，但先聲明可以避免引用錯誤
+let handleLogin, handleLogout, checkAuthStatus, showAdminPage, showLoginPage;
+
 // 全局錯誤處理
 window.addEventListener('error', function(event) {
     console.error('❌ 全局錯誤:', event.error);
@@ -16,6 +20,7 @@ window.addEventListener('unhandledrejection', function(event) {
     console.error('錯誤堆疊:', event.reason?.stack);
 });
 
+// 確保函數在全局作用域可用
 // 檢查登入狀態
 async function checkAuthStatus() {
     try {
@@ -6339,3 +6344,30 @@ function showSuccess(message) {
         errorDiv.remove();
     }, 3000);
 }
+
+// 明確將關鍵函數暴露到全局作用域，確保可以在 HTML 的 onclick/onsubmit 中使用
+// 使用立即執行函數確保在 DOM 載入前就設置好
+(function() {
+    'use strict';
+    if (typeof handleLogin !== 'undefined') window.handleLogin = handleLogin;
+    if (typeof handleLogout !== 'undefined') window.handleLogout = handleLogout;
+    if (typeof checkAuthStatus !== 'undefined') window.checkAuthStatus = checkAuthStatus;
+    if (typeof showAdminPage !== 'undefined') window.showAdminPage = showAdminPage;
+    if (typeof showLoginPage !== 'undefined') window.showLoginPage = showLoginPage;
+    
+    console.log('✅ 關鍵函數已暴露到全局作用域:', {
+        handleLogin: typeof window.handleLogin,
+        handleLogout: typeof window.handleLogout,
+        checkAuthStatus: typeof window.checkAuthStatus,
+        showAdminPage: typeof window.showAdminPage,
+        showLoginPage: typeof window.showLoginPage
+    });
+})();
+
+console.log('✅ 關鍵函數已暴露到全局作用域:', {
+    handleLogin: typeof window.handleLogin,
+    handleLogout: typeof window.handleLogout,
+    checkAuthStatus: typeof window.checkAuthStatus,
+    showAdminPage: typeof window.showAdminPage,
+    showLoginPage: typeof window.showLoginPage
+});
