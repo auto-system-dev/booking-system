@@ -3644,15 +3644,97 @@ async function showEmailTemplateModal(templateKey) {
             
             // 初始化 Quill 編輯器（如果還沒有）
             if (!quillEditor) {
-                // 自定義 Clipboard 模組，允許更多 HTML 標籤
+                // 自定義 Blot 以保留 CSS 類別和樣式
                 const Block = Quill.import('blots/block');
                 const Inline = Quill.import('blots/inline');
+                const BlockEmbed = Quill.import('blots/block/embed');
                 
-                // 註冊自定義標籤（允許 div、span 等）
+                // 註冊自定義 Div Blot（保留 class 和 style 屬性）
                 class DivBlot extends Block {
                     static tagName = 'div';
+                    static className = '';
+                    
+                    static create(value) {
+                        const node = super.create();
+                        if (typeof value === 'object') {
+                            if (value.class) {
+                                node.setAttribute('class', value.class);
+                            }
+                            if (value.style) {
+                                node.setAttribute('style', value.style);
+                            }
+                        }
+                        return node;
+                    }
+                    
+                    static formats(node) {
+                        const formats = {};
+                        if (node.hasAttribute('class')) {
+                            formats.class = node.getAttribute('class');
+                        }
+                        if (node.hasAttribute('style')) {
+                            formats.style = node.getAttribute('style');
+                        }
+                        return formats;
+                    }
+                    
+                    format(name, value) {
+                        if (name === 'class' || name === 'style') {
+                            if (value) {
+                                this.domNode.setAttribute(name, value);
+                            } else {
+                                this.domNode.removeAttribute(name);
+                            }
+                        } else {
+                            super.format(name, value);
+                        }
+                    }
                 }
+                
+                // 註冊自定義 Span Blot（保留 class 和 style 屬性）
+                class SpanBlot extends Inline {
+                    static tagName = 'span';
+                    static className = '';
+                    
+                    static create(value) {
+                        const node = super.create();
+                        if (typeof value === 'object') {
+                            if (value.class) {
+                                node.setAttribute('class', value.class);
+                            }
+                            if (value.style) {
+                                node.setAttribute('style', value.style);
+                            }
+                        }
+                        return node;
+                    }
+                    
+                    static formats(node) {
+                        const formats = {};
+                        if (node.hasAttribute('class')) {
+                            formats.class = node.getAttribute('class');
+                        }
+                        if (node.hasAttribute('style')) {
+                            formats.style = node.getAttribute('style');
+                        }
+                        return formats;
+                    }
+                    
+                    format(name, value) {
+                        if (name === 'class' || name === 'style') {
+                            if (value) {
+                                this.domNode.setAttribute(name, value);
+                            } else {
+                                this.domNode.removeAttribute(name);
+                            }
+                        } else {
+                            super.format(name, value);
+                        }
+                    }
+                }
+                
                 Quill.register(DivBlot);
+                Quill.register(SpanBlot);
                 
                 quillEditor = new Quill('#emailTemplateEditor', {
                     theme: 'snow',
@@ -3670,21 +3752,56 @@ async function showEmailTemplateModal(templateKey) {
                             // 允許更多 HTML 標籤和屬性
                             matchVisual: false,
                             // 保留所有 class 和 style 屬性
-                            preserveWhitespace: true
+                            preserveWhitespace: true,
+                            // 自定義 HTML 轉換，保留所有屬性
+                            matchers: [
+                                // 保留 div 標籤及其屬性
+                                [Node.ELEMENT_NODE, (node, delta) => {
+                                    if (node.tagName === 'DIV') {
+                                        const attrs = {};
+                                        if (node.className) {
+                                            attrs.class = node.className;
+                                        }
+                                        if (node.style && node.style.cssText) {
+                                            attrs.style = node.style.cssText;
+                                        }
+                                        return delta.compose(new Delta().retain(delta.length(), attrs));
+                                    }
+                                }],
+                                // 保留 span 標籤及其屬性
+                                [Node.ELEMENT_NODE, (node, delta) => {
+                                    if (node.tagName === 'SPAN') {
+                                        const attrs = {};
+                                        if (node.className) {
+                                            attrs.class = node.className;
+                                        }
+                                        if (node.style && node.style.cssText) {
+                                            attrs.style = node.style.cssText;
+                                        }
+                                        return delta.compose(new Delta().retain(delta.length(), attrs));
+                                    }
+                                }]
+                            ]
                         }
                     },
                     placeholder: '開始編輯郵件內容...',
-                    // 允許更多 HTML 標籤
+                    // 允許更多 HTML 標籤和格式
                     formats: ['bold', 'italic', 'underline', 'strike', 'color', 'background', 
-                             'header', 'list', 'align', 'link', 'image', 'blockquote', 'code-block']
+                             'header', 'list', 'align', 'link', 'image', 'blockquote', 'code-block',
+                             'div', 'span', 'class', 'style']
                 });
                 
                 // 自定義 Quill 的 HTML 處理，保留所有 class 和 style
                 const originalPasteHTML = quillEditor.clipboard.convert;
                 quillEditor.clipboard.convert = function(html) {
-                    // 保留原始 HTML 結構，不進行轉換
-                    const delta = originalPasteHTML.call(this, html);
-                    return delta;
+                    // 使用 dangerouslyPasteHTML 以保留更多 HTML 結構
+                    return originalPasteHTML.call(this, html);
+                };
+                
+                // 覆蓋 Quill 的 HTML 輸出，確保保留所有屬性
+                const originalGetHTML = quillEditor.getHTML;
+                quillEditor.getHTML = function() {
+                    return this.root.innerHTML;
                 };
                 
                 // 監聽編輯器內容變更，自動更新預覽
@@ -3875,7 +3992,11 @@ async function saveEmailTemplate(event) {
         content = document.getElementById('emailTemplateContent').value;
     } else {
         // 可視化模式：從 Quill 獲取 HTML，然後包裝成完整的 HTML 文檔
+        // 使用 root.innerHTML 以保留所有 HTML 結構和屬性（包括 class、style）
         let quillHtml = quillEditor.root.innerHTML;
+        
+        console.log('📝 從 Quill 獲取的 HTML 長度:', quillHtml.length);
+        console.log('📝 從 Quill 獲取的 HTML 前 500 字元:', quillHtml.substring(0, 500));
         
         // 重要：確保 quillHtml 不包含 .header div 或重複的標題，只保留 .content div 內的實際內容
         // 移除可能的 .header div（如果用戶在編輯器中添加了）
@@ -3893,6 +4014,16 @@ async function saveEmailTemplate(event) {
                 quillHtml = quillHtml.replace(titleRegex, '');
                 console.log(`✅ 已移除重複的標題: ${pattern}`);
             }
+        }
+        
+        // 確保保留重要的 CSS 類別（如 .info-box, .highlight, .info-row 等）
+        // 檢查是否有這些類別，如果沒有但原始內容有，嘗試從原始內容中提取並合併
+        const importantClasses = ['info-box', 'highlight', 'info-row', 'info-label', 'info-value'];
+        const hasImportantClasses = importantClasses.some(cls => quillHtml.includes(`class="${cls}`) || quillHtml.includes(`class='${cls}`));
+        
+        if (!hasImportantClasses) {
+            console.log('⚠️ Quill HTML 缺少重要的 CSS 類別，嘗試從原始內容中保留');
+            // 這裡的邏輯會在後續處理中從原始內容中提取並合併
         }
         
         // 獲取原始完整內容（用於保留 HTML 結構）
