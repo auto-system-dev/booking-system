@@ -1,14 +1,19 @@
 // 管理後台 JavaScript
 
+// 立即執行，確認腳本已載入
+console.log('✅ admin.js 腳本已載入', new Date().toISOString());
+
 // 全局錯誤處理
 window.addEventListener('error', function(event) {
     console.error('❌ 全局錯誤:', event.error);
     console.error('錯誤位置:', event.filename, ':', event.lineno);
+    console.error('錯誤訊息:', event.message);
 });
 
 // 未捕獲的 Promise 錯誤處理
 window.addEventListener('unhandledrejection', function(event) {
     console.error('❌ 未處理的 Promise 錯誤:', event.reason);
+    console.error('錯誤堆疊:', event.reason?.stack);
 });
 
 // 檢查登入狀態
@@ -17,16 +22,32 @@ async function checkAuthStatus() {
         console.log('🔐 檢查登入狀態...');
         
         // 檢查狀態時也取得 CSRF Token
+        console.log('🔑 取得 CSRF Token...');
         await getCsrfToken();
+        console.log('🔑 CSRF Token 已取得');
         
+        console.log('📡 發送檢查登入狀態請求到 /api/admin/check-auth...');
         const response = await adminFetch('/api/admin/check-auth');
+        
+        console.log('📡 API 回應狀態:', {
+            ok: response?.ok,
+            status: response?.status,
+            statusText: response?.statusText
+        });
         
         if (!response || !response.ok) {
             console.warn('⚠️ 檢查登入狀態 API 回應異常:', response?.status);
+            try {
+                const errorText = await response?.text().catch(() => '無法讀取錯誤訊息');
+                console.warn('⚠️ 錯誤內容:', errorText);
+            } catch (e) {
+                console.warn('⚠️ 無法讀取錯誤訊息:', e);
+            }
             showLoginPage();
             return;
         }
         
+        console.log('📥 解析 JSON 回應...');
         const result = await response.json();
         console.log('🔐 登入狀態檢查結果:', result);
         
@@ -387,9 +408,21 @@ let currentEmailStyle = 'card'; // 當前郵件樣式
 // 初始化
 document.addEventListener('DOMContentLoaded', async function() {
     try {
-        console.log('📋 開始初始化管理後台...');
+        console.log('📋 開始初始化管理後台...', new Date().toISOString());
+        console.log('📋 DOM 已載入，檢查頁面元素...');
+        
+        // 立即檢查關鍵元素是否存在
+        const loginPage = document.getElementById('loginPage');
+        const adminPage = document.getElementById('adminPage');
+        console.log('🔍 頁面元素檢查:', {
+            loginPage: !!loginPage,
+            adminPage: !!adminPage,
+            loginPageDisplay: loginPage ? window.getComputedStyle(loginPage).display : 'N/A',
+            adminPageDisplay: adminPage ? window.getComputedStyle(adminPage).display : 'N/A'
+        });
         
         // 檢查登入狀態
+        console.log('🔐 準備檢查登入狀態...');
         await checkAuthStatus();
         
         // 導航切換
