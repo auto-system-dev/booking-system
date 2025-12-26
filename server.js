@@ -4604,13 +4604,27 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
                 console.error('   完整錯誤:', emailError);
                 
                 // 如果是認證錯誤，提供更詳細的說明
-                if (emailError.message && (emailError.message.includes('invalid_grant') || emailError.message.includes('Invalid grant'))) {
+                if (emailError.message && (emailError.message.includes('invalid_client') || emailError.message.includes('Invalid client'))) {
+                    console.error('⚠️  OAuth2 Client ID/Secret 認證失敗！');
+                    console.error('   這通常是因為 Client ID 或 Client Secret 不正確');
+                    console.error('   請檢查：');
+                    console.error('   1. GMAIL_CLIENT_ID 是否正確（格式：xxx.apps.googleusercontent.com）');
+                    console.error('   2. GMAIL_CLIENT_SECRET 是否正確（格式：GOCSPX-xxx）');
+                    console.error('   3. Client ID 和 Client Secret 是否來自同一個 OAuth2 應用程式');
+                    console.error('   4. 是否在 Google Cloud Console 中正確建立了 OAuth 用戶端 ID');
+                    console.error('   5. OAuth 用戶端類型是否為「網頁應用程式」');
+                    
+                    return res.status(500).json({
+                        success: false,
+                        message: '發送測試郵件失敗：OAuth2 客戶端認證錯誤（invalid_client）。請檢查 Gmail Client ID 和 Client Secret 是否正確配置，或聯繫管理員重新配置郵件服務。'
+                    });
+                } else if (emailError.message && (emailError.message.includes('invalid_grant') || emailError.message.includes('Invalid grant'))) {
                     console.error('⚠️  OAuth2 認證失敗！');
                     console.error('   這通常是因為 Gmail Refresh Token 已過期或被撤銷');
                     console.error('   請檢查：');
                     console.error('   1. GMAIL_REFRESH_TOKEN 是否正確');
                     console.error('   2. Refresh Token 是否已過期');
-                    console.error('   3. 是否需要在 Google Cloud Console 重新生成 Refresh Token');
+                    console.error('   3. 是否需要在 OAuth2 Playground 重新生成 Refresh Token');
                     
                     return res.status(500).json({
                         success: false,
@@ -4667,7 +4681,21 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         console.error('   錯誤堆疊:', error.stack);
         
         // 如果是 OAuth2 相關錯誤，提供更詳細的說明
-        if (error.message && (error.message.includes('unauthorized_client') || error.message.includes('Unauthorized client'))) {
+        if (error.message && (error.message.includes('invalid_client') || error.message.includes('Invalid client'))) {
+            console.error('⚠️  OAuth2 Client ID/Secret 認證失敗！');
+            console.error('   這通常是因為 Client ID 或 Client Secret 不正確');
+            console.error('   請檢查：');
+            console.error('   1. GMAIL_CLIENT_ID 是否正確（格式：xxx.apps.googleusercontent.com）');
+            console.error('   2. GMAIL_CLIENT_SECRET 是否正確（格式：GOCSPX-xxx）');
+            console.error('   3. Client ID 和 Client Secret 是否來自同一個 OAuth2 應用程式');
+            console.error('   4. 是否在 Google Cloud Console 中正確建立了 OAuth 用戶端 ID');
+            console.error('   5. OAuth 用戶端類型是否為「網頁應用程式」');
+            
+            return res.status(500).json({
+                success: false,
+                message: '發送測試郵件失敗：OAuth2 客戶端認證錯誤（invalid_client）。請檢查 Gmail Client ID 和 Client Secret 是否正確配置，或聯繫管理員重新配置郵件服務。'
+            });
+        } else if (error.message && (error.message.includes('unauthorized_client') || error.message.includes('Unauthorized client'))) {
             console.error('⚠️  OAuth2 Client 認證失敗！');
             console.error('   可能原因：');
             console.error('   1. GMAIL_CLIENT_ID 或 GMAIL_CLIENT_SECRET 不正確');
