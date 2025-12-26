@@ -3,10 +3,6 @@
 // 立即執行，確認腳本已載入
 console.log('✅ admin.js 腳本已載入', new Date().toISOString());
 
-// 預先聲明函數變數，確保可以在 HTML 的 onclick/onsubmit 中使用
-// 這些函數將在下面定義，但先聲明可以避免引用錯誤
-let handleLogin, handleLogout, checkAuthStatus, showAdminPage, showLoginPage;
-
 // 全局錯誤處理
 window.addEventListener('error', function(event) {
     console.error('❌ 全局錯誤:', event.error);
@@ -445,7 +441,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
 
         // 載入資料（只有在已登入時才載入）
-        const adminPage = document.getElementById('adminPage');
+        // 重用上面已聲明的 adminPage 變數
         if (adminPage && adminPage.style.display !== 'none') {
             console.log('📊 載入初始資料...');
             loadBookings();
