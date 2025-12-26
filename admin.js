@@ -39,8 +39,17 @@ async function checkAuthStatus() {
 function showLoginPage() {
     const loginPage = document.getElementById('loginPage');
     const adminPage = document.getElementById('adminPage');
-    if (loginPage) loginPage.style.display = 'flex';
-    if (adminPage) adminPage.style.display = 'none';
+    
+    if (adminPage) {
+        adminPage.style.display = 'none';
+        adminPage.style.visibility = 'hidden';
+    }
+    
+    if (loginPage) {
+        loginPage.removeAttribute('style');
+        loginPage.style.display = 'flex';
+        loginPage.style.visibility = 'visible';
+    }
 }
 
 // 顯示管理後台
@@ -56,17 +65,26 @@ function showAdminPage(admin) {
         
         if (loginPage) {
             loginPage.style.display = 'none';
+            loginPage.style.visibility = 'hidden';
         }
         
-        // 確保 adminPage 顯示
+        // 強制移除內聯樣式並設置顯示
+        adminPage.removeAttribute('style');
         adminPage.style.display = 'flex';
+        adminPage.style.visibility = 'visible';
+        adminPage.style.opacity = '1';
         
         // 驗證是否成功顯示
         const computedStyle = window.getComputedStyle(adminPage);
-        if (computedStyle.display === 'none') {
-            console.error('❌ adminPage 仍然隱藏，強制顯示');
-            adminPage.style.display = 'flex';
-            adminPage.style.visibility = 'visible';
+        console.log('🔍 adminPage 計算樣式:', {
+            display: computedStyle.display,
+            visibility: computedStyle.visibility,
+            opacity: computedStyle.opacity
+        });
+        
+        if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
+            console.error('❌ adminPage 仍然隱藏，使用 !important 強制顯示');
+            adminPage.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important;');
         }
         
         if (admin && admin.username) {
@@ -76,14 +94,23 @@ function showAdminPage(admin) {
             }
         }
         
+        // 確保至少有一個 section 是顯示的
+        const activeSection = document.querySelector('.content-section.active');
+        if (!activeSection) {
+            console.warn('⚠️ 沒有找到 active 的 section，設置 bookings-section 為 active');
+            const bookingsSection = document.getElementById('bookings-section');
+            if (bookingsSection) {
+                bookingsSection.classList.add('active');
+            }
+        }
+        
         console.log('✅ 管理後台頁面已顯示');
     } catch (error) {
         console.error('❌ 顯示管理後台時發生錯誤:', error);
         // 即使出錯也嘗試顯示頁面
         const adminPage = document.getElementById('adminPage');
         if (adminPage) {
-            adminPage.style.display = 'flex';
-            adminPage.style.visibility = 'visible';
+            adminPage.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important;');
         }
     }
 }
@@ -116,10 +143,19 @@ async function handleLogin(event) {
         
         if (result.success) {
             // 登入成功
+            console.log('✅ 登入成功，準備顯示管理後台');
             showAdminPage(result.admin);
-            // 載入資料
-            loadBookings();
-            loadStatistics();
+            
+            // 等待一小段時間確保頁面已顯示，再載入資料
+            setTimeout(() => {
+                console.log('📊 開始載入資料...');
+                loadBookings().catch(err => {
+                    console.error('❌ 載入訂房記錄失敗:', err);
+                });
+                loadStatistics().catch(err => {
+                    console.error('❌ 載入統計資料失敗:', err);
+                });
+            }, 100);
         } else {
             // 登入失敗
             if (errorDiv) {
@@ -186,6 +222,30 @@ async function getCsrfToken() {
         console.warn('無法取得 CSRF Token:', error);
     }
     return null;
+}
+
+// 確保這些函數可以在 HTML onclick 屬性中訪問
+// 在 DOM 加載完成後暴露函數到 window 對象
+function exposeFunctionsToWindow() {
+    try {
+        if (typeof toggleEditorMode === 'function') {
+            window.toggleEditorMode = toggleEditorMode;
+        }
+        if (typeof sendTestEmail === 'function') {
+            window.sendTestEmail = sendTestEmail;
+        }
+        if (typeof closeEmailTemplateModal === 'function') {
+            window.closeEmailTemplateModal = closeEmailTemplateModal;
+        }
+        if (typeof resetCurrentTemplateToDefault === 'function') {
+            window.resetCurrentTemplateToDefault = resetCurrentTemplateToDefault;
+        }
+        if (typeof saveEmailTemplate === 'function') {
+            window.saveEmailTemplate = saveEmailTemplate;
+        }
+    } catch (error) {
+        console.error('暴露函數到 window 對象時發生錯誤:', error);
+    }
 }
 
 // 統一的 API 請求函數（自動包含 credentials 和 CSRF Token）
@@ -335,6 +395,9 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         });
     }
+    
+    // 暴露函數到 window 對象，以便在 HTML onclick 屬性中訪問
+    exposeFunctionsToWindow();
 });
 
 // 切換區塊
@@ -6175,32 +6238,3 @@ function showSuccess(message) {
         errorDiv.remove();
     }, 3000);
 }
-
-// 確保這些函數可以在 HTML onclick 屬性中訪問
-// 由於這些函數在全局作用域中定義，直接暴露到 window 對象
-(function exposeFunctionsToWindow() {
-    // 立即執行，確保函數定義後立即暴露
-    window.toggleEditorMode = toggleEditorMode;
-    window.sendTestEmail = sendTestEmail;
-    window.closeEmailTemplateModal = closeEmailTemplateModal;
-    window.resetCurrentTemplateToDefault = resetCurrentTemplateToDefault;
-    window.saveEmailTemplate = saveEmailTemplate;
-    
-    // 確保在 DOM 加載後再次設置（以防萬一）
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            window.toggleEditorMode = toggleEditorMode;
-            window.sendTestEmail = sendTestEmail;
-            window.closeEmailTemplateModal = closeEmailTemplateModal;
-            window.resetCurrentTemplateToDefault = resetCurrentTemplateToDefault;
-            window.saveEmailTemplate = saveEmailTemplate;
-        });
-    } else {
-        // DOM 已經加載，立即設置
-        window.toggleEditorMode = toggleEditorMode;
-        window.sendTestEmail = sendTestEmail;
-        window.closeEmailTemplateModal = closeEmailTemplateModal;
-        window.resetCurrentTemplateToDefault = resetCurrentTemplateToDefault;
-        window.saveEmailTemplate = saveEmailTemplate;
-    }
-})();
