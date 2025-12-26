@@ -6342,20 +6342,34 @@ function showSuccess(message) {
 }
 
 // 明確將關鍵函數暴露到全局作用域，確保可以在 HTML 的 onclick/onsubmit 中使用
-// 使用立即執行函數確保在 DOM 載入前就設置好
-(function() {
-    'use strict';
-    if (typeof handleLogin !== 'undefined') window.handleLogin = handleLogin;
-    if (typeof handleLogout !== 'undefined') window.handleLogout = handleLogout;
-    if (typeof checkAuthStatus !== 'undefined') window.checkAuthStatus = checkAuthStatus;
-    if (typeof showAdminPage !== 'undefined') window.showAdminPage = showAdminPage;
-    if (typeof showLoginPage !== 'undefined') window.showLoginPage = showLoginPage;
-    
-    console.log('✅ 關鍵函數已暴露到全局作用域:', {
-        handleLogin: typeof window.handleLogin,
-        handleLogout: typeof window.handleLogout,
-        checkAuthStatus: typeof window.checkAuthStatus,
-        showAdminPage: typeof window.showAdminPage,
-        showLoginPage: typeof window.showLoginPage
-    });
+// 在文件末尾執行，確保所有函數都已定義
+(function exposeFunctionsToGlobal() {
+    try {
+        // 直接暴露函數到 window 對象（函數聲明會被提升，所以這裡應該可以訪問）
+        window.handleLogin = handleLogin;
+        window.handleLogout = handleLogout;
+        window.checkAuthStatus = checkAuthStatus;
+        window.showAdminPage = showAdminPage;
+        window.showLoginPage = showLoginPage;
+        
+        console.log('✅ 關鍵函數已暴露到全局作用域:', {
+            handleLogin: typeof window.handleLogin,
+            handleLogout: typeof window.handleLogout,
+            checkAuthStatus: typeof window.checkAuthStatus,
+            showAdminPage: typeof window.showAdminPage,
+            showLoginPage: typeof window.showLoginPage
+        });
+    } catch (error) {
+        console.error('❌ 暴露函數到全局作用域時發生錯誤:', error);
+        // 即使出錯也嘗試暴露
+        try {
+            if (typeof handleLogin !== 'undefined') window.handleLogin = handleLogin;
+            if (typeof handleLogout !== 'undefined') window.handleLogout = handleLogout;
+            if (typeof checkAuthStatus !== 'undefined') window.checkAuthStatus = checkAuthStatus;
+            if (typeof showAdminPage !== 'undefined') window.showAdminPage = showAdminPage;
+            if (typeof showLoginPage !== 'undefined') window.showLoginPage = showLoginPage;
+        } catch (e) {
+            console.error('❌ 備用暴露方法也失敗:', e);
+        }
+    }
 })();
