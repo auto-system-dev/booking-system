@@ -6343,33 +6343,42 @@ function showSuccess(message) {
 
 // 明確將關鍵函數暴露到全局作用域，確保可以在 HTML 的 onclick/onsubmit 中使用
 // 在文件末尾執行，確保所有函數都已定義
+// 使用多種方法確保函數暴露成功
 (function exposeFunctionsToGlobal() {
+    console.log('🔧 開始暴露函數到全局作用域...');
+    
+    // 方法 1: 直接暴露（函數聲明會被提升）
     try {
-        // 直接暴露函數到 window 對象（函數聲明會被提升，所以這裡應該可以訪問）
         window.handleLogin = handleLogin;
         window.handleLogout = handleLogout;
         window.checkAuthStatus = checkAuthStatus;
         window.showAdminPage = showAdminPage;
         window.showLoginPage = showLoginPage;
-        
-        console.log('✅ 關鍵函數已暴露到全局作用域:', {
-            handleLogin: typeof window.handleLogin,
-            handleLogout: typeof window.handleLogout,
-            checkAuthStatus: typeof window.checkAuthStatus,
-            showAdminPage: typeof window.showAdminPage,
-            showLoginPage: typeof window.showLoginPage
-        });
+        console.log('✅ 方法 1: 直接暴露成功');
     } catch (error) {
-        console.error('❌ 暴露函數到全局作用域時發生錯誤:', error);
-        // 即使出錯也嘗試暴露
-        try {
-            if (typeof handleLogin !== 'undefined') window.handleLogin = handleLogin;
-            if (typeof handleLogout !== 'undefined') window.handleLogout = handleLogout;
-            if (typeof checkAuthStatus !== 'undefined') window.checkAuthStatus = checkAuthStatus;
-            if (typeof showAdminPage !== 'undefined') window.showAdminPage = showAdminPage;
-            if (typeof showLoginPage !== 'undefined') window.showLoginPage = showLoginPage;
-        } catch (e) {
-            console.error('❌ 備用暴露方法也失敗:', e);
-        }
+        console.error('❌ 方法 1 失敗:', error);
     }
+    
+    // 方法 2: 延遲暴露（確保所有代碼都已執行）
+    setTimeout(function() {
+        try {
+            if (typeof handleLogin === 'function') window.handleLogin = handleLogin;
+            if (typeof handleLogout === 'function') window.handleLogout = handleLogout;
+            if (typeof checkAuthStatus === 'function') window.checkAuthStatus = checkAuthStatus;
+            if (typeof showAdminPage === 'function') window.showAdminPage = showAdminPage;
+            if (typeof showLoginPage === 'function') window.showLoginPage = showLoginPage;
+            console.log('✅ 方法 2: 延遲暴露完成');
+        } catch (error) {
+            console.error('❌ 方法 2 失敗:', error);
+        }
+    }, 0);
+    
+    // 立即檢查暴露結果
+    console.log('✅ 關鍵函數已暴露到全局作用域:', {
+        handleLogin: typeof window.handleLogin,
+        handleLogout: typeof window.handleLogout,
+        checkAuthStatus: typeof window.checkAuthStatus,
+        showAdminPage: typeof window.showAdminPage,
+        showLoginPage: typeof window.showLoginPage
+    });
 })();
