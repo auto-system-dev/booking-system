@@ -3752,36 +3752,7 @@ async function showEmailTemplateModal(templateKey) {
                             // 允許更多 HTML 標籤和屬性
                             matchVisual: false,
                             // 保留所有 class 和 style 屬性
-                            preserveWhitespace: true,
-                            // 自定義 HTML 轉換，保留所有屬性
-                            matchers: [
-                                // 保留 div 標籤及其屬性
-                                [Node.ELEMENT_NODE, (node, delta) => {
-                                    if (node.tagName === 'DIV') {
-                                        const attrs = {};
-                                        if (node.className) {
-                                            attrs.class = node.className;
-                                        }
-                                        if (node.style && node.style.cssText) {
-                                            attrs.style = node.style.cssText;
-                                        }
-                                        return delta.compose(new Delta().retain(delta.length(), attrs));
-                                    }
-                                }],
-                                // 保留 span 標籤及其屬性
-                                [Node.ELEMENT_NODE, (node, delta) => {
-                                    if (node.tagName === 'SPAN') {
-                                        const attrs = {};
-                                        if (node.className) {
-                                            attrs.class = node.className;
-                                        }
-                                        if (node.style && node.style.cssText) {
-                                            attrs.style = node.style.cssText;
-                                        }
-                                        return delta.compose(new Delta().retain(delta.length(), attrs));
-                                    }
-                                }]
-                            ]
+                            preserveWhitespace: true
                         }
                     },
                     placeholder: '開始編輯郵件內容...',
