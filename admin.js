@@ -5069,9 +5069,9 @@ async function resetCurrentTemplateToDefault() {
     }
 }
 
-// 重置單個郵件模板為預設圖卡樣式（從模板卡片中調用，保留以備將來需要）
+// 重置單個郵件模板為預設文字樣式（從模板卡片中調用，保留以備將來需要）
 async function resetEmailTemplateToDefault(templateKey, templateName) {
-    if (!confirm(`確定要將郵件模板「${templateName}」重置為預設的圖卡樣式嗎？此操作將覆蓋現有的模板內容。`)) {
+    if (!confirm(`確定要將郵件模板「${templateName}」重置為預設的文字樣式嗎？此操作將覆蓋現有的模板內容。`)) {
         return;
     }
     
@@ -6175,4 +6175,32 @@ function showSuccess(message) {
         errorDiv.remove();
     }, 3000);
 }
-}
+
+// 確保這些函數可以在 HTML onclick 屬性中訪問
+// 由於這些函數在全局作用域中定義，直接暴露到 window 對象
+(function exposeFunctionsToWindow() {
+    // 立即執行，確保函數定義後立即暴露
+    window.toggleEditorMode = toggleEditorMode;
+    window.sendTestEmail = sendTestEmail;
+    window.closeEmailTemplateModal = closeEmailTemplateModal;
+    window.resetCurrentTemplateToDefault = resetCurrentTemplateToDefault;
+    window.saveEmailTemplate = saveEmailTemplate;
+    
+    // 確保在 DOM 加載後再次設置（以防萬一）
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            window.toggleEditorMode = toggleEditorMode;
+            window.sendTestEmail = sendTestEmail;
+            window.closeEmailTemplateModal = closeEmailTemplateModal;
+            window.resetCurrentTemplateToDefault = resetCurrentTemplateToDefault;
+            window.saveEmailTemplate = saveEmailTemplate;
+        });
+    } else {
+        // DOM 已經加載，立即設置
+        window.toggleEditorMode = toggleEditorMode;
+        window.sendTestEmail = sendTestEmail;
+        window.closeEmailTemplateModal = closeEmailTemplateModal;
+        window.resetCurrentTemplateToDefault = resetCurrentTemplateToDefault;
+        window.saveEmailTemplate = saveEmailTemplate;
+    }
+})();
