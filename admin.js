@@ -5694,58 +5694,6 @@ ${quillHtml}
         }
     }, 0);
 })();
-    
-    // 確認設置成功
-    if (window.sendTestEmail === sendTestEmail) {
-        const fnString = window.sendTestEmail.toString();
-        const isStillTemporary = fnString.includes('尚未載入') || fnString.includes('功能載入中');
-        if (isStillTemporary) {
-            console.error('❌ sendTestEmail 函數導出失敗，仍然是臨時函數');
-            console.error('函數內容:', fnString.substring(0, 200));
-            // 最後嘗試：強制設置
-            try {
-                window.sendTestEmail = sendTestEmail;
-                // 再次確認
-                const newFnString = window.sendTestEmail.toString();
-                if (!newFnString.includes('尚未載入') && !newFnString.includes('功能載入中')) {
-                    console.log('✅ 強制設置成功，函數已正確覆蓋');
-                } else {
-                    console.error('❌ 強制設置後仍然是臨時函數');
-                }
-            } catch (e) {
-                console.error('❌ 強制設置也失敗:', e);
-            }
-        } else {
-            console.log('✅ sendTestEmail 函數已成功導出到全局作用域');
-        }
-    } else {
-        console.error('❌ sendTestEmail 函數導出失敗，當前值:', typeof window.sendTestEmail);
-        // 最後嘗試：強制設置
-        try {
-            window.sendTestEmail = sendTestEmail;
-            console.log('✅ 強制設置成功');
-        } catch (e) {
-            console.error('❌ 強制設置也失敗:', e);
-        }
-    }
-    
-    // 使用多種方法確保函數設置成功
-    // 方法 1: 直接賦值（已執行）
-    // 方法 2: 使用 defineProperty（已執行）
-    // 方法 3: 延遲再次確認（確保沒有其他地方覆蓋）
-    setTimeout(function() {
-        if (window.sendTestEmail !== sendTestEmail) {
-            console.warn('⚠️ 檢測到 window.sendTestEmail 被覆蓋，嘗試恢復...');
-            const currentFn = window.sendTestEmail;
-            const currentFnString = currentFn && typeof currentFn === 'function' ? currentFn.toString() : '';
-            if (currentFnString.includes('尚未載入') || currentFnString.includes('功能載入中')) {
-                console.log('🔄 恢復 sendTestEmail 函數...');
-                window.sendTestEmail = sendTestEmail;
-                console.log('✅ sendTestEmail 函數已恢復');
-            }
-        }
-    }, 100);
-})();
 
 // 重置郵件模板為預設圖卡樣式
 // 重置當前編輯的郵件模板為預設圖卡樣式（從編輯模態框中調用）
