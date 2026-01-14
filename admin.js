@@ -2,7 +2,9 @@
 
 // 立即設置關鍵函數到 window，確保在任何其他代碼執行前就可用
 // 使用最簡單的方式，不依賴任何其他代碼
-window.handleLogin = window.handleLogin || function(event) {
+// 強制設置，不使用 || 運算符，確保函數一定會被設置
+if (typeof window !== 'undefined') {
+    window.handleLogin = function(event) {
     console.warn('⚠️ handleLogin 函數尚未完全載入，請稍候...');
     // 如果函數已經定義，立即調用
     if (typeof handleLogin === 'function' && handleLogin !== window.handleLogin) {
