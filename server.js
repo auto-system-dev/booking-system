@@ -3884,6 +3884,82 @@ const handlePaymentResult = async (req, res) => {
 app.get('/api/payment/result', paymentLimiter, handlePaymentResult);
 app.post('/api/payment/result', paymentLimiter, handlePaymentResult);
 
+// API: 檢查郵件服務狀態（Resend/Gmail）
+app.get('/api/admin/email-service-status', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        // 檢查 Resend 套件
+        const resendPackageInstalled = Resend !== null;
+        
+        // 檢查 Resend API Key（資料庫和環境變數）
+        const resendApiKeyFromDB = await db.getSetting('resend_api_key');
+        const resendApiKeyFromEnv = process.env.RESEND_API_KEY;
+        const resendApiKey = resendApiKeyFromDB || resendApiKeyFromEnv;
+        const resendApiKeySource = resendApiKeyFromDB ? '資料庫' : (resendApiKeyFromEnv ? '環境變數' : '未設定');
+        
+        // 檢查 Resend 客戶端狀態
+        const resendClientInitialized = resendClient !== null;
+        
+        // 檢查發件人信箱
+        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || '';
+        
+        // 檢查當前郵件服務提供商
+        const currentProvider = emailServiceProvider;
+        
+        // 檢查 Gmail 設定（作為備用）
+        const gmailClientID = await db.getSetting('gmail_client_id') || process.env.GMAIL_CLIENT_ID;
+        const gmailClientSecret = await db.getSetting('gmail_client_secret') || process.env.GMAIL_CLIENT_SECRET;
+        const gmailRefreshToken = await db.getSetting('gmail_refresh_token') || process.env.GMAIL_REFRESH_TOKEN;
+        const gmailOAuth2Configured = !!(gmailClientID && gmailClientSecret && gmailRefreshToken);
+        
+        // 構建狀態報告
+        const status = {
+            resend: {
+                packageInstalled: resendPackageInstalled,
+                apiKeyConfigured: !!resendApiKey,
+                apiKeySource: resendApiKeySource,
+                apiKeyPrefix: resendApiKey ? resendApiKey.substring(0, 5) + '...' : null,
+                clientInitialized: resendClientInitialized,
+                status: resendPackageInstalled && resendApiKey && resendClientInitialized ? '已啟用' : '未啟用'
+            },
+            gmail: {
+                oauth2Configured: gmailOAuth2Configured,
+                status: gmailOAuth2Configured ? '已設定（備用）' : '未設定'
+            },
+            currentProvider: currentProvider,
+            senderEmail: emailUser || '未設定',
+            recommendations: []
+        };
+        
+        // 添加建議
+        if (!resendPackageInstalled) {
+            status.recommendations.push('❌ Resend 套件未安裝，請執行: npm install resend@6.7.0');
+        }
+        if (!resendApiKey) {
+            status.recommendations.push('⚠️ Resend API Key 未設定，請在管理後台或環境變數中設定');
+        }
+        if (resendApiKey && !resendClientInitialized) {
+            status.recommendations.push('⚠️ Resend API Key 已設定但客戶端未初始化，請重新啟動伺服器');
+        }
+        if (!emailUser) {
+            status.recommendations.push('⚠️ 發件人信箱未設定，請在「Gmail 發信設定」中設定「Gmail 帳號」欄位');
+        }
+        if (resendPackageInstalled && resendApiKey && resendClientInitialized && emailUser) {
+            status.recommendations.push('✅ Resend 設定完整，可以正常發送郵件');
+        }
+        
+        res.json({
+            success: true,
+            data: status
+        });
+    } catch (error) {
+        console.error('檢查郵件服務狀態錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '檢查郵件服務狀態失敗: ' + error.message
+        });
+    }
+});
+
 // ==================== 郵件模板 API ====================
 
 // API: 取得所有郵件模板
