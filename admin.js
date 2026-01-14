@@ -583,7 +583,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (emailTemplateModal) {
         emailTemplateModal.addEventListener('click', function(e) {
             if (e.target === this) {
-                closeEmailTemplateModal();
+                // 檢查函數是否已定義
+                if (typeof closeEmailTemplateModal === 'function') {
+                    closeEmailTemplateModal();
+                } else {
+                    // 如果函數未定義，直接關閉模態框
+                    emailTemplateModal.classList.remove('active');
+                }
             }
         });
     }
@@ -4288,6 +4294,48 @@ async function showEmailTemplateModal(templateKey) {
                     console.error('❌ sendTestEmail 函數未定義，無法設置事件監聽器');
                     newBtn.addEventListener('click', function() {
                         alert('發送測試郵件功能暫時無法使用，請重新載入頁面');
+                    });
+                }
+            }
+            
+            // 設置關閉模態框按鈕的事件監聽器
+            const closeBtn = document.getElementById('emailTemplateModalClose');
+            const cancelBtn = document.getElementById('emailTemplateModalCancel');
+            
+            if (closeBtn) {
+                // 移除舊的事件監聽器
+                const newCloseBtn = closeBtn.cloneNode(true);
+                closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+                
+                if (typeof closeEmailTemplateModal === 'function') {
+                    newCloseBtn.addEventListener('click', closeEmailTemplateModal);
+                    console.log('✅ 關閉按鈕事件監聽器已設置');
+                } else {
+                    console.error('❌ closeEmailTemplateModal 函數未定義');
+                    newCloseBtn.addEventListener('click', function() {
+                        const modal = document.getElementById('emailTemplateModal');
+                        if (modal) {
+                            modal.classList.remove('active');
+                        }
+                    });
+                }
+            }
+            
+            if (cancelBtn) {
+                // 移除舊的事件監聽器
+                const newCancelBtn = cancelBtn.cloneNode(true);
+                cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+                
+                if (typeof closeEmailTemplateModal === 'function') {
+                    newCancelBtn.addEventListener('click', closeEmailTemplateModal);
+                    console.log('✅ 取消按鈕事件監聽器已設置');
+                } else {
+                    console.error('❌ closeEmailTemplateModal 函數未定義');
+                    newCancelBtn.addEventListener('click', function() {
+                        const modal = document.getElementById('emailTemplateModal');
+                        if (modal) {
+                            modal.classList.remove('active');
+                        }
                     });
                 }
             }

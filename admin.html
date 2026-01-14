@@ -902,7 +902,7 @@
         <div class="modal-content" style="max-width: 900px;">
             <div class="modal-header">
                 <h2 id="emailTemplateModalTitle">編輯郵件模板</h2>
-                <button class="modal-close" onclick="closeEmailTemplateModal()">&times;</button>
+                <button class="modal-close" id="emailTemplateModalClose">&times;</button>
             </div>
             <form id="emailTemplateForm" onsubmit="saveEmailTemplate(event)">
                 <div class="modal-body">
@@ -1042,7 +1042,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn-primary">儲存</button>
-                    <button type="button" class="btn-primary btn-danger" onclick="closeEmailTemplateModal()">取消</button>
+                    <button type="button" class="btn-primary btn-danger" id="emailTemplateModalCancel">取消</button>
                 </div>
             </form>
         </div>
