@@ -5694,7 +5694,18 @@ ${quillHtml}
     'use strict';
     // 立即設置，不等待
     if (typeof sendTestEmail === 'function') {
+        // 強制刪除舊的臨時函數（如果存在）
+        try {
+            delete window.sendTestEmail;
+        } catch (e) {
+            // 忽略刪除錯誤
+        }
+        
+        // 方法 1: 直接賦值（多次確保成功）
         window.sendTestEmail = sendTestEmail;
+        window.sendTestEmail = sendTestEmail; // 再次設置確保成功
+        
+        // 方法 2: 使用 defineProperty 強制覆蓋（確保可配置）
         try {
             Object.defineProperty(window, 'sendTestEmail', {
                 value: sendTestEmail,
@@ -5703,11 +5714,24 @@ ${quillHtml}
                 enumerable: true
             });
         } catch (e) {
-            // 如果失敗，至少確保直接賦值成功
+            // 如果失敗，再次直接賦值
             window.sendTestEmail = sendTestEmail;
         }
-        const fnLength = sendTestEmail.toString().length;
-        console.log('✅ sendTestEmail 已立即設置到 window，長度:', fnLength);
+        
+        // 確認設置成功
+        const currentFn = window.sendTestEmail;
+        const currentFnString = currentFn && typeof currentFn === 'function' ? currentFn.toString() : '';
+        const isStillTemporary = currentFnString.includes('尚未載入') || 
+                                 currentFnString.includes('功能載入中');
+        
+        if (isStillTemporary && currentFnString.length < 200) {
+            console.error('❌ sendTestEmail 設置失敗，仍然是臨時函數，長度:', currentFnString.length);
+            console.error('臨時函數內容:', currentFnString);
+        } else {
+            const fnLength = sendTestEmail.toString().length;
+            console.log('✅ sendTestEmail 已立即設置到 window，長度:', fnLength);
+            console.log('✅ 確認 window.sendTestEmail 已正確覆蓋臨時函數');
+        }
     } else {
         console.error('❌ sendTestEmail 函數尚未定義，無法立即設置');
     }
