@@ -134,9 +134,11 @@ function showAdminPage(admin) {
         let activeSection = document.querySelector('.content-section.active');
         if (!activeSection) {
             console.warn('⚠️ 沒有找到 active 的 section，設置 bookings-section 為 active');
-            // 移除所有 active 類
+            // 移除所有 active 類並清除內聯樣式
             document.querySelectorAll('.content-section').forEach(sec => {
                 sec.classList.remove('active');
+                sec.style.display = '';
+                sec.style.visibility = '';
             });
             // 設置 bookings-section 為 active
             const bookingsSection = document.getElementById('bookings-section');
@@ -145,9 +147,17 @@ function showAdminPage(admin) {
                 activeSection = bookingsSection;
                 console.log('✅ 已設置 bookings-section 為 active');
             }
+        } else {
+            // 清除所有 section 的內聯樣式，讓 CSS 規則控制
+            document.querySelectorAll('.content-section').forEach(sec => {
+                if (sec !== activeSection) {
+                    sec.style.display = '';
+                    sec.style.visibility = '';
+                }
+            });
         }
         
-        // 強制顯示 active section
+        // 確保 active section 顯示（CSS 應該已經處理，但為了保險起見）
         if (activeSection) {
             activeSection.style.display = 'block';
             activeSection.style.visibility = 'visible';
@@ -574,13 +584,22 @@ function switchSection(section) {
         navItem.classList.add('active');
     }
 
-    // 更新內容區
+    // 更新內容區 - 隱藏所有 section 並清除內聯樣式
     document.querySelectorAll('.content-section').forEach(sec => {
         sec.classList.remove('active');
+        // 清除可能存在的內聯 display 樣式，讓 CSS 規則控制顯示/隱藏
+        sec.style.display = '';
+        sec.style.visibility = '';
     });
+    
+    // 顯示選中的 section
     const contentSection = document.getElementById(`${section}-section`);
     if (contentSection) {
         contentSection.classList.add('active');
+        // 確保 active section 顯示（CSS 應該已經處理，但為了保險起見）
+        contentSection.style.display = 'block';
+    } else {
+        console.warn('⚠️ 找不到 section:', `${section}-section`);
     }
     
     // 根據區塊載入對應資料
