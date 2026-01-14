@@ -5343,6 +5343,9 @@ ${quillHtml}
     }
 }
 
+// 立即暴露 sendTestEmail 到全局作用域
+window.sendTestEmail = sendTestEmail;
+
 // 重置郵件模板為預設圖卡樣式
 // 重置當前編輯的郵件模板為預設圖卡樣式（從編輯模態框中調用）
 async function resetCurrentTemplateToDefault() {
@@ -6280,6 +6283,10 @@ function closeEmailTemplateModal() {
     const textarea = document.getElementById('emailTemplateContent');
     const previewArea = document.getElementById('emailPreviewArea');
     const previewBtnText = document.getElementById('previewBtnText');
+}
+
+// 立即暴露 closeEmailTemplateModal 到全局作用域
+window.closeEmailTemplateModal = closeEmailTemplateModal;
     if (editorContainer && textarea) {
         editorContainer.style.display = 'block';
         textarea.style.display = 'none';
@@ -6296,6 +6303,9 @@ function closeEmailTemplateModal() {
     }
     // 郵件樣式選擇器已移除，固定使用預設的圖卡樣式
 }
+
+// 立即暴露 closeEmailTemplateModal 到全局作用域
+window.closeEmailTemplateModal = closeEmailTemplateModal;
 
 // ==================== 假日管理 ====================
 
@@ -6498,6 +6508,12 @@ async function deleteHoliday(holidayDate) {
             if (typeof checkAuthStatus === 'function') window.checkAuthStatus = checkAuthStatus;
             if (typeof showAdminPage === 'function') window.showAdminPage = showAdminPage;
             if (typeof showLoginPage === 'function') window.showLoginPage = showLoginPage;
+            // 導出郵件模板相關函數
+            if (typeof closeEmailTemplateModal === 'function') window.closeEmailTemplateModal = closeEmailTemplateModal;
+            if (typeof sendTestEmail === 'function') window.sendTestEmail = sendTestEmail;
+            if (typeof saveEmailTemplate === 'function') window.saveEmailTemplate = saveEmailTemplate;
+            if (typeof toggleEditorMode === 'function') window.toggleEditorMode = toggleEditorMode;
+            if (typeof resetCurrentTemplateToDefault === 'function') window.resetCurrentTemplateToDefault = resetCurrentTemplateToDefault;
             console.log('✅ 方法 2: 延遲暴露完成');
         } catch (error) {
             console.error('❌ 方法 2 失敗:', error);
@@ -6510,8 +6526,8 @@ async function deleteHoliday(holidayDate) {
         handleLogout: typeof window.handleLogout,
         checkAuthStatus: typeof window.checkAuthStatus,
         showAdminPage: typeof window.showAdminPage,
-        showLoginPage: typeof window.showLoginPage
+        showLoginPage: typeof window.showLoginPage,
+        closeEmailTemplateModal: typeof window.closeEmailTemplateModal,
+        sendTestEmail: typeof window.sendTestEmail
     });
 })();
-
-}
