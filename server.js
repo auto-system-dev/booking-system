@@ -14,6 +14,23 @@ const payment = require('./payment');
 const cron = require('node-cron');
 const backup = require('./backup');
 const csrf = require('csrf');
+
+// 預先載入 Resend（如果可用）
+let Resend = null;
+try {
+    const resendModule = require('resend');
+    // Resend v6.x 的導出方式
+    Resend = resendModule.Resend || (resendModule.default && resendModule.default.Resend) || resendModule.default;
+    if (Resend) {
+        console.log('✅ Resend 套件已載入');
+    } else {
+        console.warn('⚠️  Resend 類別未找到，請檢查套件版本');
+    }
+} catch (error) {
+    console.warn('⚠️  Resend 套件未安裝或載入失敗:', error.message);
+    console.warn('   系統將使用 Gmail 作為郵件服務');
+    console.warn('   如需使用 Resend，請執行: npm install resend@6.7.0');
+}
 const {
     errorHandler,
     asyncHandler,
@@ -530,7 +547,11 @@ async function initEmailService() {
         // 優先使用 Resend（如果已設定）
         if (resendApiKey) {
             try {
-                const { Resend } = require('resend');
+                // 檢查 Resend 套件是否可用
+                if (!Resend) {
+                    throw new Error('Resend 套件未安裝，請執行: npm install resend');
+                }
+                
                 resendClient = new Resend(resendApiKey);
                 emailServiceProvider = 'resend';
                 console.log('📧 郵件服務已設定（Resend）');
@@ -538,8 +559,12 @@ async function initEmailService() {
                 console.log('   設定來源:', await db.getSetting('resend_api_key') ? '資料庫' : '環境變數');
                 return; // Resend 設定完成，不需要初始化 Gmail
             } catch (error) {
-                console.error('❌ 初始化 Resend 失敗:', error);
+                console.error('❌ 初始化 Resend 失敗:', error.message);
+                console.error('   錯誤詳情:', error);
                 console.error('   將回退到 Gmail 服務');
+                // 確保變數被重置，避免後續錯誤
+                resendClient = null;
+                emailServiceProvider = 'gmail';
             }
         }
         
@@ -777,12 +802,13 @@ async function initEmailService() {
 // 統一的郵件發送函數（自動選擇 Resend 或 Gmail）
 async function sendEmail(mailOptions) {
     try {
-        // 優先使用 Resend
-        if (emailServiceProvider === 'resend' && resendClient) {
+        // 優先使用 Resend（確保 resendClient 存在且有效）
+        if (emailServiceProvider === 'resend' && resendClient && Resend) {
             try {
                 console.log('📧 使用 Resend 發送郵件...');
                 
                 // 從 mailOptions.from 提取發件人信箱（Resend 需要驗證過的網域或信箱）
+                const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
                 const fromEmail = mailOptions.from || emailUser;
                 
                 const result = await resendClient.emails.send({
@@ -804,6 +830,7 @@ async function sendEmail(mailOptions) {
                 };
             } catch (resendError) {
                 console.error('❌ Resend 發送失敗:', resendError.message);
+                console.error('   錯誤詳情:', resendError);
                 // Resend 失敗時，如果有 Gmail 備用方案，嘗試使用 Gmail
                 if (transporter || sendEmailViaGmailAPI) {
                     console.log('⚠️  Resend 失敗，切換到 Gmail 備用方案...');
@@ -813,7 +840,12 @@ async function sendEmail(mailOptions) {
             }
         }
         
-        // 使用 Gmail（原有邏輯）
+        // 如果 Resend 不可用，使用 Gmail（原有邏輯）
+        if (!resendClient && emailServiceProvider === 'resend') {
+            console.warn('⚠️  Resend 客戶端未初始化，切換到 Gmail');
+            emailServiceProvider = 'gmail';
+        }
+        
         return await sendEmailViaGmail(mailOptions);
     } catch (error) {
         console.error('❌ 郵件發送失敗:', error);
