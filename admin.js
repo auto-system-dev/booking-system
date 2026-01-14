@@ -5651,14 +5651,17 @@ ${quillHtml}
         
         // 檢查當前 window.sendTestEmail 是否為臨時函數
         const currentWindowFn = window.sendTestEmail;
+        const currentFnString = currentWindowFn && typeof currentWindowFn === 'function' ? currentWindowFn.toString() : '';
         const isTemporaryFunction = currentWindowFn && 
                                      typeof currentWindowFn === 'function' &&
-                                     (currentWindowFn.toString().includes('尚未載入') || 
-                                      currentWindowFn.toString().includes('功能載入中'));
+                                     (currentFnString.includes('尚未載入') || 
+                                      currentFnString.includes('功能載入中')) &&
+                                     currentFnString.length < 200;
         
         if (isTemporaryFunction) {
             console.log('🔄 檢測到臨時函數，準備覆蓋...');
-            console.log('臨時函數內容:', currentWindowFn.toString().substring(0, 100));
+            console.log('臨時函數內容:', currentFnString.substring(0, 100));
+            console.log('臨時函數長度:', currentFnString.length);
         } else if (currentWindowFn === sendTestEmail) {
             console.log('✅ window.sendTestEmail 已經是正確的函數');
         } else {
