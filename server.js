@@ -6218,7 +6218,6 @@ async function sendFeedbackRequestEmails() {
                     emailSent = true;
                 } catch (emailError) {
                     console.error(`❌ 發送回訪信失敗 (${booking.booking_id}):`, emailError.message);
-                    throw emailError;
                 }
                 
                 // 只有成功發送才更新郵件狀態
