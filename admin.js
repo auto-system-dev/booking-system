@@ -4274,6 +4274,47 @@ async function saveEmailTemplate(event) {
         return;
     }
     
+    // 獲取並驗證模板名稱和主旨
+    let templateName = document.getElementById('emailTemplateName').value.trim();
+    let templateSubject = document.getElementById('emailTemplateSubject').value.trim();
+    
+    // 檢查並修復錯誤的模板名稱和主旨（防止 email 地址格式）
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    // 如果模板名稱是 email 地址格式，使用預設名稱
+    if (emailRegex.test(templateName)) {
+        console.warn('⚠️ 檢測到錯誤的模板名稱格式（email 地址），使用預設名稱');
+        const templateNames = {
+            'payment_reminder': '匯款提醒',
+            'checkin_reminder': '入住提醒',
+            'feedback_request': '感謝入住',
+            'booking_confirmation': '訂房確認（客戶）',
+            'booking_confirmation_admin': '訂房確認（管理員）',
+            'payment_completed': '付款完成確認',
+            'cancel_notification': '取消通知'
+        };
+        templateName = templateNames[templateKey] || templateKey;
+        // 更新表單欄位
+        document.getElementById('emailTemplateName').value = templateName;
+    }
+    
+    // 如果主旨是 email 地址格式，使用預設主旨
+    if (emailRegex.test(templateSubject)) {
+        console.warn('⚠️ 檢測到錯誤的郵件主旨格式（email 地址），使用預設主旨');
+        const defaultSubjects = {
+            'payment_reminder': '【重要提醒】匯款期限即將到期',
+            'checkin_reminder': '【入住提醒】歡迎您明天入住',
+            'feedback_request': '【感謝入住】分享您的住宿體驗',
+            'booking_confirmation': '【訂房確認】您的訂房已成功',
+            'booking_confirmation_admin': '【新訂房通知】{{guestName}} - {{bookingId}}',
+            'payment_completed': '【訂房確認】您的訂房已成功',
+            'cancel_notification': '【訂房取消通知】您的訂房已自動取消'
+        };
+        templateSubject = defaultSubjects[templateKey] || '郵件主旨';
+        // 更新表單欄位
+        document.getElementById('emailTemplateSubject').value = templateSubject;
+    }
+    
     // 根據當前模式獲取內容
     let content = '';
     if (isHtmlMode) {
@@ -5076,8 +5117,8 @@ async function saveEmailTemplate(event) {
     }
     
     const data = {
-        template_name: document.getElementById('emailTemplateName').value,
-        subject: document.getElementById('emailTemplateSubject').value,
+        template_name: templateName,
+        subject: templateSubject,
         content: content,
         is_enabled: document.getElementById('emailTemplateEnabled').checked ? 1 : 0
     };
