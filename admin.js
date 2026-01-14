@@ -17,6 +17,20 @@ window.addEventListener('unhandledrejection', function(event) {
 });
 
 // 確保函數在全局作用域可用
+// 預先聲明 sendTestEmail 和 closeEmailTemplateModal，確保在 HTML onclick 中可用
+window.sendTestEmail = function() {
+    console.error('sendTestEmail 函數尚未載入，請稍候再試');
+    alert('功能載入中，請稍候再試');
+};
+
+window.closeEmailTemplateModal = function() {
+    console.error('closeEmailTemplateModal 函數尚未載入，請稍候再試');
+    const modal = document.getElementById('emailTemplateModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+};
+
 // 檢查登入狀態
 async function checkAuthStatus() {
     try {
@@ -5384,8 +5398,18 @@ ${quillHtml}
     }
 }
 
-// 立即暴露 sendTestEmail 到全局作用域
-window.sendTestEmail = sendTestEmail;
+// 立即暴露 sendTestEmail 到全局作用域（確保在函數定義後立即執行）
+(function() {
+    if (typeof sendTestEmail === 'function') {
+        window.sendTestEmail = sendTestEmail;
+        // 強制設置，確保可用
+        Object.defineProperty(window, 'sendTestEmail', {
+            value: sendTestEmail,
+            writable: true,
+            configurable: true
+        });
+    }
+})();
 
 // 重置郵件模板為預設圖卡樣式
 // 重置當前編輯的郵件模板為預設圖卡樣式（從編輯模態框中調用）
