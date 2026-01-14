@@ -1142,19 +1142,47 @@
             function check() {
                 attempts++;
                 // 檢查 handleLogin 是否存在（即使是佔位符也可以）
+                // 同時檢查 admin.js 腳本標籤是否已載入
+                const adminScript = document.querySelector('script[src*="admin.js"]');
+                const scriptLoaded = adminScript && (adminScript.dataset.loaded === 'true' || adminScript.textContent.length > 0);
+                
                 if (typeof window.handleLogin === 'function') {
-                    console.log('✅ admin.js 已載入，handleLogin 函數可用');
+                    console.log('✅ admin.js 已載入，handleLogin 函數可用', {
+                        attempts: attempts,
+                        fnType: typeof window.handleLogin,
+                        fnLength: window.handleLogin.toString().length
+                    });
                     callback();
                 } else if (attempts < maxAttempts) {
                     // 繼續等待
+                    if (attempts % 10 === 0) {
+                        console.log(`⏳ 等待 admin.js 載入... (${attempts}/${maxAttempts})`, {
+                            scriptExists: !!adminScript,
+                            scriptLoaded: scriptLoaded,
+                            windowHandleLogin: typeof window.handleLogin
+                        });
+                    }
                     setTimeout(check, 100);
                 } else {
-                    console.warn('⚠️ admin.js 載入超時，但仍嘗試設置事件監聽器');
+                    console.warn('⚠️ admin.js 載入超時，但仍嘗試設置事件監聽器', {
+                        scriptExists: !!adminScript,
+                        scriptLoaded: scriptLoaded,
+                        windowHandleLogin: typeof window.handleLogin
+                    });
                     callback();
                 }
             }
             check();
         }
+        
+        // 監聽 admin.js 腳本載入完成事件
+        window.addEventListener('load', function() {
+            const adminScript = document.querySelector('script[src*="admin.js"]');
+            if (adminScript) {
+                adminScript.dataset.loaded = 'true';
+                console.log('✅ admin.js 腳本標籤載入完成');
+            }
+        });
         
         // 設置事件監聽器
         function setupListener() {
