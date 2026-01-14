@@ -5564,62 +5564,89 @@ ${quillHtml}
 
 // 立即暴露 sendTestEmail 到全局作用域（確保在函數定義後立即執行）
 // 強制覆蓋預先聲明的臨時函數
-(function exportSendTestEmail() {
+// 使用立即執行的代碼塊，不使用 IIFE，確保在函數定義後立即執行
+{
     'use strict';
     console.log('🔧 開始導出 sendTestEmail 函數...');
     
     // 確保 sendTestEmail 函數已定義
     if (typeof sendTestEmail !== 'function') {
         console.error('❌ sendTestEmail 函數尚未定義，無法導出');
-        return;
-    }
-    console.log('✅ sendTestEmail 函數已定義，長度:', sendTestEmail.toString().length);
-    
-    // 檢查當前 window.sendTestEmail 是否為臨時函數
-    const currentWindowFn = window.sendTestEmail;
-    const isTemporaryFunction = currentWindowFn && 
-                                 typeof currentWindowFn === 'function' &&
-                                 (currentWindowFn.toString().includes('尚未載入') || 
-                                  currentWindowFn.toString().includes('功能載入中'));
-    
-    if (isTemporaryFunction) {
-        console.log('🔄 檢測到臨時函數，準備覆蓋...');
-        console.log('臨時函數內容:', currentWindowFn.toString().substring(0, 100));
-    } else if (currentWindowFn === sendTestEmail) {
-        console.log('✅ window.sendTestEmail 已經是正確的函數');
-        return;
-    }
-    
-    // 強制覆蓋：無論當前是什麼，都要設置為正確的函數
-    // 方法 1: 先刪除（如果可能）
-    try {
+    } else {
+        console.log('✅ sendTestEmail 函數已定義，長度:', sendTestEmail.toString().length);
+        
+        // 檢查當前 window.sendTestEmail 是否為臨時函數
+        const currentWindowFn = window.sendTestEmail;
+        const isTemporaryFunction = currentWindowFn && 
+                                     typeof currentWindowFn === 'function' &&
+                                     (currentWindowFn.toString().includes('尚未載入') || 
+                                      currentWindowFn.toString().includes('功能載入中'));
+        
         if (isTemporaryFunction) {
-            delete window.sendTestEmail;
-            console.log('✅ 已刪除臨時函數');
+            console.log('🔄 檢測到臨時函數，準備覆蓋...');
+            console.log('臨時函數內容:', currentWindowFn.toString().substring(0, 100));
+        } else if (currentWindowFn === sendTestEmail) {
+            console.log('✅ window.sendTestEmail 已經是正確的函數');
+        } else {
+            // 強制覆蓋：無論當前是什麼，都要設置為正確的函數
+            // 方法 1: 先刪除（如果可能）
+            try {
+                if (isTemporaryFunction) {
+                    delete window.sendTestEmail;
+                    console.log('✅ 已刪除臨時函數');
+                }
+            } catch (e) {
+                console.warn('⚠️ 刪除舊函數時發生錯誤（繼續嘗試設置）:', e);
+            }
+            
+            // 方法 2: 直接賦值（多次確保成功）
+            window.sendTestEmail = sendTestEmail;
+            window.sendTestEmail = sendTestEmail; // 再次設置確保成功
+            console.log('✅ 已設置 window.sendTestEmail = sendTestEmail');
+            
+            // 方法 3: 使用 defineProperty 強制覆蓋（確保可配置）
+            try {
+                Object.defineProperty(window, 'sendTestEmail', {
+                    value: sendTestEmail,
+                    writable: true,
+                    configurable: true,
+                    enumerable: true
+                });
+                console.log('✅ 已使用 defineProperty 設置');
+            } catch (e) {
+                console.warn('⚠️ defineProperty 失敗，使用直接賦值:', e);
+                // 如果 defineProperty 失敗，再次直接賦值
+                window.sendTestEmail = sendTestEmail;
+            }
         }
-    } catch (e) {
-        console.warn('⚠️ 刪除舊函數時發生錯誤（繼續嘗試設置）:', e);
     }
-    
-    // 方法 2: 直接賦值（多次確保成功）
-    window.sendTestEmail = sendTestEmail;
-    window.sendTestEmail = sendTestEmail; // 再次設置確保成功
-    console.log('✅ 已設置 window.sendTestEmail = sendTestEmail');
-    
-    // 方法 3: 使用 defineProperty 強制覆蓋（確保可配置）
-    try {
-        Object.defineProperty(window, 'sendTestEmail', {
-            value: sendTestEmail,
-            writable: true,
-            configurable: true,
-            enumerable: true
-        });
-        console.log('✅ 已使用 defineProperty 設置');
-    } catch (e) {
-        console.warn('⚠️ defineProperty 失敗，使用直接賦值:', e);
-        // 如果 defineProperty 失敗，再次直接賦值
-        window.sendTestEmail = sendTestEmail;
-    }
+}
+
+// 再次確認設置（使用 IIFE 確保在下一輪事件循環中也能正確設置）
+(function exportSendTestEmailIIFE() {
+    'use strict';
+    // 延遲一點點，確保所有同步代碼都已執行
+    setTimeout(function() {
+        if (typeof sendTestEmail === 'function') {
+            const currentFn = window.sendTestEmail;
+            const isTemporary = currentFn && 
+                               typeof currentFn === 'function' &&
+                               (currentFn.toString().includes('尚未載入') || 
+                                currentFn.toString().includes('功能載入中'));
+            if (isTemporary || currentFn !== sendTestEmail) {
+                console.log('🔄 IIFE: 檢測到函數需要更新，重新設置...');
+                window.sendTestEmail = sendTestEmail;
+                Object.defineProperty(window, 'sendTestEmail', {
+                    value: sendTestEmail,
+                    writable: true,
+                    configurable: true,
+                    enumerable: true
+                });
+                console.log('✅ IIFE: sendTestEmail 已重新設置');
+            }
+        }
+    }, 0);
+})();
     
     // 確認設置成功
     if (window.sendTestEmail === sendTestEmail) {
