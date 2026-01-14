@@ -5569,19 +5569,25 @@ ${quillHtml}
     
     if (isTemporaryFunction) {
         console.log('🔄 檢測到臨時函數，準備覆蓋...');
+        console.log('臨時函數內容:', currentWindowFn.toString().substring(0, 100));
     }
     
-    // 先刪除舊的函數（如果存在）
+    // 強制覆蓋：無論當前是什麼，都要設置為正確的函數
+    // 方法 1: 先刪除（如果可能）
     try {
-        delete window.sendTestEmail;
+        if (isTemporaryFunction) {
+            delete window.sendTestEmail;
+            console.log('✅ 已刪除臨時函數');
+        }
     } catch (e) {
-        console.warn('⚠️ 刪除舊函數時發生錯誤（可忽略）:', e);
+        console.warn('⚠️ 刪除舊函數時發生錯誤（繼續嘗試設置）:', e);
     }
     
-    // 設置新函數（多次嘗試確保成功）
+    // 方法 2: 直接賦值
     window.sendTestEmail = sendTestEmail;
+    console.log('✅ 已設置 window.sendTestEmail = sendTestEmail');
     
-    // 使用 defineProperty 強制覆蓋（確保可配置）
+    // 方法 3: 使用 defineProperty 強制覆蓋（確保可配置）
     try {
         Object.defineProperty(window, 'sendTestEmail', {
             value: sendTestEmail,
@@ -5589,9 +5595,10 @@ ${quillHtml}
             configurable: true,
             enumerable: true
         });
+        console.log('✅ 已使用 defineProperty 設置');
     } catch (e) {
         console.warn('⚠️ defineProperty 失敗，使用直接賦值:', e);
-        // 如果 defineProperty 失敗，直接賦值
+        // 如果 defineProperty 失敗，再次直接賦值
         window.sendTestEmail = sendTestEmail;
     }
     
@@ -5601,6 +5608,20 @@ ${quillHtml}
         const isStillTemporary = fnString.includes('尚未載入') || fnString.includes('功能載入中');
         if (isStillTemporary) {
             console.error('❌ sendTestEmail 函數導出失敗，仍然是臨時函數');
+            console.error('函數內容:', fnString.substring(0, 200));
+            // 最後嘗試：強制設置
+            try {
+                window.sendTestEmail = sendTestEmail;
+                // 再次確認
+                const newFnString = window.sendTestEmail.toString();
+                if (!newFnString.includes('尚未載入') && !newFnString.includes('功能載入中')) {
+                    console.log('✅ 強制設置成功，函數已正確覆蓋');
+                } else {
+                    console.error('❌ 強制設置後仍然是臨時函數');
+                }
+            } catch (e) {
+                console.error('❌ 強制設置也失敗:', e);
+            }
         } else {
             console.log('✅ sendTestEmail 函數已成功導出到全局作用域');
         }
@@ -5614,6 +5635,23 @@ ${quillHtml}
             console.error('❌ 強制設置也失敗:', e);
         }
     }
+    
+    // 使用多種方法確保函數設置成功
+    // 方法 1: 直接賦值（已執行）
+    // 方法 2: 使用 defineProperty（已執行）
+    // 方法 3: 延遲再次確認（確保沒有其他地方覆蓋）
+    setTimeout(function() {
+        if (window.sendTestEmail !== sendTestEmail) {
+            console.warn('⚠️ 檢測到 window.sendTestEmail 被覆蓋，嘗試恢復...');
+            const currentFn = window.sendTestEmail;
+            const currentFnString = currentFn && typeof currentFn === 'function' ? currentFn.toString() : '';
+            if (currentFnString.includes('尚未載入') || currentFnString.includes('功能載入中')) {
+                console.log('🔄 恢復 sendTestEmail 函數...');
+                window.sendTestEmail = sendTestEmail;
+                console.log('✅ sendTestEmail 函數已恢復');
+            }
+        }
+    }, 100);
 })();
 
 // 重置郵件模板為預設圖卡樣式
@@ -6789,7 +6827,21 @@ async function deleteHoliday(holidayDate) {
             if (typeof showLoginPage === 'function') window.showLoginPage = showLoginPage;
             // 導出郵件模板相關函數
             if (typeof closeEmailTemplateModal === 'function') window.closeEmailTemplateModal = closeEmailTemplateModal;
-            if (typeof sendTestEmail === 'function') window.sendTestEmail = sendTestEmail;
+            // 檢查 sendTestEmail 是否已正確設置（不是臨時函數）
+            if (typeof sendTestEmail === 'function') {
+                const currentFn = window.sendTestEmail;
+                const isTemporary = currentFn && 
+                                   typeof currentFn === 'function' &&
+                                   (currentFn.toString().includes('尚未載入') || 
+                                    currentFn.toString().includes('功能載入中'));
+                // 只有當當前函數是臨時函數或不存在時才設置
+                if (!currentFn || isTemporary) {
+                    window.sendTestEmail = sendTestEmail;
+                    console.log('✅ sendTestEmail 在延遲暴露中設置成功');
+                } else {
+                    console.log('✅ sendTestEmail 已正確設置，跳過覆蓋');
+                }
+            }
             if (typeof saveEmailTemplate === 'function') window.saveEmailTemplate = saveEmailTemplate;
             if (typeof toggleEditorMode === 'function') window.toggleEditorMode = toggleEditorMode;
             if (typeof resetCurrentTemplateToDefault === 'function') window.resetCurrentTemplateToDefault = resetCurrentTemplateToDefault;
