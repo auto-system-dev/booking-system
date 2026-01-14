@@ -216,6 +216,10 @@ function showAdminPage(admin) {
 
 // 處理登入
 async function handleLogin(event) {
+    // 確保函數在定義時立即設置到 window（備用方案）
+    if (typeof window !== 'undefined' && !window.handleLogin || window.handleLogin !== handleLogin) {
+        window.handleLogin = handleLogin;
+    }
     if (event) {
         event.preventDefault();
     }
@@ -338,7 +342,22 @@ async function handleLogin(event) {
 }
 
 // 立即暴露 handleLogin 到全局（在函數定義後立即執行）
-window.handleLogin = handleLogin;
+// 使用多種方法確保函數設置成功
+try {
+    window.handleLogin = handleLogin;
+    // 使用 defineProperty 確保可配置
+    Object.defineProperty(window, 'handleLogin', {
+        value: handleLogin,
+        writable: true,
+        configurable: true,
+        enumerable: true
+    });
+    console.log('✅ handleLogin 已設置到 window.handleLogin');
+} catch (e) {
+    console.error('❌ 設置 handleLogin 失敗:', e);
+    // 如果失敗，至少嘗試直接賦值
+    window.handleLogin = handleLogin;
+}
 
 // 處理登出
 async function handleLogout() {
