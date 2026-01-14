@@ -421,10 +421,22 @@ document.addEventListener('DOMContentLoaded', async function() {
             loginPageDisplay: loginPage ? window.getComputedStyle(loginPage).display : 'N/A',
             adminPageDisplay: adminPage ? window.getComputedStyle(adminPage).display : 'N/A'
         });
+
+        // 重要：先顯示登入頁，避免等待 API（CSRF/登入狀態）時整頁空白
+        // 後續 checkAuthStatus() 若判定已登入，會再切到管理後台
+        showLoginPage();
         
         // 檢查登入狀態
         console.log('🔐 準備檢查登入狀態...');
-        await checkAuthStatus();
+        // 加上超時，避免 API 卡住導致長時間白畫面/無反應
+        await Promise.race([
+            checkAuthStatus(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('檢查登入狀態逾時')), 8000))
+        ]).catch(err => {
+            console.warn('⚠️ checkAuthStatus 未完成（可能逾時/伺服器未回應）:', err?.message || err);
+            // 保持在登入頁
+            showLoginPage();
+        });
         
         // 導航切換
         const navItems = document.querySelectorAll('.nav-item');

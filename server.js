@@ -2151,6 +2151,10 @@ app.use('/api/admin', (req, res, next) => {
 
 // 管理後台（未登入時顯示登入頁面，已登入時顯示管理後台）
 app.get('/admin', generateCsrfToken, (req, res) => {
+    // 強制禁用快取：避免瀏覽器/代理拿到截斷或舊版的 admin.html / admin.js 造成白畫面
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     // 直接返回 admin.html，由前端 JavaScript 檢查登入狀態並顯示對應頁面
     res.sendFile(path.join(__dirname, 'admin.html'));
 });
@@ -6352,7 +6356,26 @@ async function startServer() {
 }
 
 // 靜態檔案服務（放在最後，避免覆蓋 API 路由）
-app.use(express.static(__dirname));
+// 對後台相關檔案強制禁用快取，避免拿到舊/截斷檔導致前端 SyntaxError -> 白畫面
+app.use(express.static(__dirname, {
+    setHeaders: (res, filePath) => {
+        try {
+            const normalized = String(filePath || '').replace(/\\/g, '/').toLowerCase();
+            const isAdminAsset =
+                normalized.endsWith('/admin.html') ||
+                normalized.endsWith('/admin.js') ||
+                normalized.endsWith('/admin.css');
+
+            if (isAdminAsset) {
+                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+                res.setHeader('Pragma', 'no-cache');
+                res.setHeader('Expires', '0');
+            }
+        } catch (_) {
+            // ignore
+        }
+    }
+}));
 
 // ============================================
 // 統一錯誤處理中間件（必須放在所有路由之後）
