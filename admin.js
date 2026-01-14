@@ -4286,16 +4286,32 @@ async function showEmailTemplateModal(templateKey) {
                 const newBtn = sendTestEmailBtn.cloneNode(true);
                 sendTestEmailBtn.parentNode.replaceChild(newBtn, sendTestEmailBtn);
                 
-                // 設置新的事件監聽器
-                if (typeof sendTestEmail === 'function') {
-                    newBtn.addEventListener('click', sendTestEmail);
-                    console.log('✅ sendTestEmail 按鈕事件監聽器已設置');
-                } else {
-                    console.error('❌ sendTestEmail 函數未定義，無法設置事件監聽器');
-                    newBtn.addEventListener('click', function() {
-                        alert('發送測試郵件功能暫時無法使用，請重新載入頁面');
-                    });
-                }
+                // 使用延遲設置，確保函數已定義
+                setTimeout(function setupSendTestEmailListener() {
+                    // 檢查函數是否已定義
+                    if (typeof sendTestEmail === 'function' && !sendTestEmail.toString().includes('尚未載入')) {
+                        newBtn.addEventListener('click', sendTestEmail);
+                        console.log('✅ sendTestEmail 按鈕事件監聽器已設置');
+                    } else {
+                        // 如果函數還沒定義，再等一會兒
+                        if (typeof window.sendTestEmail === 'function' && !window.sendTestEmail.toString().includes('尚未載入')) {
+                            newBtn.addEventListener('click', window.sendTestEmail);
+                            console.log('✅ sendTestEmail 按鈕事件監聽器已設置（使用 window.sendTestEmail）');
+                        } else {
+                            console.warn('⚠️ sendTestEmail 函數尚未載入，設置備用事件監聽器');
+                            newBtn.addEventListener('click', function() {
+                                // 再次檢查函數是否已載入
+                                if (typeof sendTestEmail === 'function' && !sendTestEmail.toString().includes('尚未載入')) {
+                                    sendTestEmail();
+                                } else if (typeof window.sendTestEmail === 'function' && !window.sendTestEmail.toString().includes('尚未載入')) {
+                                    window.sendTestEmail();
+                                } else {
+                                    alert('發送測試郵件功能暫時無法使用，請重新載入頁面');
+                                }
+                            });
+                        }
+                    }
+                }, 100);
             }
             
             // 設置關閉模態框按鈕的事件監聽器
