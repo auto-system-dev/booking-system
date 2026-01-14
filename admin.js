@@ -3304,6 +3304,75 @@ async function saveResendSettings() {
     }
 }
 
+// 檢查 Resend 設定狀態
+async function checkResendStatus() {
+    const statusDiv = document.getElementById('resendStatusCheck');
+    if (!statusDiv) return;
+    
+    statusDiv.style.display = 'block';
+    statusDiv.innerHTML = '<div style="padding: 15px; background-color: #f0f9ff; border-radius: 8px; color: #0369a1;">⏳ 正在檢查 Resend 設定狀態...</div>';
+    
+    try {
+        const response = await adminFetch('/api/admin/email-service-status');
+        const result = await response.json();
+        
+        if (result.success) {
+            const status = result.data;
+            let html = '<div style="padding: 20px; background-color: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">';
+            html += '<h4 style="margin-top: 0; color: #1f2937;">📧 郵件服務狀態檢查</h4>';
+            
+            // Resend 狀態
+            html += '<div style="margin-bottom: 20px; padding: 15px; background-color: white; border-radius: 6px; border-left: 4px solid #10b981;">';
+            html += '<h5 style="margin-top: 0; color: #059669;">Resend 設定</h5>';
+            html += '<ul style="margin: 10px 0; padding-left: 20px; color: #374151;">';
+            html += `<li>套件安裝狀態: <strong>${status.resend.packageInstalled ? '✅ 已安裝' : '❌ 未安裝'}</strong></li>`;
+            html += `<li>API Key 設定: <strong>${status.resend.apiKeyConfigured ? '✅ 已設定' : '❌ 未設定'}</strong></li>`;
+            if (status.resend.apiKeyConfigured) {
+                html += `<li>設定來源: <strong>${status.resend.apiKeySource}</strong></li>`;
+                html += `<li>API Key 前綴: <strong>${status.resend.apiKeyPrefix}</strong></li>`;
+            }
+            html += `<li>客戶端初始化: <strong>${status.resend.clientInitialized ? '✅ 已初始化' : '❌ 未初始化'}</strong></li>`;
+            html += `<li>狀態: <strong style="color: ${status.resend.status === '已啟用' ? '#059669' : '#dc2626'}">${status.resend.status}</strong></li>`;
+            html += '</ul>';
+            html += '</div>';
+            
+            // Gmail 狀態
+            html += '<div style="margin-bottom: 20px; padding: 15px; background-color: white; border-radius: 6px; border-left: 4px solid #3b82f6;">';
+            html += '<h5 style="margin-top: 0; color: #2563eb;">Gmail 設定（備用）</h5>';
+            html += `<p style="margin: 10px 0; color: #374151;">OAuth2 設定: <strong>${status.gmail.oauth2Configured ? '✅ 已設定' : '❌ 未設定'}</strong></p>`;
+            html += `<p style="margin: 10px 0; color: #374151;">狀態: <strong>${status.gmail.status}</strong></p>`;
+            html += '</div>';
+            
+            // 當前狀態
+            html += '<div style="margin-bottom: 20px; padding: 15px; background-color: white; border-radius: 6px; border-left: 4px solid #8b5cf6;">';
+            html += '<h5 style="margin-top: 0; color: #7c3aed;">當前設定</h5>';
+            html += `<p style="margin: 10px 0; color: #374151;">郵件服務提供商: <strong style="color: ${status.currentProvider === 'resend' ? '#059669' : '#2563eb'}">${status.currentProvider === 'resend' ? 'Resend' : 'Gmail'}</strong></p>`;
+            html += `<p style="margin: 10px 0; color: #374151;">發件人信箱: <strong>${status.senderEmail}</strong></p>`;
+            html += '</div>';
+            
+            // 建議
+            if (status.recommendations && status.recommendations.length > 0) {
+                html += '<div style="padding: 15px; background-color: white; border-radius: 6px; border-left: 4px solid #f59e0b;">';
+                html += '<h5 style="margin-top: 0; color: #d97706;">建議事項</h5>';
+                html += '<ul style="margin: 10px 0; padding-left: 20px; color: #374151;">';
+                status.recommendations.forEach(rec => {
+                    html += `<li>${rec}</li>`;
+                });
+                html += '</ul>';
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            statusDiv.innerHTML = html;
+        } else {
+            statusDiv.innerHTML = `<div style="padding: 15px; background-color: #fee2e2; border-radius: 8px; color: #dc2626;">❌ 檢查失敗: ${result.message || '未知錯誤'}</div>`;
+        }
+    } catch (error) {
+        console.error('檢查 Resend 狀態錯誤:', error);
+        statusDiv.innerHTML = `<div style="padding: 15px; background-color: #fee2e2; border-radius: 8px; color: #dc2626;">❌ 檢查時發生錯誤: ${error.message}</div>`;
+    }
+}
+
 // 儲存 Gmail 發信設定
 async function saveGmailSettings() {
     const emailUser = document.getElementById('emailUser').value.trim();

@@ -754,7 +754,11 @@
                                     <input type="password" id="resendApiKey" placeholder="例如：re_xxxxxxxxxxxx">
                                     <small>從 Resend 官網取得的 API Key（優先使用，如果設定則會自動使用 Resend）</small>
                                 </div>
-                                <button class="btn-save" onclick="saveResendSettings()">儲存設定</button>
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="btn-save" onclick="saveResendSettings()">儲存設定</button>
+                                    <button class="btn-save" onclick="checkResendStatus()" style="background-color: #3b82f6;">檢查設定狀態</button>
+                                </div>
+                                <div id="resendStatusCheck" style="margin-top: 20px; display: none;"></div>
                             </div>
                         </div>
                         
