@@ -5250,6 +5250,11 @@ async function saveEmailTemplate(event) {
 
 // 發送測試郵件
 async function sendTestEmail() {
+    // 立即覆蓋預先聲明的臨時函數（在函數執行時立即設置）
+    if (window.sendTestEmail && window.sendTestEmail.toString().includes('尚未載入')) {
+        window.sendTestEmail = sendTestEmail;
+    }
+    
     const testEmailInput = document.getElementById('testEmailAddress');
     const testEmailBtn = document.getElementById('sendTestEmailBtn');
     const testEmailStatus = document.getElementById('testEmailStatus');
@@ -5405,13 +5410,35 @@ ${quillHtml}
 
 // 立即暴露 sendTestEmail 到全局作用域（確保在函數定義後立即執行）
 // 強制覆蓋預先聲明的臨時函數
-window.sendTestEmail = sendTestEmail;
-Object.defineProperty(window, 'sendTestEmail', {
-    value: sendTestEmail,
-    writable: true,
-    configurable: true,
-    enumerable: true
-});
+(function() {
+    'use strict';
+    // 先刪除舊的函數（如果存在）
+    try {
+        delete window.sendTestEmail;
+    } catch (e) {
+        // 忽略刪除錯誤
+    }
+    // 設置新函數
+    window.sendTestEmail = sendTestEmail;
+    // 使用 defineProperty 強制覆蓋
+    try {
+        Object.defineProperty(window, 'sendTestEmail', {
+            value: sendTestEmail,
+            writable: true,
+            configurable: true,
+            enumerable: true
+        });
+    } catch (e) {
+        // 如果 defineProperty 失敗，直接賦值
+        window.sendTestEmail = sendTestEmail;
+    }
+    // 確認設置成功
+    if (window.sendTestEmail === sendTestEmail) {
+        console.log('✅ sendTestEmail 函數已成功導出到全局作用域');
+    } else {
+        console.error('❌ sendTestEmail 函數導出失敗');
+    }
+})();
 
 // 重置郵件模板為預設圖卡樣式
 // 重置當前編輯的郵件模板為預設圖卡樣式（從編輯模態框中調用）
