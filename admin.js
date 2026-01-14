@@ -399,8 +399,20 @@ function exposeFunctionsToWindow() {
         if (typeof toggleEditorMode === 'function') {
             window.toggleEditorMode = toggleEditorMode;
         }
+        // 檢查 sendTestEmail 是否已正確設置（不是臨時函數）
         if (typeof sendTestEmail === 'function') {
-            window.sendTestEmail = sendTestEmail;
+            const currentFn = window.sendTestEmail;
+            const isTemporary = currentFn && 
+                               typeof currentFn === 'function' &&
+                               (currentFn.toString().includes('尚未載入') || 
+                                currentFn.toString().includes('功能載入中'));
+            // 只有當當前函數是臨時函數或不存在時才設置
+            if (!currentFn || isTemporary) {
+                window.sendTestEmail = sendTestEmail;
+                console.log('✅ exposeFunctionsToWindow: sendTestEmail 已設置');
+            } else {
+                console.log('✅ exposeFunctionsToWindow: sendTestEmail 已正確設置，跳過');
+            }
         }
         if (typeof closeEmailTemplateModal === 'function') {
             window.closeEmailTemplateModal = closeEmailTemplateModal;
@@ -5554,11 +5566,14 @@ ${quillHtml}
 // 強制覆蓋預先聲明的臨時函數
 (function exportSendTestEmail() {
     'use strict';
+    console.log('🔧 開始導出 sendTestEmail 函數...');
+    
     // 確保 sendTestEmail 函數已定義
     if (typeof sendTestEmail !== 'function') {
         console.error('❌ sendTestEmail 函數尚未定義，無法導出');
         return;
     }
+    console.log('✅ sendTestEmail 函數已定義，長度:', sendTestEmail.toString().length);
     
     // 檢查當前 window.sendTestEmail 是否為臨時函數
     const currentWindowFn = window.sendTestEmail;
@@ -5570,6 +5585,9 @@ ${quillHtml}
     if (isTemporaryFunction) {
         console.log('🔄 檢測到臨時函數，準備覆蓋...');
         console.log('臨時函數內容:', currentWindowFn.toString().substring(0, 100));
+    } else if (currentWindowFn === sendTestEmail) {
+        console.log('✅ window.sendTestEmail 已經是正確的函數');
+        return;
     }
     
     // 強制覆蓋：無論當前是什麼，都要設置為正確的函數
@@ -5583,8 +5601,9 @@ ${quillHtml}
         console.warn('⚠️ 刪除舊函數時發生錯誤（繼續嘗試設置）:', e);
     }
     
-    // 方法 2: 直接賦值
+    // 方法 2: 直接賦值（多次確保成功）
     window.sendTestEmail = sendTestEmail;
+    window.sendTestEmail = sendTestEmail; // 再次設置確保成功
     console.log('✅ 已設置 window.sendTestEmail = sendTestEmail');
     
     // 方法 3: 使用 defineProperty 強制覆蓋（確保可配置）
