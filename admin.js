@@ -3,6 +3,29 @@
 // 立即執行，確認腳本已載入
 console.log('✅ admin.js 腳本已載入', new Date().toISOString());
 
+// 預先聲明關鍵函數的佔位符，確保在函數定義前就可以被 HTML 調用
+// 這些函數會在後面被真正的實現覆蓋
+window.handleLogin = function(event) {
+    console.warn('⚠️ handleLogin 函數尚未完全載入，請稍候...');
+    // 如果函數已經定義，立即調用
+    if (typeof handleLogin === 'function' && handleLogin !== window.handleLogin) {
+        return handleLogin(event);
+    }
+    // 否則等待函數載入
+    setTimeout(function() {
+        if (typeof handleLogin === 'function' && handleLogin !== window.handleLogin) {
+            handleLogin(event);
+        } else {
+            console.error('❌ handleLogin 函數載入失敗');
+            const errorDiv = document.getElementById('loginError');
+            if (errorDiv) {
+                errorDiv.textContent = '系統錯誤：登入功能無法使用，請重新整理頁面';
+                errorDiv.style.display = 'block';
+            }
+        }
+    }, 100);
+};
+
 // 全局錯誤處理
 window.addEventListener('error', function(event) {
     console.error('❌ 全局錯誤:', event.error);

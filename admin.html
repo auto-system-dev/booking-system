@@ -1085,7 +1085,8 @@
         }
         
         // 確保登入表單有事件監聽器（備用方案）
-        document.addEventListener('DOMContentLoaded', function() {
+        // 使用多種方式確保事件監聽器正確設置
+        function setupLoginFormListener() {
             const loginForm = document.getElementById('loginForm');
             if (loginForm) {
                 // 移除原本的 onsubmit 屬性，改用 addEventListener（更可靠）
@@ -1094,19 +1095,61 @@
                     e.preventDefault();
                     // 如果 handleLogin 存在，使用它；否則顯示錯誤
                     if (typeof window.handleLogin === 'function') {
-                        window.handleLogin(e);
+                        // 檢查是否是真正的函數（不是佔位符）
+                        const fnString = window.handleLogin.toString();
+                        if (fnString.includes('尚未完全載入')) {
+                            // 如果是佔位符，等待真正的函數載入
+                            console.log('⏳ handleLogin 正在載入，請稍候...');
+                            setTimeout(function() {
+                                if (typeof window.handleLogin === 'function') {
+                                    const newFnString = window.handleLogin.toString();
+                                    if (!newFnString.includes('尚未完全載入')) {
+                                        window.handleLogin(e);
+                                    } else {
+                                        console.error('❌ handleLogin 函數載入超時');
+                                        showLoginError();
+                                    }
+                                } else {
+                                    console.error('❌ handleLogin 函數不存在！');
+                                    showLoginError();
+                                }
+                            }, 500);
+                        } else {
+                            window.handleLogin(e);
+                        }
                     } else {
                         console.error('❌ handleLogin 函數不存在！');
-                        const errorDiv = document.getElementById('loginError');
-                        if (errorDiv) {
-                            errorDiv.textContent = '系統錯誤：登入功能無法使用，請重新整理頁面';
-                            errorDiv.style.display = 'block';
-                        }
+                        showLoginError();
                     }
                 });
                 console.log('✅ 登入表單事件監聽器已設定');
+                return true;
             }
-        });
+            return false;
+        }
+        
+        function showLoginError() {
+            const errorDiv = document.getElementById('loginError');
+            if (errorDiv) {
+                errorDiv.textContent = '系統錯誤：登入功能無法使用，請重新整理頁面';
+                errorDiv.style.display = 'block';
+            }
+        }
+        
+        // 立即嘗試設置（如果 DOM 已經準備好）
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                if (!setupLoginFormListener()) {
+                    // 如果失敗，延遲重試
+                    setTimeout(setupLoginFormListener, 100);
+                }
+            });
+        } else {
+            // DOM 已經準備好，立即設置
+            if (!setupLoginFormListener()) {
+                setTimeout(setupLoginFormListener, 100);
+            }
+        }
     </script>
 </body>
 </html>
