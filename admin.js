@@ -31,6 +31,11 @@ window.closeEmailTemplateModal = function() {
     }
 };
 
+window.toggleEditorMode = function() {
+    console.error('toggleEditorMode 函數尚未載入，請稍候再試');
+    alert('功能載入中，請稍候再試');
+};
+
 // 檢查登入狀態
 async function checkAuthStatus() {
     try {
@@ -5399,17 +5404,14 @@ ${quillHtml}
 }
 
 // 立即暴露 sendTestEmail 到全局作用域（確保在函數定義後立即執行）
-(function() {
-    if (typeof sendTestEmail === 'function') {
-        window.sendTestEmail = sendTestEmail;
-        // 強制設置，確保可用
-        Object.defineProperty(window, 'sendTestEmail', {
-            value: sendTestEmail,
-            writable: true,
-            configurable: true
-        });
-    }
-})();
+// 強制覆蓋預先聲明的臨時函數
+window.sendTestEmail = sendTestEmail;
+Object.defineProperty(window, 'sendTestEmail', {
+    value: sendTestEmail,
+    writable: true,
+    configurable: true,
+    enumerable: true
+});
 
 // 重置郵件模板為預設圖卡樣式
 // 重置當前編輯的郵件模板為預設圖卡樣式（從編輯模態框中調用）
@@ -5562,6 +5564,15 @@ function toggleEditorMode() {
         }
     }
 }
+
+// 立即暴露 toggleEditorMode 到全局作用域
+window.toggleEditorMode = toggleEditorMode;
+Object.defineProperty(window, 'toggleEditorMode', {
+    value: toggleEditorMode,
+    writable: true,
+    configurable: true,
+    enumerable: true
+});
 
 // textarea input 事件處理器
 function handleTextareaInput() {
