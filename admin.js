@@ -5410,16 +5410,24 @@ ${quillHtml}
 
 // 立即暴露 sendTestEmail 到全局作用域（確保在函數定義後立即執行）
 // 強制覆蓋預先聲明的臨時函數
-(function() {
+(function exportSendTestEmail() {
     'use strict';
+    // 確保 sendTestEmail 函數已定義
+    if (typeof sendTestEmail !== 'function') {
+        console.error('❌ sendTestEmail 函數尚未定義');
+        return;
+    }
+    
     // 先刪除舊的函數（如果存在）
     try {
         delete window.sendTestEmail;
     } catch (e) {
         // 忽略刪除錯誤
     }
-    // 設置新函數
+    
+    // 設置新函數（多次嘗試確保成功）
     window.sendTestEmail = sendTestEmail;
+    
     // 使用 defineProperty 強制覆蓋
     try {
         Object.defineProperty(window, 'sendTestEmail', {
@@ -5429,14 +5437,23 @@ ${quillHtml}
             enumerable: true
         });
     } catch (e) {
+        console.warn('⚠️ defineProperty 失敗，使用直接賦值:', e);
         // 如果 defineProperty 失敗，直接賦值
         window.sendTestEmail = sendTestEmail;
     }
+    
     // 確認設置成功
     if (window.sendTestEmail === sendTestEmail) {
         console.log('✅ sendTestEmail 函數已成功導出到全局作用域');
     } else {
-        console.error('❌ sendTestEmail 函數導出失敗');
+        console.error('❌ sendTestEmail 函數導出失敗，當前值:', typeof window.sendTestEmail);
+        // 最後嘗試：強制設置
+        try {
+            window.sendTestEmail = sendTestEmail;
+            console.log('✅ 強制設置成功');
+        } catch (e) {
+            console.error('❌ 強制設置也失敗:', e);
+        }
     }
 })();
 
