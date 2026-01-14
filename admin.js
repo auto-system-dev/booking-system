@@ -1,46 +1,33 @@
 // 管理後台 JavaScript
 
 // 立即設置關鍵函數到 window，確保在任何其他代碼執行前就可用
-// 這必須是腳本的第一個操作，不能有任何錯誤
-(function() {
-    'use strict';
-    try {
-        // 立即設置 handleLogin 佔位符函數
-        window.handleLogin = function(event) {
-            console.warn('⚠️ handleLogin 函數尚未完全載入，請稍候...');
-            // 如果函數已經定義，立即調用
-            if (typeof handleLogin === 'function' && handleLogin !== window.handleLogin) {
-                console.log('✅ 找到真正的 handleLogin 函數，立即調用');
-                return handleLogin(event);
-            }
-            // 否則等待函數載入
-            setTimeout(function() {
-                if (typeof handleLogin === 'function' && handleLogin !== window.handleLogin) {
-                    console.log('✅ 延遲後找到真正的 handleLogin 函數，調用');
-                    handleLogin(event);
-                } else {
-                    console.error('❌ handleLogin 函數載入失敗');
-                    const errorDiv = document.getElementById('loginError');
-                    if (errorDiv) {
-                        errorDiv.textContent = '系統錯誤：登入功能無法使用，請重新整理頁面';
-                        errorDiv.style.display = 'block';
-                    }
-                }
-            }, 100);
-        };
-        console.log('✅ handleLogin 佔位符函數已設置到 window.handleLogin');
-    } catch (e) {
-        console.error('❌ 設置 handleLogin 佔位符失敗:', e);
-        // 即使失敗也嘗試設置一個最基本的函數
-        window.handleLogin = function() {
-            console.error('❌ handleLogin 函數無法使用');
-            alert('登入功能暫時無法使用，請重新整理頁面');
-        };
+// 使用最簡單的方式，不依賴任何其他代碼
+window.handleLogin = window.handleLogin || function(event) {
+    console.warn('⚠️ handleLogin 函數尚未完全載入，請稍候...');
+    // 如果函數已經定義，立即調用
+    if (typeof handleLogin === 'function' && handleLogin !== window.handleLogin) {
+        console.log('✅ 找到真正的 handleLogin 函數，立即調用');
+        return handleLogin(event);
     }
-})();
+    // 否則等待函數載入
+    setTimeout(function() {
+        if (typeof handleLogin === 'function' && handleLogin !== window.handleLogin) {
+            console.log('✅ 延遲後找到真正的 handleLogin 函數，調用');
+            handleLogin(event);
+        } else {
+            console.error('❌ handleLogin 函數載入失敗');
+            const errorDiv = document.getElementById('loginError');
+            if (errorDiv) {
+                errorDiv.textContent = '系統錯誤：登入功能無法使用，請重新整理頁面';
+                errorDiv.style.display = 'block';
+            }
+        }
+    }, 100);
+};
 
 // 立即執行，確認腳本已載入
 console.log('✅ admin.js 腳本已載入', new Date().toISOString());
+console.log('✅ handleLogin 佔位符函數已設置:', typeof window.handleLogin);
 
 // 全局錯誤處理
 window.addEventListener('error', function(event) {
