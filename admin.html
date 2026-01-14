@@ -16,7 +16,7 @@
 </head>
 <body>
     <!-- 登入頁面 -->
-    <div id="loginPage" class="login-page" style="display: none;">
+    <div id="loginPage" class="login-page" style="display: flex;">
         <div class="login-container">
             <div class="login-box">
                 <div class="login-box-header">
@@ -1049,6 +1049,41 @@
     </div>
 
     <script src="admin.js?v=20260114-1"></script>
+    <!-- 備用初始化：確保即使 admin.js 載入失敗也能顯示登入頁 -->
+    <script>
+        // 如果 admin.js 載入失敗，至少顯示登入頁
+        window.addEventListener('error', function(e) {
+            if (e.filename && e.filename.includes('admin.js')) {
+                console.error('❌ admin.js 載入失敗，顯示登入頁作為備用');
+                const loginPage = document.getElementById('loginPage');
+                const adminPage = document.getElementById('adminPage');
+                if (loginPage) {
+                    loginPage.style.display = 'flex';
+                    loginPage.style.visibility = 'visible';
+                }
+                if (adminPage) {
+                    adminPage.style.display = 'none';
+                    adminPage.style.visibility = 'hidden';
+                }
+            }
+        }, true);
+        
+        // 確保 DOMContentLoaded 時至少顯示登入頁
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(function() {
+                    const loginPage = document.getElementById('loginPage');
+                    const adminPage = document.getElementById('adminPage');
+                    if (loginPage && window.getComputedStyle(loginPage).display === 'none' && 
+                        adminPage && window.getComputedStyle(adminPage).display === 'none') {
+                        console.warn('⚠️ 兩個頁面都隱藏，強制顯示登入頁');
+                        loginPage.style.display = 'flex';
+                        loginPage.style.visibility = 'visible';
+                    }
+                }, 1000);
+            });
+        }
+    </script>
 </body>
 </html>
 
