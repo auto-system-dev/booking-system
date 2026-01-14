@@ -513,16 +513,38 @@ let getAccessToken = null; // 將函數聲明在外部作用域
 let sendEmailViaGmailAPI = null; // Gmail API 備用方案
 let oauth2Client = null; // OAuth2 客戶端
 let gmail = null; // Gmail API 客戶端
+let resendClient = null; // Resend 客戶端
+let emailServiceProvider = 'gmail'; // 郵件服務提供商：'resend' 或 'gmail'
 
 // 初始化郵件服務（優先使用資料庫設定）
 async function initEmailService() {
     try {
         // 優先使用資料庫設定，其次使用環境變數
+        const resendApiKey = await db.getSetting('resend_api_key') || process.env.RESEND_API_KEY;
         const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
         const emailPass = process.env.EMAIL_PASS || 'vtik qvij ravh lirg';
         const gmailClientID = await db.getSetting('gmail_client_id') || process.env.GMAIL_CLIENT_ID;
         const gmailClientSecret = await db.getSetting('gmail_client_secret') || process.env.GMAIL_CLIENT_SECRET;
         const gmailRefreshToken = await db.getSetting('gmail_refresh_token') || process.env.GMAIL_REFRESH_TOKEN;
+        
+        // 優先使用 Resend（如果已設定）
+        if (resendApiKey) {
+            try {
+                const { Resend } = require('resend');
+                resendClient = new Resend(resendApiKey);
+                emailServiceProvider = 'resend';
+                console.log('📧 郵件服務已設定（Resend）');
+                console.log('   服務提供商: Resend');
+                console.log('   設定來源:', await db.getSetting('resend_api_key') ? '資料庫' : '環境變數');
+                return; // Resend 設定完成，不需要初始化 Gmail
+            } catch (error) {
+                console.error('❌ 初始化 Resend 失敗:', error);
+                console.error('   將回退到 Gmail 服務');
+            }
+        }
+        
+        // 如果沒有 Resend，使用 Gmail
+        emailServiceProvider = 'gmail';
         
         // 檢查是否使用 OAuth2
         const useOAuth2 = gmailClientID && gmailClientSecret && gmailRefreshToken;
@@ -749,6 +771,74 @@ async function initEmailService() {
             }
         });
         console.log('⚠️  使用預設郵件設定');
+    }
+}
+
+// 統一的郵件發送函數（自動選擇 Resend 或 Gmail）
+async function sendEmail(mailOptions) {
+    try {
+        // 優先使用 Resend
+        if (emailServiceProvider === 'resend' && resendClient) {
+            try {
+                console.log('📧 使用 Resend 發送郵件...');
+                
+                // 從 mailOptions.from 提取發件人信箱（Resend 需要驗證過的網域或信箱）
+                const fromEmail = mailOptions.from || emailUser;
+                
+                const result = await resendClient.emails.send({
+                    from: fromEmail,
+                    to: Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to],
+                    subject: mailOptions.subject,
+                    html: mailOptions.html,
+                    text: mailOptions.text || mailOptions.html.replace(/<[^>]*>/g, ''), // 自動從 HTML 提取純文字
+                });
+                
+                console.log('✅ Resend 郵件已發送');
+                console.log('   發送給:', mailOptions.to);
+                console.log('   發件人:', fromEmail);
+                console.log('   郵件 ID:', result.data?.id);
+                
+                return { 
+                    messageId: result.data?.id || 'resend-' + Date.now(), 
+                    accepted: Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to] 
+                };
+            } catch (resendError) {
+                console.error('❌ Resend 發送失敗:', resendError.message);
+                // Resend 失敗時，如果有 Gmail 備用方案，嘗試使用 Gmail
+                if (transporter || sendEmailViaGmailAPI) {
+                    console.log('⚠️  Resend 失敗，切換到 Gmail 備用方案...');
+                    return await sendEmailViaGmail(mailOptions);
+                }
+                throw resendError;
+            }
+        }
+        
+        // 使用 Gmail（原有邏輯）
+        return await sendEmailViaGmail(mailOptions);
+    } catch (error) {
+        console.error('❌ 郵件發送失敗:', error);
+        throw error;
+    }
+}
+
+// Gmail 郵件發送函數（保留原有邏輯）
+async function sendEmailViaGmail(mailOptions) {
+    // 優先使用 Gmail API（Railway 環境更穩定）
+    if (sendEmailViaGmailAPI) {
+        try {
+            return await sendEmailViaGmailAPI(mailOptions);
+        } catch (gmailError) {
+            // Gmail API 失敗時，嘗試 SMTP
+            console.log('⚠️  Gmail API 失敗，嘗試 SMTP...');
+            try {
+                return await transporter.sendMail(mailOptions);
+            } catch (smtpError) {
+                throw gmailError; // 拋出原始 Gmail API 錯誤
+            }
+        }
+    } else {
+        // 沒有 Gmail API，使用 SMTP
+        return await transporter.sendMail(mailOptions);
     }
 }
 
@@ -1048,29 +1138,10 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
                 }
             }
             
-            // 發送客戶確認郵件（優先使用 Gmail API，更快更穩定）
+            // 發送客戶確認郵件（使用統一函數，自動選擇 Resend 或 Gmail）
             console.log('📤 發送客戶確認郵件...');
-            let customerResult;
-            if (sendEmailViaGmailAPI) {
-                // 直接使用 Gmail API（Railway 環境更穩定）
-                try {
-                    customerResult = await sendEmailViaGmailAPI(customerMailOptions);
-                    console.log('✅ 客戶確認郵件已發送 (Gmail API)');
-                } catch (gmailError) {
-                    // Gmail API 失敗時，嘗試 SMTP
-                    console.log('⚠️  Gmail API 失敗，嘗試 SMTP...');
-                    try {
-                        customerResult = await transporter.sendMail(customerMailOptions);
-                        console.log('✅ 客戶確認郵件已發送 (SMTP)');
-                    } catch (smtpError) {
-                        throw gmailError; // 拋出原始 Gmail API 錯誤
-                    }
-                }
-            } else {
-                // 沒有 Gmail API，使用 SMTP
-                customerResult = await transporter.sendMail(customerMailOptions);
-                console.log('✅ 客戶確認郵件已發送 (SMTP)');
-            }
+            const customerResult = await sendEmail(customerMailOptions);
+            console.log('✅ 客戶確認郵件已發送');
             if (customerResult && customerResult.messageId) {
                 console.log('   郵件 ID:', customerResult.messageId);
             }
@@ -1117,24 +1188,8 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
         // 發送管理員通知郵件（所有付款方式都需要）
         try {
             console.log('📤 發送管理員通知郵件...');
-            let adminResult;
-            if (sendEmailViaGmailAPI) {
-                try {
-                    adminResult = await sendEmailViaGmailAPI(adminMailOptions);
-                    console.log('✅ 管理員通知郵件已發送 (Gmail API)');
-                } catch (gmailError) {
-                    console.log('⚠️  Gmail API 失敗，嘗試 SMTP...');
-                    try {
-                        adminResult = await transporter.sendMail(adminMailOptions);
-                        console.log('✅ 管理員通知郵件已發送 (SMTP)');
-                    } catch (smtpError) {
-                        console.error('❌ 管理員通知郵件發送失敗:', smtpError.message);
-                    }
-                }
-            } else {
-                adminResult = await transporter.sendMail(adminMailOptions);
-                console.log('✅ 管理員通知郵件已發送 (SMTP)');
-            }
+            const adminResult = await sendEmail(adminMailOptions);
+            console.log('✅ 管理員通知郵件已發送');
             if (adminResult && adminResult.messageId) {
                 console.log('   郵件 ID:', adminResult.messageId);
             }
@@ -2547,29 +2602,12 @@ app.put('/api/bookings/:bookingId', adminLimiter, async (req, res) => {
                         
                         let emailSent = false;
                         
-                        if (sendEmailViaGmailAPI) {
-                            try {
-                                await sendEmailViaGmailAPI(mailOptions);
-                                console.log(`✅ 收款信已發送給 ${updatedBooking.guest_name} (${updatedBooking.booking_id}) - Gmail API`);
-                                emailSent = true;
-                            } catch (gmailError) {
-                                console.log(`⚠️  收款信 Gmail API 發送失敗，嘗試 SMTP... (${updatedBooking.booking_id})`);
-                                try {
-                                    await transporter.sendMail(mailOptions);
-                                    console.log(`✅ 收款信已發送給 ${updatedBooking.guest_name} (${updatedBooking.booking_id}) - SMTP`);
-                                    emailSent = true;
-                                } catch (smtpError) {
-                                    console.error(`❌ 收款信發送失敗 (${updatedBooking.booking_id}):`, smtpError.message);
-                                }
-                            }
-                        } else {
-                            try {
-                                await transporter.sendMail(mailOptions);
-                                console.log(`✅ 收款信已發送給 ${updatedBooking.guest_name} (${updatedBooking.booking_id}) - SMTP`);
-                                emailSent = true;
-                            } catch (smtpError) {
-                                console.error(`❌ 收款信發送失敗 (${updatedBooking.booking_id}):`, smtpError.message);
-                            }
+                        try {
+                            await sendEmail(mailOptions);
+                            console.log(`✅ 收款信已發送給 ${updatedBooking.guest_name} (${updatedBooking.booking_id})`);
+                            emailSent = true;
+                        } catch (emailError) {
+                            console.error(`❌ 收款信發送失敗 (${updatedBooking.booking_id}):`, emailError.message);
                         }
                         
                         if (emailSent) {
@@ -3402,25 +3440,11 @@ const handlePaymentResult = async (req, res) => {
                                     };
                                     
                                     let emailSent = false;
-                                    if (sendEmailViaGmailAPI) {
-                                        try {
-                                            await sendEmailViaGmailAPI(customerMailOptions);
-                                            emailSent = true;
-                                        } catch (gmailError) {
-                                            try {
-                                                await transporter.sendMail(customerMailOptions);
-                                                emailSent = true;
-                                            } catch (smtpError) {
-                                                console.error('❌ 確認郵件發送失敗:', smtpError.message);
-                                            }
-                                        }
-                                    } else {
-                                        try {
-                                            await transporter.sendMail(customerMailOptions);
-                                            emailSent = true;
-                                        } catch (smtpError) {
-                                            console.error('❌ 確認郵件發送失敗:', smtpError.message);
-                                        }
+                                    try {
+                                        await sendEmail(customerMailOptions);
+                                        emailSent = true;
+                                    } catch (emailError) {
+                                        console.error('❌ 確認郵件發送失敗:', emailError.message);
                                     }
                                     
                                     if (emailSent) {
@@ -3619,28 +3643,12 @@ const handlePaymentResult = async (req, res) => {
                         }
                         
                         let emailSent = false;
-                        if (sendEmailViaGmailAPI) {
-                            try {
-                                await sendEmailViaGmailAPI(customerMailOptions);
-                                console.log('✅ 確認郵件已發送 (Gmail API)');
-                                emailSent = true;
-                            } catch (gmailError) {
-                                try {
-                                    await transporter.sendMail(customerMailOptions);
-                                    console.log('✅ 確認郵件已發送 (SMTP)');
-                                    emailSent = true;
-                                } catch (smtpError) {
-                                    console.error('❌ 確認郵件發送失敗:', smtpError.message);
-                                }
-                            }
-                        } else {
-                            try {
-                                await transporter.sendMail(customerMailOptions);
-                                console.log('✅ 確認郵件已發送 (SMTP)');
-                                emailSent = true;
-                            } catch (smtpError) {
-                                console.error('❌ 確認郵件發送失敗:', smtpError.message);
-                            }
+                        try {
+                            await sendEmail(customerMailOptions);
+                            console.log('✅ 確認郵件已發送');
+                            emailSent = true;
+                        } catch (emailError) {
+                            console.error('❌ 確認郵件發送失敗:', emailError.message);
                         }
                         
                         // 更新郵件狀態
@@ -4585,7 +4593,7 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             console.log('✅ 發送前最終檢查通過，測試郵件包含完整的圖卡樣式');
         }
         
-        // 發送測試郵件
+        // 發送測試郵件（使用統一函數，自動選擇 Resend 或 Gmail）
         const mailOptions = {
             from: emailUser,
             to: email,
@@ -4593,87 +4601,79 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             html: testContent
         };
         
-        if (sendEmailViaGmailAPI) {
-            try {
-                await sendEmailViaGmailAPI(mailOptions);
-            } catch (emailError) {
-                console.error('❌ 測試郵件發送失敗:');
-                console.error('   發送給:', email);
-                console.error('   錯誤訊息:', emailError.message);
-                console.error('   錯誤代碼:', emailError.code);
-                console.error('   完整錯誤:', emailError);
-                
-                // 如果是認證錯誤，提供更詳細的說明
-                if (emailError.message && (emailError.message.includes('invalid_client') || emailError.message.includes('Invalid client'))) {
-                    console.error('⚠️  OAuth2 Client ID/Secret 認證失敗！');
-                    console.error('   這通常是因為 Client ID 或 Client Secret 不正確');
-                    console.error('   請檢查：');
-                    console.error('   1. GMAIL_CLIENT_ID 是否正確（格式：xxx.apps.googleusercontent.com）');
-                    console.error('   2. GMAIL_CLIENT_SECRET 是否正確（格式：GOCSPX-xxx）');
-                    console.error('   3. Client ID 和 Client Secret 是否來自同一個 OAuth2 應用程式');
-                    console.error('   4. 是否在 Google Cloud Console 中正確建立了 OAuth 用戶端 ID');
-                    console.error('   5. OAuth 用戶端類型是否為「網頁應用程式」');
-                    
-                    return res.status(500).json({
-                        success: false,
-                        message: '發送測試郵件失敗：OAuth2 客戶端認證錯誤（invalid_client）。請檢查 Gmail Client ID 和 Client Secret 是否正確配置，或聯繫管理員重新配置郵件服務。'
-                    });
-                } else if (emailError.message && (emailError.message.includes('invalid_grant') || emailError.message.includes('Invalid grant'))) {
-                    console.error('⚠️  OAuth2 認證失敗！');
-                    console.error('   這通常是因為 Gmail Refresh Token 已過期或被撤銷');
-                    console.error('   請檢查：');
-                    console.error('   1. GMAIL_REFRESH_TOKEN 是否正確');
-                    console.error('   2. Refresh Token 是否已過期');
-                    console.error('   3. 是否需要在 OAuth2 Playground 重新生成 Refresh Token');
-                    
-                    return res.status(500).json({
-                        success: false,
-                        message: '發送測試郵件失敗：OAuth2 認證錯誤（invalid_grant）。請檢查 Gmail Refresh Token 是否有效，或聯繫管理員重新配置郵件服務。'
-                    });
-                } else if (emailError.message && (emailError.message.includes('unauthorized_client') || emailError.message.includes('Unauthorized client'))) {
-                    console.error('⚠️  OAuth2 Client 認證失敗！');
-                    console.error('   可能原因：');
-                    console.error('   1. GMAIL_CLIENT_ID 或 GMAIL_CLIENT_SECRET 不正確');
-                    console.error('   2. Refresh Token 是從不同的 Client ID/Secret 生成的');
-                    console.error('   3. OAuth2 應用程式設定有問題');
-                    console.error('   4. Gmail API 未啟用');
-                    console.error('   5. 已授權的重新導向 URI 未包含：https://developers.google.com/oauthplayground');
-                    console.error('   解決方法：');
-                    console.error('   1. 檢查 Google Cloud Console → API 和服務 → 憑證');
-                    console.error('   2. 確認 Client ID 和 Client Secret 是否正確');
-                    console.error('   3. 確認 Refresh Token 是從相同的 Client ID/Secret 生成的');
-                    console.error('   4. 確認 OAuth 同意畫面已正確設定');
-                    console.error('   5. 確認 Gmail API 已啟用');
-                    console.error('   6. 確認已授權的重新導向 URI 包含：https://developers.google.com/oauthplayground');
-                    
-                    return res.status(500).json({
-                        success: false,
-                        message: '發送測試郵件失敗：OAuth2 客戶端認證錯誤（unauthorized_client）。請檢查 Gmail Client ID、Client Secret 和 Refresh Token 是否正確配置，或聯繫管理員重新配置郵件服務。'
-                    });
-                } else if (emailError.response && emailError.response.data) {
-                    console.error('   API 回應:', emailError.response.data);
-                    return res.status(500).json({
-                        success: false,
-                        message: '發送測試郵件失敗：' + (emailError.response.data.error?.message || emailError.message || '未知錯誤')
-                    });
-                } else {
-                    return res.status(500).json({
-                        success: false,
-                        message: '發送測試郵件失敗：' + (emailError.message || '未知錯誤')
-                    });
-                }
-            }
-        } else {
-            return res.status(500).json({
-                success: false,
-                message: '郵件服務未配置，無法發送測試郵件'
+        try {
+            await sendEmail(mailOptions);
+            res.json({
+                success: true,
+                message: '測試郵件已成功發送'
             });
+        } catch (emailError) {
+            console.error('❌ 測試郵件發送失敗:');
+            console.error('   發送給:', email);
+            console.error('   錯誤訊息:', emailError.message);
+            console.error('   錯誤代碼:', emailError.code);
+            console.error('   完整錯誤:', emailError);
+            
+            // 如果是認證錯誤，提供更詳細的說明
+            if (emailError.message && (emailError.message.includes('invalid_client') || emailError.message.includes('Invalid client'))) {
+                console.error('⚠️  OAuth2 Client ID/Secret 認證失敗！');
+                console.error('   這通常是因為 Client ID 或 Client Secret 不正確');
+                console.error('   請檢查：');
+                console.error('   1. GMAIL_CLIENT_ID 是否正確（格式：xxx.apps.googleusercontent.com）');
+                console.error('   2. GMAIL_CLIENT_SECRET 是否正確（格式：GOCSPX-xxx）');
+                console.error('   3. Client ID 和 Client Secret 是否來自同一個 OAuth2 應用程式');
+                console.error('   4. 是否在 Google Cloud Console 中正確建立了 OAuth 用戶端 ID');
+                console.error('   5. OAuth 用戶端類型是否為「網頁應用程式」');
+                
+                return res.status(500).json({
+                    success: false,
+                    message: '發送測試郵件失敗：OAuth2 客戶端認證錯誤（invalid_client）。請檢查 Gmail Client ID 和 Client Secret 是否正確配置，或聯繫管理員重新配置郵件服務。'
+                });
+            } else if (emailError.message && (emailError.message.includes('invalid_grant') || emailError.message.includes('Invalid grant'))) {
+                console.error('⚠️  OAuth2 認證失敗！');
+                console.error('   這通常是因為 Gmail Refresh Token 已過期或被撤銷');
+                console.error('   請檢查：');
+                console.error('   1. GMAIL_REFRESH_TOKEN 是否正確');
+                console.error('   2. Refresh Token 是否已過期');
+                console.error('   3. 是否需要在 OAuth2 Playground 重新生成 Refresh Token');
+                
+                return res.status(500).json({
+                    success: false,
+                    message: '發送測試郵件失敗：OAuth2 認證錯誤（invalid_grant）。請檢查 Gmail Refresh Token 是否有效，或聯繫管理員重新配置郵件服務。'
+                });
+            } else if (emailError.message && (emailError.message.includes('unauthorized_client') || emailError.message.includes('Unauthorized client'))) {
+                console.error('⚠️  OAuth2 Client 認證失敗！');
+                console.error('   可能原因：');
+                console.error('   1. GMAIL_CLIENT_ID 或 GMAIL_CLIENT_SECRET 不正確');
+                console.error('   2. Refresh Token 是從不同的 Client ID/Secret 生成的');
+                console.error('   3. OAuth2 應用程式設定有問題');
+                console.error('   4. Gmail API 未啟用');
+                console.error('   5. 已授權的重新導向 URI 未包含：https://developers.google.com/oauthplayground');
+                console.error('   解決方法：');
+                console.error('   1. 檢查 Google Cloud Console → API 和服務 → 憑證');
+                console.error('   2. 確認 Client ID 和 Client Secret 是否正確');
+                console.error('   3. 確認 Refresh Token 是從相同的 Client ID/Secret 生成的');
+                console.error('   4. 確認 OAuth 同意畫面已正確設定');
+                console.error('   5. 確認 Gmail API 已啟用');
+                console.error('   6. 確認已授權的重新導向 URI 包含：https://developers.google.com/oauthplayground');
+                
+                return res.status(500).json({
+                    success: false,
+                    message: '發送測試郵件失敗：OAuth2 客戶端認證錯誤（unauthorized_client）。請檢查 Gmail Client ID、Client Secret 和 Refresh Token 是否正確配置，或聯繫管理員重新配置郵件服務。'
+                });
+            } else if (emailError.response && emailError.response.data) {
+                console.error('   API 回應:', emailError.response.data);
+                return res.status(500).json({
+                    success: false,
+                    message: '發送測試郵件失敗：' + (emailError.response.data.error?.message || emailError.message || '未知錯誤')
+                });
+            } else {
+                return res.status(500).json({
+                    success: false,
+                    message: '發送測試郵件失敗：' + (emailError.message || '未知錯誤')
+                });
+            }
         }
-        
-        res.json({
-            success: true,
-            message: '測試郵件已成功發送'
-        });
     } catch (error) {
         console.error('❌ 發送測試郵件錯誤:', error);
         console.error('   錯誤詳情:', error.message);
@@ -5869,28 +5869,13 @@ async function sendPaymentReminderEmails() {
                 
                 let emailSent = false;
                 
-                // 優先使用 Gmail API（Railway 環境更穩定）
-                if (sendEmailViaGmailAPI) {
-                    try {
-                        await sendEmailViaGmailAPI(mailOptions);
-                        console.log(`✅ 已發送匯款提醒給 ${booking.guest_name} (${booking.booking_id}) - Gmail API`);
-                        emailSent = true;
-                    } catch (gmailError) {
-                        // Gmail API 失敗時，嘗試 SMTP
-                        console.log(`⚠️  Gmail API 失敗，嘗試 SMTP... (${booking.booking_id})`);
-                        try {
-                            await transporter.sendMail(mailOptions);
-                            console.log(`✅ 已發送匯款提醒給 ${booking.guest_name} (${booking.booking_id}) - SMTP`);
-                            emailSent = true;
-                        } catch (smtpError) {
-                            throw gmailError; // 拋出原始 Gmail API 錯誤
-                        }
-                    }
-                } else {
-                    // 沒有 Gmail API，使用 SMTP
-                    await transporter.sendMail(mailOptions);
-                    console.log(`✅ 已發送匯款提醒給 ${booking.guest_name} (${booking.booking_id}) - SMTP`);
+                // 使用統一函數發送郵件（自動選擇 Resend 或 Gmail）
+                try {
+                    await sendEmail(mailOptions);
+                    console.log(`✅ 已發送匯款提醒給 ${booking.guest_name} (${booking.booking_id})`);
                     emailSent = true;
+                } catch (emailError) {
+                    console.error(`❌ 發送匯款提醒失敗 (${booking.booking_id}):`, emailError.message);
                 }
                 
                 // 只有成功發送才更新郵件狀態
@@ -6066,37 +6051,15 @@ async function cancelExpiredReservations() {
                         
                         let emailSent = false;
                         
-                        // 優先使用 Gmail API（Railway 環境更穩定）
-                        if (sendEmailViaGmailAPI) {
-                            try {
-                                await sendEmailViaGmailAPI(mailOptions);
-                                console.log(`✅ 已發送取消通知給 ${booking.guest_name} (${booking.booking_id}) - Gmail API`);
-                                emailSent = true;
-                                emailSentCount++;
-                            } catch (gmailError) {
-                                // Gmail API 失敗時，嘗試 SMTP
-                                console.log(`⚠️  Gmail API 失敗，嘗試 SMTP... (${booking.booking_id})`);
-                                try {
-                                    await transporter.sendMail(mailOptions);
-                                    console.log(`✅ 已發送取消通知給 ${booking.guest_name} (${booking.booking_id}) - SMTP`);
-                                    emailSent = true;
-                                    emailSentCount++;
-                                } catch (smtpError) {
-                                    console.error(`❌ 發送取消通知失敗 (${booking.booking_id}):`, smtpError.message);
-                                    emailFailedCount++;
-                                }
-                            }
-                        } else {
-                            // 沒有 Gmail API，使用 SMTP
-                            try {
-                                await transporter.sendMail(mailOptions);
-                                console.log(`✅ 已發送取消通知給 ${booking.guest_name} (${booking.booking_id}) - SMTP`);
-                                emailSent = true;
-                                emailSentCount++;
-                            } catch (smtpError) {
-                                console.error(`❌ 發送取消通知失敗 (${booking.booking_id}):`, smtpError.message);
-                                emailFailedCount++;
-                            }
+                        // 使用統一函數發送郵件（自動選擇 Resend 或 Gmail）
+                        try {
+                            await sendEmail(mailOptions);
+                            console.log(`✅ 已發送取消通知給 ${booking.guest_name} (${booking.booking_id})`);
+                            emailSent = true;
+                            emailSentCount++;
+                        } catch (emailError) {
+                            console.error(`❌ 發送取消通知失敗 (${booking.booking_id}):`, emailError.message);
+                            emailFailedCount++;
                         }
 
                         // 只有成功發送才更新郵件狀態（追加「取消信」）
@@ -6174,28 +6137,13 @@ async function sendCheckinReminderEmails() {
                 
                 let emailSent = false;
                 
-                // 優先使用 Gmail API（Railway 環境更穩定）
-                if (sendEmailViaGmailAPI) {
-                    try {
-                        await sendEmailViaGmailAPI(mailOptions);
-                        console.log(`✅ 已發送入住提醒給 ${booking.guest_name} (${booking.booking_id}) - Gmail API`);
-                        emailSent = true;
-                    } catch (gmailError) {
-                        // Gmail API 失敗時，嘗試 SMTP
-                        console.log(`⚠️  Gmail API 失敗，嘗試 SMTP... (${booking.booking_id})`);
-                        try {
-                            await transporter.sendMail(mailOptions);
-                            console.log(`✅ 已發送入住提醒給 ${booking.guest_name} (${booking.booking_id}) - SMTP`);
-                            emailSent = true;
-                        } catch (smtpError) {
-                            throw gmailError; // 拋出原始 Gmail API 錯誤
-                        }
-                    }
-                } else {
-                    // 沒有 Gmail API，使用 SMTP
-                    await transporter.sendMail(mailOptions);
-                    console.log(`✅ 已發送入住提醒給 ${booking.guest_name} (${booking.booking_id}) - SMTP`);
+                // 使用統一函數發送郵件（自動選擇 Resend 或 Gmail）
+                try {
+                    await sendEmail(mailOptions);
+                    console.log(`✅ 已發送入住提醒給 ${booking.guest_name} (${booking.booking_id})`);
                     emailSent = true;
+                } catch (emailError) {
+                    console.error(`❌ 發送入住提醒失敗 (${booking.booking_id}):`, emailError.message);
                 }
                 
                 // 只有成功發送才更新郵件狀態
@@ -6263,28 +6211,14 @@ async function sendFeedbackRequestEmails() {
                 
                 let emailSent = false;
                 
-                // 優先使用 Gmail API（Railway 環境更穩定）
-                if (sendEmailViaGmailAPI) {
-                    try {
-                        await sendEmailViaGmailAPI(mailOptions);
-                        console.log(`✅ 已發送回訪信給 ${booking.guest_name} (${booking.booking_id}) - Gmail API`);
-                        emailSent = true;
-                    } catch (gmailError) {
-                        // Gmail API 失敗時，嘗試 SMTP
-                        console.log(`⚠️  Gmail API 失敗，嘗試 SMTP... (${booking.booking_id})`);
-                        try {
-                            await transporter.sendMail(mailOptions);
-                            console.log(`✅ 已發送回訪信給 ${booking.guest_name} (${booking.booking_id}) - SMTP`);
-                            emailSent = true;
-                        } catch (smtpError) {
-                            throw gmailError; // 拋出原始 Gmail API 錯誤
-                        }
-                    }
-                } else {
-                    // 沒有 Gmail API，使用 SMTP
-                    await transporter.sendMail(mailOptions);
-                    console.log(`✅ 已發送回訪信給 ${booking.guest_name} (${booking.booking_id}) - SMTP`);
+                // 使用統一函數發送郵件（自動選擇 Resend 或 Gmail）
+                try {
+                    await sendEmail(mailOptions);
+                    console.log(`✅ 已發送回訪信給 ${booking.guest_name} (${booking.booking_id})`);
                     emailSent = true;
+                } catch (emailError) {
+                    console.error(`❌ 發送回訪信失敗 (${booking.booking_id}):`, emailError.message);
+                    throw emailError;
                 }
                 
                 // 只有成功發送才更新郵件狀態

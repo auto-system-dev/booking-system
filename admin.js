@@ -3065,6 +3065,51 @@ async function saveHotelInfoSettings() {
 }
 
 // 儲存 Gmail 發信設定
+// 儲存 Resend 設定
+async function saveResendSettings() {
+    const resendApiKey = document.getElementById('resendApiKey').value.trim();
+    
+    // 驗證必填欄位
+    if (!resendApiKey) {
+        showError('請填寫 Resend API Key');
+        return;
+    }
+    
+    // 驗證 API Key 格式（Resend API Key 通常以 re_ 開頭）
+    if (!resendApiKey.startsWith('re_')) {
+        showError('Resend API Key 格式不正確，應以 re_ 開頭');
+        return;
+    }
+    
+    try {
+        const response = await adminFetch('/api/admin/settings/resend_api_key', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                value: resendApiKey,
+                description: 'Resend API Key（郵件服務提供商）'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('Resend 發信設定已儲存！請重新啟動伺服器以套用變更。');
+            // 重新載入設定
+            setTimeout(() => {
+                loadSettings();
+            }, 300);
+        } else {
+            showError('儲存 Resend 設定失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('儲存 Resend 設定錯誤:', error);
+        showError('儲存 Resend 設定時發生錯誤：' + error.message);
+    }
+}
+
 async function saveGmailSettings() {
     const emailUser = document.getElementById('emailUser').value.trim();
     const gmailClientID = document.getElementById('gmailClientID').value.trim();
@@ -3220,6 +3265,9 @@ async function loadSettings() {
             
             // 管理員通知信箱
             document.getElementById('adminEmail').value = settings.admin_email || '';
+            
+            // Resend 發信設定
+            document.getElementById('resendApiKey').value = settings.resend_api_key || '';
             
             // Gmail 發信設定
             document.getElementById('emailUser').value = settings.email_user || '';

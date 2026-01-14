@@ -734,11 +734,35 @@
 
                     <!-- 郵件設定分頁 -->
                     <div id="settingsTabEmailContent" class="tab-content">
-                        <!-- Gmail 發信設定區塊 -->
+                        <!-- Resend 發信設定區塊 -->
                         <div style="margin-top: 0;">
+                            <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #10b981;">
+                                <span class="material-symbols-outlined" style="font-size: 24px; color: #10b981; margin-right: 10px;">mail</span>
+                                <h3 style="margin: 0; color: #2c3e50;">Resend 發信設定（推薦）</h3>
+                            </div>
+                            
+                            <div class="settings-card" style="margin-top: 0;">
+                                <div style="background-color: #d1fae5; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                                    <p style="margin: 0; color: #059669; font-size: 14px;">
+                                        <strong>📌 設定說明：</strong><br>
+                                        Resend 是現代化的郵件服務，每月免費 3,000 封，設定簡單且穩定。請到 <a href="https://resend.com/api-keys" target="_blank" style="color: #059669; text-decoration: underline;">Resend 官網</a> 註冊並取得 API Key。
+                                    </p>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Resend API Key <span style="color: red;">*</span></label>
+                                    <input type="password" id="resendApiKey" placeholder="例如：re_xxxxxxxxxxxx">
+                                    <small>從 Resend 官網取得的 API Key（優先使用，如果設定則會自動使用 Resend）</small>
+                                </div>
+                                <button class="btn-save" onclick="saveResendSettings()">儲存設定</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Gmail 發信設定區塊 -->
+                        <div style="margin-top: 30px;">
                             <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
                                 <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">mail</span>
-                                <h3 style="margin: 0; color: #2c3e50;">Gmail 發信設定</h3>
+                                <h3 style="margin: 0; color: #2c3e50;">Gmail 發信設定（備用）</h3>
                             </div>
                             
                             <div class="settings-card" style="margin-top: 0;">
