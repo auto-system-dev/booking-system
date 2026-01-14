@@ -3064,7 +3064,6 @@ async function saveHotelInfoSettings() {
     }
 }
 
-// 儲存 Gmail 發信設定
 // 儲存 Resend 設定
 async function saveResendSettings() {
     const resendApiKey = document.getElementById('resendApiKey').value.trim();
