@@ -1806,6 +1806,28 @@ function showError(message) {
     alert(message);
 }
 
+// 顯示成功訊息
+function showSuccess(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error';
+    errorDiv.style.background = '#4caf50';
+    errorDiv.style.color = 'white';
+    errorDiv.textContent = message;
+    errorDiv.style.position = 'fixed';
+    errorDiv.style.top = '20px';
+    errorDiv.style.right = '20px';
+    errorDiv.style.padding = '15px 20px';
+    errorDiv.style.borderRadius = '8px';
+    errorDiv.style.zIndex = '10000';
+    errorDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    
+    document.body.appendChild(errorDiv);
+    
+    setTimeout(() => {
+        errorDiv.remove();
+    }, 3000);
+}
+
 // 取得付款狀態樣式
 function getPaymentStatusClass(status) {
     const statusMap = {
@@ -6448,28 +6470,6 @@ async function deleteHoliday(holidayDate) {
         console.error('刪除假日錯誤:', error);
         showError('刪除假日時發生錯誤: ' + error.message);
     }
-}
-
-// 顯示成功訊息
-function showSuccess(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'error';
-    errorDiv.style.background = '#4caf50';
-    errorDiv.style.color = 'white';
-    errorDiv.textContent = message;
-    errorDiv.style.position = 'fixed';
-    errorDiv.style.top = '20px';
-    errorDiv.style.right = '20px';
-    errorDiv.style.padding = '15px 20px';
-    errorDiv.style.borderRadius = '8px';
-    errorDiv.style.zIndex = '10000';
-    errorDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-    
-    document.body.appendChild(errorDiv);
-    
-    setTimeout(() => {
-        errorDiv.remove();
-    }, 3000);
 }
 
 // 明確將關鍵函數暴露到全局作用域，確保可以在 HTML 的 onclick/onsubmit 中使用
