@@ -3242,38 +3242,55 @@ async function loadSettings() {
         
         if (result.success) {
             const settings = result.data;
-            document.getElementById('depositPercentage').value = settings.deposit_percentage || '30';
-            document.getElementById('bankName').value = settings.bank_name || '';
-            document.getElementById('bankBranch').value = settings.bank_branch || '';
-            document.getElementById('bankAccount').value = settings.bank_account || '';
-            document.getElementById('accountName').value = settings.account_name || '';
+            
+            // 安全地設定元素值（如果元素存在）
+            const setValue = (id, value) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.value = value || '';
+                }
+            };
+            
+            const setChecked = (id, checked) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.checked = checked;
+                }
+            };
+            
+            // 基本設定
+            setValue('depositPercentage', settings.deposit_percentage || '30');
+            setValue('bankName', settings.bank_name);
+            setValue('bankBranch', settings.bank_branch);
+            setValue('bankAccount', settings.bank_account);
+            setValue('accountName', settings.account_name);
             
             // 付款方式啟用狀態
-            document.getElementById('enableTransfer').checked = settings.enable_transfer === '1' || settings.enable_transfer === 'true';
-            document.getElementById('enableCard').checked = settings.enable_card === '1' || settings.enable_card === 'true';
+            setChecked('enableTransfer', settings.enable_transfer === '1' || settings.enable_transfer === 'true');
+            setChecked('enableCard', settings.enable_card === '1' || settings.enable_card === 'true');
             
             // 綠界設定
-            document.getElementById('ecpayMerchantID').value = settings.ecpay_merchant_id || '';
-            document.getElementById('ecpayHashKey').value = settings.ecpay_hash_key || '';
-            document.getElementById('ecpayHashIV').value = settings.ecpay_hash_iv || '';
+            setValue('ecpayMerchantID', settings.ecpay_merchant_id);
+            setValue('ecpayHashKey', settings.ecpay_hash_key);
+            setValue('ecpayHashIV', settings.ecpay_hash_iv);
             
             // 旅館資訊
-            document.getElementById('hotelName').value = settings.hotel_name || '';
-            document.getElementById('hotelPhone').value = settings.hotel_phone || '';
-            document.getElementById('hotelAddress').value = settings.hotel_address || '';
-            document.getElementById('hotelEmail').value = settings.hotel_email || '';
+            setValue('hotelName', settings.hotel_name);
+            setValue('hotelPhone', settings.hotel_phone);
+            setValue('hotelAddress', settings.hotel_address);
+            setValue('hotelEmail', settings.hotel_email);
             
             // 管理員通知信箱
-            document.getElementById('adminEmail').value = settings.admin_email || '';
+            setValue('adminEmail', settings.admin_email);
             
             // Resend 發信設定
-            document.getElementById('resendApiKey').value = settings.resend_api_key || '';
+            setValue('resendApiKey', settings.resend_api_key);
             
             // Gmail 發信設定
-            document.getElementById('emailUser').value = settings.email_user || '';
-            document.getElementById('gmailClientID').value = settings.gmail_client_id || '';
-            document.getElementById('gmailClientSecret').value = settings.gmail_client_secret || '';
-            document.getElementById('gmailRefreshToken').value = settings.gmail_refresh_token || '';
+            setValue('emailUser', settings.email_user);
+            setValue('gmailClientID', settings.gmail_client_id);
+            setValue('gmailClientSecret', settings.gmail_client_secret);
+            setValue('gmailRefreshToken', settings.gmail_refresh_token);
         } else {
             showError('載入設定失敗：' + (result.message || '未知錯誤'));
         }
