@@ -187,11 +187,25 @@ function showAdminPage(admin) {
 
 // 處理登入
 async function handleLogin(event) {
-    event.preventDefault();
+    if (event) {
+        event.preventDefault();
+    }
     
-    const username = document.getElementById('loginUsername').value;
-    const password = document.getElementById('loginPassword').value;
+    console.log('🔐 開始處理登入...');
+    
+    const username = document.getElementById('loginUsername')?.value;
+    const password = document.getElementById('loginPassword')?.value;
     const errorDiv = document.getElementById('loginError');
+    
+    // 驗證輸入
+    if (!username || !password) {
+        console.warn('⚠️ 帳號或密碼為空');
+        if (errorDiv) {
+            errorDiv.textContent = '請輸入帳號和密碼';
+            errorDiv.style.display = 'block';
+        }
+        return;
+    }
     
     // 清除錯誤訊息
     if (errorDiv) {
@@ -199,7 +213,16 @@ async function handleLogin(event) {
         errorDiv.textContent = '';
     }
     
+    // 顯示載入狀態
+    const submitBtn = document.querySelector('#loginForm button[type="submit"]');
+    const originalBtnText = submitBtn?.textContent;
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '登入中...';
+    }
+    
     try {
+        console.log('📡 發送登入請求到 /api/admin/login...');
         const response = await fetch('/api/admin/login', {
             method: 'POST',
             headers: {
@@ -209,7 +232,22 @@ async function handleLogin(event) {
             body: JSON.stringify({ username, password })
         });
         
-        const result = await response.json();
+        console.log('📥 收到登入回應:', {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok
+        });
+        
+        let result;
+        try {
+            result = await response.json();
+            console.log('📥 登入回應內容:', result);
+        } catch (parseError) {
+            console.error('❌ 無法解析登入回應 JSON:', parseError);
+            const text = await response.text();
+            console.error('❌ 回應內容（文字）:', text);
+            throw new Error('伺服器回應格式錯誤');
+        }
         
         if (result.success) {
             // 登入成功
@@ -248,19 +286,30 @@ async function handleLogin(event) {
             }, 200);
         } else {
             // 登入失敗
+            console.warn('⚠️ 登入失敗:', result.message);
             if (errorDiv) {
                 errorDiv.textContent = result.message || '登入失敗，請檢查帳號密碼';
                 errorDiv.style.display = 'block';
             }
         }
     } catch (error) {
-        console.error('登入錯誤:', error);
+        console.error('❌ 登入錯誤:', error);
+        console.error('錯誤堆疊:', error.stack);
         if (errorDiv) {
-            errorDiv.textContent = '登入時發生錯誤，請稍後再試';
+            errorDiv.textContent = '登入時發生錯誤：' + (error.message || '請稍後再試');
             errorDiv.style.display = 'block';
+        }
+    } finally {
+        // 恢復按鈕狀態
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalBtnText || '登入';
         }
     }
 }
+
+// 立即暴露 handleLogin 到全局（在函數定義後立即執行）
+window.handleLogin = handleLogin;
 
 // 處理登出
 async function handleLogout() {

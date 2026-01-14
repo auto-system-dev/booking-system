@@ -1083,6 +1083,30 @@
                 }, 1000);
             });
         }
+        
+        // 確保登入表單有事件監聽器（備用方案）
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) {
+                // 移除原本的 onsubmit 屬性，改用 addEventListener（更可靠）
+                loginForm.onsubmit = null;
+                loginForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    // 如果 handleLogin 存在，使用它；否則顯示錯誤
+                    if (typeof window.handleLogin === 'function') {
+                        window.handleLogin(e);
+                    } else {
+                        console.error('❌ handleLogin 函數不存在！');
+                        const errorDiv = document.getElementById('loginError');
+                        if (errorDiv) {
+                            errorDiv.textContent = '系統錯誤：登入功能無法使用，請重新整理頁面';
+                            errorDiv.style.display = 'block';
+                        }
+                    }
+                });
+                console.log('✅ 登入表單事件監聽器已設定');
+            }
+        });
     </script>
 </body>
 </html>
