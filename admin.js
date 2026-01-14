@@ -6494,3 +6494,5 @@ function showSuccess(message) {
         showLoginPage: typeof window.showLoginPage
     });
 })();
+
+}
