@@ -4272,6 +4272,25 @@ async function showEmailTemplateModal(templateKey) {
             
             // 儲存 templateKey 以便儲存時使用
             form.dataset.templateKey = templateKey;
+            
+            // 設置發送測試郵件按鈕的事件監聽器（確保函數已載入）
+            const sendTestEmailBtn = document.getElementById('sendTestEmailBtn');
+            if (sendTestEmailBtn) {
+                // 移除舊的事件監聽器（如果有的話）
+                const newBtn = sendTestEmailBtn.cloneNode(true);
+                sendTestEmailBtn.parentNode.replaceChild(newBtn, sendTestEmailBtn);
+                
+                // 設置新的事件監聽器
+                if (typeof sendTestEmail === 'function') {
+                    newBtn.addEventListener('click', sendTestEmail);
+                    console.log('✅ sendTestEmail 按鈕事件監聽器已設置');
+                } else {
+                    console.error('❌ sendTestEmail 函數未定義，無法設置事件監聽器');
+                    newBtn.addEventListener('click', function() {
+                        alert('發送測試郵件功能暫時無法使用，請重新載入頁面');
+                    });
+                }
+            }
         } else {
             showError('載入郵件模板時發生錯誤：' + (result.message || '未知錯誤'));
         }
