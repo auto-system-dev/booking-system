@@ -1136,20 +1136,44 @@
             }
         }
         
-        // 立即嘗試設置（如果 DOM 已經準備好）
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function() {
-                if (!setupLoginFormListener()) {
-                    // 如果失敗，延遲重試
-                    setTimeout(setupLoginFormListener, 100);
+        // 確保 admin.js 已載入後再設置事件監聽器
+        function waitForAdminJS(callback, maxAttempts = 50) {
+            let attempts = 0;
+            function check() {
+                attempts++;
+                // 檢查 handleLogin 是否存在（即使是佔位符也可以）
+                if (typeof window.handleLogin === 'function') {
+                    console.log('✅ admin.js 已載入，handleLogin 函數可用');
+                    callback();
+                } else if (attempts < maxAttempts) {
+                    // 繼續等待
+                    setTimeout(check, 100);
+                } else {
+                    console.warn('⚠️ admin.js 載入超時，但仍嘗試設置事件監聽器');
+                    callback();
                 }
-            });
-        } else {
-            // DOM 已經準備好，立即設置
-            if (!setupLoginFormListener()) {
-                setTimeout(setupLoginFormListener, 100);
+            }
+            check();
+        }
+        
+        // 設置事件監聽器
+        function setupListener() {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    waitForAdminJS(function() {
+                        setupLoginFormListener();
+                    });
+                });
+            } else {
+                // DOM 已經準備好
+                waitForAdminJS(function() {
+                    setupLoginFormListener();
+                });
             }
         }
+        
+        // 立即開始設置
+        setupListener();
     </script>
 </body>
 </html>
