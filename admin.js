@@ -5620,7 +5620,31 @@ ${quillHtml}
 
 // 立即暴露 sendTestEmail 到全局作用域（確保在函數定義後立即執行）
 // 強制覆蓋預先聲明的臨時函數
-// 使用立即執行的代碼塊，不使用 IIFE，確保在函數定義後立即執行
+// 使用立即執行的 IIFE，確保在函數定義後立即執行
+(function() {
+    'use strict';
+    // 立即設置，不等待
+    if (typeof sendTestEmail === 'function') {
+        window.sendTestEmail = sendTestEmail;
+        try {
+            Object.defineProperty(window, 'sendTestEmail', {
+                value: sendTestEmail,
+                writable: true,
+                configurable: true,
+                enumerable: true
+            });
+        } catch (e) {
+            // 如果失敗，至少確保直接賦值成功
+            window.sendTestEmail = sendTestEmail;
+        }
+        const fnLength = sendTestEmail.toString().length;
+        console.log('✅ sendTestEmail 已立即設置到 window，長度:', fnLength);
+    } else {
+        console.error('❌ sendTestEmail 函數尚未定義，無法立即設置');
+    }
+})();
+
+// 使用立即執行的代碼塊進行詳細檢查和設置
 {
     'use strict';
     console.log('🔧 開始導出 sendTestEmail 函數...');
