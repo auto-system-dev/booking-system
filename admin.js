@@ -5465,24 +5465,6 @@ async function saveEmailTemplate(event) {
 
 // 發送測試郵件
 async function sendTestEmail() {
-    // 立即設置函數到 window（在函數定義時立即執行）
-    if (typeof window !== 'undefined') {
-        // 強制覆蓋臨時函數
-        window.sendTestEmail = sendTestEmail;
-        // 使用 defineProperty 確保可配置
-        try {
-            Object.defineProperty(window, 'sendTestEmail', {
-                value: sendTestEmail,
-                writable: true,
-                configurable: true,
-                enumerable: true
-            });
-        } catch (e) {
-            // 如果失敗，至少確保直接賦值成功
-            window.sendTestEmail = sendTestEmail;
-        }
-    }
-    
     const testEmailInput = document.getElementById('testEmailAddress');
     const testEmailBtn = document.getElementById('sendTestEmailBtn');
     const testEmailStatus = document.getElementById('testEmailStatus');
