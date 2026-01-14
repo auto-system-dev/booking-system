@@ -5,31 +5,40 @@
 // 強制設置，不使用 || 運算符，確保函數一定會被設置
 if (typeof window !== 'undefined') {
     window.handleLogin = function(event) {
-    console.warn('⚠️ handleLogin 函數尚未完全載入，請稍候...');
-    // 如果函數已經定義，立即調用
-    if (typeof handleLogin === 'function' && handleLogin !== window.handleLogin) {
-        console.log('✅ 找到真正的 handleLogin 函數，立即調用');
-        return handleLogin(event);
-    }
-    // 否則等待函數載入
-    setTimeout(function() {
+        console.warn('⚠️ handleLogin 函數尚未完全載入，請稍候...');
+        // 如果函數已經定義，立即調用
         if (typeof handleLogin === 'function' && handleLogin !== window.handleLogin) {
-            console.log('✅ 延遲後找到真正的 handleLogin 函數，調用');
-            handleLogin(event);
-        } else {
-            console.error('❌ handleLogin 函數載入失敗');
-            const errorDiv = document.getElementById('loginError');
-            if (errorDiv) {
-                errorDiv.textContent = '系統錯誤：登入功能無法使用，請重新整理頁面';
-                errorDiv.style.display = 'block';
-            }
+            console.log('✅ 找到真正的 handleLogin 函數，立即調用');
+            return handleLogin(event);
         }
-    }, 100);
-};
+        // 否則等待函數載入
+        setTimeout(function() {
+            if (typeof handleLogin === 'function' && handleLogin !== window.handleLogin) {
+                console.log('✅ 延遲後找到真正的 handleLogin 函數，調用');
+                handleLogin(event);
+            } else {
+                console.error('❌ handleLogin 函數載入失敗');
+                const errorDiv = document.getElementById('loginError');
+                if (errorDiv) {
+                    errorDiv.textContent = '系統錯誤：登入功能無法使用，請重新整理頁面';
+                    errorDiv.style.display = 'block';
+                }
+            }
+        }, 100);
+    };
+    // 確認設置成功
+    if (typeof window.handleLogin === 'function') {
+        console.log('✅ handleLogin 佔位符函數已設置:', typeof window.handleLogin, '長度:', window.handleLogin.toString().length);
+    } else {
+        console.error('❌ handleLogin 佔位符函數設置失敗');
+    }
+} else {
+    console.error('❌ window 對象不存在，無法設置 handleLogin');
+}
 
 // 立即執行，確認腳本已載入
 console.log('✅ admin.js 腳本已載入', new Date().toISOString());
-console.log('✅ handleLogin 佔位符函數已設置:', typeof window.handleLogin);
+console.log('✅ window.handleLogin 狀態:', typeof window.handleLogin);
 
 // 全局錯誤處理
 window.addEventListener('error', function(event) {
