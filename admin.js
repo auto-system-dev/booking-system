@@ -54,15 +54,7 @@ window.addEventListener('unhandledrejection', function(event) {
 });
 
 // 確保函數在全局作用域可用
-// 預先聲明 sendTestEmail 和 closeEmailTemplateModal，確保在 HTML onclick 中可用
-// 避免覆蓋已存在的正式函數
-if (typeof window.sendTestEmail !== 'function') {
-    window.sendTestEmail = function() {
-        console.error('sendTestEmail 函數尚未載入，請稍候再試');
-        alert('功能載入中，請稍候再試');
-    };
-}
-
+// 預先聲明 closeEmailTemplateModal，確保在 HTML onclick 中可用
 window.closeEmailTemplateModal = function() {
     console.error('closeEmailTemplateModal 函數尚未載入，請稍候再試');
     const modal = document.getElementById('emailTemplateModal');
@@ -5462,7 +5454,7 @@ async function saveEmailTemplate(event) {
 }
 
 // 發送測試郵件
-async function sendTestEmail() {
+const sendTestEmail = async function sendTestEmail() {
     const testEmailInput = document.getElementById('testEmailAddress');
     const testEmailBtn = document.getElementById('sendTestEmailBtn');
     const testEmailStatus = document.getElementById('testEmailStatus');
@@ -5614,7 +5606,10 @@ ${quillHtml}
         testEmailBtn.disabled = false;
         testEmailBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">send</span>發送測試郵件';
     }
-}
+};
+
+// 明確綁定到 window，避免被早期佔位符覆蓋
+window.sendTestEmail = sendTestEmail;
 
 // 立即暴露 sendTestEmail 到全局作用域（確保在函數定義後立即執行）
 // 強制覆蓋預先聲明的臨時函數
