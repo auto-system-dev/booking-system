@@ -336,7 +336,7 @@ function showAdminPage(admin) {
 // 處理登入
 // 直接定義為 window.handleLogin，確保立即可用
 window.handleLogin = async function handleLogin(event) {
-    if (event) {
+    if (event && typeof event.preventDefault === 'function') {
         event.preventDefault();
     }
     
@@ -7223,5 +7223,5 @@ async function deleteHoliday(holidayDate) {
         closeEmailTemplateModal: typeof window.closeEmailTemplateModal,
         sendTestEmail: typeof window.sendTestEmail
     });
+});
 })();
-}
