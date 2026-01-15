@@ -5896,26 +5896,87 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
         content = content.replace(new RegExp(key, 'g'), variables[key]);
     });
     
-    // 處理嵌套條件區塊的輔助函數
+    // 處理嵌套條件區塊的輔助函數（改進版，能正確處理嵌套結構）
     function processConditionalBlock(content, condition, conditionName) {
-        // 處理帶有 {{else}} 的條件區塊：{{#if condition}}...{{else}}...{{/if}}
-        const elsePattern = new RegExp(`\\{\\{#if ${conditionName}\\}\\}([\\s\\S]*?)\\{\\{else\\}\\}([\\s\\S]*?)\\{\\{/if\\}\\}`, 'g');
-        if (condition) {
-            // 條件為真：保留 {{#if}} 到 {{else}} 之間的內容，移除 {{else}} 到 {{/if}} 之間的內容
-            content = content.replace(elsePattern, '$1');
-        } else {
-            // 條件為假：移除 {{#if}} 到 {{else}} 之間的內容，保留 {{else}} 到 {{/if}} 之間的內容
-            content = content.replace(elsePattern, '$2');
-        }
+        const startTag = `{{#if ${conditionName}}}`;
+        const elseTag = '{{else}}';
+        const endTag = '{{/if}}';
         
-        // 處理沒有 {{else}} 的條件區塊：{{#if condition}}...{{/if}}
-        const simplePattern = new RegExp(`\\{\\{#if ${conditionName}\\}\\}([\\s\\S]*?)\\{\\{/if\\}\\}`, 'g');
-        if (condition) {
-            // 條件為真：保留內容
-            content = content.replace(simplePattern, '$1');
-        } else {
-            // 條件為假：移除整個區塊
-            content = content.replace(simplePattern, '');
+        // 從後往前處理，避免索引問題
+        let lastIndex = content.length;
+        while (true) {
+            const startIndex = content.lastIndexOf(startTag, lastIndex - 1);
+            if (startIndex === -1) break;
+            
+            // 找到對應的 {{else}} 和 {{/if}}，使用計數確保匹配正確
+            let elseIndex = -1;
+            let endIndex = -1;
+            let depth = 1;
+            let searchIndex = startIndex + startTag.length;
+            
+            // 先找 {{else}}
+            while (searchIndex < content.length) {
+                const nextIf = content.indexOf('{{#if', searchIndex);
+                const nextElse = content.indexOf(elseTag, searchIndex);
+                const nextEndIf = content.indexOf(endTag, searchIndex);
+                
+                if (nextEndIf === -1) break;
+                
+                // 找到最近的標籤
+                let nextIndex = content.length;
+                let nextType = '';
+                if (nextIf !== -1 && nextIf < nextIndex) {
+                    nextIndex = nextIf;
+                    nextType = 'if';
+                }
+                if (nextElse !== -1 && nextElse < nextIndex && depth === 1) {
+                    nextIndex = nextElse;
+                    nextType = 'else';
+                }
+                if (nextEndIf < nextIndex) {
+                    nextIndex = nextEndIf;
+                    nextType = 'endif';
+                }
+                
+                if (nextType === 'if') {
+                    depth++;
+                    // 找到完整的 {{#if ...}} 標籤結束位置
+                    const ifEnd = content.indexOf('}}', nextIf);
+                    searchIndex = ifEnd !== -1 ? ifEnd + 2 : nextIf + 5;
+                } else if (nextType === 'else' && depth === 1) {
+                    elseIndex = nextElse;
+                    searchIndex = nextElse + elseTag.length;
+                } else if (nextType === 'endif') {
+                    depth--;
+                    if (depth === 0) {
+                        endIndex = nextEndIf;
+                        break;
+                    }
+                    searchIndex = nextEndIf + endTag.length;
+                } else {
+                    break;
+                }
+            }
+            
+            if (endIndex === -1) {
+                lastIndex = startIndex - 1;
+                continue; // 找不到對應的結束標籤，跳過
+            }
+            
+            if (elseIndex !== -1) {
+                // 有 {{else}}
+                const beforeElse = content.substring(startIndex + startTag.length, elseIndex);
+                const afterElse = content.substring(elseIndex + elseTag.length, endIndex);
+                const replacement = condition ? beforeElse : afterElse;
+                content = content.substring(0, startIndex) + replacement + content.substring(endIndex + endTag.length);
+            } else {
+                // 沒有 {{else}}
+                const blockContent = content.substring(startIndex + startTag.length, endIndex);
+                const replacement = condition ? blockContent : '';
+                content = content.substring(0, startIndex) + replacement + content.substring(endIndex + endTag.length);
+            }
+            
+            lastIndex = startIndex - 1;
         }
         
         return content;
