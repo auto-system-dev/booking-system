@@ -4419,122 +4419,29 @@ async function showEmailTemplateModal(templateKey) {
             // 儲存 templateKey 以便儲存時使用
             form.dataset.templateKey = templateKey;
             
-            // 設置發送測試郵件按鈕的事件監聽器（確保函數已載入）
+            // 設置發送測試郵件按鈕的事件監聽器（直接使用本地函數）
             const sendTestEmailBtn = document.getElementById('sendTestEmailBtn');
             if (sendTestEmailBtn) {
                 // 移除舊的事件監聽器（如果有的話）
                 const newBtn = sendTestEmailBtn.cloneNode(true);
                 sendTestEmailBtn.parentNode.replaceChild(newBtn, sendTestEmailBtn);
                 
-                // 使用輪詢機制確保函數已定義後再設置事件監聽器
-                let attempts = 0;
-                const maxAttempts = 50; // 最多嘗試 50 次（5 秒）
-                
-                // 檢查函數是否已定義且不是臨時函數
-                const isFunctionReady = (fn) => {
-                    if (typeof fn !== 'function') {
-                        return false;
-                    }
-                    const fnString = fn.toString();
-                    // 檢查是否是臨時函數（臨時函數的特徵：包含特定錯誤訊息且函數體很短）
-                    // 臨時函數通常只有幾行，包含「尚未載入」或「功能載入中」
-                    const isTemporaryFunction = (fnString.includes('尚未載入') || 
-                                                 fnString.includes('功能載入中')) &&
-                                                 fnString.length < 200; // 臨時函數通常很短
-                    return !isTemporaryFunction;
-                };
-                
-                const resolveSendTestEmail = () => {
-                    if (typeof sendTestEmail === 'function' && sendTestEmail !== window.sendTestEmail) {
-                        return sendTestEmail;
-                    }
-                    if (isFunctionReady(window.sendTestEmail)) {
-                        return window.sendTestEmail;
-                    }
-                    return null;
-                };
-                
-                function setupSendTestEmailListener() {
-                    attempts++;
-                    
-                    // 優先檢查 window.sendTestEmail（全局作用域），失敗則回退到本地函數
-                    if (resolveSendTestEmail()) {
-                        newBtn.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            try {
-                                const fn = resolveSendTestEmail();
-                                if (fn) {
-                                    fn();
-                                    return;
-                                }
-                                throw new Error('sendTestEmail 函數尚未載入');
-                            } catch (error) {
-                                console.error('❌ 調用 sendTestEmail 時發生錯誤:', error);
-                                alert('發送測試郵件時發生錯誤：' + error.message);
-                            }
-                        });
-                        console.log('✅ sendTestEmail 按鈕事件監聽器已設置', {
-                            from: resolveSendTestEmail() === window.sendTestEmail ? 'window' : 'local'
-                        });
-                        return true;
-                    } else if (attempts < maxAttempts) {
-                        // 如果函數還沒定義，繼續等待
-                        if (attempts % 10 === 0) {
-                            console.log(`⏳ 等待 sendTestEmail 函數載入... (${attempts}/${maxAttempts})`, {
-                                exists: typeof window.sendTestEmail,
-                                isFunction: typeof window.sendTestEmail === 'function',
-                                fnLength: typeof window.sendTestEmail === 'function' ? window.sendTestEmail.toString().length : 0,
-                                localFunction: typeof sendTestEmail === 'function'
-                            });
+                newBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    try {
+                        if (typeof sendTestEmail === 'function') {
+                            sendTestEmail();
+                            return;
                         }
-                        setTimeout(setupSendTestEmailListener, 100);
-                        return false;
-                    } else {
-                        // 超過最大嘗試次數，設置備用事件監聽器
-                        console.warn('⚠️ sendTestEmail 函數在 5 秒內未載入，設置備用事件監聽器');
-                        console.log('🔍 當前 window.sendTestEmail 狀態:', {
-                            exists: typeof window.sendTestEmail,
-                            isFunction: typeof window.sendTestEmail === 'function',
-                            fnString: typeof window.sendTestEmail === 'function' ? window.sendTestEmail.toString().substring(0, 200) : 'N/A'
-                        });
-                        newBtn.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            // 再次檢查函數是否已載入
-                            const fallbackSendTestEmail = resolveSendTestEmail();
-                            if (fallbackSendTestEmail) {
-                                try {
-                                    fallbackSendTestEmail();
-                                } catch (error) {
-                                    console.error('❌ 調用 sendTestEmail 時發生錯誤:', error);
-                                    alert('發送測試郵件時發生錯誤：' + error.message);
-                                }
-                            } else {
-                                // 最後嘗試：即使檢查失敗，也嘗試調用（可能是檢查邏輯問題）
-                                if (typeof window.sendTestEmail === 'function') {
-                                    const fnString = window.sendTestEmail.toString();
-                                    // 如果函數存在且不是臨時函數的明顯特徵，嘗試調用
-                                    if (!fnString.includes('尚未載入') || fnString.length > 200) {
-                                        console.log('🔄 嘗試調用 sendTestEmail（即使檢查未通過）');
-                                        try {
-                                            window.sendTestEmail();
-                                            return; // 成功調用，返回
-                                        } catch (error) {
-                                            console.error('❌ 調用失敗:', error);
-                                        }
-                                    }
-                                }
-                                console.error('❌ sendTestEmail 函數仍未載入或無法使用');
-                                alert('發送測試郵件功能暫時無法使用，請重新載入頁面');
-                            }
-                        });
-                        return false;
+                        throw new Error('sendTestEmail 函數尚未載入');
+                    } catch (error) {
+                        console.error('❌ 調用 sendTestEmail 時發生錯誤:', error);
+                        alert('發送測試郵件時發生錯誤：' + error.message);
                     }
-                }
+                });
                 
-                // 開始設置事件監聽器
-                setupSendTestEmailListener();
+                console.log('✅ sendTestEmail 按鈕事件監聽器已設置（直接使用本地函數）');
             }
             
             // 設置關閉模態框按鈕的事件監聽器
