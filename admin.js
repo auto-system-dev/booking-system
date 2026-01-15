@@ -95,6 +95,24 @@ if (typeof window !== 'undefined') {
 console.log('✅ admin.js 腳本已載入', new Date().toISOString());
 console.log('✅ window.handleLogin 狀態:', typeof window.handleLogin);
 
+// 確保腳本載入完成後，再次確認 handleLogin 函數
+if (typeof window !== 'undefined') {
+    // 使用 setTimeout 確保所有代碼都執行完畢
+    setTimeout(function() {
+        if (typeof window.handleLogin === 'function') {
+            const fnString = window.handleLogin.toString();
+            const isPlaceholder = fnString.includes('尚未完全載入');
+            if (!isPlaceholder) {
+                console.log('✅ [延遲確認] handleLogin 已成功設置，函數長度:', fnString.length);
+            } else {
+                console.warn('⚠️ [延遲確認] handleLogin 仍然是佔位符函數');
+            }
+        } else {
+            console.error('❌ [延遲確認] handleLogin 未定義，當前類型:', typeof window.handleLogin);
+        }
+    }, 100);
+}
+
 // 全局錯誤處理
 window.addEventListener('error', function(event) {
     console.error('❌ 全局錯誤:', event.error);
@@ -311,6 +329,7 @@ function showAdminPage(admin) {
 
 // 處理登入
 // 直接定義為 window.handleLogin，確保立即可用
+// 直接定義為 window.handleLogin，確保立即可用
 window.handleLogin = async function handleLogin(event) {
     if (event) {
         event.preventDefault();
@@ -434,18 +453,25 @@ window.handleLogin = async function handleLogin(event) {
 }
 
 // handleLogin 已直接定義為 window.handleLogin，無需額外暴露
-// 確認函數已正確設置
-if (typeof window.handleLogin === 'function') {
-    const fnString = window.handleLogin.toString();
-    const isPlaceholder = fnString.includes('尚未完全載入');
-    if (!isPlaceholder) {
-        console.log('✅ handleLogin 已成功設置到 window.handleLogin');
-    } else {
-        console.error('❌ handleLogin 仍然是佔位符函數');
+// 立即確認函數已正確設置
+(function() {
+    'use strict';
+    try {
+        if (typeof window.handleLogin === 'function') {
+            const fnString = window.handleLogin.toString();
+            const isPlaceholder = fnString.includes('尚未完全載入');
+            if (!isPlaceholder) {
+                console.log('✅ handleLogin 已成功設置到 window.handleLogin，函數長度:', fnString.length);
+            } else {
+                console.error('❌ handleLogin 仍然是佔位符函數');
+            }
+        } else {
+            console.error('❌ handleLogin 設置失敗，當前類型:', typeof window.handleLogin);
+        }
+    } catch (e) {
+        console.error('❌ 檢查 handleLogin 時發生錯誤:', e);
     }
-} else {
-    console.error('❌ handleLogin 設置失敗');
-}
+})();
 
 // 處理登出
 async function handleLogout() {
