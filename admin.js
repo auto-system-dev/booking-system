@@ -6000,7 +6000,8 @@ window.sendTestEmail = sendTestEmail;
 
 // 重置郵件模板為預設圖卡樣式
 // 重置當前編輯的郵件模板為預設圖卡樣式（從編輯模態框中調用）
-async function resetCurrentTemplateToDefault() {
+// 直接定義為 window.resetCurrentTemplateToDefault，確保立即可用
+window.resetCurrentTemplateToDefault = async function resetCurrentTemplateToDefault() {
     const form = document.getElementById('emailTemplateForm');
     if (!form || !form.dataset.templateKey) {
         showError('無法獲取當前模板資訊');
@@ -6042,11 +6043,7 @@ async function resetCurrentTemplateToDefault() {
     }
 }
 
-// 立即暴露 resetCurrentTemplateToDefault 到全局作用域
-if (typeof resetCurrentTemplateToDefault === 'function') {
-    window.resetCurrentTemplateToDefault = resetCurrentTemplateToDefault;
-    console.log('✅ resetCurrentTemplateToDefault 已暴露到 window');
-}
+// resetCurrentTemplateToDefault 已直接定義為 window.resetCurrentTemplateToDefault，無需額外暴露
 
 // 重置單個郵件模板為預設文字樣式（從模板卡片中調用，保留以備將來需要）
 async function resetEmailTemplateToDefault(templateKey, templateName) {
@@ -6203,7 +6200,8 @@ function insertVariable(variable) {
 }
 
 // 切換郵件預覽顯示
-function toggleEmailPreview() {
+// 直接定義為 window.toggleEmailPreview，確保立即可用
+window.toggleEmailPreview = function toggleEmailPreview() {
     isPreviewVisible = !isPreviewVisible;
     const previewArea = document.getElementById('emailPreviewArea');
     const editorArea = document.getElementById('emailEditorArea');
@@ -6222,11 +6220,7 @@ function toggleEmailPreview() {
     }
 }
 
-// 立即暴露 toggleEmailPreview 到全局作用域
-if (typeof toggleEmailPreview === 'function') {
-    window.toggleEmailPreview = toggleEmailPreview;
-    console.log('✅ toggleEmailPreview 已暴露到 window');
-}
+// toggleEmailPreview 已直接定義為 window.toggleEmailPreview，無需額外暴露
 
 // 重新整理郵件預覽
 function refreshEmailPreview() {
