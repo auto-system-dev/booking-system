@@ -55,10 +55,13 @@ window.addEventListener('unhandledrejection', function(event) {
 
 // 確保函數在全局作用域可用
 // 預先聲明 sendTestEmail 和 closeEmailTemplateModal，確保在 HTML onclick 中可用
-window.sendTestEmail = function() {
-    console.error('sendTestEmail 函數尚未載入，請稍候再試');
-    alert('功能載入中，請稍候再試');
-};
+// 避免覆蓋已存在的正式函數
+if (typeof window.sendTestEmail !== 'function') {
+    window.sendTestEmail = function() {
+        console.error('sendTestEmail 函數尚未載入，請稍候再試');
+        alert('功能載入中，請稍候再試');
+    };
+}
 
 window.closeEmailTemplateModal = function() {
     console.error('closeEmailTemplateModal 函數尚未載入，請稍候再試');
