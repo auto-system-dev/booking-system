@@ -4422,8 +4422,8 @@ async function showEmailTemplateModal(templateKey) {
                     e.preventDefault();
                     e.stopPropagation();
                     try {
-                        if (typeof sendTestEmail === 'function') {
-                            sendTestEmail();
+                        if (typeof window.sendTestEmail === 'function') {
+                            window.sendTestEmail();
                             return;
                         }
                         throw new Error('sendTestEmail 函數尚未載入');
@@ -5454,7 +5454,7 @@ async function saveEmailTemplate(event) {
 }
 
 // 發送測試郵件
-const sendTestEmail = async function sendTestEmail() {
+async function sendTestEmail() {
     const testEmailInput = document.getElementById('testEmailAddress');
     const testEmailBtn = document.getElementById('sendTestEmailBtn');
     const testEmailStatus = document.getElementById('testEmailStatus');
@@ -5606,7 +5606,7 @@ ${quillHtml}
         testEmailBtn.disabled = false;
         testEmailBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">send</span>發送測試郵件';
     }
-};
+}
 
 // 明確綁定到 window，避免被早期佔位符覆蓋
 window.sendTestEmail = sendTestEmail;
