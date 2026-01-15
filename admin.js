@@ -4418,12 +4418,23 @@ async function showEmailTemplateModal(templateKey) {
                 const newBtn = sendTestEmailBtn.cloneNode(true);
                 sendTestEmailBtn.parentNode.replaceChild(newBtn, sendTestEmailBtn);
                 
-                newBtn.addEventListener('click', function(e) {
+                newBtn.addEventListener('click', async function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     try {
+                        // 優先使用本地函數（函數提升，應該可用）
+                        if (typeof sendTestEmail === 'function') {
+                            await sendTestEmail();
+                            return;
+                        }
+                        // 備用：使用 window.sendTestEmail（但檢查是否為佔位符）
                         if (typeof window.sendTestEmail === 'function') {
-                            window.sendTestEmail();
+                            const fnString = window.sendTestEmail.toString();
+                            // 如果是佔位符函數，不調用
+                            if (fnString.includes('尚未載入') || fnString.includes('功能載入中')) {
+                                throw new Error('sendTestEmail 函數尚未載入（佔位符）');
+                            }
+                            await window.sendTestEmail();
                             return;
                         }
                         throw new Error('sendTestEmail 函數尚未載入');
