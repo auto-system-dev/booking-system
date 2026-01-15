@@ -68,6 +68,17 @@ window.toggleEditorMode = function() {
     alert('功能載入中，請稍候再試');
 };
 
+// 預先聲明 resetCurrentTemplateToDefault 和 toggleEmailPreview
+window.resetCurrentTemplateToDefault = function() {
+    console.error('resetCurrentTemplateToDefault 函數尚未載入，請稍候再試');
+    alert('功能載入中，請稍候再試');
+};
+
+window.toggleEmailPreview = function() {
+    console.error('toggleEmailPreview 函數尚未載入，請稍候再試');
+    alert('功能載入中，請稍候再試');
+};
+
 // 檢查登入狀態
 async function checkAuthStatus() {
     try {
@@ -4595,6 +4606,56 @@ async function showEmailTemplateModal(templateKey) {
                         }
                     });
                 }
+            }
+            
+            // 設置重置圖卡樣式按鈕的事件監聽器
+            const resetTemplateStyleBtn = document.getElementById('resetTemplateStyleBtn');
+            if (resetTemplateStyleBtn) {
+                const newResetBtn = resetTemplateStyleBtn.cloneNode(true);
+                resetTemplateStyleBtn.parentNode.replaceChild(newResetBtn, resetTemplateStyleBtn);
+                
+                newResetBtn.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    try {
+                        if (typeof resetCurrentTemplateToDefault === 'function') {
+                            await resetCurrentTemplateToDefault();
+                        } else if (typeof window.resetCurrentTemplateToDefault === 'function') {
+                            await window.resetCurrentTemplateToDefault();
+                        } else {
+                            alert('重置功能尚未載入，請稍候再試');
+                        }
+                    } catch (error) {
+                        console.error('❌ 調用 resetCurrentTemplateToDefault 時發生錯誤:', error);
+                        alert('重置時發生錯誤：' + error.message);
+                    }
+                });
+                console.log('✅ resetTemplateStyleBtn 按鈕事件監聽器已設置');
+            }
+            
+            // 設置顯示預覽按鈕的事件監聽器
+            const togglePreviewBtn = document.getElementById('togglePreviewBtn');
+            if (togglePreviewBtn) {
+                const newToggleBtn = togglePreviewBtn.cloneNode(true);
+                togglePreviewBtn.parentNode.replaceChild(newToggleBtn, togglePreviewBtn);
+                
+                newToggleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    try {
+                        if (typeof toggleEmailPreview === 'function') {
+                            toggleEmailPreview();
+                        } else if (typeof window.toggleEmailPreview === 'function') {
+                            window.toggleEmailPreview();
+                        } else {
+                            alert('預覽功能尚未載入，請稍候再試');
+                        }
+                    } catch (error) {
+                        console.error('❌ 調用 toggleEmailPreview 時發生錯誤:', error);
+                        alert('預覽時發生錯誤：' + error.message);
+                    }
+                });
+                console.log('✅ togglePreviewBtn 按鈕事件監聽器已設置');
             }
         } else {
             showError('載入郵件模板時發生錯誤：' + (result.message || '未知錯誤'));

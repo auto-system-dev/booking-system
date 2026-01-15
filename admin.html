@@ -922,13 +922,13 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                             <div style="display: flex; align-items: center; gap: 10px;">
                                 <label style="margin: 0;">郵件內容</label>
-                                <button type="button" id="resetTemplateStyleBtn" class="btn-secondary" style="padding: 5px 15px; font-size: 12px; display: flex; align-items: center; gap: 4px;" onclick="resetCurrentTemplateToDefault()" title="重置為預設圖卡樣式">
+                                <button type="button" id="resetTemplateStyleBtn" class="btn-secondary" style="padding: 5px 15px; font-size: 12px; display: flex; align-items: center; gap: 4px;" title="重置為預設圖卡樣式">
                                     <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle;">restart_alt</span>
                                     <span>重置圖卡樣式</span>
                                 </button>
                             </div>
                             <div style="display: flex; gap: 10px; align-items: center;">
-                                <button type="button" id="togglePreviewBtn" class="btn-secondary" style="padding: 5px 15px; font-size: 12px;" onclick="toggleEmailPreview()">
+                                <button type="button" id="togglePreviewBtn" class="btn-secondary" style="padding: 5px 15px; font-size: 12px;">
                                     <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle;">preview</span>
                                     <span id="previewBtnText">顯示預覽</span>
                                 </button>
@@ -1052,7 +1052,7 @@
         </div>
     </div>
 
-    <script src="admin.js?v=20260115-10"></script>
+    <script src="admin.js?v=20260115-11"></script>
     <!-- 備用初始化：確保即使 admin.js 載入失敗也能顯示登入頁 -->
     <script>
         // 如果 admin.js 載入失敗，至少顯示登入頁
