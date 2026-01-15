@@ -4618,13 +4618,24 @@ async function showEmailTemplateModal(templateKey) {
                     e.preventDefault();
                     e.stopPropagation();
                     try {
+                        // 優先使用本地函數（函數提升，應該可用）
                         if (typeof resetCurrentTemplateToDefault === 'function') {
-                            await resetCurrentTemplateToDefault();
-                        } else if (typeof window.resetCurrentTemplateToDefault === 'function') {
-                            await window.resetCurrentTemplateToDefault();
-                        } else {
-                            alert('重置功能尚未載入，請稍候再試');
+                            const fnString = resetCurrentTemplateToDefault.toString();
+                            // 檢查是否是佔位符函數
+                            if (!fnString.includes('尚未載入') && !fnString.includes('功能載入中')) {
+                                await resetCurrentTemplateToDefault();
+                                return;
+                            }
                         }
+                        // 備用：使用 window 上的函數（但檢查是否為佔位符）
+                        if (typeof window.resetCurrentTemplateToDefault === 'function') {
+                            const fnString = window.resetCurrentTemplateToDefault.toString();
+                            if (!fnString.includes('尚未載入') && !fnString.includes('功能載入中')) {
+                                await window.resetCurrentTemplateToDefault();
+                                return;
+                            }
+                        }
+                        alert('重置功能尚未載入，請稍候再試');
                     } catch (error) {
                         console.error('❌ 調用 resetCurrentTemplateToDefault 時發生錯誤:', error);
                         alert('重置時發生錯誤：' + error.message);
@@ -4643,13 +4654,24 @@ async function showEmailTemplateModal(templateKey) {
                     e.preventDefault();
                     e.stopPropagation();
                     try {
+                        // 優先使用本地函數（函數提升，應該可用）
                         if (typeof toggleEmailPreview === 'function') {
-                            toggleEmailPreview();
-                        } else if (typeof window.toggleEmailPreview === 'function') {
-                            window.toggleEmailPreview();
-                        } else {
-                            alert('預覽功能尚未載入，請稍候再試');
+                            const fnString = toggleEmailPreview.toString();
+                            // 檢查是否是佔位符函數
+                            if (!fnString.includes('尚未載入') && !fnString.includes('功能載入中')) {
+                                toggleEmailPreview();
+                                return;
+                            }
                         }
+                        // 備用：使用 window 上的函數（但檢查是否為佔位符）
+                        if (typeof window.toggleEmailPreview === 'function') {
+                            const fnString = window.toggleEmailPreview.toString();
+                            if (!fnString.includes('尚未載入') && !fnString.includes('功能載入中')) {
+                                window.toggleEmailPreview();
+                                return;
+                            }
+                        }
+                        alert('預覽功能尚未載入，請稍候再試');
                     } catch (error) {
                         console.error('❌ 調用 toggleEmailPreview 時發生錯誤:', error);
                         alert('預覽時發生錯誤：' + error.message);
