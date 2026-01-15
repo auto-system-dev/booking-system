@@ -5,6 +5,15 @@
 // 強制設置，不使用 || 運算符，確保函數一定會被設置
 if (typeof window !== 'undefined') {
     window.handleLogin = function(event) {
+        // 檢查是否已經被真正的函數覆蓋
+        const currentFn = window.handleLogin;
+        const fnString = currentFn.toString();
+        // 如果函數內容不包含「尚未完全載入」，說明已經被真正的函數覆蓋
+        if (!fnString.includes('尚未完全載入')) {
+            // 已經是真實函數，直接調用
+            return currentFn(event);
+        }
+        
         console.warn('⚠️ handleLogin 函數尚未完全載入，請稍候...');
         // 如果函數已經定義，立即調用
         if (typeof handleLogin === 'function' && handleLogin !== window.handleLogin) {
@@ -13,6 +22,14 @@ if (typeof window !== 'undefined') {
         }
         // 否則等待函數載入
         setTimeout(function() {
+            // 再次檢查 window.handleLogin 是否已被覆蓋
+            const checkFn = window.handleLogin;
+            const checkFnString = checkFn.toString();
+            if (!checkFnString.includes('尚未完全載入')) {
+                console.log('✅ 延遲後找到真正的 handleLogin 函數，調用');
+                return checkFn(event);
+            }
+            
             if (typeof handleLogin === 'function' && handleLogin !== window.handleLogin) {
                 console.log('✅ 延遲後找到真正的 handleLogin 函數，調用');
                 handleLogin(event);

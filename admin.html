@@ -1052,7 +1052,7 @@
         </div>
     </div>
 
-    <script src="admin.js?v=20260115-12"></script>
+    <script src="admin.js?v=20260115-13"></script>
     <!-- 備用初始化：確保即使 admin.js 載入失敗也能顯示登入頁 -->
     <script>
         // 如果 admin.js 載入失敗，至少顯示登入頁
@@ -1097,33 +1097,25 @@
                 loginForm.onsubmit = null;
                 loginForm.addEventListener('submit', function(e) {
                     e.preventDefault();
-                    // 如果 handleLogin 存在，使用它；否則顯示錯誤
+                    // 直接調用 window.handleLogin，讓預先聲明的函數處理等待邏輯
                     if (typeof window.handleLogin === 'function') {
-                        // 檢查是否是真正的函數（不是佔位符）
-                        const fnString = window.handleLogin.toString();
-                        if (fnString.includes('尚未完全載入')) {
-                            // 如果是佔位符，等待真正的函數載入
-                            console.log('⏳ handleLogin 正在載入，請稍候...');
-                            setTimeout(function() {
-                                if (typeof window.handleLogin === 'function') {
-                                    const newFnString = window.handleLogin.toString();
-                                    if (!newFnString.includes('尚未完全載入')) {
-                                        window.handleLogin(e);
-                                    } else {
-                                        console.error('❌ handleLogin 函數載入超時');
-                                        showLoginError();
-                                    }
-                                } else {
-                                    console.error('❌ handleLogin 函數不存在！');
-                                    showLoginError();
-                                }
-                            }, 500);
-                        } else {
+                        try {
                             window.handleLogin(e);
+                        } catch (error) {
+                            console.error('❌ 調用 handleLogin 時發生錯誤:', error);
+                            const errorDiv = document.getElementById('loginError');
+                            if (errorDiv) {
+                                errorDiv.textContent = '登入時發生錯誤：' + (error.message || '請稍後再試');
+                                errorDiv.style.display = 'block';
+                            }
                         }
                     } else {
                         console.error('❌ handleLogin 函數不存在！');
-                        showLoginError();
+                        const errorDiv = document.getElementById('loginError');
+                        if (errorDiv) {
+                            errorDiv.textContent = '系統錯誤：登入功能無法使用，請重新整理頁面';
+                            errorDiv.style.display = 'block';
+                        }
                     }
                 });
                 console.log('✅ 登入表單事件監聽器已設定');
