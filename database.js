@@ -3041,6 +3041,7 @@ module.exports = {
     getAllEmailTemplates,
     getEmailTemplateByKey,
     updateEmailTemplate,
+    initEmailTemplates,
     // 自動郵件查詢
     getBookingsForPaymentReminder,
     getBookingsForCheckinReminder,
