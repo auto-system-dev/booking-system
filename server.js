@@ -5935,7 +5935,7 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
         content = content.replace(/\{\{#if accountName\}\}[\s\S]*?\{\{\/if\}\}/g, '');
     }
     
-    // 2. 處理中間層條件（addonsList, bankInfo）
+    // 2. 處理中間層條件（addonsList）
     const hasAddons = addonsList && addonsList.trim() !== '';
     content = processConditionalBlock(content, hasAddons, 'addonsList');
     
@@ -5957,11 +5957,18 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
             allFieldsEmpty: !bankInfo.bankName && !bankInfo.account && !bankInfo.bankBranch && !bankInfo.accountName
         } : null
     });
-    content = processConditionalBlock(content, hasBankInfo, 'bankInfo');
     
-    // 3. 處理外層條件（isDeposit, isTransfer）
+    // 3. 處理外層條件（isDeposit, isTransfer）- 先處理外層
     content = processConditionalBlock(content, isDeposit, 'isDeposit');
     content = processConditionalBlock(content, isTransfer, 'isTransfer');
+    
+    // 4. 處理 bankInfo（在 isTransfer 處理後，因為 bankInfo 在 isTransfer 內部）
+    // 記錄處理前的內容片段（用於調試）
+    const beforeBankInfo = content.substring(0, Math.min(500, content.length));
+    console.log('🔍 處理 bankInfo 前的內容片段:', beforeBankInfo);
+    content = processConditionalBlock(content, hasBankInfo, 'bankInfo');
+    const afterBankInfo = content.substring(0, Math.min(500, content.length));
+    console.log('🔍 處理 bankInfo 後的內容片段:', afterBankInfo);
     
     // 4. 最後清理：移除所有殘留的條件標籤（防止遺漏）
     // 這是最後一道防線，確保所有條件標籤都被移除
