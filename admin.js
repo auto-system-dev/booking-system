@@ -452,18 +452,12 @@ async function handleLogin(event) {
 }
 
 // 立即暴露 handleLogin 到全局（在函數定義後立即執行）
-// 使用多種方法確保函數設置成功，強制覆蓋預先聲明的函數
-(function exposeHandleLogin() {
-    'use strict';
-    console.log('🔧 開始暴露 handleLogin 函數到全局...');
-    console.log('🔧 handleLogin 函數類型:', typeof handleLogin);
-    console.log('🔧 handleLogin 函數是否為函數:', typeof handleLogin === 'function');
-    
-    if (typeof handleLogin !== 'function') {
-        console.error('❌ handleLogin 尚未定義，無法暴露');
-        return;
-    }
-    
+// 直接執行，不使用 IIFE，確保在正確的時機執行
+console.log('🔧 開始暴露 handleLogin 函數到全局...');
+console.log('🔧 handleLogin 函數類型:', typeof handleLogin);
+console.log('🔧 handleLogin 函數是否為函數:', typeof handleLogin === 'function');
+
+if (typeof handleLogin === 'function') {
     try {
         // 強制刪除舊的佔位符函數
         try {
@@ -517,7 +511,29 @@ async function handleLogin(event) {
             console.error('❌ 備用方法也失敗:', e2);
         }
     }
-})();
+} else {
+    console.error('❌ handleLogin 尚未定義，無法暴露。當前類型:', typeof handleLogin);
+    // 如果函數尚未定義，使用 setTimeout 延遲執行
+    setTimeout(function() {
+        if (typeof handleLogin === 'function') {
+            console.log('🔧 延遲執行：handleLogin 現在已定義，開始暴露...');
+            window.handleLogin = handleLogin;
+            try {
+                Object.defineProperty(window, 'handleLogin', {
+                    value: handleLogin,
+                    writable: true,
+                    configurable: true,
+                    enumerable: true
+                });
+            } catch (e) {
+                window.handleLogin = handleLogin;
+            }
+            console.log('✅ 延遲執行：handleLogin 已成功設置');
+        } else {
+            console.error('❌ 延遲執行：handleLogin 仍然未定義');
+        }
+    }, 0);
+}
 
 // 處理登出
 async function handleLogout() {
