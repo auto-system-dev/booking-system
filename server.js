@@ -5711,8 +5711,42 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
         console.log('✅ 郵件模板已自動修復，添加基本的 HTML 結構和樣式');
     }
     
-    const checkInDate = new Date(booking.check_in_date).toLocaleDateString('zh-TW');
-    const checkOutDate = new Date(booking.check_out_date).toLocaleDateString('zh-TW');
+    // 支援多種日期欄位格式（駝峰和底線）
+    const checkInDateValue = booking.check_in_date || booking.checkInDate;
+    const checkOutDateValue = booking.check_out_date || booking.checkOutDate;
+    
+    // 格式化日期，加入錯誤處理
+    let checkInDate = '';
+    let checkOutDate = '';
+    try {
+        if (checkInDateValue) {
+            const date = new Date(checkInDateValue);
+            if (!isNaN(date.getTime())) {
+                checkInDate = date.toLocaleDateString('zh-TW');
+            } else {
+                console.warn('⚠️ 入住日期格式無效:', checkInDateValue);
+                checkInDate = checkInDateValue; // 使用原始值
+            }
+        }
+    } catch (e) {
+        console.error('❌ 格式化入住日期失敗:', e);
+        checkInDate = checkInDateValue || '';
+    }
+    
+    try {
+        if (checkOutDateValue) {
+            const date = new Date(checkOutDateValue);
+            if (!isNaN(date.getTime())) {
+                checkOutDate = date.toLocaleDateString('zh-TW');
+            } else {
+                console.warn('⚠️ 退房日期格式無效:', checkOutDateValue);
+                checkOutDate = checkOutDateValue; // 使用原始值
+            }
+        }
+    } catch (e) {
+        console.error('❌ 格式化退房日期失敗:', e);
+        checkOutDate = checkOutDateValue || '';
+    }
     
     // 計算匯款到期日期（如果模板有保留天數設定）
     let paymentDeadline = '';
@@ -5728,11 +5762,13 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     const bankBranchDisplay = bankInfo && bankInfo.bankBranch ? ' - ' + bankInfo.bankBranch : '';
     
     // 判斷是否為訂金支付（檢查 payment_amount 欄位是否包含「訂金」）
-    const isDeposit = booking.payment_amount && booking.payment_amount.includes('訂金');
+    // 先取得 paymentAmount，稍後在 variables 中使用
+    const paymentAmount = booking.payment_amount || booking.paymentAmount || '';
+    const isDeposit = paymentAmount && paymentAmount.includes('訂金');
     
-    // 計算剩餘尾款金額
-    const totalAmount = booking.total_amount || 0;
-    const finalAmount = booking.final_amount || 0;
+    // 計算剩餘尾款金額（支援多種格式）
+    const totalAmount = booking.total_amount || booking.totalAmount || 0;
+    const finalAmount = booking.final_amount || booking.finalAmount || 0;
     const remainingAmount = totalAmount - finalAmount;
     
     // 處理加購商品顯示
@@ -5757,30 +5793,62 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
         }
     }
     
-    // 計算住宿天數
+    // 計算住宿天數（使用已解析的日期值）
     const msPerDay = 1000 * 60 * 60 * 24;
-    const nights = Math.max(1, Math.round((new Date(booking.check_out_date) - new Date(booking.check_in_date)) / msPerDay));
+    let nights = 1;
+    try {
+        if (checkInDateValue && checkOutDateValue) {
+            const checkIn = new Date(checkInDateValue);
+            const checkOut = new Date(checkOutDateValue);
+            if (!isNaN(checkIn.getTime()) && !isNaN(checkOut.getTime())) {
+                nights = Math.max(1, Math.round((checkOut - checkIn) / msPerDay));
+            }
+        }
+    } catch (e) {
+        console.error('❌ 計算住宿天數失敗:', e);
+        nights = booking.nights || 1; // 使用傳入的 nights 值作為備用
+    }
     
-    // 計算訂房編號後5碼
-    const bookingIdLast5 = booking.booking_id ? booking.booking_id.slice(-5) : '';
+    // 計算訂房編號後5碼（支援多種格式）
+    const bookingId = booking.booking_id || booking.bookingId || '';
+    const bookingIdLast5 = bookingId ? bookingId.slice(-5) : '';
     
-    // 判斷是否為匯款轉帳
-    const isTransfer = booking.payment_method === '匯款轉帳' || booking.payment_method === 'transfer';
+    // 判斷是否為匯款轉帳（支援多種格式）
+    const paymentMethodValue = booking.payment_method || booking.paymentMethod || '';
+    const isTransfer = paymentMethodValue === '匯款轉帳' || paymentMethodValue === 'transfer';
     
-    // 格式化日期時間
-    const bookingDate = booking.created_at ? new Date(booking.created_at).toLocaleDateString('zh-TW') : '';
-    const bookingDateTime = booking.created_at ? new Date(booking.created_at).toLocaleString('zh-TW') : '';
+    // 格式化日期時間（支援多種格式）
+    const createdAt = booking.created_at || booking.createdAt || booking.bookingDate;
+    let bookingDate = '';
+    let bookingDateTime = '';
+    if (createdAt) {
+        try {
+            const date = new Date(createdAt);
+            if (!isNaN(date.getTime())) {
+                bookingDate = date.toLocaleDateString('zh-TW');
+                bookingDateTime = date.toLocaleString('zh-TW');
+            }
+        } catch (e) {
+            console.error('❌ 格式化訂房日期失敗:', e);
+        }
+    }
     
-    // 格式化價格
-    const pricePerNight = booking.price_per_night || 0;
+    // 格式化價格（支援多種格式）
+    const pricePerNight = booking.price_per_night || booking.pricePerNight || 0;
+    
+    // 支援多種欄位格式（駝峰和底線）
+    const guestName = booking.guest_name || booking.guestName || '';
+    const roomType = booking.room_type || booking.roomType || '';
+    const guestPhone = booking.guest_phone || booking.guestPhone || '';
+    const guestEmail = booking.guest_email || booking.guestEmail || '';
     
     const variables = {
-        '{{guestName}}': booking.guest_name || '',
-        '{{bookingId}}': booking.booking_id || '',
+        '{{guestName}}': guestName,
+        '{{bookingId}}': bookingId,
         '{{bookingIdLast5}}': bookingIdLast5,
         '{{checkInDate}}': checkInDate,
         '{{checkOutDate}}': checkOutDate,
-        '{{roomType}}': booking.room_type || '',
+        '{{roomType}}': roomType,
         '{{nights}}': nights.toString(),
         '{{pricePerNight}}': pricePerNight.toLocaleString(),
         '{{totalAmount}}': totalAmount.toLocaleString(),
@@ -5795,10 +5863,10 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
         '{{paymentDeadline}}': paymentDeadline,
         '{{addonsList}}': addonsList,
         '{{addonsTotal}}': addonsTotal.toLocaleString(),
-        '{{paymentMethod}}': booking.payment_method || '',
-        '{{paymentAmount}}': booking.payment_amount || '',
-        '{{guestPhone}}': booking.guest_phone || '',
-        '{{guestEmail}}': booking.guest_email || '',
+        '{{paymentMethod}}': paymentMethodValue,
+        '{{paymentAmount}}': paymentAmount,
+        '{{guestPhone}}': guestPhone,
+        '{{guestEmail}}': guestEmail,
         '{{bookingDate}}': bookingDate,
         '{{bookingDateTime}}': bookingDateTime,
         ...additionalData // 合併額外的變數
