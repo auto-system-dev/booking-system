@@ -4430,6 +4430,20 @@ async function showEmailTemplateModal(templateKey) {
                 let attempts = 0;
                 const maxAttempts = 50; // 最多嘗試 50 次（5 秒）
                 
+                // 檢查函數是否已定義且不是臨時函數
+                const isFunctionReady = (fn) => {
+                    if (typeof fn !== 'function') {
+                        return false;
+                    }
+                    const fnString = fn.toString();
+                    // 檢查是否是臨時函數（臨時函數的特徵：包含特定錯誤訊息且函數體很短）
+                    // 臨時函數通常只有幾行，包含「尚未載入」或「功能載入中」
+                    const isTemporaryFunction = (fnString.includes('尚未載入') || 
+                                                 fnString.includes('功能載入中')) &&
+                                                 fnString.length < 200; // 臨時函數通常很短
+                    return !isTemporaryFunction;
+                };
+                
                 const resolveSendTestEmail = () => {
                     if (typeof sendTestEmail === 'function' && sendTestEmail !== window.sendTestEmail) {
                         return sendTestEmail;
@@ -4442,20 +4456,6 @@ async function showEmailTemplateModal(templateKey) {
                 
                 function setupSendTestEmailListener() {
                     attempts++;
-                    
-                    // 檢查函數是否已定義且不是臨時函數
-                    const isFunctionReady = (fn) => {
-                        if (typeof fn !== 'function') {
-                            return false;
-                        }
-                        const fnString = fn.toString();
-                        // 檢查是否是臨時函數（臨時函數的特徵：包含特定錯誤訊息且函數體很短）
-                        // 臨時函數通常只有幾行，包含「尚未載入」或「功能載入中」
-                        const isTemporaryFunction = (fnString.includes('尚未載入') || 
-                                                     fnString.includes('功能載入中')) &&
-                                                     fnString.length < 200; // 臨時函數通常很短
-                        return !isTemporaryFunction;
-                    };
                     
                     // 優先檢查 window.sendTestEmail（全局作用域），失敗則回退到本地函數
                     if (resolveSendTestEmail()) {
