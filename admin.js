@@ -335,7 +335,6 @@ function showAdminPage(admin) {
 
 // 處理登入
 // 直接定義為 window.handleLogin，確保立即可用
-// 直接定義為 window.handleLogin，確保立即可用
 window.handleLogin = async function handleLogin(event) {
     if (event) {
         event.preventDefault();
