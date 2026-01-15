@@ -1,5 +1,8 @@
 // 管理後台 JavaScript
 
+// 立即確認腳本開始執行
+console.log('🚀 admin.js 腳本開始執行', new Date().toISOString());
+
 // 立即設置關鍵函數到 window，確保在任何其他代碼執行前就可用
 // 使用最簡單的方式，不依賴任何其他代碼
 // 強制設置，不使用 || 運算符，確保函數一定會被設置
@@ -90,6 +93,9 @@ if (typeof window !== 'undefined') {
 } else {
     console.error('❌ window 對象不存在，無法設置 handleLogin');
 }
+
+// 立即確認 window.handleLogin 是否已設置
+console.log('🔍 [腳本開頭] window.handleLogin 狀態:', typeof window.handleLogin);
 
 // 立即執行，確認腳本已載入
 console.log('✅ admin.js 腳本已載入', new Date().toISOString());
