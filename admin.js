@@ -4430,6 +4430,16 @@ async function showEmailTemplateModal(templateKey) {
                 let attempts = 0;
                 const maxAttempts = 50; // 最多嘗試 50 次（5 秒）
                 
+                const resolveSendTestEmail = () => {
+                    if (typeof sendTestEmail === 'function' && sendTestEmail !== window.sendTestEmail) {
+                        return sendTestEmail;
+                    }
+                    if (isFunctionReady(window.sendTestEmail)) {
+                        return window.sendTestEmail;
+                    }
+                    return null;
+                };
+                
                 function setupSendTestEmailListener() {
                     attempts++;
                     
@@ -4447,32 +4457,25 @@ async function showEmailTemplateModal(templateKey) {
                         return !isTemporaryFunction;
                     };
                     
-                    const forcingLocalSendTestEmail = () => {
-                        if (typeof sendTestEmail === 'function' && sendTestEmail !== window.sendTestEmail) {
-                            return sendTestEmail;
-                        }
-                        if (isFunctionReady(window.sendTestEmail)) {
-                            return window.sendTestEmail;
-                        }
-                        return null;
-                    };
-                    
-                    const readySendTestEmail = forcingLocalSendTestEmail();
-                    
                     // 優先檢查 window.sendTestEmail（全局作用域），失敗則回退到本地函數
-                    if (readySendTestEmail) {
+                    if (resolveSendTestEmail()) {
                         newBtn.addEventListener('click', function(e) {
                             e.preventDefault();
                             e.stopPropagation();
                             try {
-                                readySendTestEmail();
+                                const fn = resolveSendTestEmail();
+                                if (fn) {
+                                    fn();
+                                    return;
+                                }
+                                throw new Error('sendTestEmail 函數尚未載入');
                             } catch (error) {
                                 console.error('❌ 調用 sendTestEmail 時發生錯誤:', error);
                                 alert('發送測試郵件時發生錯誤：' + error.message);
                             }
                         });
                         console.log('✅ sendTestEmail 按鈕事件監聽器已設置', {
-                            from: readySendTestEmail === window.sendTestEmail ? 'window' : 'local'
+                            from: resolveSendTestEmail() === window.sendTestEmail ? 'window' : 'local'
                         });
                         return true;
                     } else if (attempts < maxAttempts) {
@@ -4499,7 +4502,7 @@ async function showEmailTemplateModal(templateKey) {
                             e.preventDefault();
                             e.stopPropagation();
                             // 再次檢查函數是否已載入
-                            const fallbackSendTestEmail = forcingLocalSendTestEmail();
+                            const fallbackSendTestEmail = resolveSendTestEmail();
                             if (fallbackSendTestEmail) {
                                 try {
                                     fallbackSendTestEmail();
