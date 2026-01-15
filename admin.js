@@ -15,10 +15,26 @@ if (typeof window !== 'undefined') {
         }
         
         console.warn('⚠️ handleLogin 函數尚未完全載入，請稍候...');
-        // 如果函數已經定義，立即調用
-        if (typeof handleLogin === 'function' && handleLogin !== window.handleLogin) {
-            console.log('✅ 找到真正的 handleLogin 函數，立即調用');
-            return handleLogin(event);
+        // 檢查全局作用域中是否有 handleLogin 函數（可能已經被提升）
+        // 使用 try-catch 來安全地檢查
+        let realHandleLogin = null;
+        try {
+            // 嘗試從全局作用域獲取
+            if (typeof handleLogin === 'function') {
+                const realFnString = handleLogin.toString();
+                if (!realFnString.includes('尚未完全載入')) {
+                    realHandleLogin = handleLogin;
+                }
+            }
+        } catch (e) {
+            // 忽略錯誤
+        }
+        
+        if (realHandleLogin && realHandleLogin !== window.handleLogin) {
+            console.log('✅ 找到真正的 handleLogin 函數，立即調用並覆蓋');
+            // 立即覆蓋並調用
+            window.handleLogin = realHandleLogin;
+            return realHandleLogin(event);
         }
         // 否則等待函數載入（使用輪詢機制，最多等待 2 秒）
         let attempts = 0;
@@ -37,12 +53,20 @@ if (typeof window !== 'undefined') {
                 return;
             }
             
-            // 檢查本地函數是否已定義
-            if (typeof handleLogin === 'function' && handleLogin !== window.handleLogin) {
-                console.log('✅ 找到真正的 handleLogin 函數，調用');
-                clearInterval(checkInterval);
-                handleLogin(event);
-                return;
+            // 檢查全局作用域中是否有 handleLogin 函數
+            try {
+                if (typeof handleLogin === 'function') {
+                    const realFnString = handleLogin.toString();
+                    if (!realFnString.includes('尚未完全載入') && handleLogin !== window.handleLogin) {
+                        console.log('✅ 找到真正的 handleLogin 函數，調用並覆蓋');
+                        clearInterval(checkInterval);
+                        window.handleLogin = handleLogin; // 立即覆蓋
+                        handleLogin(event);
+                        return;
+                    }
+                }
+            } catch (e) {
+                // 忽略錯誤
             }
             
             // 超過最大嘗試次數
@@ -290,9 +314,21 @@ function showAdminPage(admin) {
 
 // 處理登入
 async function handleLogin(event) {
-    // 確保函數在定義時立即設置到 window（備用方案）
-    if (typeof window !== 'undefined' && !window.handleLogin || window.handleLogin !== handleLogin) {
+    // 確保函數在定義時立即設置到 window（強制覆蓋預先聲明的函數）
+    if (typeof window !== 'undefined') {
+        // 強制覆蓋，不管之前是什麼
         window.handleLogin = handleLogin;
+        try {
+            Object.defineProperty(window, 'handleLogin', {
+                value: handleLogin,
+                writable: true,
+                configurable: true,
+                enumerable: true
+            });
+        } catch (e) {
+            // 如果失敗，至少直接賦值
+            window.handleLogin = handleLogin;
+        }
     }
     if (event) {
         event.preventDefault();
@@ -417,8 +453,8 @@ async function handleLogin(event) {
 
 // 立即暴露 handleLogin 到全局（在函數定義後立即執行）
 // 使用多種方法確保函數設置成功，強制覆蓋預先聲明的函數
-(function() {
-    'use strict';
+// 不使用 IIFE，直接執行，確保在正確的時機
+try {
     // 強制刪除舊的佔位符函數
     try {
         delete window.handleLogin;
@@ -453,7 +489,11 @@ async function handleLogin(event) {
     } else {
         console.log('✅ handleLogin 已成功設置到 window.handleLogin，長度:', currentFnString.length);
     }
-})();
+} catch (e) {
+    console.error('❌ 設置 handleLogin 時發生錯誤:', e);
+    // 如果失敗，至少嘗試直接賦值
+    window.handleLogin = handleLogin;
+}
 
 // 處理登出
 async function handleLogout() {
