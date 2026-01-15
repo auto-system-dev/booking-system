@@ -5617,6 +5617,17 @@ async function generateEmailFromTemplate(templateKey, booking, bankInfo = null, 
 async function replaceTemplateVariables(template, booking, bankInfo = null, additionalData = {}) {
     let content = template.content;
     
+    // 日誌：確認 bankInfo 是否正確傳遞
+    console.log('🔍 replaceTemplateVariables - bankInfo 檢查:', {
+        hasBankInfo: !!bankInfo,
+        bankInfo: bankInfo ? {
+            bankName: bankInfo.bankName || '(空)',
+            bankBranch: bankInfo.bankBranch || '(空)',
+            account: bankInfo.account ? bankInfo.account.substring(0, 4) + '...' : '(空)',
+            accountName: bankInfo.accountName || '(空)'
+        } : null
+    });
+    
     // 確保模板包含完整的 HTML 結構和 CSS 樣式
     // 檢查是否包含完整的 HTML 結構
     const hasFullHtmlStructure = content.includes('<!DOCTYPE html>') || 
@@ -5919,7 +5930,17 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     const hasAddons = addonsList && addonsList.trim() !== '';
     content = processConditionalBlock(content, hasAddons, 'addonsList');
     
-    const hasBankInfo = bankInfo && bankInfo.account;
+    // 判斷是否有匯款資訊（檢查 bankName 或 account 任一有值即可）
+    const hasBankInfo = bankInfo && (bankInfo.bankName || bankInfo.account);
+    console.log('🔍 檢查匯款資訊:', {
+        hasBankInfo,
+        bankInfo: bankInfo ? {
+            bankName: bankInfo.bankName,
+            bankBranch: bankInfo.bankBranch,
+            account: bankInfo.account ? bankInfo.account.substring(0, 4) + '...' : '(空)',
+            accountName: bankInfo.accountName
+        } : null
+    });
     content = processConditionalBlock(content, hasBankInfo, 'bankInfo');
     
     // 3. 處理外層條件（isDeposit, isTransfer）
