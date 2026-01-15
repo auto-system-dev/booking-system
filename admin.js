@@ -313,23 +313,8 @@ function showAdminPage(admin) {
 }
 
 // 處理登入
-async function handleLogin(event) {
-    // 確保函數在定義時立即設置到 window（強制覆蓋預先聲明的函數）
-    if (typeof window !== 'undefined') {
-        // 強制覆蓋，不管之前是什麼
-        window.handleLogin = handleLogin;
-        try {
-            Object.defineProperty(window, 'handleLogin', {
-                value: handleLogin,
-                writable: true,
-                configurable: true,
-                enumerable: true
-            });
-        } catch (e) {
-            // 如果失敗，至少直接賦值
-            window.handleLogin = handleLogin;
-        }
-    }
+// 直接定義為 window.handleLogin，確保立即可用
+window.handleLogin = async function handleLogin(event) {
     if (event) {
         event.preventDefault();
     }
@@ -451,88 +436,18 @@ async function handleLogin(event) {
     }
 }
 
-// 立即暴露 handleLogin 到全局（在函數定義後立即執行）
-// 直接執行，不使用 IIFE，確保在正確的時機執行
-console.log('🔧 開始暴露 handleLogin 函數到全局...');
-console.log('🔧 handleLogin 函數類型:', typeof handleLogin);
-console.log('🔧 handleLogin 函數是否為函數:', typeof handleLogin === 'function');
-
-if (typeof handleLogin === 'function') {
-    try {
-        // 強制刪除舊的佔位符函數
-        try {
-            delete window.handleLogin;
-            console.log('🔧 已刪除舊的 window.handleLogin');
-        } catch (e) {
-            console.warn('⚠️ 刪除舊的 window.handleLogin 時發生錯誤:', e);
-        }
-        
-        // 方法 1: 直接賦值（多次確保成功）
-        window.handleLogin = handleLogin;
-        window.handleLogin = handleLogin; // 再次設置確保成功
-        console.log('🔧 已通過直接賦值設置 window.handleLogin');
-        
-        // 方法 2: 使用 defineProperty 強制覆蓋
-        try {
-            Object.defineProperty(window, 'handleLogin', {
-                value: handleLogin,
-                writable: true,
-                configurable: true,
-                enumerable: true
-            });
-            console.log('🔧 已通過 defineProperty 設置 window.handleLogin');
-        } catch (e) {
-            console.warn('⚠️ defineProperty 設置失敗，使用直接賦值:', e);
-            window.handleLogin = handleLogin;
-        }
-        
-        // 確認設置成功
-        const currentFn = window.handleLogin;
-        const currentFnString = currentFn && typeof currentFn === 'function' ? currentFn.toString() : '';
-        const isPlaceholder = currentFnString.includes('尚未完全載入');
-        
-        if (isPlaceholder) {
-            console.error('❌ handleLogin 設置失敗，仍然是佔位符函數');
-            console.error('❌ 當前函數長度:', currentFnString.length);
-            console.error('❌ 當前函數前 200 字:', currentFnString.substring(0, 200));
-        } else {
-            console.log('✅ handleLogin 已成功設置到 window.handleLogin');
-            console.log('✅ 函數長度:', currentFnString.length);
-            console.log('✅ 函數前 100 字:', currentFnString.substring(0, 100));
-        }
-    } catch (e) {
-        console.error('❌ 設置 handleLogin 時發生錯誤:', e);
-        console.error('❌ 錯誤堆疊:', e.stack);
-        // 如果失敗，至少嘗試直接賦值
-        try {
-            window.handleLogin = handleLogin;
-            console.log('🔧 已通過備用方法設置 window.handleLogin');
-        } catch (e2) {
-            console.error('❌ 備用方法也失敗:', e2);
-        }
+// handleLogin 已直接定義為 window.handleLogin，無需額外暴露
+// 確認函數已正確設置
+if (typeof window.handleLogin === 'function') {
+    const fnString = window.handleLogin.toString();
+    const isPlaceholder = fnString.includes('尚未完全載入');
+    if (!isPlaceholder) {
+        console.log('✅ handleLogin 已成功設置到 window.handleLogin');
+    } else {
+        console.error('❌ handleLogin 仍然是佔位符函數');
     }
 } else {
-    console.error('❌ handleLogin 尚未定義，無法暴露。當前類型:', typeof handleLogin);
-    // 如果函數尚未定義，使用 setTimeout 延遲執行
-    setTimeout(function() {
-        if (typeof handleLogin === 'function') {
-            console.log('🔧 延遲執行：handleLogin 現在已定義，開始暴露...');
-            window.handleLogin = handleLogin;
-            try {
-                Object.defineProperty(window, 'handleLogin', {
-                    value: handleLogin,
-                    writable: true,
-                    configurable: true,
-                    enumerable: true
-                });
-            } catch (e) {
-                window.handleLogin = handleLogin;
-            }
-            console.log('✅ 延遲執行：handleLogin 已成功設置');
-        } else {
-            console.error('❌ 延遲執行：handleLogin 仍然未定義');
-        }
-    }, 0);
+    console.error('❌ handleLogin 設置失敗');
 }
 
 // 處理登出
