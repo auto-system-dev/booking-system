@@ -1100,6 +1100,15 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
             // 發送確認郵件給客戶（匯款轉帳）- 使用數據庫模板
             let customerMailOptions = null;
             try {
+                console.log('📧 準備發送訂房確認郵件（匯款轉帳）');
+                console.log('🔍 bankInfo 內容:', JSON.stringify(bankInfo, null, 2));
+                console.log('🔍 bankInfo 檢查:', {
+                    exists: !!bankInfo,
+                    hasBankName: !!(bankInfo && bankInfo.bankName && bankInfo.bankName.trim()),
+                    hasAccount: !!(bankInfo && bankInfo.account && bankInfo.account.trim()),
+                    hasBankBranch: !!(bankInfo && bankInfo.bankBranch && bankInfo.bankBranch.trim()),
+                    hasAccountName: !!(bankInfo && bankInfo.accountName && bankInfo.accountName.trim())
+                });
                 const { subject, content } = await generateEmailFromTemplate('booking_confirmation', bookingData, bankInfo);
                 customerMailOptions = {
                     from: emailUser,
@@ -5930,15 +5939,22 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     const hasAddons = addonsList && addonsList.trim() !== '';
     content = processConditionalBlock(content, hasAddons, 'addonsList');
     
-    // 判斷是否有匯款資訊（檢查 bankName 或 account 任一有值即可）
-    const hasBankInfo = bankInfo && (bankInfo.bankName || bankInfo.account);
+    // 判斷是否有匯款資訊（檢查至少有一個非空欄位）
+    // 需要檢查欄位是否存在且不是空字串
+    const hasBankInfo = bankInfo && (
+        (bankInfo.bankName && bankInfo.bankName.trim() !== '') ||
+        (bankInfo.account && bankInfo.account.trim() !== '') ||
+        (bankInfo.bankBranch && bankInfo.bankBranch.trim() !== '') ||
+        (bankInfo.accountName && bankInfo.accountName.trim() !== '')
+    );
     console.log('🔍 檢查匯款資訊:', {
         hasBankInfo,
         bankInfo: bankInfo ? {
-            bankName: bankInfo.bankName,
-            bankBranch: bankInfo.bankBranch,
-            account: bankInfo.account ? bankInfo.account.substring(0, 4) + '...' : '(空)',
-            accountName: bankInfo.accountName
+            bankName: bankInfo.bankName || '(空)',
+            bankBranch: bankInfo.bankBranch || '(空)',
+            account: bankInfo.account ? (bankInfo.account.length > 4 ? bankInfo.account.substring(0, 4) + '...' : bankInfo.account) : '(空)',
+            accountName: bankInfo.accountName || '(空)',
+            allFieldsEmpty: !bankInfo.bankName && !bankInfo.account && !bankInfo.bankBranch && !bankInfo.accountName
         } : null
     });
     content = processConditionalBlock(content, hasBankInfo, 'bankInfo');
