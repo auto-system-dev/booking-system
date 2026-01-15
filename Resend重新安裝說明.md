@@ -168,3 +168,4 @@ npm install resend@6.7.0 --save-exact
 3. 伺服器日誌中的錯誤訊息
 4. 瀏覽器控制台的錯誤訊息
 
+
