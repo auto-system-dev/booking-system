@@ -4851,35 +4851,7 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
 // API: 重置郵件模板為預設文字樣式
 app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, async (req, res) => {
     try {
-        // 先確保數據庫中有最新的預設模板
-        const { initEmailTemplates } = require('./database');
-        await initEmailTemplates();
-        
-        // 從數據庫讀取預設模板
-        const templateKeys = ['payment_reminder', 'checkin_reminder', 'feedback_request', 
-                              'booking_confirmation', 'booking_confirmation_admin', 
-                              'payment_completed', 'cancel_notification'];
-        const defaultTemplates = [];
-        
-        for (const key of templateKeys) {
-            const template = await db.getEmailTemplateByKey(key);
-            if (template) {
-                defaultTemplates.push({
-                    key: template.template_key,
-                    name: template.template_name,
-                    subject: template.subject,
-                    content: template.content,
-                    days_before_checkin: template.days_before_checkin,
-                    send_hour_checkin: template.send_hour_checkin,
-                    days_after_checkout: template.days_after_checkout,
-                    send_hour_feedback: template.send_hour_feedback,
-                    days_reserved: template.days_reserved,
-                    send_hour_payment_reminder: template.send_hour_payment_reminder
-                });
-            }
-        }
-        
-        // 如果從數據庫讀取失敗，使用備用模板（已更新為文字樣式）
+        // 直接使用圖卡樣式的備用模板來重置（不調用 initEmailTemplates，因為它會使用文字樣式）
         const fallbackTemplates = [
             {
                 key: 'payment_reminder',
@@ -5542,6 +5514,9 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
         // 檢查是否指定了單個模板重置
         const { templateKey } = req.body;
         
+        // 使用圖卡樣式的備用模板
+        const defaultTemplates = fallbackTemplates;
+        
         if (templateKey) {
             // 只重置指定的模板
             const template = defaultTemplates.find(t => t.key === templateKey);
@@ -5567,10 +5542,10 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             
             res.json({
                 success: true,
-                message: `郵件模板「${template.name}」已重置為預設文字樣式`
+                message: `郵件模板「${template.name}」已重置為預設的圖卡樣式`
             });
         } else {
-            // 更新所有模板為預設文字樣式
+            // 更新所有模板為預設圖卡樣式
             for (const template of defaultTemplates) {
                 await db.updateEmailTemplate(template.key, {
                     template_name: template.name,
@@ -5588,7 +5563,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             
             res.json({
                 success: true,
-                message: '所有郵件模板已重置為預設文字樣式'
+                message: '所有郵件模板已重置為預設的圖卡樣式'
             });
         }
     } catch (error) {
