@@ -20,21 +20,35 @@ if (typeof window !== 'undefined') {
             console.log('✅ 找到真正的 handleLogin 函數，立即調用');
             return handleLogin(event);
         }
-        // 否則等待函數載入
-        setTimeout(function() {
-            // 再次檢查 window.handleLogin 是否已被覆蓋
+        // 否則等待函數載入（使用輪詢機制，最多等待 2 秒）
+        let attempts = 0;
+        const maxAttempts = 20; // 20 次 * 100ms = 2 秒
+        
+        const checkInterval = setInterval(function() {
+            attempts++;
+            
+            // 檢查 window.handleLogin 是否已被覆蓋
             const checkFn = window.handleLogin;
             const checkFnString = checkFn.toString();
             if (!checkFnString.includes('尚未完全載入')) {
-                console.log('✅ 延遲後找到真正的 handleLogin 函數，調用');
-                return checkFn(event);
+                console.log('✅ 找到真正的 handleLogin 函數，調用');
+                clearInterval(checkInterval);
+                checkFn(event);
+                return;
             }
             
+            // 檢查本地函數是否已定義
             if (typeof handleLogin === 'function' && handleLogin !== window.handleLogin) {
-                console.log('✅ 延遲後找到真正的 handleLogin 函數，調用');
+                console.log('✅ 找到真正的 handleLogin 函數，調用');
+                clearInterval(checkInterval);
                 handleLogin(event);
-            } else {
-                console.error('❌ handleLogin 函數載入失敗');
+                return;
+            }
+            
+            // 超過最大嘗試次數
+            if (attempts >= maxAttempts) {
+                clearInterval(checkInterval);
+                console.error('❌ handleLogin 函數載入失敗（超時）');
                 const errorDiv = document.getElementById('loginError');
                 if (errorDiv) {
                     errorDiv.textContent = '系統錯誤：登入功能無法使用，請重新整理頁面';
@@ -402,22 +416,44 @@ async function handleLogin(event) {
 }
 
 // 立即暴露 handleLogin 到全局（在函數定義後立即執行）
-// 使用多種方法確保函數設置成功
-try {
+// 使用多種方法確保函數設置成功，強制覆蓋預先聲明的函數
+(function() {
+    'use strict';
+    // 強制刪除舊的佔位符函數
+    try {
+        delete window.handleLogin;
+    } catch (e) {
+        // 忽略刪除錯誤
+    }
+    
+    // 方法 1: 直接賦值（多次確保成功）
     window.handleLogin = handleLogin;
-    // 使用 defineProperty 確保可配置
-    Object.defineProperty(window, 'handleLogin', {
-        value: handleLogin,
-        writable: true,
-        configurable: true,
-        enumerable: true
-    });
-    console.log('✅ handleLogin 已設置到 window.handleLogin');
-} catch (e) {
-    console.error('❌ 設置 handleLogin 失敗:', e);
-    // 如果失敗，至少嘗試直接賦值
-    window.handleLogin = handleLogin;
-}
+    window.handleLogin = handleLogin; // 再次設置確保成功
+    
+    // 方法 2: 使用 defineProperty 強制覆蓋
+    try {
+        Object.defineProperty(window, 'handleLogin', {
+            value: handleLogin,
+            writable: true,
+            configurable: true,
+            enumerable: true
+        });
+    } catch (e) {
+        // 如果失敗，再次直接賦值
+        window.handleLogin = handleLogin;
+    }
+    
+    // 確認設置成功
+    const currentFn = window.handleLogin;
+    const currentFnString = currentFn && typeof currentFn === 'function' ? currentFn.toString() : '';
+    const isPlaceholder = currentFnString.includes('尚未完全載入');
+    
+    if (isPlaceholder) {
+        console.error('❌ handleLogin 設置失敗，仍然是佔位符函數');
+    } else {
+        console.log('✅ handleLogin 已成功設置到 window.handleLogin，長度:', currentFnString.length);
+    }
+})();
 
 // 處理登出
 async function handleLogout() {
