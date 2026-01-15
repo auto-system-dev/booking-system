@@ -6934,10 +6934,7 @@ function closeEmailTemplateModal() {
     const textarea = document.getElementById('emailTemplateContent');
     const previewArea = document.getElementById('emailPreviewArea');
     const previewBtnText = document.getElementById('previewBtnText');
-}
-
-// 立即暴露 closeEmailTemplateModal 到全局作用域
-window.closeEmailTemplateModal = closeEmailTemplateModal;
+    
     if (editorContainer && textarea) {
         editorContainer.style.display = 'block';
         textarea.style.display = 'none';
