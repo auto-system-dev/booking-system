@@ -4421,26 +4421,134 @@ async function showEmailTemplateModal(templateKey) {
                 newBtn.addEventListener('click', async function(e) {
                     e.preventDefault();
                     e.stopPropagation();
+                    
+                    // 直接內聯發送邏輯，避免作用域問題
+                    const testEmailInput = document.getElementById('testEmailAddress');
+                    const testEmailBtn = newBtn; // 使用當前按鈕
+                    const testEmailStatus = document.getElementById('testEmailStatus');
+                    const form = document.getElementById('emailTemplateForm');
+                    const templateKey = form ? form.dataset.templateKey : null;
+                    
+                    if (!templateKey) {
+                        alert('找不到模板代碼');
+                        return;
+                    }
+                    
+                    const email = testEmailInput ? testEmailInput.value.trim() : '';
+                    if (!email) {
+                        if (testEmailStatus) {
+                            testEmailStatus.style.display = 'block';
+                            testEmailStatus.style.color = '#e74c3c';
+                            testEmailStatus.textContent = '請輸入 Email 地址';
+                        }
+                        return;
+                    }
+                    
+                    // Email 格式驗證
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(email)) {
+                        if (testEmailStatus) {
+                            testEmailStatus.style.display = 'block';
+                            testEmailStatus.style.color = '#e74c3c';
+                            testEmailStatus.textContent = '請輸入有效的 Email 地址';
+                        }
+                        return;
+                    }
+                    
+                    // 禁用按鈕並顯示載入狀態
+                    testEmailBtn.disabled = true;
+                    testEmailBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">hourglass_empty</span>發送中...';
+                    if (testEmailStatus) {
+                        testEmailStatus.style.display = 'none';
+                    }
+                    
                     try {
-                        // 優先使用本地函數（函數提升，應該可用）
-                        if (typeof sendTestEmail === 'function') {
-                            await sendTestEmail();
-                            return;
-                        }
-                        // 備用：使用 window.sendTestEmail（但檢查是否為佔位符）
-                        if (typeof window.sendTestEmail === 'function') {
-                            const fnString = window.sendTestEmail.toString();
-                            // 如果是佔位符函數，不調用
-                            if (fnString.includes('尚未載入') || fnString.includes('功能載入中')) {
-                                throw new Error('sendTestEmail 函數尚未載入（佔位符）');
+                        // 獲取模板內容
+                        let content = '';
+                        const contentEl = document.getElementById('emailTemplateContent');
+                        const subjectEl = document.getElementById('emailTemplateSubject');
+                        const subject = subjectEl ? subjectEl.value : '';
+                        
+                        if (typeof isHtmlMode !== 'undefined' && isHtmlMode && contentEl) {
+                            content = contentEl.value;
+                        } else if (typeof quillEditor !== 'undefined' && quillEditor) {
+                            const quillHtml = quillEditor.root.innerHTML;
+                            const originalContent = contentEl ? contentEl.value : '';
+                            
+                            if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
+                                if (originalContent.includes('<body>')) {
+                                    content = originalContent.replace(
+                                        /<body[^>]*>[\s\S]*?<\/body>/i,
+                                        `<body>${quillHtml}</body>`
+                                    );
+                                } else {
+                                    content = originalContent;
+                                }
+                            } else {
+                                // 從 API 獲取模板
+                                try {
+                                    const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
+                                    const templateResult = await templateResponse.json();
+                                    if (templateResult.success && templateResult.data) {
+                                        const templateContent = templateResult.data.content;
+                                        if (templateContent && templateContent.includes('<body>')) {
+                                            content = templateContent.replace(
+                                                /<body[^>]*>[\s\S]*?<\/body>/i,
+                                                `<body>${quillHtml}</body>`
+                                            );
+                                        } else {
+                                            content = templateContent;
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.error('獲取模板內容失敗:', e);
+                                }
                             }
-                            await window.sendTestEmail();
-                            return;
                         }
-                        throw new Error('sendTestEmail 函數尚未載入');
+                        
+                        // 發送測試郵件
+                        const response = await fetch(`/api/email-templates/${templateKey}/test`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                email: email,
+                                useEditorContent: true,
+                                subject: subject,
+                                content: content
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            if (testEmailStatus) {
+                                testEmailStatus.style.display = 'block';
+                                testEmailStatus.style.color = '#27ae60';
+                                testEmailStatus.textContent = '✅ 測試郵件已成功發送！請檢查收件箱。';
+                            }
+                            if (testEmailInput) {
+                                testEmailInput.value = '';
+                            }
+                        } else {
+                            if (testEmailStatus) {
+                                testEmailStatus.style.display = 'block';
+                                testEmailStatus.style.color = '#e74c3c';
+                                testEmailStatus.textContent = '❌ 發送失敗：' + (result.message || '未知錯誤');
+                            }
+                        }
                     } catch (error) {
-                        console.error('❌ 調用 sendTestEmail 時發生錯誤:', error);
-                        alert('發送測試郵件時發生錯誤：' + error.message);
+                        console.error('發送測試郵件時發生錯誤:', error);
+                        if (testEmailStatus) {
+                            testEmailStatus.style.display = 'block';
+                            testEmailStatus.style.color = '#e74c3c';
+                            testEmailStatus.textContent = '❌ 發送失敗：' + error.message;
+                        }
+                    } finally {
+                        // 恢復按鈕狀態
+                        testEmailBtn.disabled = false;
+                        testEmailBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">send</span>發送測試郵件';
                     }
                 });
                 
