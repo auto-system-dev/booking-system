@@ -5911,6 +5911,12 @@ async function resetCurrentTemplateToDefault() {
     }
 }
 
+// 立即暴露 resetCurrentTemplateToDefault 到全局作用域
+if (typeof resetCurrentTemplateToDefault === 'function') {
+    window.resetCurrentTemplateToDefault = resetCurrentTemplateToDefault;
+    console.log('✅ resetCurrentTemplateToDefault 已暴露到 window');
+}
+
 // 重置單個郵件模板為預設文字樣式（從模板卡片中調用，保留以備將來需要）
 async function resetEmailTemplateToDefault(templateKey, templateName) {
     if (!confirm(`確定要將郵件模板「${templateName}」重置為預設的文字樣式嗎？此操作將覆蓋現有的模板內容。`)) {
@@ -6083,6 +6089,12 @@ function toggleEmailPreview() {
         editorArea.style.flex = '1';
         previewBtnText.textContent = '顯示預覽';
     }
+}
+
+// 立即暴露 toggleEmailPreview 到全局作用域
+if (typeof toggleEmailPreview === 'function') {
+    window.toggleEmailPreview = toggleEmailPreview;
+    console.log('✅ toggleEmailPreview 已暴露到 window');
 }
 
 // 重新整理郵件預覽
