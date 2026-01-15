@@ -7223,4 +7223,5 @@ async function deleteHoliday(holidayDate) {
         closeEmailTemplateModal: typeof window.closeEmailTemplateModal,
         sendTestEmail: typeof window.sendTestEmail
     });
+});
 })();
