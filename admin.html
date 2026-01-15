@@ -1052,13 +1052,16 @@
         </div>
     </div>
 
-    <script src="admin.js?v=20260115-24"></script>
+    <script src="admin.js?v=20260115-24" 
+            onload="console.log('✅ admin.js 腳本 onload 事件觸發'); this.dataset.loaded = 'true';"
+            onerror="console.error('❌ admin.js 腳本載入失敗'); const loginPage = document.getElementById('loginPage'); if (loginPage) { loginPage.style.display = 'flex'; loginPage.style.visibility = 'visible'; }">
+    </script>
     <!-- 備用初始化：確保即使 admin.js 載入失敗也能顯示登入頁 -->
     <script>
         // 如果 admin.js 載入失敗，至少顯示登入頁
         window.addEventListener('error', function(e) {
             if (e.filename && e.filename.includes('admin.js')) {
-                console.error('❌ admin.js 載入失敗，顯示登入頁作為備用');
+                console.error('❌ admin.js 執行錯誤:', e.message, '位置:', e.filename, ':', e.lineno);
                 const loginPage = document.getElementById('loginPage');
                 const adminPage = document.getElementById('adminPage');
                 if (loginPage) {
