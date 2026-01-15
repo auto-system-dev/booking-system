@@ -124,10 +124,7 @@ window.toggleEditorMode = function() {
 };
 
 // 預先聲明 resetCurrentTemplateToDefault 和 toggleEmailPreview
-window.resetCurrentTemplateToDefault = function() {
-    console.error('resetCurrentTemplateToDefault 函數尚未載入，請稍候再試');
-    alert('功能載入中，請稍候再試');
-};
+// resetCurrentTemplateToDefault 已在前面定義，不需要佔位符
 
 window.toggleEmailPreview = function() {
     console.error('toggleEmailPreview 函數尚未載入，請稍候再試');
@@ -4064,6 +4061,50 @@ function renderEmailTemplates(templates) {
     `).join('');
 }
 
+// 重置郵件模板為預設圖卡樣式
+// 直接定義為 window.resetCurrentTemplateToDefault，確保在事件監聽器設置前就可用
+window.resetCurrentTemplateToDefault = async function resetCurrentTemplateToDefault() {
+    const form = document.getElementById('emailTemplateForm');
+    if (!form || !form.dataset.templateKey) {
+        showError('無法獲取當前模板資訊');
+        return;
+    }
+    
+    const templateKey = form.dataset.templateKey;
+    const templateName = document.getElementById('emailTemplateModalTitle')?.textContent?.replace('編輯郵件模板：', '') || templateKey;
+    
+    if (!confirm(`確定要將郵件模板「${templateName}」重置為預設的圖卡樣式嗎？此操作將覆蓋現有的模板內容。`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/email-templates/reset-to-default', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ templateKey })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`✅ ${result.message}`);
+            
+            // 重新載入當前模板內容
+            await showEmailTemplateModal(templateKey);
+            
+            // 重新載入模板列表（如果列表可見）
+            await loadEmailTemplates();
+        } else {
+            showError('重置失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('重置郵件模板錯誤:', error);
+        showError('重置失敗：' + error.message);
+    }
+};
+
 // 顯示郵件模板編輯模態框
 async function showEmailTemplateModal(templateKey) {
     try {
@@ -4666,35 +4707,13 @@ async function showEmailTemplateModal(templateKey) {
                     e.preventDefault();
                     e.stopPropagation();
                     try {
-                        // 檢查函數是否已定義（不是佔位符）
-                        function isRealFunction(fn) {
-                            if (typeof fn !== 'function') return false;
-                            const fnString = fn.toString();
-                            return !fnString.includes('尚未載入') && !fnString.includes('功能載入中');
-                        }
-                        
-                        // 優先使用 window 上的函數
-                        if (isRealFunction(window.resetCurrentTemplateToDefault)) {
+                        // 函數已在前面定義，直接調用
+                        if (typeof window.resetCurrentTemplateToDefault === 'function') {
                             await window.resetCurrentTemplateToDefault();
-                            return;
+                        } else {
+                            console.error('❌ resetCurrentTemplateToDefault 函數未定義');
+                            alert('重置功能無法使用，請重新整理頁面');
                         }
-                        
-                        // 如果函數還沒定義，等待一下再檢查（最多等待 1 秒）
-                        let attempts = 0;
-                        const maxAttempts = 10; // 10 次 * 100ms = 1 秒
-                        
-                        while (attempts < maxAttempts) {
-                            await new Promise(resolve => setTimeout(resolve, 100));
-                            attempts++;
-                            
-                            if (isRealFunction(window.resetCurrentTemplateToDefault)) {
-                                await window.resetCurrentTemplateToDefault();
-                                return;
-                            }
-                        }
-                        
-                        // 如果還是沒找到，顯示錯誤
-                        alert('重置功能尚未載入，請稍候再試');
                     } catch (error) {
                         console.error('❌ 調用 resetCurrentTemplateToDefault 時發生錯誤:', error);
                         alert('重置時發生錯誤：' + error.message);
@@ -6009,52 +6028,6 @@ window.sendTestEmail = sendTestEmail;
     }, 0);
 })();
 
-// 重置郵件模板為預設圖卡樣式
-// 重置當前編輯的郵件模板為預設圖卡樣式（從編輯模態框中調用）
-// 直接定義為 window.resetCurrentTemplateToDefault，確保立即可用
-window.resetCurrentTemplateToDefault = async function resetCurrentTemplateToDefault() {
-    const form = document.getElementById('emailTemplateForm');
-    if (!form || !form.dataset.templateKey) {
-        showError('無法獲取當前模板資訊');
-        return;
-    }
-    
-    const templateKey = form.dataset.templateKey;
-    const templateName = document.getElementById('emailTemplateModalTitle')?.textContent?.replace('編輯郵件模板：', '') || templateKey;
-    
-    if (!confirm(`確定要將郵件模板「${templateName}」重置為預設的圖卡樣式嗎？此操作將覆蓋現有的模板內容。`)) {
-        return;
-    }
-    
-    try {
-        const response = await fetch('/api/email-templates/reset-to-default', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ templateKey })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            alert(`✅ ${result.message}`);
-            
-            // 重新載入當前模板內容
-            await showEmailTemplateModal(templateKey);
-            
-            // 重新載入模板列表（如果列表可見）
-            await loadEmailTemplates();
-        } else {
-            showError('重置失敗：' + (result.message || '未知錯誤'));
-        }
-    } catch (error) {
-        console.error('重置郵件模板錯誤:', error);
-        showError('重置失敗：' + error.message);
-    }
-}
-
-// resetCurrentTemplateToDefault 已直接定義為 window.resetCurrentTemplateToDefault，無需額外暴露
 
 // 重置單個郵件模板為預設文字樣式（從模板卡片中調用，保留以備將來需要）
 async function resetEmailTemplateToDefault(templateKey, templateName) {
