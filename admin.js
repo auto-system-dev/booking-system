@@ -4666,23 +4666,34 @@ async function showEmailTemplateModal(templateKey) {
                     e.preventDefault();
                     e.stopPropagation();
                     try {
-                        // 優先使用本地函數（函數提升，應該可用）
-                        if (typeof resetCurrentTemplateToDefault === 'function') {
-                            const fnString = resetCurrentTemplateToDefault.toString();
-                            // 檢查是否是佔位符函數
-                            if (!fnString.includes('尚未載入') && !fnString.includes('功能載入中')) {
-                                await resetCurrentTemplateToDefault();
-                                return;
-                            }
+                        // 檢查函數是否已定義（不是佔位符）
+                        function isRealFunction(fn) {
+                            if (typeof fn !== 'function') return false;
+                            const fnString = fn.toString();
+                            return !fnString.includes('尚未載入') && !fnString.includes('功能載入中');
                         }
-                        // 備用：使用 window 上的函數（但檢查是否為佔位符）
-                        if (typeof window.resetCurrentTemplateToDefault === 'function') {
-                            const fnString = window.resetCurrentTemplateToDefault.toString();
-                            if (!fnString.includes('尚未載入') && !fnString.includes('功能載入中')) {
+                        
+                        // 優先使用 window 上的函數
+                        if (isRealFunction(window.resetCurrentTemplateToDefault)) {
+                            await window.resetCurrentTemplateToDefault();
+                            return;
+                        }
+                        
+                        // 如果函數還沒定義，等待一下再檢查（最多等待 1 秒）
+                        let attempts = 0;
+                        const maxAttempts = 10; // 10 次 * 100ms = 1 秒
+                        
+                        while (attempts < maxAttempts) {
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            attempts++;
+                            
+                            if (isRealFunction(window.resetCurrentTemplateToDefault)) {
                                 await window.resetCurrentTemplateToDefault();
                                 return;
                             }
                         }
+                        
+                        // 如果還是沒找到，顯示錯誤
                         alert('重置功能尚未載入，請稍候再試');
                     } catch (error) {
                         console.error('❌ 調用 resetCurrentTemplateToDefault 時發生錯誤:', error);
