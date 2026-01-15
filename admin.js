@@ -4444,17 +4444,17 @@ async function showEmailTemplateModal(templateKey) {
                         return !isTemporaryFunction;
                     };
                     
-                    const getReadySendTestEmail = () => {
+                    const forcingLocalSendTestEmail = () => {
+                        if (typeof sendTestEmail === 'function' && sendTestEmail !== window.sendTestEmail) {
+                            return sendTestEmail;
+                        }
                         if (isFunctionReady(window.sendTestEmail)) {
                             return window.sendTestEmail;
-                        }
-                        if (isFunctionReady(sendTestEmail)) {
-                            return sendTestEmail;
                         }
                         return null;
                     };
                     
-                    const readySendTestEmail = getReadySendTestEmail();
+                    const readySendTestEmail = forcingLocalSendTestEmail();
                     
                     // 優先檢查 window.sendTestEmail（全局作用域），失敗則回退到本地函數
                     if (readySendTestEmail) {
@@ -4496,7 +4496,7 @@ async function showEmailTemplateModal(templateKey) {
                             e.preventDefault();
                             e.stopPropagation();
                             // 再次檢查函數是否已載入
-                            const fallbackSendTestEmail = getReadySendTestEmail();
+                            const fallbackSendTestEmail = forcingLocalSendTestEmail();
                             if (fallbackSendTestEmail) {
                                 try {
                                     fallbackSendTestEmail();
