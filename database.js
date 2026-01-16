@@ -766,7 +766,7 @@ async function initEmailTemplates() {
         </div>
         <div class="content">
             <p class="greeting">親愛的 {{guestName}} 您好，</p>
-            <p class="intro-text">感謝您選擇我們的住宿服務！希望您這次的住宿體驗愉快舒適。</p>
+            <p class="intro-text">感謝您選擇我們的住宿服務！希望您這次的住宿體驗愉快舒適，我們非常重視您的意見與回饋。</p>
             
             <div class="info-box">
                 <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">📅 住宿資訊</div>
@@ -795,24 +795,29 @@ async function initEmailTemplates() {
                 {{#if googleReviewUrl}}
                 <a href="{{googleReviewUrl}}" target="_blank" class="google-review-btn">在 Google 上給我們評價</a>
                 {{/if}}
+                <p style="margin: 15px 0 0 0; font-size: 15px; color: #666; line-height: 1.6;">您的評價將幫助其他旅客做出更好的選擇，也讓我們能持續改進服務品質</p>
             </div>
             
             <div class="info-section">
                 <div class="info-section-title">💬 意見回饋</div>
-                <p style="margin: 0 0 15px 0; font-size: 16px;">如果您有任何建議或意見，歡迎透過以下方式與我們聯繫：</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
-                <p style="margin: 0; font-size: 15px; color: #2e7d32; font-weight: 600;">您的意見將幫助我們持續改進服務品質！</p>
+                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">如果您有任何建議、意見或需要協助，歡迎隨時透過以下方式與我們聯繫：</p>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
+                    <p style="margin: 0 0 8px 0; font-size: 16px;"><strong style="color: #2e7d32;">📧 Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: none;">{{hotelEmail}}</a></p>
+                    <p style="margin: 0; font-size: 16px;"><strong style="color: #2e7d32;">📞 電話：</strong><a href="tel:{{hotelPhone}}" style="color: #1976d2; text-decoration: none;">{{hotelPhone}}</a></p>
+                </div>
+                <p style="margin: 0; font-size: 15px; color: #2e7d32; font-weight: 600;">我們會認真聆聽您的意見，並持續改進服務品質！</p>
             </div>
             
             <div class="highlight-box">
                 <div class="section-title" style="margin-top: 0; margin-bottom: 12px; color: #856404; justify-content: center;">🎁 再次入住優惠</div>
-                <p style="margin: 0; font-size: 17px; text-align: center; font-weight: 600; color: #333;">感謝您的支持！再次預訂可享有 <strong style="color: #e65100; font-size: 20px;">9 折優惠</strong></p>
-                <p style="margin: 12px 0 0 0; font-size: 16px; text-align: center; color: #666;">歡迎隨時與我們聯繫</p>
+                <p style="margin: 0; font-size: 18px; text-align: center; font-weight: 700; color: #333;">感謝您的支持！</p>
+                <p style="margin: 8px 0 0 0; font-size: 17px; text-align: center; font-weight: 600; color: #333;">再次預訂可享有 <strong style="color: #e65100; font-size: 22px;">9 折優惠</strong></p>
+                <p style="margin: 12px 0 0 0; font-size: 16px; text-align: center; color: #666; line-height: 1.6;">歡迎隨時與我們聯繫，我們期待再次為您服務</p>
             </div>
             
-            <p style="margin-top: 35px; font-size: 17px; font-weight: 500; text-align: center;">期待再次為您服務！</p>
-            <p style="margin-top: 10px; font-size: 16px; text-align: center; color: #666;">祝您 身體健康，萬事如意</p>
+            <p style="margin-top: 35px; font-size: 18px; font-weight: 600; text-align: center; color: #333;">期待再次為您服務！</p>
+            <p style="margin-top: 12px; font-size: 16px; text-align: center; color: #666; line-height: 1.8;">祝您 身體健康，萬事如意</p>
+            <p style="margin-top: 8px; font-size: 15px; text-align: center; color: #999;">感謝您的支持與信任</p>
         </div>
     </div>
 </body>
