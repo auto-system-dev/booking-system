@@ -920,7 +920,7 @@ async function initEmailTemplates() {
             </div>
 
             <div class="amount-highlight">
-                <div class="amount-label">應付金額</div>
+                <div class="amount-label">{{amountLabel}}</div>
                 <div class="amount-value">NT$ {{finalAmount}}</div>
             </div>
 

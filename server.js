@@ -4781,6 +4781,28 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             console.log('✅ 發送前最終檢查通過，測試郵件包含完整的圖卡樣式');
         }
         
+        // 確保 testContent 和 testSubject 已定義
+        if (!testContent || !testSubject) {
+            console.error('❌ 測試郵件內容或主旨未定義:', {
+                hasTestContent: !!testContent,
+                hasTestSubject: !!testSubject,
+                testContentLength: testContent ? testContent.length : 0,
+                testSubject: testSubject
+            });
+            return res.status(500).json({
+                success: false,
+                message: '發送測試郵件失敗：郵件內容或主旨未正確生成'
+            });
+        }
+        
+        console.log('📧 準備發送測試郵件:', {
+            to: email,
+            subject: `[測試] ${testSubject}`,
+            contentLength: testContent.length,
+            hasHtml: testContent.includes('<html'),
+            hasStyle: testContent.includes('<style')
+        });
+        
         // 發送測試郵件（使用統一函數，自動選擇 Resend 或 Gmail）
         const mailOptions = {
             from: emailUser,
@@ -4790,7 +4812,12 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         };
         
         try {
-            await sendEmail(mailOptions);
+            const emailResult = await sendEmail(mailOptions);
+            console.log('✅ 測試郵件發送成功:', {
+                to: email,
+                messageId: emailResult?.messageId,
+                accepted: emailResult?.accepted
+            });
             res.json({
                 success: true,
                 message: '測試郵件已成功發送'
@@ -5356,7 +5383,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             </div>
 
             <div class="amount-highlight">
-                <div class="amount-label">應付金額</div>
+                <div class="amount-label">{{amountLabel}}</div>
                 <div class="amount-value">NT$ {{finalAmount}}</div>
             </div>
 
@@ -6008,6 +6035,11 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     // 判斷是否為匯款轉帳（支援多種格式）
     const paymentMethodValue = booking.payment_method || booking.paymentMethod || '';
     const isTransfer = paymentMethodValue === '匯款轉帳' || paymentMethodValue === 'transfer';
+    
+    // 判斷是否為線上刷卡且已付款（用於顯示「已付金額」而非「應付金額」）
+    const paymentStatus = booking.payment_status || booking.paymentStatus || 'pending';
+    const isOnlineCardPaid = (paymentMethodValue === '線上刷卡' || paymentMethodValue === 'card') && 
+                             (paymentStatus === 'paid' || paymentStatus === '已付款');
     
     // 格式化日期時間（支援多種格式）
     const createdAt = booking.created_at || booking.createdAt || booking.bookingDate;
