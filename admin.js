@@ -4967,29 +4967,6 @@ async function showEmailTemplateModal(templateKey) {
                 console.log('✅ toggleSimpleModeBtn 按鈕事件監聽器已設置');
             }
             
-            // 設置簡化模式按鈕的事件監聽器
-            const toggleSimpleModeBtn = document.getElementById('toggleSimpleModeBtn');
-            if (toggleSimpleModeBtn) {
-                const newSimpleBtn = toggleSimpleModeBtn.cloneNode(true);
-                toggleSimpleModeBtn.parentNode.replaceChild(newSimpleBtn, toggleSimpleModeBtn);
-                
-                newSimpleBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    try {
-                        if (typeof window.toggleSimpleMode === 'function') {
-                            window.toggleSimpleMode();
-                        } else {
-                            alert('簡化模式功能尚未載入，請稍候再試');
-                        }
-                    } catch (error) {
-                        console.error('❌ 調用 toggleSimpleMode 時發生錯誤:', error);
-                        alert('切換簡化模式時發生錯誤：' + error.message);
-                    }
-                });
-                console.log('✅ toggleSimpleModeBtn 按鈕事件監聽器已設置');
-            }
-            
             // 設置顯示預覽按鈕的事件監聽器
             const togglePreviewBtn = document.getElementById('togglePreviewBtn');
             if (togglePreviewBtn) {
