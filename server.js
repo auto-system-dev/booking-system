@@ -4220,14 +4220,23 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         // 如果前端明確要求使用編輯器中的內容，則使用 req.body 中的內容
         // 否則從資料庫讀取最新的模板內容
         let content, subject;
+        let template = null; // 確保 template 變數在整個函數中可用
         
         if (useEditorContent && req.body.content && req.body.subject) {
             // 使用編輯器中的內容（用戶修改後的內容）
             content = req.body.content;
             subject = req.body.subject;
+            // 仍然需要從資料庫讀取模板以獲取模板名稱和其他資訊
+            template = await db.getEmailTemplateByKey(key);
+            if (!template) {
+                return res.status(404).json({
+                    success: false,
+                    message: '找不到該郵件模板'
+                });
+            }
         } else {
             // 從資料庫讀取最新的模板內容
-            const template = await db.getEmailTemplateByKey(key);
+            template = await db.getEmailTemplateByKey(key);
             if (!template) {
                 return res.status(404).json({
                     success: false,
@@ -4632,7 +4641,7 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
 <body>
     <div class="container">
         <div class="header">
-            <h1>🏨 ${template.name || '郵件'}</h1>
+            <h1>🏨 ${template ? (template.template_name || template.name || '郵件') : '郵件'}</h1>
         </div>
         <div class="content">
             ${bodyContent}
@@ -4698,7 +4707,7 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
 <body>
     <div class="container">
         <div class="header">
-            <h1>🏨 ${template.name || '郵件'}</h1>
+            <h1>🏨 ${template ? (template.template_name || template.name || '郵件') : '郵件'}</h1>
         </div>
         <div class="content">
             ${emergencyBodyContent}
