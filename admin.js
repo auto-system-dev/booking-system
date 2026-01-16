@@ -154,6 +154,19 @@ if (typeof window !== 'undefined') {
 
 // 立即確認 window.handleLogin 是否已設置
 console.log('🔍 [腳本開頭] window.handleLogin 狀態:', typeof window.handleLogin);
+if (typeof window.handleLogin === 'function') {
+    console.log('✅ [腳本開頭] handleLogin 函數已成功設置，長度:', window.handleLogin.toString().length);
+    // 確保函數可以被立即調用
+    try {
+        // 測試函數是否可以正常調用（不實際執行）
+        const testCall = window.handleLogin.toString();
+        console.log('✅ [腳本開頭] handleLogin 函數可正常訪問');
+    } catch (e) {
+        console.error('❌ [腳本開頭] handleLogin 函數訪問失敗:', e);
+    }
+} else {
+    console.error('❌ [腳本開頭] handleLogin 函數設置失敗，當前類型:', typeof window.handleLogin);
+}
 
 // 全局錯誤處理
 window.addEventListener('error', function(event) {

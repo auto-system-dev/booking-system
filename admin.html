@@ -23,7 +23,7 @@
                     <h2>管理後台登入</h2>
                     <p class="subtitle">登入以管理訂房系統</p>
                 </div>
-                <form id="loginForm" onsubmit="handleLogin(event)">
+                <form id="loginForm">
                     <div class="form-group">
                         <label>帳號</label>
                         <input type="text" id="loginUsername" name="username" required autocomplete="username">
@@ -1056,8 +1056,8 @@
         </div>
     </div>
 
-    <script src="admin.js?v=20260115-33" 
-            onload="console.log('✅ admin.js 腳本 onload 事件觸發'); this.dataset.loaded = 'true';"
+    <script src="admin.js?v=20260115-34" 
+            onload="console.log('✅ admin.js 腳本 onload 事件觸發'); this.dataset.loaded = 'true'; if (typeof window.handleLogin === 'function') { console.log('✅ handleLogin 函數在 onload 時已可用'); } else { console.error('❌ handleLogin 函數在 onload 時仍不可用'); }"
             onerror="console.error('❌ admin.js 腳本載入失敗'); const loginPage = document.getElementById('loginPage'); if (loginPage) { loginPage.style.display = 'flex'; loginPage.style.visibility = 'visible'; }">
     </script>
     <!-- 備用初始化：確保即使 admin.js 載入失敗也能顯示登入頁 -->
@@ -1144,34 +1144,45 @@
             let attempts = 0;
             function check() {
                 attempts++;
-                // 檢查 handleLogin 是否存在（即使是佔位符也可以）
+                // 檢查 handleLogin 是否存在
                 // 同時檢查 admin.js 腳本標籤是否已載入
                 const adminScript = document.querySelector('script[src*="admin.js"]');
                 const scriptLoaded = adminScript && (adminScript.dataset.loaded === 'true' || adminScript.textContent.length > 0);
                 
+                // 檢查 window.handleLogin 是否為函數（不是 undefined）
                 if (typeof window.handleLogin === 'function') {
-                    console.log('✅ admin.js 已載入，handleLogin 函數可用', {
-                        attempts: attempts,
-                        fnType: typeof window.handleLogin,
-                        fnLength: window.handleLogin.toString().length
-                    });
-                    callback();
-                } else if (attempts < maxAttempts) {
+                    // 確認不是佔位符函數
+                    const fnString = window.handleLogin.toString();
+                    if (!fnString.includes('尚未載入') && !fnString.includes('功能載入中')) {
+                        console.log('✅ admin.js 已載入，handleLogin 函數可用', {
+                            attempts: attempts,
+                            fnType: typeof window.handleLogin,
+                            fnLength: fnString.length
+                        });
+                        callback();
+                        return;
+                    }
+                }
+                
+                if (attempts < maxAttempts) {
                     // 繼續等待
                     if (attempts % 10 === 0) {
                         console.log(`⏳ 等待 admin.js 載入... (${attempts}/${maxAttempts})`, {
                             scriptExists: !!adminScript,
                             scriptLoaded: scriptLoaded,
-                            windowHandleLogin: typeof window.handleLogin
+                            windowHandleLogin: typeof window.handleLogin,
+                            scriptSrc: adminScript ? adminScript.src : 'N/A'
                         });
                     }
                     setTimeout(check, 100);
                 } else {
-                    console.warn('⚠️ admin.js 載入超時，但仍嘗試設置事件監聽器', {
+                    console.error('❌ admin.js 載入超時，handleLogin 函數仍未可用', {
                         scriptExists: !!adminScript,
                         scriptLoaded: scriptLoaded,
-                        windowHandleLogin: typeof window.handleLogin
+                        windowHandleLogin: typeof window.handleLogin,
+                        scriptSrc: adminScript ? adminScript.src : 'N/A'
                     });
+                    // 即使超時也嘗試設置事件監聽器，但會顯示錯誤訊息
                     callback();
                 }
             }
