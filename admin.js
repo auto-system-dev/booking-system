@@ -178,18 +178,7 @@ window.closeEmailTemplateModal = function() {
     }
 };
 
-window.toggleEditorMode = function() {
-    console.error('toggleEditorMode 函數尚未載入，請稍候再試');
-    alert('功能載入中，請稍候再試');
-};
-
-// 預先聲明 resetCurrentTemplateToDefault 和 toggleEmailPreview
-// resetCurrentTemplateToDefault 已在前面定義，不需要佔位符
-
-window.toggleEmailPreview = function() {
-    console.error('toggleEmailPreview 函數尚未載入，請稍候再試');
-    alert('功能載入中，請稍候再試');
-};
+// toggleEditorMode 和 toggleEmailPreview 已在檔案前面定義為 window 函數，此處無需佔位符
 
 // 檢查登入狀態
 async function checkAuthStatus() {
@@ -4029,6 +4018,110 @@ window.resetCurrentTemplateToDefault = async function resetCurrentTemplateToDefa
     }
 };
 
+// 切換編輯模式（可視化 / HTML）
+// 直接定義為 window.toggleEditorMode，確保在事件監聽器設置前就可用
+window.toggleEditorMode = function toggleEditorMode() {
+    const editorContainer = document.getElementById('emailTemplateEditor');
+    const textarea = document.getElementById('emailTemplateContent');
+    const toggleBtn = document.getElementById('toggleEditorModeBtn');
+    
+    if (!editorContainer || !textarea || !toggleBtn) {
+        console.error('找不到必要的 DOM 元素');
+        return;
+    }
+    
+    if (isHtmlMode) {
+        // 從 HTML 模式切換到可視化模式
+        isHtmlMode = false;
+        editorContainer.style.display = 'block';
+        textarea.style.display = 'none';
+        const toggleBtn = document.getElementById('toggleEditorModeBtn');
+        if (toggleBtn) {
+            toggleBtn.textContent = '切換到 HTML 模式';
+        }
+        
+        // 將 textarea 的內容載入到 Quill
+        let htmlContent = textarea.value;
+        if (htmlContent.includes('<body>')) {
+            const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+            if (bodyMatch) {
+                htmlContent = bodyMatch[1];
+            }
+        }
+        if (quillEditor) {
+            quillEditor.root.innerHTML = htmlContent;
+        }
+        
+        // 更新預覽
+        if (isPreviewVisible) {
+            setTimeout(() => refreshEmailPreview(), 100);
+        }
+    } else {
+        // 從可視化模式切換到 HTML 模式
+        isHtmlMode = true;
+        editorContainer.style.display = 'none';
+        textarea.style.display = 'block';
+        const toggleBtn = document.getElementById('toggleEditorModeBtn');
+        if (toggleBtn) {
+            toggleBtn.textContent = '切換到可視化模式';
+        }
+        
+        // 將 Quill 的內容同步到 textarea
+        let quillHtml = '';
+        if (quillEditor) {
+            quillHtml = quillEditor.root.innerHTML;
+        }
+        const originalContent = textarea.value;
+        
+        // 如果原始內容是完整 HTML，替換 body 內容
+        if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
+            if (originalContent.includes('<body>')) {
+                textarea.value = originalContent.replace(
+                    /<body[^>]*>[\s\S]*?<\/body>/i,
+                    `<body>${quillHtml}</body>`
+                );
+            } else {
+                textarea.value = originalContent.replace(
+                    /<\/head>/i,
+                    `</head><body>${quillHtml}</body>`
+                );
+            }
+        } else {
+            textarea.value = quillHtml;
+        }
+        
+        // 為 textarea 加入 input 事件監聽，自動更新預覽
+        textarea.removeEventListener('input', handleTextareaInput);
+        textarea.addEventListener('input', handleTextareaInput);
+        
+        // 更新預覽
+        if (isPreviewVisible) {
+            setTimeout(() => refreshEmailPreview(), 100);
+        }
+    }
+};
+
+// 切換郵件預覽顯示
+// 直接定義為 window.toggleEmailPreview，確保在事件監聽器設置前就可用
+window.toggleEmailPreview = function toggleEmailPreview() {
+    isPreviewVisible = !isPreviewVisible;
+    const previewArea = document.getElementById('emailPreviewArea');
+    const editorArea = document.getElementById('emailEditorArea');
+    const previewBtn = document.getElementById('togglePreviewBtn');
+    const previewBtnText = document.getElementById('previewBtnText');
+    
+    if (isPreviewVisible) {
+        if (previewArea) previewArea.style.display = 'block';
+        if (editorArea) editorArea.style.flex = '1';
+        if (previewBtnText) previewBtnText.textContent = '隱藏預覽';
+        refreshEmailPreview();
+    } else {
+        if (previewArea) previewArea.style.display = 'none';
+        if (editorArea) editorArea.style.flex = '1';
+        if (previewBtnText) previewBtnText.textContent = '顯示預覽';
+    }
+};
+
 // 顯示郵件模板編輯模態框
 async function showEmailTemplateModal(templateKey) {
     try {
@@ -6014,90 +6107,7 @@ async function resetEmailTemplateToDefault(templateKey, templateName) {
 }
 
 // 切換編輯模式（可視化 / HTML）
-function toggleEditorMode() {
-    const editorContainer = document.getElementById('emailTemplateEditor');
-    const textarea = document.getElementById('emailTemplateContent');
-    const toggleBtn = document.getElementById('toggleEditorModeBtn');
-    
-    if (!editorContainer || !textarea || !toggleBtn) {
-        console.error('找不到必要的 DOM 元素');
-        return;
-    }
-    
-    if (isHtmlMode) {
-        // 從 HTML 模式切換到可視化模式
-        isHtmlMode = false;
-        editorContainer.style.display = 'block';
-        textarea.style.display = 'none';
-        const toggleBtn = document.getElementById('toggleEditorModeBtn');
-        if (toggleBtn) {
-            toggleBtn.textContent = '切換到 HTML 模式';
-        }
-        
-        // 將 textarea 的內容載入到 Quill
-        let htmlContent = textarea.value;
-        if (htmlContent.includes('<body>')) {
-            const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-            if (bodyMatch) {
-                htmlContent = bodyMatch[1];
-            }
-        }
-        quillEditor.root.innerHTML = htmlContent;
-        
-        // 更新預覽
-        if (isPreviewVisible) {
-            setTimeout(() => refreshEmailPreview(), 100);
-        }
-    } else {
-        // 從可視化模式切換到 HTML 模式
-        isHtmlMode = true;
-        editorContainer.style.display = 'none';
-        textarea.style.display = 'block';
-        const toggleBtn = document.getElementById('toggleEditorModeBtn');
-        if (toggleBtn) {
-            toggleBtn.textContent = '切換到可視化模式';
-        }
-        
-        // 將 Quill 的內容同步到 textarea
-        const quillHtml = quillEditor.root.innerHTML;
-        const originalContent = textarea.value;
-        
-        // 如果原始內容是完整 HTML，替換 body 內容
-        if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
-            if (originalContent.includes('<body>')) {
-                textarea.value = originalContent.replace(
-                    /<body[^>]*>[\s\S]*?<\/body>/i,
-                    `<body>${quillHtml}</body>`
-                );
-            } else {
-                textarea.value = originalContent.replace(
-                    /<\/head>/i,
-                    `</head><body>${quillHtml}</body>`
-                );
-            }
-        } else {
-            textarea.value = quillHtml;
-        }
-        
-        // 為 textarea 加入 input 事件監聽，自動更新預覽
-        textarea.removeEventListener('input', handleTextareaInput);
-        textarea.addEventListener('input', handleTextareaInput);
-        
-        // 更新預覽
-        if (isPreviewVisible) {
-            setTimeout(() => refreshEmailPreview(), 100);
-        }
-    }
-}
-
-// 立即暴露 toggleEditorMode 到全局作用域
-window.toggleEditorMode = toggleEditorMode;
-Object.defineProperty(window, 'toggleEditorMode', {
-    value: toggleEditorMode,
-    writable: true,
-    configurable: true,
-    enumerable: true
-});
+// toggleEditorMode 已在檔案前面定義為 window.toggleEditorMode，此處無需重複定義
 
 // textarea input 事件處理器
 function handleTextareaInput() {
@@ -6136,28 +6146,7 @@ function insertVariable(variable) {
     }
 }
 
-// 切換郵件預覽顯示
-// 直接定義為 window.toggleEmailPreview，確保立即可用
-window.toggleEmailPreview = function toggleEmailPreview() {
-    isPreviewVisible = !isPreviewVisible;
-    const previewArea = document.getElementById('emailPreviewArea');
-    const editorArea = document.getElementById('emailEditorArea');
-    const previewBtn = document.getElementById('togglePreviewBtn');
-    const previewBtnText = document.getElementById('previewBtnText');
-    
-    if (isPreviewVisible) {
-        previewArea.style.display = 'block';
-        editorArea.style.flex = '1';
-        previewBtnText.textContent = '隱藏預覽';
-        refreshEmailPreview();
-    } else {
-        previewArea.style.display = 'none';
-        editorArea.style.flex = '1';
-        previewBtnText.textContent = '顯示預覽';
-    }
-}
-
-// toggleEmailPreview 已直接定義為 window.toggleEmailPreview，無需額外暴露
+// toggleEmailPreview 已在檔案前面定義為 window.toggleEmailPreview，此處無需重複定義
 
 // 重新整理郵件預覽
 function refreshEmailPreview() {
