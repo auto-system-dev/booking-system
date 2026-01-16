@@ -4302,42 +4302,92 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         // 對於測試郵件，如果使用編輯器內容，強制檢查並使用資料庫中的完整模板以確保樣式正確
         let testContent = content;
         
-        // 如果使用編輯器內容，強制使用資料庫中的完整模板以確保樣式正確
-        // 因為編輯器可能只提取了部分內容，缺少完整的 CSS 樣式
+        // 為了確保測試郵件發送實際會收到的內容，我們應該使用與實際發送相同的邏輯
+        // 即使用 replaceTemplateVariables 函數，它需要從資料庫讀取的完整模板
+        // 如果使用編輯器內容，我們仍然使用資料庫中的完整模板，以確保測試郵件與實際發送一致
         if (useEditorContent) {
-            console.log('⚠️ 測試郵件使用編輯器內容，強制使用資料庫中的完整模板以確保樣式正確');
+            console.log('⚠️ 測試郵件使用編輯器內容，但為了確保與實際發送一致，將使用資料庫中的完整模板');
             const originalTemplate = await db.getEmailTemplateByKey(key);
             if (originalTemplate && originalTemplate.content) {
-                // 使用資料庫中的完整模板
-                testContent = originalTemplate.content;
-                console.log('✅ 已使用資料庫中的完整模板（包含完整的 CSS 樣式）');
+                // 使用資料庫中的完整模板（與實際發送時一致）
+                template.content = originalTemplate.content;
+                template.subject = originalTemplate.subject;
+                console.log('✅ 已使用資料庫中的完整模板（與實際發送一致）');
             } else {
                 console.warn('⚠️ 無法取得資料庫模板，使用編輯器內容');
             }
         }
         
-        // 檢查是否包含完整的 HTML 結構
-        const hasFullHtmlStructure = testContent.includes('<!DOCTYPE html>') || 
-                                     (testContent.includes('<html') && testContent.includes('</html>'));
+        // 確保使用資料庫中的模板內容（與實際發送時一致）
+        // 更新 template 對象以使用資料庫中的內容
+        template.content = template.content || content;
+        template.subject = template.subject || subject;
         
-        // 檢查是否包含必要的 CSS 樣式（特別是 .header 樣式）
-        // 更嚴格地檢查：必須包含 .header 樣式定義，且包含背景色設定
-        const hasHeaderStyle = testContent.includes('.header') && 
-                               (testContent.includes('background') || testContent.includes('background-color'));
+        // 創建模擬的 booking 對象，用於 replaceTemplateVariables 函數
+        const mockBooking = {
+            guest_name: testData.guestName,
+            booking_id: testData.bookingId,
+            check_in_date: checkInDate.toISOString().split('T')[0],
+            check_out_date: checkOutDate.toISOString().split('T')[0],
+            room_type: testData.roomType,
+            price_per_night: parseInt(testData.pricePerNight.replace(/,/g, '')),
+            total_amount: parseInt(testData.totalAmount.replace(/,/g, '')),
+            final_amount: parseInt(testData.finalAmount.replace(/,/g, '')),
+            remaining_amount: parseInt(testData.remainingAmount.replace(/,/g, '')),
+            payment_method: testData.paymentMethod,
+            payment_status: 'pending',
+            guest_phone: testData.guestPhone,
+            guest_email: testData.guestEmail,
+            booking_date: today.toISOString().split('T')[0],
+            payment_deadline: paymentDeadlineDate.toISOString().split('T')[0],
+            days_reserved: parseInt(testData.daysReserved),
+            addons: testData.addonsList,
+            addons_total: parseInt(testData.addonsTotal.replace(/,/g, ''))
+        };
         
-        // 檢查是否包含 <style> 標籤
-        const hasStyleTag = testContent.includes('<style>') || testContent.includes('<style ');
+        // 準備 additionalData（與實際發送時一致）
+        const additionalData = {
+            ...(testData.googleReviewUrl ? { '{{googleReviewUrl}}': testData.googleReviewUrl } : {}),
+            ...(testData.hotelEmail ? { '{{hotelEmail}}': testData.hotelEmail } : {}),
+            ...(testData.hotelPhone ? { '{{hotelPhone}}': testData.hotelPhone } : {})
+        };
         
-        // 對於入住提醒郵件，特別檢查是否包含深灰色背景色 #262A33
-        const isCheckinReminder = key === 'checkin_reminder';
-        const hasCorrectHeaderColor = !isCheckinReminder || testContent.includes('#262A33');
-        
-        // 如果缺少完整結構或樣式，使用資料庫中的完整模板
-        const shouldUseDatabaseTemplate = !hasFullHtmlStructure || !hasHeaderStyle || !hasStyleTag || !hasCorrectHeaderColor;
-        
-        if (shouldUseDatabaseTemplate && !useEditorContent) {
-            // 只有在不使用編輯器內容時才進行修復（因為已經在上面處理過了）
-            console.log('⚠️ 測試郵件內容缺少完整結構或樣式，檢查項目:', {
+        // 使用與實際發送相同的 replaceTemplateVariables 函數
+        // 這確保測試郵件與實際發送的郵件完全一致
+        let testContent, testSubject;
+        try {
+            const testResult = await replaceTemplateVariables(template, mockBooking, null, additionalData);
+            testContent = testResult.content;
+            testSubject = testResult.subject;
+            console.log('✅ 使用 replaceTemplateVariables 函數生成測試郵件（與實際發送一致）');
+        } catch (error) {
+            console.error('❌ 使用 replaceTemplateVariables 失敗，回退到手動替換:', error);
+            // 如果 replaceTemplateVariables 失敗，回退到原來的邏輯
+            testContent = template.content;
+            testSubject = template.subject;
+            
+            // 檢查是否包含完整的 HTML 結構
+            const hasFullHtmlStructure = testContent.includes('<!DOCTYPE html>') || 
+                                         (testContent.includes('<html') && testContent.includes('</html>'));
+            
+            // 檢查是否包含必要的 CSS 樣式（特別是 .header 樣式）
+            // 更嚴格地檢查：必須包含 .header 樣式定義，且包含背景色設定
+            const hasHeaderStyle = testContent.includes('.header') && 
+                                   (testContent.includes('background') || testContent.includes('background-color'));
+            
+            // 檢查是否包含 <style> 標籤
+            const hasStyleTag = testContent.includes('<style>') || testContent.includes('<style ');
+            
+            // 對於入住提醒郵件，特別檢查是否包含深灰色背景色 #262A33
+            const isCheckinReminder = key === 'checkin_reminder';
+            const hasCorrectHeaderColor = !isCheckinReminder || testContent.includes('#262A33');
+            
+            // 如果缺少完整結構或樣式，使用資料庫中的完整模板
+            const shouldUseDatabaseTemplate = !hasFullHtmlStructure || !hasHeaderStyle || !hasStyleTag || !hasCorrectHeaderColor;
+            
+            if (shouldUseDatabaseTemplate && !useEditorContent) {
+                // 只有在不使用編輯器內容時才進行修復（因為已經在上面處理過了）
+                console.log('⚠️ 測試郵件內容缺少完整結構或樣式，檢查項目:', {
                 hasFullHtmlStructure,
                 hasHeaderStyle,
                 hasStyleTag,
@@ -4416,84 +4466,86 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
 </html>`;
                 console.log('⚠️ 測試郵件內容缺少完整 HTML 結構，已包裝為完整 HTML');
             }
-        } else {
-            console.log('✅ 測試郵件內容包含完整的 HTML 結構和樣式', {
-                hasFullHtmlStructure,
-                hasHeaderStyle,
-                hasStyleTag,
-                hasCorrectHeaderColor: isCheckinReminder ? testContent.includes('#262A33') : 'N/A',
-                contentLength: testContent.length
+            } else {
+                console.log('✅ 測試郵件內容包含完整的 HTML 結構和樣式', {
+                    hasFullHtmlStructure,
+                    hasHeaderStyle,
+                    hasStyleTag,
+                    hasCorrectHeaderColor: isCheckinReminder ? testContent.includes('#262A33') : 'N/A',
+                    contentLength: testContent.length
+                });
+            }
+            
+            // 回退邏輯：手動替換變數（僅在 replaceTemplateVariables 失敗時使用）
+            // 替換模板變數（先替換所有變數）
+            Object.keys(testData).forEach(dataKey => {
+                const regex = new RegExp(`\\{\\{${dataKey}\\}\\}`, 'g');
+                testContent = testContent.replace(regex, testData[dataKey]);
+            });
+            
+            // 處理條件區塊（顯示所有條件區塊用於測試）
+            // 先處理嵌套條件（從內到外）
+            // 1. 處理 {{#if bankName}} 和 {{#if accountName}}
+            testContent = testContent.replace(/\{\{#if bankName\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+            testContent = testContent.replace(/\{\{#if accountName\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+            
+            // 2. 處理 {{#if addonsList}}
+            testContent = testContent.replace(/\{\{#if addonsList\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+            
+            // 3. 處理 {{#if googleReviewUrl}}
+            if (testData.googleReviewUrl) {
+                testContent = testContent.replace(/\{\{#if googleReviewUrl\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+            } else {
+                testContent = testContent.replace(/\{\{#if googleReviewUrl\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+            }
+            
+            // 4. 處理 {{#if isDeposit}}
+            testContent = testContent.replace(/\{\{#if isDeposit\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+            
+            // 4. 處理 {{#if bankInfo}} ... {{else}} ... {{/if}}
+            testContent = testContent.replace(/\{\{#if bankInfo\}\}([\s\S]*?)\{\{else\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+            
+            // 5. 處理 {{#if isTransfer}}
+            testContent = testContent.replace(/\{\{#if isTransfer\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
+            
+            // 6. 最後清理：移除所有殘留的條件標籤（防止遺漏）
+            let maxCleanupIterations = 50;
+            let cleanupIteration = 0;
+            let lastCleanupContent = '';
+            
+            while (cleanupIteration < maxCleanupIterations) {
+                lastCleanupContent = testContent;
+                
+                // 移除所有 {{#if ...}} 標籤（匹配任何條件名稱）
+                testContent = testContent.replace(/\{\{#if\s+[^}]+\}\}/gi, '');
+                // 移除所有 {{/if}} 標籤
+                testContent = testContent.replace(/\{\{\/if\}\}/gi, '');
+                // 移除所有 {{else}} 標籤
+                testContent = testContent.replace(/\{\{else\}\}/gi, '');
+                
+                // 如果沒有變化，跳出循環
+                if (testContent === lastCleanupContent) {
+                    break;
+                }
+                cleanupIteration++;
+            }
+            
+            // 再次替換所有變數（確保條件區塊處理後剩餘的變數也被替換）
+            Object.keys(testData).forEach(dataKey => {
+                const regex = new RegExp(`\\{\\{${dataKey}\\}\\}`, 'g');
+                testContent = testContent.replace(regex, testData[dataKey]);
+            });
+            
+            // 移除 {{hotelInfoFooter}} 變數（如果存在）
+            testContent = testContent.replace(/\{\{hotelInfoFooter\}\}/g, '');
+            
+            // 替換主旨中的變數
+            testSubject = template.subject;
+            Object.keys(testData).forEach(dataKey => {
+                const regex = new RegExp(`\\{\\{${dataKey}\\}\\}`, 'g');
+                testSubject = testSubject.replace(regex, testData[dataKey]);
             });
         }
-        
-        // 替換模板變數（先替換所有變數）
-        Object.keys(testData).forEach(key => {
-            const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-            testContent = testContent.replace(regex, testData[key]);
-        });
-        
-        // 處理條件區塊（顯示所有條件區塊用於測試）
-        // 先處理嵌套條件（從內到外）
-        // 1. 處理 {{#if bankName}} 和 {{#if accountName}}
-        testContent = testContent.replace(/\{\{#if bankName\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
-        testContent = testContent.replace(/\{\{#if accountName\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
-        
-        // 2. 處理 {{#if addonsList}}
-        testContent = testContent.replace(/\{\{#if addonsList\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
-        
-        // 3. 處理 {{#if googleReviewUrl}}
-        if (testData.googleReviewUrl) {
-            testContent = testContent.replace(/\{\{#if googleReviewUrl\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
-        } else {
-            testContent = testContent.replace(/\{\{#if googleReviewUrl\}\}[\s\S]*?\{\{\/if\}\}/g, '');
-        }
-        
-        // 4. 處理 {{#if isDeposit}}
-        testContent = testContent.replace(/\{\{#if isDeposit\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
-        
-        // 4. 處理 {{#if bankInfo}} ... {{else}} ... {{/if}}
-        testContent = testContent.replace(/\{\{#if bankInfo\}\}([\s\S]*?)\{\{else\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
-        
-        // 5. 處理 {{#if isTransfer}}
-        testContent = testContent.replace(/\{\{#if isTransfer\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
-        
-        // 6. 最後清理：移除所有殘留的條件標籤（防止遺漏）
-        let maxCleanupIterations = 50;
-        let cleanupIteration = 0;
-        let lastCleanupContent = '';
-        
-        while (cleanupIteration < maxCleanupIterations) {
-            lastCleanupContent = testContent;
-            
-            // 移除所有 {{#if ...}} 標籤（匹配任何條件名稱）
-            testContent = testContent.replace(/\{\{#if\s+[^}]+\}\}/gi, '');
-            // 移除所有 {{/if}} 標籤
-            testContent = testContent.replace(/\{\{\/if\}\}/gi, '');
-            // 移除所有 {{else}} 標籤
-            testContent = testContent.replace(/\{\{else\}\}/gi, '');
-            
-            // 如果沒有變化，跳出循環
-            if (testContent === lastCleanupContent) {
-                break;
-            }
-            cleanupIteration++;
-        }
-        
-        // 再次替換所有變數（確保條件區塊處理後剩餘的變數也被替換）
-        Object.keys(testData).forEach(key => {
-            const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-            testContent = testContent.replace(regex, testData[key]);
-        });
-        
-        // 移除 {{hotelInfoFooter}} 變數（如果存在）
-        testContent = testContent.replace(/\{\{hotelInfoFooter\}\}/g, '');
-        
-        // 替換主旨中的變數
-        let testSubject = subject;
-        Object.keys(testData).forEach(key => {
-            const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-            testSubject = testSubject.replace(regex, testData[key]);
-        });
         
         // 最後檢查：確保測試郵件包含完整的 CSS 樣式和 HTML 結構（即使之前已經檢查過）
         // 這是最後一道防線，確保發送的郵件一定有圖卡樣式
