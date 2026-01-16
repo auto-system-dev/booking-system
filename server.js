@@ -809,7 +809,24 @@ async function sendEmail(mailOptions) {
                 
                 // 從 mailOptions.from 提取發件人信箱（Resend 需要驗證過的網域或信箱）
                 const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
-                const fromEmail = mailOptions.from || emailUser;
+                let fromEmail = mailOptions.from || emailUser;
+                
+                // 檢查是否有設定旅館名稱，如果有，使用「名稱 <email>」格式
+                // Resend 支援格式："名稱" <email@domain.com> 或 名稱 <email@domain.com>
+                const hotelName = await db.getSetting('hotel_name');
+                if (hotelName && hotelName.trim()) {
+                    // 如果 mailOptions.from 已經包含名稱格式，就不需要再添加
+                    // 檢查是否已經是「名稱 <email>」格式
+                    const nameEmailRegex = /^[^<]+<[^>]+>$/;
+                    if (!nameEmailRegex.test(fromEmail)) {
+                        // 提取純 email（移除可能已有的名稱部分）
+                        const emailMatch = fromEmail.match(/<([^>]+)>/) || fromEmail.match(/([^\s<>]+@[^\s<>]+)/);
+                        const pureEmail = emailMatch ? emailMatch[1] || emailMatch[0] : fromEmail;
+                        // 使用旅館名稱作為寄件人顯示名稱
+                        fromEmail = `"${hotelName.trim()}" <${pureEmail}>`;
+                        console.log('   使用寄件人名稱:', hotelName.trim());
+                    }
+                }
                 
                 const result = await resendClient.emails.send({
                     from: fromEmail,
