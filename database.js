@@ -754,6 +754,8 @@ async function initEmailTemplates() {
         .info-section-title { font-size: 20px; font-weight: bold; color: #2e7d32; margin: 0 0 15px 0; }
         .rating-section { background: #fff9c4; border: 2px solid #fbc02d; border-radius: 8px; padding: 25px; margin: 25px 0; text-align: center; }
         .rating-stars { font-size: 32px; margin: 15px 0; }
+        .google-review-btn { display: inline-block; background: #4285f4; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-size: 16px; font-weight: 600; margin-top: 15px; transition: background 0.3s; }
+        .google-review-btn:hover { background: #357ae8; }
     </style>
 </head>
 <body>
@@ -790,6 +792,9 @@ async function initEmailTemplates() {
                 <div class="section-title" style="margin-top: 0; margin-bottom: 15px; color: #f57f17; justify-content: center;">您的寶貴意見對我們非常重要！</div>
                 <p style="margin: 0 0 10px 0; font-size: 17px; font-weight: 600; color: #333;">請為我們的服務評分：</p>
                 <div class="rating-stars">⭐⭐⭐⭐⭐</div>
+                {{#if googleReviewUrl}}
+                <a href="{{googleReviewUrl}}" target="_blank" class="google-review-btn">在 Google 上給我們評價</a>
+                {{/if}}
             </div>
             
             <div class="info-section">
