@@ -4091,14 +4091,135 @@ window.toggleEditorMode = function toggleEditorMode() {
         }
         
         // 為 textarea 加入 input 事件監聽，自動更新預覽
-        textarea.removeEventListener('input', handleTextareaInput);
-        textarea.addEventListener('input', handleTextareaInput);
+        textarea.removeEventListener('input', window.handleTextareaInput);
+        textarea.addEventListener('input', window.handleTextareaInput);
         
         // 更新預覽
         if (isPreviewVisible) {
             setTimeout(() => refreshEmailPreview(), 100);
         }
     }
+};
+
+// textarea input 事件處理器
+// 直接定義為 window.handleTextareaInput，確保在事件監聽器設置前就可用
+window.handleTextareaInput = function handleTextareaInput() {
+    if (isPreviewVisible && isHtmlMode) {
+        clearTimeout(window.previewUpdateTimer);
+        window.previewUpdateTimer = setTimeout(() => {
+            refreshEmailPreview();
+        }, 300);
+    }
+};
+
+// 重新整理郵件預覽
+// 直接定義為 window.refreshEmailPreview，確保在事件監聽器設置前就可用
+window.refreshEmailPreview = function refreshEmailPreview() {
+    const previewContent = document.getElementById('emailPreviewContent');
+    if (!previewContent) return;
+    
+    console.log('🔄 更新預覽，當前樣式:', currentEmailStyle);
+    
+    // 如果不是 HTML 模式，先將 Quill 的內容同步到 textarea（保留結構）
+    if (!isHtmlMode && quillEditor) {
+        const quillHtml = quillEditor.root.innerHTML;
+        const textarea = document.getElementById('emailTemplateContent');
+        const originalContent = textarea.value;
+        
+        // 如果原始內容是完整 HTML，需要更新 body 內的 .content div 內容
+        if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
+            if (originalContent.includes('<body>')) {
+                const bodyMatch = originalContent.match(/(<body[^>]*>)([\s\S]*?)(<\/body>)/i);
+                if (bodyMatch) {
+                    const bodyContent = bodyMatch[2];
+                    const contentDivStartRegex = /<div[^>]*class\s*=\s*["'][^"']*content[^"']*["'][^>]*>/i;
+                    const contentStartMatch = bodyContent.match(contentDivStartRegex);
+                    
+                    if (contentStartMatch) {
+                        const startIndex = contentStartMatch.index;
+                        const startTag = contentStartMatch[0];
+                        const afterStartTag = bodyContent.substring(startIndex + startTag.length);
+                        
+                        // 計算嵌套的 div 層級，找到對應的結束標籤
+                        let divCount = 1;
+                        let currentIndex = 0;
+                        let endIndex = -1;
+                        
+                        while (currentIndex < afterStartTag.length && divCount > 0) {
+                            const openDiv = afterStartTag.indexOf('<div', currentIndex);
+                            const closeDiv = afterStartTag.indexOf('</div>', currentIndex);
+                            
+                            if (closeDiv === -1) break;
+                            
+                            if (openDiv !== -1 && openDiv < closeDiv) {
+                                divCount++;
+                                currentIndex = openDiv + 4;
+                            } else {
+                                divCount--;
+                                if (divCount === 0) {
+                                    endIndex = closeDiv;
+                                    break;
+                                }
+                                currentIndex = closeDiv + 6;
+                            }
+                        }
+                        
+                        if (endIndex !== -1) {
+                            const beforeContent = bodyContent.substring(0, startIndex + startTag.length);
+                            const afterContent = bodyContent.substring(startIndex + startTag.length + endIndex);
+                            const newBodyContent = beforeContent + quillHtml + afterContent;
+                            
+                            textarea.value = originalContent.replace(
+                                /<body[^>]*>[\s\S]*?<\/body>/i,
+                                bodyMatch[1] + newBodyContent + bodyMatch[3]
+                            );
+                            console.log('✅ 已同步 Quill 內容到 textarea');
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 從 textarea 獲取完整的原始 HTML
+    const fullHtml = document.getElementById('emailTemplateContent').value;
+    let bodyContent = '';
+    
+    // 從完整 HTML 中提取 body 內容
+    if (fullHtml.includes('<body>')) {
+        const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+        if (bodyMatch) {
+            bodyContent = bodyMatch[1];
+        } else {
+            bodyContent = fullHtml;
+        }
+    } else {
+        bodyContent = fullHtml;
+    }
+    
+    // 移除所有 style 標籤和 script 標籤
+    bodyContent = bodyContent.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+    bodyContent = bodyContent.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+    
+    // 構建完整的 HTML 文檔用於預覽
+    const previewHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #262A33; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+    </style>
+</head>
+<body>
+    ${bodyContent}
+</body>
+</html>`;
+    
+    // 更新預覽 iframe
+    previewContent.srcdoc = previewHtml;
 };
 
 // 切換郵件預覽顯示
@@ -6109,15 +6230,7 @@ async function resetEmailTemplateToDefault(templateKey, templateName) {
 // 切換編輯模式（可視化 / HTML）
 // toggleEditorMode 已在檔案前面定義為 window.toggleEditorMode，此處無需重複定義
 
-// textarea input 事件處理器
-function handleTextareaInput() {
-    if (isPreviewVisible && isHtmlMode) {
-        clearTimeout(window.previewUpdateTimer);
-        window.previewUpdateTimer = setTimeout(() => {
-            refreshEmailPreview();
-        }, 300);
-    }
-}
+// handleTextareaInput 已在檔案前面定義為 window.handleTextareaInput，此處無需重複定義
 
 // 插入變數到編輯器
 function insertVariable(variable) {
@@ -6148,8 +6261,9 @@ function insertVariable(variable) {
 
 // toggleEmailPreview 已在檔案前面定義為 window.toggleEmailPreview，此處無需重複定義
 
-// 重新整理郵件預覽
-function refreshEmailPreview() {
+// refreshEmailPreview 已在檔案前面定義為 window.refreshEmailPreview，此處無需重複定義
+// 保留原函數定義以備參考，但實際使用的是前面的版本
+function refreshEmailPreview_old() {
     const previewContent = document.getElementById('emailPreviewContent');
     if (!previewContent) return;
     
