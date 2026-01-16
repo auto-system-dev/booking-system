@@ -881,8 +881,6 @@ async function initEmailTemplates() {
 
             <p style="margin-top: 35px; font-size: 17px; font-weight: 500;">感謝您的預訂，期待為您服務！</p>
             <p style="text-align: center; margin-top: 30px; color: #666; font-size: 14px; padding-top: 20px; border-top: 1px solid #e0e0e0;">此為系統自動發送郵件，請勿直接回覆</p>
-            
-            {{hotelInfoFooter}}
         </div>
     </div>
 </body>

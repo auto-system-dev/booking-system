@@ -1559,7 +1559,6 @@ async function generateCustomerEmail(data) {
         paymentDeadline: data.paymentDeadline,
         bankInfo: data.bankInfo
     });
-    const hotelInfoFooter = await getHotelInfoFooter();
     return `
     <!DOCTYPE html>
     <html>
@@ -1675,7 +1674,6 @@ async function generateCustomerEmail(data) {
                     <p>感謝您的預訂，期待為您服務！</p>
                     <p>此為系統自動發送郵件，請勿直接回覆</p>
                 </div>
-                ${hotelInfoFooter}
             </div>
         </div>
     </body>
@@ -4477,18 +4475,8 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             testContent = testContent.replace(regex, testData[key]);
         });
         
-        // 處理 {{hotelInfoFooter}} 變數
-        const hotelInfoFooter = await getHotelInfoFooter();
-        let hasHotelInfoFooterVariable = false;
-        if (hotelInfoFooter) {
-            // 檢查模板中是否已經有 {{hotelInfoFooter}} 變數
-            if (testContent.includes('{{hotelInfoFooter}}')) {
-                testContent = testContent.replace(/\{\{hotelInfoFooter\}\}/g, hotelInfoFooter);
-                hasHotelInfoFooterVariable = true;
-            }
-        } else {
-            testContent = testContent.replace(/\{\{hotelInfoFooter\}\}/g, '');
-        }
+        // 移除 {{hotelInfoFooter}} 變數（如果存在）
+        testContent = testContent.replace(/\{\{hotelInfoFooter\}\}/g, '');
         
         // 替換主旨中的變數
         let testSubject = subject;
@@ -4718,14 +4706,7 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             console.log('✅ 緊急修復完成，確保測試郵件包含完整的圖卡樣式');
         }
         
-        // 只有在模板中沒有 {{hotelInfoFooter}} 變數時，才添加旅館資訊 footer（避免重複）
-        if (hotelInfoFooter && !hasHotelInfoFooterVariable) {
-            // 檢查是否已經有 hotelInfoFooter 內容（避免重複添加）
-            const hotelInfoFooterPattern = /<div[^>]*class\s*=\s*["'][^"']*hotel-info[^"']*["'][^>]*>/i;
-            if (!hotelInfoFooterPattern.test(testContent)) {
-                testContent = testContent.replace('</body>', hotelInfoFooter + '</body>');
-            }
-        }
+        // 不再自動添加旅館資訊 footer
         
         // 最終驗證：發送前最後一次檢查
         const finalSendCheck = testContent.includes('<!DOCTYPE html>') && 
@@ -5324,8 +5305,6 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 
             <p style="margin-top: 35px; font-size: 17px; font-weight: 500;">感謝您的預訂，期待為您服務！</p>
             <p style="text-align: center; margin-top: 30px; color: #666; font-size: 14px; padding-top: 20px; border-top: 1px solid #e0e0e0;">此為系統自動發送郵件，請勿直接回覆</p>
-            
-            {{hotelInfoFooter}}
         </div>
     </div>
 </body>
@@ -6125,12 +6104,8 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
         content = content.replace(regex, variables[key]);
     });
     
-    // 添加旅館資訊 footer
-    const hotelInfoFooter = await getHotelInfoFooter();
-    if (hotelInfoFooter) {
-        // 在 </body> 之前插入旅館資訊
-        content = content.replace('</body>', hotelInfoFooter + '</body>');
-    }
+    // 移除 {{hotelInfoFooter}} 變數（如果存在）
+    content = content.replace(/\{\{hotelInfoFooter\}\}/g, '');
     
     let subject = template.subject;
     Object.keys(variables).forEach(key => {
