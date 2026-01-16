@@ -4874,10 +4874,10 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
     }
 });
 
-// API: 重置郵件模板為預設文字樣式
+// API: 重置郵件模板為預設圖卡樣式
 app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, async (req, res) => {
     try {
-        // 使用原始簡單排版樣式的模板（無圖卡樣式）
+        // 使用圖卡樣式的模板
         const fallbackTemplates = [
             {
                 key: 'payment_reminder',
@@ -4888,10 +4888,16 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #e74c3c; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #e74c3c; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
+        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
         h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
         p { margin: 10px 0; }
         strong { color: #333; }
         ul, ol { margin: 10px 0; padding-left: 30px; }
@@ -4899,42 +4905,88 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
     </style>
 </head>
 <body>
-    <h1>⏰ 匯款期限提醒</h1>
-    
-    <p>親愛的 {{guestName}} 您好，</p>
-    <p>感謝您選擇我們的住宿服務！</p>
-    
-    <h2>⚠️ 重要提醒</h2>
-    <p>此訂房將為您保留 {{daysReserved}} 天，請於 <strong>{{paymentDeadline}}前</strong>完成匯款，逾期將自動取消訂房。</p>
-    
-    <h2>訂房資訊</h2>
-    <p><strong>訂房編號：</strong>{{bookingId}}</p>
-    <p><strong>入住日期：</strong>{{checkInDate}}</p>
-    <p><strong>退房日期：</strong>{{checkOutDate}}</p>
-    <p><strong>房型：</strong>{{roomType}}</p>
-    {{#if addonsList}}
-    <p><strong>加購商品：</strong>{{addonsList}}</p>
-    <p><strong>加購商品總額：</strong>NT$ {{addonsTotal}}</p>
-    {{/if}}
-    <p><strong>總金額：</strong>NT$ {{totalAmount}}</p>
-    <p><strong>應付金額：</strong>NT$ {{finalAmount}}</p>
-    
-    <h2>💰 匯款資訊</h2>
-    <p><strong>銀行：</strong>{{bankName}}{{bankBranchDisplay}}</p>
-    <p><strong>帳號：</strong>{{bankAccount}}</p>
-    <p><strong>戶名：</strong>{{accountName}}</p>
-    <p>請在匯款時備註訂房編號後5碼：<strong>{{bookingId}}</strong></p>
-    
-    {{#if isDeposit}}
-    <h2>💡 剩餘尾款</h2>
-    <p>剩餘尾款於現場付清！</p>
-    <p><strong>剩餘尾款：</strong>NT$ {{remainingAmount}}</p>
-    {{/if}}
-    
-    <p>如有任何問題，請隨時與我們聯繫。</p>
-    <p>感謝您的配合！</p>
-    
-    {{hotelInfoFooter}}
+    <div class="container">
+        <div class="header">
+            <h1>⏰ 匯款期限提醒</h1>
+        </div>
+        <div class="content">
+            <p>親愛的 {{guestName}} 您好，</p>
+            <p>感謝您選擇我們的住宿服務！</p>
+            
+            <div class="highlight">
+                <h2 style="margin-top: 0; color: #856404;">⚠️ 重要提醒</h2>
+                <p style="color: #856404; font-weight: 600;">此訂房將為您保留 {{daysReserved}} 天，請於 <strong>{{paymentDeadline}}前</strong>完成匯款，逾期將自動取消訂房。</p>
+            </div>
+            
+            <div class="info-box">
+                <h2 style="margin-top: 0;">訂房資訊</h2>
+                <div class="info-row">
+                    <span class="info-label">訂房編號</span>
+                    <span class="info-value"><strong>{{bookingId}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">入住日期</span>
+                    <span class="info-value">{{checkInDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">退房日期</span>
+                    <span class="info-value">{{checkOutDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">房型</span>
+                    <span class="info-value">{{roomType}}</span>
+                </div>
+                {{#if addonsList}}
+                <div class="info-row">
+                    <span class="info-label">加購商品</span>
+                    <span class="info-value">{{addonsList}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">加購商品總額</span>
+                    <span class="info-value">NT$ {{addonsTotal}}</span>
+                </div>
+                {{/if}}
+                <div class="info-row">
+                    <span class="info-label">總金額</span>
+                    <span class="info-value"><strong>NT$ {{totalAmount}}</strong></span>
+                </div>
+                <div class="info-row" style="border-bottom: none;">
+                    <span class="info-label">應付金額</span>
+                    <span class="info-value"><strong>NT$ {{finalAmount}}</strong></span>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <h2 style="margin-top: 0;">💰 匯款資訊</h2>
+                <div class="info-row">
+                    <span class="info-label">銀行</span>
+                    <span class="info-value">{{bankName}}{{bankBranchDisplay}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">帳號</span>
+                    <span class="info-value"><strong>{{bankAccount}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">戶名</span>
+                    <span class="info-value">{{accountName}}</span>
+                </div>
+                <p style="margin-top: 15px; color: #666; font-size: 14px;">請在匯款時備註訂房編號後5碼：<strong>{{bookingId}}</strong></p>
+            </div>
+            
+            {{#if isDeposit}}
+            <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <h2 style="margin-top: 0; color: #2e7d32;">💡 剩餘尾款</h2>
+                <p style="color: #2e7d32; font-weight: 600; margin: 0;">剩餘尾款於現場付清！</p>
+                <p style="color: #2e7d32; margin: 10px 0 0 0; font-size: 18px; font-weight: 700;">剩餘尾款：NT$ {{remainingAmount}}</p>
+            </div>
+            {{/if}}
+            
+            <p>如有任何問題，請隨時與我們聯繫。</p>
+            <p>感謝您的配合！</p>
+            
+            {{hotelInfoFooter}}
+        </div>
+    </div>
 </body>
 </html>`,
                 days_reserved: 3,
@@ -4949,10 +5001,15 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #262A33; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #262A33; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
         h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
         p { margin: 10px 0; }
         strong { color: #333; }
         ul, ol { margin: 10px 0; padding-left: 30px; }
@@ -4960,60 +5017,79 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
     </style>
 </head>
 <body>
-    <h1>🏨 入住提醒</h1>
-    
-    <p>親愛的 {{guestName}} 您好，</p>
-    <p>感謝您選擇我們的住宿服務！我們期待您明天的到來。</p>
-    
-    <h2>📅 訂房資訊</h2>
-    <p><strong>訂房編號：</strong>{{bookingId}}</p>
-    <p><strong>入住日期：</strong>{{checkInDate}}</p>
-    <p><strong>退房日期：</strong>{{checkOutDate}}</p>
-    <p><strong>房型：</strong>{{roomType}}</p>
-    
-    <h2>📍 交通路線</h2>
-    <p><strong>地址：</strong>台北市信義區信義路五段7號</p>
-    <p><strong>大眾運輸：</strong></p>
-    <ul>
-        <li>捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
-        <li>公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>
-    </ul>
-    <p><strong>自行開車：</strong></p>
-    <ul>
-        <li>國道一號：下「信義交流道」，沿信義路直行約3公里</li>
-        <li>國道三號：下「木柵交流道」，接信義快速道路</li>
-    </ul>
-    
-    <h2>🅿️ 停車資訊</h2>
-    <p><strong>停車場位置：</strong>B1-B3 地下停車場</p>
-    <p><strong>停車費用：</strong></p>
-    <ul>
-        <li>住宿客人：每日 NT$ 200（可無限次進出）</li>
-        <li>臨時停車：每小時 NT$ 50</li>
-    </ul>
-    <p><strong>停車場開放時間：</strong>24 小時</p>
-    <p><strong>注意事項：</strong>停車位有限，建議提前預約</p>
-    
-    <h2>⚠️ 入住注意事項</h2>
-    <ul>
-        <li>入住時間：下午 3:00 後</li>
-        <li>退房時間：上午 11:00 前</li>
-        <li>請攜帶身分證件辦理入住手續</li>
-        <li>房間內禁止吸菸，違者將收取清潔費 NT$ 3,000</li>
-        <li>請保持安靜，避免影響其他住客</li>
-        <li>貴重物品請妥善保管，建議使用房間保險箱</li>
-        <li>如需延遲退房，請提前告知櫃檯</li>
-    </ul>
-    
-    <h2>📞 聯絡資訊</h2>
-    <p>如有任何問題，歡迎隨時聯繫我們：</p>
-    <p><strong>電話：</strong>02-1234-5678</p>
-    <p><strong>Email：</strong>service@hotel.com</p>
-    <p><strong>服務時間：</strong>24 小時</p>
-    
-    <p>期待您的到來，祝您住宿愉快！</p>
-    
-    {{hotelInfoFooter}}
+    <div class="container">
+        <div class="header">
+            <h1>🏨 入住提醒</h1>
+        </div>
+        <div class="content">
+            <p>親愛的 {{guestName}} 您好，</p>
+            <p>感謝您選擇我們的住宿服務！我們期待您明天的到來。</p>
+            
+            <div class="info-box">
+                <h2 style="margin-top: 0;">📅 訂房資訊</h2>
+                <div class="info-row">
+                    <span class="info-label">訂房編號</span>
+                    <span class="info-value"><strong>{{bookingId}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">入住日期</span>
+                    <span class="info-value">{{checkInDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">退房日期</span>
+                    <span class="info-value">{{checkOutDate}}</span>
+                </div>
+                <div class="info-row" style="border-bottom: none;">
+                    <span class="info-label">房型</span>
+                    <span class="info-value">{{roomType}}</span>
+                </div>
+            </div>
+            
+            <h2>📍 交通路線</h2>
+            <p><strong>地址：</strong>台北市信義區信義路五段7號</p>
+            <p><strong>大眾運輸：</strong></p>
+            <ul>
+                <li>捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
+                <li>公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>
+            </ul>
+            <p><strong>自行開車：</strong></p>
+            <ul>
+                <li>國道一號：下「信義交流道」，沿信義路直行約3公里</li>
+                <li>國道三號：下「木柵交流道」，接信義快速道路</li>
+            </ul>
+            
+            <h2>🅿️ 停車資訊</h2>
+            <p><strong>停車場位置：</strong>B1-B3 地下停車場</p>
+            <p><strong>停車費用：</strong></p>
+            <ul>
+                <li>住宿客人：每日 NT$ 200（可無限次進出）</li>
+                <li>臨時停車：每小時 NT$ 50</li>
+            </ul>
+            <p><strong>停車場開放時間：</strong>24 小時</p>
+            <p><strong>注意事項：</strong>停車位有限，建議提前預約</p>
+            
+            <h2>⚠️ 入住注意事項</h2>
+            <ul>
+                <li>入住時間：下午 3:00 後</li>
+                <li>退房時間：上午 11:00 前</li>
+                <li>請攜帶身分證件辦理入住手續</li>
+                <li>房間內禁止吸菸，違者將收取清潔費 NT$ 3,000</li>
+                <li>請保持安靜，避免影響其他住客</li>
+                <li>貴重物品請妥善保管，建議使用房間保險箱</li>
+                <li>如需延遲退房，請提前告知櫃檯</li>
+            </ul>
+            
+            <h2>📞 聯絡資訊</h2>
+            <p>如有任何問題，歡迎隨時聯繫我們：</p>
+            <p><strong>電話：</strong>02-1234-5678</p>
+            <p><strong>Email：</strong>service@hotel.com</p>
+            <p><strong>服務時間：</strong>24 小時</p>
+            
+            <p>期待您的到來，祝您住宿愉快！</p>
+            
+            {{hotelInfoFooter}}
+        </div>
+    </div>
 </body>
 </html>`,
                 days_before_checkin: 1,
@@ -5028,10 +5104,15 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #262A33; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #262A33; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
         h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
         p { margin: 10px 0; }
         strong { color: #333; }
         ul, ol { margin: 10px 0; padding-left: 30px; }
@@ -5039,34 +5120,53 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
     </style>
 </head>
 <body>
-    <h1>⭐ 感謝您的入住</h1>
-    
-    <p>親愛的 {{guestName}} 您好，</p>
-    <p>感謝您選擇我們的住宿服務！希望您這次的住宿體驗愉快舒適。</p>
-    
-    <h2>📅 住宿資訊</h2>
-    <p><strong>訂房編號：</strong>{{bookingId}}</p>
-    <p><strong>入住日期：</strong>{{checkInDate}}</p>
-    <p><strong>退房日期：</strong>{{checkOutDate}}</p>
-    <p><strong>房型：</strong>{{roomType}}</p>
-    
-    <h2>您的寶貴意見對我們非常重要！</h2>
-    <p>請為我們的服務評分：</p>
-    <p>⭐⭐⭐⭐⭐</p>
-    
-    <h2>💬 意見回饋</h2>
-    <p>如果您有任何建議或意見，歡迎透過以下方式與我們聯繫：</p>
-    <p><strong>Email：</strong>feedback@hotel.com</p>
-    <p><strong>電話：</strong>02-1234-5678</p>
-    <p>您的意見將幫助我們持續改進服務品質！</p>
-    
-    <h2>🎁 再次入住優惠</h2>
-    <p>感謝您的支持！再次預訂可享有 <strong>9 折優惠</strong>，歡迎隨時與我們聯繫。</p>
-    
-    <p>期待再次為您服務！</p>
-    <p>祝您 身體健康，萬事如意</p>
-    
-    {{hotelInfoFooter}}
+    <div class="container">
+        <div class="header">
+            <h1>⭐ 感謝您的入住</h1>
+        </div>
+        <div class="content">
+            <p>親愛的 {{guestName}} 您好，</p>
+            <p>感謝您選擇我們的住宿服務！希望您這次的住宿體驗愉快舒適。</p>
+            
+            <div class="info-box">
+                <h2 style="margin-top: 0;">📅 住宿資訊</h2>
+                <div class="info-row">
+                    <span class="info-label">訂房編號</span>
+                    <span class="info-value"><strong>{{bookingId}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">入住日期</span>
+                    <span class="info-value">{{checkInDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">退房日期</span>
+                    <span class="info-value">{{checkOutDate}}</span>
+                </div>
+                <div class="info-row" style="border-bottom: none;">
+                    <span class="info-label">房型</span>
+                    <span class="info-value">{{roomType}}</span>
+                </div>
+            </div>
+            
+            <h2>您的寶貴意見對我們非常重要！</h2>
+            <p>請為我們的服務評分：</p>
+            <p>⭐⭐⭐⭐⭐</p>
+            
+            <h2>💬 意見回饋</h2>
+            <p>如果您有任何建議或意見，歡迎透過以下方式與我們聯繫：</p>
+            <p><strong>Email：</strong>feedback@hotel.com</p>
+            <p><strong>電話：</strong>02-1234-5678</p>
+            <p>您的意見將幫助我們持續改進服務品質！</p>
+            
+            <h2>🎁 再次入住優惠</h2>
+            <p>感謝您的支持！再次預訂可享有 <strong>9 折優惠</strong>，歡迎隨時與我們聯繫。</p>
+            
+            <p>期待再次為您服務！</p>
+            <p>祝您 身體健康，萬事如意</p>
+            
+            {{hotelInfoFooter}}
+        </div>
+    </div>
 </body>
 </html>`,
                 days_after_checkout: 1,
@@ -5209,37 +5309,86 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #e74c3c; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #e74c3c; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
         h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
         p { margin: 10px 0; }
         strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
     </style>
 </head>
 <body>
-    <h1>🔔 新訂房通知</h1>
-    
-    <p>您有一筆新的訂房申請：</p>
-    
-    <h2>訂房資訊</h2>
-    <p><strong>訂房編號：</strong>{{bookingId}}</p>
-    <p><strong>客戶姓名：</strong>{{guestName}}</p>
-    <p><strong>聯絡電話：</strong>{{guestPhone}}</p>
-    <p><strong>Email：</strong>{{guestEmail}}</p>
-    <p><strong>入住日期：</strong>{{checkInDate}}</p>
-    <p><strong>退房日期：</strong>{{checkOutDate}}</p>
-    <p><strong>房型：</strong>{{roomType}}</p>
-    {{#if addonsList}}
-    <p><strong>加購商品：</strong>{{addonsList}}</p>
-    <p><strong>加購商品總額：</strong>NT$ {{addonsTotal}}</p>
-    {{/if}}
-    <p><strong>總金額：</strong>NT$ {{totalAmount}}</p>
-    <p><strong>應付金額：</strong>NT$ {{finalAmount}}</p>
-    <p><strong>支付方式：</strong>{{paymentAmount}} - {{paymentMethod}}</p>
-    <p><strong>訂房時間：</strong>{{bookingDate}}</p>
+    <div class="container">
+        <div class="header">
+            <h1>🔔 新訂房通知</h1>
+        </div>
+        <div class="content">
+            <p>您有一筆新的訂房申請：</p>
+            
+            <div class="info-box">
+                <h2 style="margin-top: 0;">訂房資訊</h2>
+                <div class="info-row">
+                    <span class="info-label">訂房編號</span>
+                    <span class="info-value"><strong>{{bookingId}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">客戶姓名</span>
+                    <span class="info-value">{{guestName}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">聯絡電話</span>
+                    <span class="info-value">{{guestPhone}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Email</span>
+                    <span class="info-value">{{guestEmail}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">入住日期</span>
+                    <span class="info-value">{{checkInDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">退房日期</span>
+                    <span class="info-value">{{checkOutDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">房型</span>
+                    <span class="info-value">{{roomType}}</span>
+                </div>
+                {{#if addonsList}}
+                <div class="info-row">
+                    <span class="info-label">加購商品</span>
+                    <span class="info-value">{{addonsList}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">加購商品總額</span>
+                    <span class="info-value">NT$ {{addonsTotal}}</span>
+                </div>
+                {{/if}}
+                <div class="info-row">
+                    <span class="info-label">總金額</span>
+                    <span class="info-value"><strong>NT$ {{totalAmount}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">應付金額</span>
+                    <span class="info-value"><strong>NT$ {{finalAmount}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">支付方式</span>
+                    <span class="info-value">{{paymentAmount}} - {{paymentMethod}}</span>
+                </div>
+                <div class="info-row" style="border-bottom: none;">
+                    <span class="info-label">訂房時間</span>
+                    <span class="info-value">{{bookingDate}}</span>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>`
             },
@@ -5252,38 +5401,69 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #198754; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #198754; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
         h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
         p { margin: 10px 0; }
         strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
     </style>
 </head>
 <body>
-    <h1>✅ 付款完成確認</h1>
-    <p>感謝您的付款！</p>
-    
-    <p>親愛的 {{guestName}}，</p>
-    <p>我們已確認收到您的付款，以下是您的訂房與付款資訊：</p>
-    
-    <h2>訂房與付款資訊</h2>
-    <p><strong>訂房編號：</strong>{{bookingId}}</p>
-    <p><strong>入住日期：</strong>{{checkInDate}}</p>
-    <p><strong>退房日期：</strong>{{checkOutDate}}</p>
-    <p><strong>房型：</strong>{{roomType}}</p>
-    <p><strong>總金額：</strong>NT$ {{totalAmount}}</p>
-    <p><strong>本次已收金額：</strong>NT$ {{finalAmount}}</p>
-    <p><strong>付款方式：</strong>{{paymentMethod}}</p>
-    
-    <p>若您後續仍需變更或取消訂房，請儘早與我們聯繫，我們將盡力協助您。</p>
-    
-    <p>再次感謝您的預訂，期待您的光臨！</p>
-    <p>此為系統自動發送郵件，請勿直接回覆</p>
-    
-    {{hotelInfoFooter}}
+    <div class="container">
+        <div class="header">
+            <h1>✅ 付款完成確認</h1>
+            <p>感謝您的付款！</p>
+        </div>
+        <div class="content">
+            <p>親愛的 {{guestName}}，</p>
+            <p>我們已確認收到您的付款，以下是您的訂房與付款資訊：</p>
+            
+            <div class="info-box">
+                <h2 style="margin-top: 0;">訂房與付款資訊</h2>
+                <div class="info-row">
+                    <span class="info-label">訂房編號</span>
+                    <span class="info-value"><strong>{{bookingId}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">入住日期</span>
+                    <span class="info-value">{{checkInDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">退房日期</span>
+                    <span class="info-value">{{checkOutDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">房型</span>
+                    <span class="info-value">{{roomType}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">總金額</span>
+                    <span class="info-value"><strong>NT$ {{totalAmount}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">本次已收金額</span>
+                    <span class="info-value"><strong>NT$ {{finalAmount}}</strong></span>
+                </div>
+                <div class="info-row" style="border-bottom: none;">
+                    <span class="info-label">付款方式</span>
+                    <span class="info-value">{{paymentMethod}}</span>
+                </div>
+            </div>
+            
+            <p>若您後續仍需變更或取消訂房，請儘早與我們聯繫，我們將盡力協助您。</p>
+            
+            <p>再次感謝您的預訂，期待您的光臨！</p>
+            <p style="text-align: center; margin-top: 30px; color: #666; font-size: 14px;">此為系統自動發送郵件，請勿直接回覆</p>
+            
+            {{hotelInfoFooter}}
+        </div>
+    </div>
 </body>
 </html>`
             },
@@ -5296,39 +5476,73 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #e74c3c; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #e74c3c; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
+        .info-value { color: #333; }
+        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
         h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
         p { margin: 10px 0; }
         strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
     </style>
 </head>
 <body>
-    <h1>⚠️ 訂房已自動取消</h1>
-    <p>很抱歉，您的訂房因超過保留期限已自動取消</p>
-    
-    <p>親愛的 {{guestName}}，</p>
-    <p>很抱歉通知您，由於超過匯款保留期限，您的訂房已自動取消。以下是取消的訂房資訊：</p>
-    
-    <h2>取消的訂房資訊</h2>
-    <p><strong>訂房編號：</strong>{{bookingId}}</p>
-    <p><strong>入住日期：</strong>{{checkInDate}}</p>
-    <p><strong>退房日期：</strong>{{checkOutDate}}</p>
-    <p><strong>住宿天數：</strong>{{nights}} 晚</p>
-    <p><strong>房型：</strong>{{roomType}}</p>
-    <p><strong>訂房日期：</strong>{{bookingDate}}</p>
-    <p><strong>應付金額：</strong>NT$ {{finalAmount}}</p>
+    <div class="container">
+        <div class="header">
+            <h1>⚠️ 訂房已自動取消</h1>
+            <p>很抱歉，您的訂房因超過保留期限已自動取消</p>
+        </div>
+        <div class="content">
+            <p>親愛的 {{guestName}}，</p>
+            <p>很抱歉通知您，由於超過匯款保留期限，您的訂房已自動取消。以下是取消的訂房資訊：</p>
+            
+            <div class="info-box">
+                <h2 style="margin-top: 0;">取消的訂房資訊</h2>
+                <div class="info-row">
+                    <span class="info-label">訂房編號</span>
+                    <span class="info-value"><strong>{{bookingId}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">入住日期</span>
+                    <span class="info-value">{{checkInDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">退房日期</span>
+                    <span class="info-value">{{checkOutDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">住宿天數</span>
+                    <span class="info-value">{{nights}} 晚</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">房型</span>
+                    <span class="info-value">{{roomType}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">訂房日期</span>
+                    <span class="info-value">{{bookingDate}}</span>
+                </div>
+                <div class="info-row" style="border-bottom: none;">
+                    <span class="info-label">應付金額</span>
+                    <span class="info-value"><strong>NT$ {{finalAmount}}</strong></span>
+                </div>
+            </div>
 
-    <h2>📌 取消原因</h2>
-    <p>此訂房因超過匯款保留期限（{{bookingDate}} 起算），且未在期限內完成付款，系統已自動取消。</p>
+            <div class="highlight">
+                <h2 style="margin-top: 0; color: #856404;">📌 取消原因</h2>
+                <p style="color: #856404;">此訂房因超過匯款保留期限（{{bookingDate}} 起算），且未在期限內完成付款，系統已自動取消。</p>
+            </div>
 
-    <h2>💡 如需重新訂房</h2>
-    <p>如果您仍希望預訂，歡迎重新進行訂房。如有任何疑問，請隨時與我們聯繫。</p>
+            <h2>💡 如需重新訂房</h2>
+            <p>如果您仍希望預訂，歡迎重新進行訂房。如有任何疑問，請隨時與我們聯繫。</p>
 
-    {{hotelInfoFooter}}
+            {{hotelInfoFooter}}
+        </div>
+    </div>
 </body>
 </html>`
             }
@@ -5365,7 +5579,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             
             res.json({
                 success: true,
-                message: `郵件模板「${template.name}」已重置為預設的原始排版樣式`
+                message: `郵件模板「${template.name}」已重置為預設的圖卡樣式`
             });
         } else {
             // 更新所有模板為預設原始排版樣式（無圖卡樣式）
@@ -5386,7 +5600,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             
             res.json({
                 success: true,
-                message: '所有郵件模板已重置為預設的原始排版樣式'
+                message: '所有郵件模板已重置為預設的圖卡樣式'
             });
         }
     } catch (error) {
