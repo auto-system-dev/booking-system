@@ -896,37 +896,111 @@ async function initEmailTemplates() {
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #e74c3c; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
+        .header p { font-size: 18px; margin: 0; opacity: 0.95; }
+        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #e74c3c; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
+        .info-value strong { color: #333; font-weight: 700; }
+        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
+        .section-title:first-of-type { margin-top: 0; }
+        p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
+        .intro-text { font-size: 16px; color: #555; margin-bottom: 25px; }
+        strong { color: #333; font-weight: 700; }
+        .amount-highlight { background: #ffebee; border: 2px solid #e74c3c; border-radius: 8px; padding: 18px; margin: 20px 0; }
+        .amount-label { font-size: 18px; font-weight: 600; color: #c62828; margin-bottom: 8px; }
+        .amount-value { font-size: 24px; font-weight: 700; color: #c62828; }
+        .contact-section { background: #fff3e0; border: 2px solid #ff9800; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .contact-title { font-size: 20px; font-weight: bold; color: #e65100; margin: 0 0 15px 0; }
     </style>
 </head>
 <body>
-    <h1>🔔 新訂房通知</h1>
-    
-    <p>您有一筆新的訂房申請：</p>
-    
-    <h2>訂房資訊</h2>
-    <p><strong>訂房編號：</strong>{{bookingId}}</p>
-    <p><strong>客戶姓名：</strong>{{guestName}}</p>
-    <p><strong>聯絡電話：</strong>{{guestPhone}}</p>
-    <p><strong>Email：</strong>{{guestEmail}}</p>
-    <p><strong>入住日期：</strong>{{checkInDate}}</p>
-    <p><strong>退房日期：</strong>{{checkOutDate}}</p>
-    <p><strong>房型：</strong>{{roomType}}</p>
-    {{#if addonsList}}
-    <p><strong>加購商品：</strong>{{addonsList}}</p>
-    <p><strong>加購商品總額：</strong>NT$ {{addonsTotal}}</p>
-    {{/if}}
-    <p><strong>總金額：</strong>NT$ {{totalAmount}}</p>
-    <p><strong>應付金額：</strong>NT$ {{finalAmount}}</p>
-    <p><strong>支付方式：</strong>{{paymentAmount}} - {{paymentMethod}}</p>
-    <p><strong>訂房時間：</strong>{{bookingDate}}</p>
+    <div class="container">
+        <div class="header">
+            <h1>🔔 新訂房通知</h1>
+            <p>您有一筆新的訂房申請</p>
+        </div>
+        <div class="content">
+            <p class="intro-text">以下是訂房詳細資訊：</p>
+            
+            <div class="info-box">
+                <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">訂房資訊</div>
+                <div class="info-row">
+                    <span class="info-label">訂房編號</span>
+                    <span class="info-value"><strong>{{bookingId}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">入住日期</span>
+                    <span class="info-value">{{checkInDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">退房日期</span>
+                    <span class="info-value">{{checkOutDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">住宿天數</span>
+                    <span class="info-value">{{nights}} 晚</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">房型</span>
+                    <span class="info-value">{{roomType}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">房價（每晚）</span>
+                    <span class="info-value">NT$ {{pricePerNight}}</span>
+                </div>
+                {{#if addonsList}}
+                <div class="info-row">
+                    <span class="info-label">加購商品</span>
+                    <span class="info-value">{{addonsList}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">加購商品總額</span>
+                    <span class="info-value">NT$ {{addonsTotal}}</span>
+                </div>
+                {{/if}}
+                <div class="info-row" style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ddd;">
+                    <span class="info-label" style="font-size: 18px; color: #333;">總金額</span>
+                    <span class="info-value" style="font-size: 20px; font-weight: 700;">NT$ {{totalAmount}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">支付方式</span>
+                    <span class="info-value">{{paymentAmount}} - {{paymentMethod}}</span>
+                </div>
+                <div class="info-row" style="border-bottom: none;">
+                    <span class="info-label">訂房時間</span>
+                    <span class="info-value">{{bookingDate}}</span>
+                </div>
+            </div>
+
+            <div class="amount-highlight">
+                <div class="amount-label">應付金額</div>
+                <div class="amount-value">NT$ {{finalAmount}}</div>
+            </div>
+
+            <div class="contact-section">
+                <div class="contact-title">📞 客戶聯絡資訊</div>
+                <div class="info-row" style="border-bottom: 1px solid #ffcc80; padding: 10px 0;">
+                    <span class="info-label" style="min-width: auto; font-size: 16px;">客戶姓名</span>
+                    <span class="info-value" style="text-align: right; font-size: 16px; font-weight: 600;">{{guestName}}</span>
+                </div>
+                <div class="info-row" style="border-bottom: 1px solid #ffcc80; padding: 10px 0;">
+                    <span class="info-label" style="min-width: auto; font-size: 16px;">聯絡電話</span>
+                    <span class="info-value" style="text-align: right; font-size: 16px;">{{guestPhone}}</span>
+                </div>
+                <div class="info-row" style="border-bottom: none; padding: 10px 0;">
+                    <span class="info-label" style="min-width: auto; font-size: 16px;">Email</span>
+                    <span class="info-value" style="text-align: right; font-size: 16px;">{{guestEmail}}</span>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>`,
             enabled: 1
