@@ -5081,90 +5081,122 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; }
-        h1 { color: #333; font-size: 28px; font-weight: bold; margin-bottom: 10px; margin-top: 0; }
-        h2 { color: #333; font-size: 20px; font-weight: bold; margin-top: 30px; margin-bottom: 15px; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
-        h3 { color: #333; font-size: 18px; font-weight: bold; margin-top: 25px; margin-bottom: 12px; }
-        p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
-        .greeting { font-size: 18px; margin-bottom: 8px; }
-        .intro-text { font-size: 16px; color: #555; margin-bottom: 20px; }
-        .info-section { margin: 20px 0; }
-        .info-item { margin: 10px 0; font-size: 16px; }
-        .info-label { font-weight: bold; color: #333; display: inline-block; min-width: 120px; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #262A33; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #262A33; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
+        .info-label { font-weight: 600; color: #666; }
         .info-value { color: #333; }
-        .highlight-box { background-color: #f8f9fa; border-left: 4px solid #007bff; padding: 15px; margin: 20px 0; border-radius: 4px; }
-        .warning-box { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px; }
-        .info-box { background-color: #e7f3ff; border-left: 4px solid #17a2b8; padding: 15px; margin: 20px 0; border-radius: 4px; }
-        strong { color: #333; font-weight: bold; }
-        ul, ol { margin: 15px 0; padding-left: 30px; }
-        li { margin: 8px 0; font-size: 16px; line-height: 1.8; }
-        .section-title { font-size: 20px; font-weight: bold; margin-top: 30px; margin-bottom: 15px; }
-        .footer-text { font-size: 14px; color: #666; margin-top: 30px; text-align: center; }
+        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
+        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
+        p { margin: 10px 0; }
+        strong { color: #333; }
+        ul, ol { margin: 10px 0; padding-left: 30px; }
+        li { margin: 5px 0; }
     </style>
 </head>
 <body>
-    <h1>🏨 訂房確認成功</h1>
-    <p style="font-size: 18px; margin-bottom: 20px;">感謝您的預訂！</p>
-    
-    <p class="greeting">親愛的 {{guestName}}，</p>
-    <p class="intro-text">您的訂房已成功確認，以下是您的訂房資訊：</p>
-    
-    <h2>訂房資訊</h2>
-    <div class="info-section">
-        <p class="info-item"><span class="info-label">訂房編號：</span><span class="info-value">{{bookingId}}</span></p>
-        <p class="info-item"><span class="info-label">入住日期：</span><span class="info-value">{{checkInDate}}</span></p>
-        <p class="info-item"><span class="info-label">退房日期：</span><span class="info-value">{{checkOutDate}}</span></p>
-        <p class="info-item"><span class="info-label">住宿天數：</span><span class="info-value">{{nights}} 晚</span></p>
-        <p class="info-item"><span class="info-label">房型：</span><span class="info-value">{{roomType}}</span></p>
-        <p class="info-item"><span class="info-label">房價（每晚）：</span><span class="info-value">NT$ {{pricePerNight}}</span></p>
-        {{#if addonsList}}
-        <p class="info-item"><span class="info-label">加購商品：</span><span class="info-value">{{addonsList}}</span></p>
-        <p class="info-item"><span class="info-label">加購商品總額：</span><span class="info-value">NT$ {{addonsTotal}}</span></p>
-        {{/if}}
-        <p class="info-item"><span class="info-label">總金額：</span><span class="info-value"><strong>NT$ {{totalAmount}}</strong></span></p>
-        <p class="info-item"><span class="info-label">支付方式：</span><span class="info-value">{{paymentAmount}} - {{paymentMethod}}</span></p>
-        <p class="info-item"><span class="info-label">應付金額：</span><span class="info-value"><strong>NT$ {{finalAmount}}</strong></span></p>
-    </div>
+    <div class="container">
+        <div class="header">
+            <h1>🏨 訂房確認成功</h1>
+            <p>感謝您的預訂！</p>
+        </div>
+        <div class="content">
+            <p>親愛的 {{guestName}}，</p>
+            <p style="margin-bottom: 25px;">您的訂房已成功確認，以下是您的訂房資訊：</p>
+            
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="info-label">訂房編號</span>
+                    <span class="info-value"><strong>{{bookingId}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">入住日期</span>
+                    <span class="info-value">{{checkInDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">退房日期</span>
+                    <span class="info-value">{{checkOutDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">住宿天數</span>
+                    <span class="info-value">{{nights}} 晚</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">房型</span>
+                    <span class="info-value">{{roomType}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">房價（每晚）</span>
+                    <span class="info-value">NT$ {{pricePerNight}}</span>
+                </div>
+                {{#if addonsList}}
+                <div class="info-row">
+                    <span class="info-label">加購商品</span>
+                    <span class="info-value">{{addonsList}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">加購商品總額</span>
+                    <span class="info-value">NT$ {{addonsTotal}}</span>
+                </div>
+                {{/if}}
+                <div class="info-row">
+                    <span class="info-label">總金額</span>
+                    <span class="info-value"><strong>NT$ {{totalAmount}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">支付方式</span>
+                    <span class="info-value">{{paymentAmount}} - {{paymentMethod}}</span>
+                </div>
+                <div class="info-row" style="border-bottom: none; margin-top: 15px; padding-top: 15px; border-top: 2px solid #667eea;">
+                    <span class="info-label" style="font-size: 18px;">應付金額</span>
+                    <span class="info-value" style="font-size: 20px; color: #667eea; font-weight: 700;">NT$ {{finalAmount}}</span>
+                </div>
+            </div>
 
-    {{#if isDeposit}}
-    <h2>💡 剩餘尾款</h2>
-    <div class="info-box">
-        <p style="margin-top: 0; font-size: 16px; font-weight: bold;">剩餘尾款於現場付清！</p>
-        <p class="info-item" style="margin-bottom: 0;"><span class="info-label">剩餘尾款：</span><span class="info-value"><strong>NT$ {{remainingAmount}}</strong></span></p>
-    </div>
-    {{/if}}
+            {{#if isDeposit}}
+            <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <h2 style="margin-top: 0; color: #2e7d32;">💡 剩餘尾款</h2>
+                <p style="color: #2e7d32; font-weight: 600; margin: 0; font-size: 16px;">剩餘尾款於現場付清！</p>
+                <p style="color: #2e7d32; margin: 10px 0 0 0; font-size: 18px; font-weight: 700;">剩餘尾款：NT$ {{remainingAmount}}</p>
+            </div>
+            {{/if}}
 
-    {{#if isTransfer}}
-    <h2>💰 匯款提醒</h2>
-    <div class="warning-box">
-        <p style="margin-top: 0; font-size: 16px;">⏰ 此訂房將為您保留 <strong>{{daysReserved}} 天</strong>，請於 <strong>{{paymentDeadline}}前</strong>完成匯款，逾期將自動取消訂房。</p>
-    </div>
-    {{#if bankInfo}}
-    <div class="highlight-box">
-        <p style="margin-top: 0; font-size: 16px; font-weight: bold; margin-bottom: 12px;">匯款資訊：</p>
-        {{#if bankName}}<p class="info-item"><span class="info-label">銀行：</span><span class="info-value">{{bankName}}{{bankBranchDisplay}}</span></p>{{/if}}
-        <p class="info-item"><span class="info-label">帳號：</span><span class="info-value">{{bankAccount}}</span></p>
-        {{#if accountName}}<p class="info-item"><span class="info-label">戶名：</span><span class="info-value">{{accountName}}</span></p>{{/if}}
-        <p style="margin-top: 15px; margin-bottom: 0; font-size: 15px; color: #555;">請在匯款時備註訂房編號後5碼：<strong>{{bookingIdLast5}}</strong></p>
-    </div>
-    {{else}}
-    <div class="warning-box">
-        <p style="margin: 0; font-size: 16px;">⚠️ 匯款資訊尚未設定，請聯繫客服取得匯款帳號。</p>
-    </div>
-    {{/if}}
-    {{/if}}
-    
-    <h2>重要提醒</h2>
-    <ul>
-        <li>請於入住當天攜帶身分證件辦理入住手續</li>
-        <li>如需取消或變更訂房，請提前 3 天通知</li>
-        <li>如有任何問題，請隨時與我們聯繫</li>
-    </ul>
+            {{#if isTransfer}}
+            <div class="highlight">
+                <h2 style="color: #856404; margin-top: 0;">💰 匯款提醒</h2>
+                <p style="color: #856404; font-weight: 600; margin: 10px 0;">
+                    ⏰ 此訂房將為您保留 <strong>{{daysReserved}} 天</strong>，請於 <strong>{{paymentDeadline}}前</strong>完成匯款，逾期將自動取消訂房。
+                </p>
+                {{#if bankInfo}}
+                <div style="background: white; padding: 15px; border-radius: 5px; margin-top: 15px;">
+                    <p style="margin: 8px 0; color: #333;"><strong>匯款資訊：</strong></p>
+                    {{#if bankName}}<p style="margin: 5px 0; color: #333;">銀行：{{bankName}}{{bankBranchDisplay}}</p>{{/if}}
+                    <p style="margin: 5px 0; color: #333;">帳號：<span style="font-size: 18px; color: #e74c3c; font-weight: 700; letter-spacing: 2px;">{{bankAccount}}</span></p>
+                    {{#if accountName}}<p style="margin: 5px 0; color: #333;">戶名：{{accountName}}</p>{{/if}}
+                    <p style="margin: 15px 0 5px 0; padding-top: 10px; border-top: 1px solid #ddd; color: #666; font-size: 14px;">請在匯款時備註訂房編號後5碼：<strong>{{bookingIdLast5}}</strong></p>
+                </div>
+                {{else}}
+                <p style="color: #856404; margin: 10px 0;">⚠️ 匯款資訊尚未設定，請聯繫客服取得匯款帳號。</p>
+                {{/if}}
+            </div>
+            {{/if}}
+            
+            <p style="margin-top: 30px;"><strong>重要提醒：</strong></p>
+            <ul>
+                <li>請於入住當天攜帶身分證件辦理入住手續</li>
+                <li>如需取消或變更訂房，請提前 3 天通知</li>
+                <li>如有任何問題，請隨時與我們聯繫</li>
+            </ul>
 
-    <p style="margin-top: 25px; font-size: 16px;">感謝您的預訂，期待為您服務！</p>
-    <p class="footer-text">此為系統自動發送郵件，請勿直接回覆</p>
-    
-    {{hotelInfoFooter}}
+            <p style="margin-top: 30px;">感謝您的預訂，期待為您服務！</p>
+            <p style="text-align: center; margin-top: 30px; color: #666; font-size: 14px;">此為系統自動發送郵件，請勿直接回覆</p>
+            
+            {{hotelInfoFooter}}
+        </div>
+    </div>
 </body>
 </html>`
             },
