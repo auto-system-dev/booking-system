@@ -515,6 +515,7 @@ let quillEditor = null;
 let isHtmlMode = false;
 let isPreviewVisible = false; // 預覽是否顯示
 let currentEmailStyle = 'card'; // 當前郵件樣式
+let isSimpleMode = false; // 簡化編輯模式：只編輯文字內容，保護 HTML 結構
 
 // 初始化
 document.addEventListener('DOMContentLoaded', async function() {
@@ -4222,6 +4223,76 @@ window.refreshEmailPreview = function refreshEmailPreview() {
     previewContent.srcdoc = previewHtml;
 };
 
+// 切換簡化編輯模式
+// 直接定義為 window.toggleSimpleMode，確保在事件監聽器設置前就可用
+window.toggleSimpleMode = function toggleSimpleMode() {
+    isSimpleMode = !isSimpleMode;
+    const simpleModeBtn = document.getElementById('toggleSimpleModeBtn');
+    const simpleModeText = document.getElementById('simpleModeText');
+    const editorContainer = document.getElementById('emailTemplateEditor');
+    
+    if (isSimpleMode) {
+        // 啟用簡化模式：隱藏格式化工具列，只允許編輯文字
+        if (simpleModeBtn) {
+            simpleModeBtn.style.backgroundColor = '#10b981';
+            simpleModeBtn.style.color = 'white';
+        }
+        if (simpleModeText) {
+            simpleModeText.textContent = '簡化模式（已啟用）';
+        }
+        
+        // 隱藏 Quill 工具列
+        if (quillEditor && quillEditor.getModule('toolbar')) {
+            const toolbarElement = quillEditor.container.querySelector('.ql-toolbar');
+            if (toolbarElement) {
+                toolbarElement.style.display = 'none';
+            }
+        }
+        
+        // 添加提示訊息
+        if (editorContainer) {
+            let hintDiv = editorContainer.parentElement.querySelector('.simple-mode-hint');
+            if (!hintDiv) {
+                hintDiv = document.createElement('div');
+                hintDiv.className = 'simple-mode-hint';
+                hintDiv.style.cssText = 'background: #d1fae5; border: 2px solid #10b981; border-radius: 8px; padding: 12px; margin-bottom: 10px; color: #065f46; font-size: 13px;';
+                hintDiv.innerHTML = '<strong>🛡️ 簡化編輯模式已啟用</strong><br>您現在只能編輯文字內容，所有 HTML 結構和樣式都會被保護。使用上方的變數按鈕可以插入動態內容。';
+                editorContainer.parentElement.insertBefore(hintDiv, editorContainer);
+            }
+            hintDiv.style.display = 'block';
+        }
+        
+        console.log('✅ 簡化編輯模式已啟用');
+    } else {
+        // 關閉簡化模式：顯示格式化工具列
+        if (simpleModeBtn) {
+            simpleModeBtn.style.backgroundColor = '';
+            simpleModeBtn.style.color = '';
+        }
+        if (simpleModeText) {
+            simpleModeText.textContent = '簡化模式';
+        }
+        
+        // 顯示 Quill 工具列
+        if (quillEditor && quillEditor.getModule('toolbar')) {
+            const toolbarElement = quillEditor.container.querySelector('.ql-toolbar');
+            if (toolbarElement) {
+                toolbarElement.style.display = '';
+            }
+        }
+        
+        // 隱藏提示訊息
+        if (editorContainer) {
+            const hintDiv = editorContainer.parentElement.querySelector('.simple-mode-hint');
+            if (hintDiv) {
+                hintDiv.style.display = 'none';
+            }
+        }
+        
+        console.log('✅ 簡化編輯模式已關閉');
+    }
+};
+
 // 切換郵件預覽顯示
 // 直接定義為 window.toggleEmailPreview，確保在事件監聽器設置前就可用
 window.toggleEmailPreview = function toggleEmailPreview() {
@@ -4858,6 +4929,52 @@ async function showEmailTemplateModal(templateKey) {
                     }
                 });
                 console.log('✅ resetTemplateStyleBtn 按鈕事件監聽器已設置');
+            }
+            
+            // 設置簡化模式按鈕的事件監聽器
+            const toggleSimpleModeBtn = document.getElementById('toggleSimpleModeBtn');
+            if (toggleSimpleModeBtn) {
+                const newSimpleBtn = toggleSimpleModeBtn.cloneNode(true);
+                toggleSimpleModeBtn.parentNode.replaceChild(newSimpleBtn, toggleSimpleModeBtn);
+                
+                newSimpleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    try {
+                        if (typeof window.toggleSimpleMode === 'function') {
+                            window.toggleSimpleMode();
+                        } else {
+                            alert('簡化模式功能尚未載入，請稍候再試');
+                        }
+                    } catch (error) {
+                        console.error('❌ 調用 toggleSimpleMode 時發生錯誤:', error);
+                        alert('切換簡化模式時發生錯誤：' + error.message);
+                    }
+                });
+                console.log('✅ toggleSimpleModeBtn 按鈕事件監聽器已設置');
+            }
+            
+            // 設置簡化模式按鈕的事件監聽器
+            const toggleSimpleModeBtn = document.getElementById('toggleSimpleModeBtn');
+            if (toggleSimpleModeBtn) {
+                const newSimpleBtn = toggleSimpleModeBtn.cloneNode(true);
+                toggleSimpleModeBtn.parentNode.replaceChild(newSimpleBtn, toggleSimpleModeBtn);
+                
+                newSimpleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    try {
+                        if (typeof window.toggleSimpleMode === 'function') {
+                            window.toggleSimpleMode();
+                        } else {
+                            alert('簡化模式功能尚未載入，請稍候再試');
+                        }
+                    } catch (error) {
+                        console.error('❌ 調用 toggleSimpleMode 時發生錯誤:', error);
+                        alert('切換簡化模式時發生錯誤：' + error.message);
+                    }
+                });
+                console.log('✅ toggleSimpleModeBtn 按鈕事件監聽器已設置');
             }
             
             // 設置顯示預覽按鈕的事件監聽器
