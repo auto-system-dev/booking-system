@@ -5139,8 +5139,8 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
         .info-section-title { font-size: 20px; font-weight: bold; color: #2e7d32; margin: 0 0 15px 0; }
         .rating-section { background: #fff9c4; border: 2px solid #fbc02d; border-radius: 8px; padding: 25px; margin: 25px 0; text-align: center; }
         .rating-stars { font-size: 32px; margin: 15px 0; }
-        .google-review-btn { display: inline-block; background: #4285f4; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-size: 16px; font-weight: 600; margin-top: 15px; transition: background 0.3s; }
-        .google-review-btn:hover { background: #357ae8; }
+        .google-review-btn { display: inline-block; background: #1a73e8; color: white; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-size: 17px; font-weight: 700; margin-top: 15px; transition: background 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.2); letter-spacing: 0.5px; }
+        .google-review-btn:hover { background: #1557b0; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body>
