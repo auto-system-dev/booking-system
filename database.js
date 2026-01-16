@@ -729,45 +729,87 @@ async function initEmailTemplates() {
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #4caf50; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
+        .header p { font-size: 18px; margin: 0; opacity: 0.95; }
+        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #4caf50; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
+        .info-value strong { color: #333; font-weight: 700; }
+        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
+        .section-title:first-of-type { margin-top: 0; }
+        p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
+        .greeting { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+        .intro-text { font-size: 16px; color: #555; margin-bottom: 25px; }
+        strong { color: #333; font-weight: 700; }
+        ul { margin: 15px 0; padding-left: 30px; }
+        li { margin: 10px 0; font-size: 16px; line-height: 1.8; }
+        .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-section { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-section-title { font-size: 20px; font-weight: bold; color: #2e7d32; margin: 0 0 15px 0; }
+        .rating-section { background: #fff9c4; border: 2px solid #fbc02d; border-radius: 8px; padding: 25px; margin: 25px 0; text-align: center; }
+        .rating-stars { font-size: 32px; margin: 15px 0; }
     </style>
 </head>
 <body>
-    <h1>⭐ 感謝您的入住</h1>
-    
-    <p>親愛的 {{guestName}} 您好，</p>
-    <p>感謝您選擇我們的住宿服務！希望您這次的住宿體驗愉快舒適。</p>
-    
-    <h2>📅 住宿資訊</h2>
-    <p><strong>訂房編號：</strong>{{bookingId}}</p>
-    <p><strong>入住日期：</strong>{{checkInDate}}</p>
-    <p><strong>退房日期：</strong>{{checkOutDate}}</p>
-    <p><strong>房型：</strong>{{roomType}}</p>
-    
-    <h2>您的寶貴意見對我們非常重要！</h2>
-    <p>請為我們的服務評分：</p>
-    <p>⭐⭐⭐⭐⭐</p>
-    
-    <h2>💬 意見回饋</h2>
-    <p>如果您有任何建議或意見，歡迎透過以下方式與我們聯繫：</p>
-    <p><strong>Email：</strong>feedback@hotel.com</p>
-    <p><strong>電話：</strong>02-1234-5678</p>
-    <p>您的意見將幫助我們持續改進服務品質！</p>
-    
-    <h2>🎁 再次入住優惠</h2>
-    <p>感謝您的支持！再次預訂可享有 <strong>9 折優惠</strong>，歡迎隨時與我們聯繫。</p>
-    
-    <p>期待再次為您服務！</p>
-    <p>祝您 身體健康，萬事如意</p>
-    
-    {{hotelInfoFooter}}
+    <div class="container">
+        <div class="header">
+            <h1>⭐ 感謝您的入住</h1>
+            <p>希望您這次的住宿體驗愉快舒適</p>
+        </div>
+        <div class="content">
+            <p class="greeting">親愛的 {{guestName}} 您好，</p>
+            <p class="intro-text">感謝您選擇我們的住宿服務！希望您這次的住宿體驗愉快舒適。</p>
+            
+            <div class="info-box">
+                <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">📅 住宿資訊</div>
+                <div class="info-row">
+                    <span class="info-label">訂房編號</span>
+                    <span class="info-value"><strong>{{bookingId}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">入住日期</span>
+                    <span class="info-value">{{checkInDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">退房日期</span>
+                    <span class="info-value">{{checkOutDate}}</span>
+                </div>
+                <div class="info-row" style="border-bottom: none;">
+                    <span class="info-label">房型</span>
+                    <span class="info-value">{{roomType}}</span>
+                </div>
+            </div>
+            
+            <div class="rating-section">
+                <div class="section-title" style="margin-top: 0; margin-bottom: 15px; color: #f57f17; justify-content: center;">您的寶貴意見對我們非常重要！</div>
+                <p style="margin: 0 0 10px 0; font-size: 17px; font-weight: 600; color: #333;">請為我們的服務評分：</p>
+                <div class="rating-stars">⭐⭐⭐⭐⭐</div>
+            </div>
+            
+            <div class="info-section">
+                <div class="info-section-title">💬 意見回饋</div>
+                <p style="margin: 0 0 15px 0; font-size: 16px;">如果您有任何建議或意見，歡迎透過以下方式與我們聯繫：</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>feedback@hotel.com</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>02-1234-5678</p>
+                <p style="margin: 0; font-size: 15px; color: #2e7d32; font-weight: 600;">您的意見將幫助我們持續改進服務品質！</p>
+            </div>
+            
+            <div class="highlight-box">
+                <div class="section-title" style="margin-top: 0; margin-bottom: 12px; color: #856404; justify-content: center;">🎁 再次入住優惠</div>
+                <p style="margin: 0; font-size: 17px; text-align: center; font-weight: 600; color: #333;">感謝您的支持！再次預訂可享有 <strong style="color: #e65100; font-size: 20px;">9 折優惠</strong></p>
+                <p style="margin: 12px 0 0 0; font-size: 16px; text-align: center; color: #666;">歡迎隨時與我們聯繫</p>
+            </div>
+            
+            <p style="margin-top: 35px; font-size: 17px; font-weight: 500; text-align: center;">期待再次為您服務！</p>
+            <p style="margin-top: 10px; font-size: 16px; text-align: center; color: #666;">祝您 身體健康，萬事如意</p>
+        </div>
+    </div>
 </body>
 </html>`,
             enabled: 1,
