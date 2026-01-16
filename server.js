@@ -4293,7 +4293,9 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             bookingDate: today.toLocaleDateString('zh-TW'),
             bookingDateTime: today.toLocaleString('zh-TW'),
             bookingIdLast5: (Date.now().toString().slice(-6) + randomInt(100, 999)).slice(-5),
-            googleReviewUrl: await db.getSetting('google_review_url') || 'https://search.google.com/local/writereview?placeid=ChIJN1t_tDeuEmsRUsoyG83frY4'
+            googleReviewUrl: await db.getSetting('google_review_url') || 'https://search.google.com/local/writereview?placeid=ChIJN1t_tDeuEmsRUsoyG83frY4',
+            hotelEmail: await db.getSetting('hotel_email') || 'feedback@hotel.com',
+            hotelPhone: await db.getSetting('hotel_phone') || '02-1234-5678'
         };
         
         // 確保測試郵件包含完整的 HTML 結構和 CSS 樣式
@@ -5185,8 +5187,8 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             <div class="info-section">
                 <div class="info-section-title">💬 意見回饋</div>
                 <p style="margin: 0 0 15px 0; font-size: 16px;">如果您有任何建議或意見，歡迎透過以下方式與我們聯繫：</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>feedback@hotel.com</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>02-1234-5678</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
                 <p style="margin: 0; font-size: 15px; color: #2e7d32; font-weight: 600;">您的意見將幫助我們持續改進服務品質！</p>
             </div>
             
@@ -6007,6 +6009,24 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
         ...additionalData // 合併額外的變數
     };
     
+    // 如果 additionalData 中沒有 hotelEmail 和 hotelPhone，則從資料庫取得
+    if (!variables['{{hotelEmail}}']) {
+        const hotelEmail = await db.getSetting('hotel_email') || '';
+        if (hotelEmail) {
+            variables['{{hotelEmail}}'] = hotelEmail;
+        } else {
+            variables['{{hotelEmail}}'] = 'feedback@hotel.com'; // 預設值
+        }
+    }
+    if (!variables['{{hotelPhone}}']) {
+        const hotelPhone = await db.getSetting('hotel_phone') || '';
+        if (hotelPhone) {
+            variables['{{hotelPhone}}'] = hotelPhone;
+        } else {
+            variables['{{hotelPhone}}'] = '02-1234-5678'; // 預設值
+        }
+    }
+    
     Object.keys(variables).forEach(key => {
         content = content.replace(new RegExp(key, 'g'), variables[key]);
     });
@@ -6598,13 +6618,19 @@ async function sendFeedbackRequestEmails() {
         
         const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
         
-        // 取得 Google 評價連結（如果有的話）
+        // 取得 Google 評價連結和旅館資訊（如果有的話）
         const googleReviewUrl = await db.getSetting('google_review_url') || '';
+        const hotelEmail = await db.getSetting('hotel_email') || '';
+        const hotelPhone = await db.getSetting('hotel_phone') || '';
         
         for (const booking of bookings) {
             try {
-                // 傳遞 Google 評價連結作為額外資料
-                const additionalData = googleReviewUrl ? { '{{googleReviewUrl}}': googleReviewUrl } : {};
+                // 傳遞 Google 評價連結和旅館資訊作為額外資料
+                const additionalData = {
+                    ...(googleReviewUrl ? { '{{googleReviewUrl}}': googleReviewUrl } : {}),
+                    ...(hotelEmail ? { '{{hotelEmail}}': hotelEmail } : {}),
+                    ...(hotelPhone ? { '{{hotelPhone}}': hotelPhone } : {})
+                };
                 const { subject, content } = await replaceTemplateVariables(template, booking, null, additionalData);
                 
                 const mailOptions = {

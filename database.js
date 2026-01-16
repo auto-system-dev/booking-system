@@ -800,8 +800,8 @@ async function initEmailTemplates() {
             <div class="info-section">
                 <div class="info-section-title">💬 意見回饋</div>
                 <p style="margin: 0 0 15px 0; font-size: 16px;">如果您有任何建議或意見，歡迎透過以下方式與我們聯繫：</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>feedback@hotel.com</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>02-1234-5678</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
                 <p style="margin: 0; font-size: 15px; color: #2e7d32; font-weight: 600;">您的意見將幫助我們持續改進服務品質！</p>
             </div>
             
