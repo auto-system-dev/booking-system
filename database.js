@@ -604,71 +604,116 @@ async function initEmailTemplates() {
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #262A33; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
+        .header p { font-size: 18px; margin: 0; opacity: 0.95; }
+        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #262A33; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
+        .info-value strong { color: #333; font-weight: 700; }
+        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
+        .section-title:first-of-type { margin-top: 0; }
+        p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
+        .greeting { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+        .intro-text { font-size: 16px; color: #555; margin-bottom: 25px; }
+        strong { color: #333; font-weight: 700; }
+        ul { margin: 15px 0; padding-left: 30px; }
+        li { margin: 10px 0; font-size: 16px; line-height: 1.8; }
+        .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-section { background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-section-title { font-size: 20px; font-weight: bold; color: #1976d2; margin: 0 0 15px 0; }
     </style>
 </head>
 <body>
-    <h1>🏨 入住提醒</h1>
-    
-    <p>親愛的 {{guestName}} 您好，</p>
-    <p>感謝您選擇我們的住宿服務！我們期待您明天的到來。</p>
-    
-    <h2>📅 訂房資訊</h2>
-    <p><strong>訂房編號：</strong>{{bookingId}}</p>
-    <p><strong>入住日期：</strong>{{checkInDate}}</p>
-    <p><strong>退房日期：</strong>{{checkOutDate}}</p>
-    <p><strong>房型：</strong>{{roomType}}</p>
-    
-    <h2>📍 交通路線</h2>
-    <p><strong>地址：</strong>台北市信義區信義路五段7號</p>
-    <p><strong>大眾運輸：</strong></p>
-    <ul>
-        <li>捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
-        <li>公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>
-    </ul>
-    <p><strong>自行開車：</strong></p>
-    <ul>
-        <li>國道一號：下「信義交流道」，沿信義路直行約3公里</li>
-        <li>國道三號：下「木柵交流道」，接信義快速道路</li>
-    </ul>
-    
-    <h2>🅿️ 停車資訊</h2>
-    <p><strong>停車場位置：</strong>B1-B3 地下停車場</p>
-    <p><strong>停車費用：</strong></p>
-    <ul>
-        <li>住宿客人：每日 NT$ 200（可無限次進出）</li>
-        <li>臨時停車：每小時 NT$ 50</li>
-    </ul>
-    <p><strong>停車場開放時間：</strong>24 小時</p>
-    <p><strong>注意事項：</strong>停車位有限，建議提前預約</p>
-    
-    <h2>⚠️ 入住注意事項</h2>
-    <ul>
-        <li>入住時間：下午 3:00 後</li>
-        <li>退房時間：上午 11:00 前</li>
-        <li>請攜帶身分證件辦理入住手續</li>
-        <li>房間內禁止吸菸，違者將收取清潔費 NT$ 3,000</li>
-        <li>請保持安靜，避免影響其他住客</li>
-        <li>貴重物品請妥善保管，建議使用房間保險箱</li>
-        <li>如需延遲退房，請提前告知櫃檯</li>
-    </ul>
-    
-    <h2>📞 聯絡資訊</h2>
-    <p>如有任何問題，歡迎隨時聯繫我們：</p>
-    <p><strong>電話：</strong>02-1234-5678</p>
-    <p><strong>Email：</strong>service@hotel.com</p>
-    <p><strong>服務時間：</strong>24 小時</p>
-    
-    <p>期待您的到來，祝您住宿愉快！</p>
-    
-    {{hotelInfoFooter}}
+    <div class="container">
+        <div class="header">
+            <h1>🏨 入住提醒</h1>
+            <p>歡迎您明天的到來</p>
+        </div>
+        <div class="content">
+            <p class="greeting">親愛的 {{guestName}} 您好，</p>
+            <p class="intro-text">感謝您選擇我們的住宿服務！我們期待您明天的到來。</p>
+            
+            <div class="info-box">
+                <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">📅 訂房資訊</div>
+                <div class="info-row">
+                    <span class="info-label">訂房編號</span>
+                    <span class="info-value"><strong>{{bookingId}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">入住日期</span>
+                    <span class="info-value">{{checkInDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">退房日期</span>
+                    <span class="info-value">{{checkOutDate}}</span>
+                </div>
+                <div class="info-row" style="border-bottom: none;">
+                    <span class="info-label">房型</span>
+                    <span class="info-value">{{roomType}}</span>
+                </div>
+            </div>
+            
+            <div class="info-section">
+                <div class="info-section-title">📍 交通路線</div>
+                <p style="margin: 0 0 15px 0; font-size: 17px; font-weight: 600;">地址：台北市信義區信義路五段7號</p>
+                <div style="margin-bottom: 15px;">
+                    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">大眾運輸：</p>
+                    <ul style="margin: 0; padding-left: 25px;">
+                        <li>捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
+                        <li>公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>
+                    </ul>
+                </div>
+                <div>
+                    <p style="margin: 8px 0; font-size: 16px; font-weight: 600;">自行開車：</p>
+                    <ul style="margin: 0; padding-left: 25px;">
+                        <li>國道一號：下「信義交流道」，沿信義路直行約3公里</li>
+                        <li>國道三號：下「木柵交流道」，接信義快速道路</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="info-section">
+                <div class="info-section-title">🅿️ 停車資訊</div>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場位置：</strong>B1-B3 地下停車場</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車費用：</strong></p>
+                <ul style="margin: 0 0 12px 0; padding-left: 25px;">
+                    <li>住宿客人：每日 NT$ 200（可無限次進出）</li>
+                    <li>臨時停車：每小時 NT$ 50</li>
+                </ul>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場開放時間：</strong>24 小時</p>
+                <p style="margin: 0; font-size: 15px; color: #666;">⚠️ 停車位有限，建議提前預約</p>
+            </div>
+            
+            <div class="highlight-box">
+                <div class="section-title" style="margin-top: 0; margin-bottom: 15px; color: #856404;">⚠️ 入住注意事項</div>
+                <ul style="margin: 0; padding-left: 25px;">
+                    <li>入住時間：<strong>下午 3:00 後</strong></li>
+                    <li>退房時間：<strong>上午 11:00 前</strong></li>
+                    <li>請攜帶身分證件辦理入住手續</li>
+                    <li>房間內禁止吸菸，違者將收取清潔費 NT$ 3,000</li>
+                    <li>請保持安靜，避免影響其他住客</li>
+                    <li>貴重物品請妥善保管，建議使用房間保險箱</li>
+                    <li>如需延遲退房，請提前告知櫃檯</li>
+                </ul>
+            </div>
+            
+            <div class="info-section">
+                <div class="info-section-title">📞 聯絡資訊</div>
+                <p style="margin: 0 0 12px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>02-1234-5678</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>service@hotel.com</p>
+                <p style="margin: 0; font-size: 16px;"><strong>服務時間：</strong>24 小時</p>
+            </div>
+            
+            <p style="margin-top: 35px; font-size: 17px; font-weight: 500;">期待您的到來，祝您住宿愉快！</p>
+        </div>
+    </div>
 </body>
 </html>`,
             enabled: 1,
