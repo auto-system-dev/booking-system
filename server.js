@@ -5807,14 +5807,34 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
         checkOutDate = checkOutDateValue || '';
     }
     
-    // 計算匯款到期日期（如果模板有保留天數設定）
+    // 計算匯款到期日期（優先使用 booking 中的資料）
     let paymentDeadline = '';
-    let daysReserved = template.days_reserved || 3;
-    if (booking.created_at) {
-        const bookingDate = new Date(booking.created_at);
-        const deadline = new Date(bookingDate);
-        deadline.setDate(deadline.getDate() + daysReserved);
-        paymentDeadline = deadline.toLocaleDateString('zh-TW');
+    let daysReserved = booking.daysReserved || booking.days_reserved || template.days_reserved || 3;
+    
+    // 優先使用 booking 中已計算好的 paymentDeadline
+    if (booking.paymentDeadline || booking.payment_deadline) {
+        paymentDeadline = booking.paymentDeadline || booking.payment_deadline;
+        console.log('✅ 使用 booking 中的 paymentDeadline:', paymentDeadline);
+    } else if (booking.created_at) {
+        // 如果沒有，則根據 created_at 和 daysReserved 計算
+        try {
+            const bookingDate = new Date(booking.created_at);
+            if (!isNaN(bookingDate.getTime())) {
+                const deadline = new Date(bookingDate);
+                deadline.setDate(deadline.getDate() + daysReserved);
+                paymentDeadline = deadline.toLocaleDateString('zh-TW');
+                console.log('✅ 計算 paymentDeadline:', paymentDeadline, '(訂房日期:', bookingDate.toLocaleDateString('zh-TW'), '+', daysReserved, '天)');
+            } else {
+                console.warn('⚠️ 訂房日期格式無效:', booking.created_at);
+            }
+        } catch (e) {
+            console.error('❌ 計算 paymentDeadline 失敗:', e);
+        }
+    }
+    
+    // 如果還是沒有，顯示警告
+    if (!paymentDeadline) {
+        console.warn('⚠️ 無法計算 paymentDeadline，將顯示為空');
     }
     
     // 處理銀行分行顯示（如果有分行則顯示 " - 分行名"，否則為空）

@@ -235,7 +235,9 @@ async function initPostgreSQL() {
                 { name: 'addons', type: 'TEXT', default: null },
                 { name: 'addons_total', type: 'INTEGER', default: '0' },
                 { name: 'adults', type: 'INTEGER', default: '0' },
-                { name: 'children', type: 'INTEGER', default: '0' }
+                { name: 'children', type: 'INTEGER', default: '0' },
+                { name: 'payment_deadline', type: 'TEXT', default: null },
+                { name: 'days_reserved', type: 'INTEGER', default: null }
             ];
             
             for (const col of columnsToAdd) {
@@ -1276,6 +1278,16 @@ function initSQLite() {
                                                             console.warn('⚠️  新增 addons_total 欄位時發生錯誤:', err.message);
                                                         }
                                                     });
+                                                    db.run(`ALTER TABLE bookings ADD COLUMN payment_deadline TEXT`, (err) => {
+                                                        if (err && !err.message.includes('duplicate column')) {
+                                                            console.warn('⚠️  新增 payment_deadline 欄位時發生錯誤:', err.message);
+                                                        }
+                                                    });
+                                                    db.run(`ALTER TABLE bookings ADD COLUMN days_reserved INTEGER`, (err) => {
+                                                        if (err && !err.message.includes('duplicate column')) {
+                                                            console.warn('⚠️  新增 days_reserved 欄位時發生錯誤:', err.message);
+                                                        }
+                                                    });
                                                 });
                                             });
                                         
@@ -1505,8 +1517,9 @@ async function saveBooking(bookingData) {
                 adults, children,
                 payment_amount, payment_method,
                 price_per_night, nights, total_amount, final_amount,
-                booking_date, email_sent, payment_status, status, addons, addons_total
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+                booking_date, email_sent, payment_status, status, addons, addons_total,
+                payment_deadline, days_reserved
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
             RETURNING id
         ` : `
             INSERT INTO bookings (
@@ -1515,8 +1528,9 @@ async function saveBooking(bookingData) {
                 adults, children,
                 payment_amount, payment_method,
                 price_per_night, nights, total_amount, final_amount,
-                booking_date, email_sent, payment_status, status, addons, addons_total
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                booking_date, email_sent, payment_status, status, addons, addons_total,
+                payment_deadline, days_reserved
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         
         const addonsJson = bookingData.addons ? JSON.stringify(bookingData.addons) : null;
@@ -1543,7 +1557,9 @@ async function saveBooking(bookingData) {
             bookingData.paymentStatus || 'pending',
             bookingData.status || 'active',
             bookingData.addons ? JSON.stringify(bookingData.addons) : null,
-            bookingData.addonsTotal || 0
+            bookingData.addonsTotal || 0,
+            bookingData.paymentDeadline || null,
+            bookingData.daysReserved || null
         ];
         
         const result = await query(sql, values);
