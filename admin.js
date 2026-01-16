@@ -4774,6 +4774,16 @@ async function saveEmailTemplate(event) {
             }
         }
         
+        // 重要：清理 quillHtml，移除可能的重複內容結構
+        // 如果 quillHtml 包含完整的 HTML 結構（包含 .content div），只提取 .content div 內的內容
+        const quillContentDivRegex = /<div[^>]*class\s*=\s*["'][^"']*content[^"']*["'][^>]*>([\s\S]*?)<\/div>/i;
+        const quillContentMatch = quillHtml.match(quillContentDivRegex);
+        if (quillContentMatch && quillContentMatch[1]) {
+            // 如果 Quill HTML 已經包含 .content div，只提取其內容，避免重複
+            quillHtml = quillContentMatch[1];
+            console.log('✅ 已從 Quill HTML 中提取 .content div 內的內容，避免重複');
+        }
+        
         // 確保保留重要的 CSS 類別（如 .info-box, .highlight, .info-row 等）
         // 檢查是否有這些類別，如果沒有但原始內容有，嘗試從原始內容中提取並合併
         const importantClasses = ['info-box', 'highlight', 'info-row', 'info-label', 'info-value'];
@@ -4841,9 +4851,20 @@ async function saveEmailTemplate(event) {
                             
                             if (templateEndIndex !== -1) {
                                 // 成功找到 .content div，只替換其內容，保留完整的 HTML 結構和 CSS 樣式
+                                // 重要：檢查 quillHtml 是否已經包含完整的 HTML 結構，如果是，只提取純內容
+                                let finalQuillContent = quillHtml;
+                                
+                                // 如果 quillHtml 包含完整的 HTML 結構（包含 .content div），只提取 .content div 內的內容
+                                const quillContentDivRegex = /<div[^>]*class\s*=\s*["'][^"']*content[^"']*["'][^>]*>([\s\S]*?)<\/div>/i;
+                                const quillContentMatch = finalQuillContent.match(quillContentDivRegex);
+                                if (quillContentMatch && quillContentMatch[1]) {
+                                    finalQuillContent = quillContentMatch[1];
+                                    console.log('✅ 已從 Quill HTML 中提取 .content div 內的內容，避免重複插入');
+                                }
+                                
                                 const templateBeforeContent = templateContent.substring(0, templateStartIndex + templateStartTag.length);
                                 const templateAfterContent = templateContent.substring(templateStartIndex + templateStartTag.length + templateEndIndex);
-                                content = templateBeforeContent + quillHtml + templateAfterContent;
+                                content = templateBeforeContent + finalQuillContent + templateAfterContent;
                                 console.log('✅ 新模板：使用資料庫模板的完整結構，只替換 .content div 內的內容（保留圖卡樣式）');
                             } else {
                                 // 如果無法找到結束標籤，使用資料庫模板的完整結構（後端會修復）
@@ -4963,7 +4984,7 @@ async function saveEmailTemplate(event) {
                                             // 在 Quill HTML 中查找包含這些關鍵字的內容區塊
                                             // 使用更寬鬆的匹配
                                             const keywordPattern = keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*?');
-                                            const quillMatch = quillHtml.match(new RegExp(`([\\s\\S]{0,3000}${keywordPattern}[\\s\\S]{0,3000})`, 'i'));
+                                            const quillMatch = finalQuillHtml.match(new RegExp(`([\\s\\S]{0,3000}${keywordPattern}[\\s\\S]{0,3000})`, 'i'));
                                             
                                             if (quillMatch) {
                                                 const quillContent = quillMatch[1].trim();
@@ -4994,7 +5015,7 @@ async function saveEmailTemplate(event) {
                                     
                                     if (otherKeywords.length > 0) {
                                         const otherPattern = otherKeywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*?');
-                                        const otherMatch = quillHtml.match(new RegExp(`([\\s\\S]{0,5000}${otherPattern}[\\s\\S]{0,5000})`, 'i'));
+                                        const otherMatch = finalQuillHtml.match(new RegExp(`([\\s\\S]{0,5000}${otherPattern}[\\s\\S]{0,5000})`, 'i'));
                                         
                                         if (otherMatch) {
                                             const otherQuillContent = otherMatch[1].trim();
@@ -5008,6 +5029,14 @@ async function saveEmailTemplate(event) {
                                         }
                                     }
                                 }
+                            }
+                            
+                            // 重要：再次檢查 finalQuillHtml 是否包含完整的 HTML 結構，如果是，只提取純內容
+                            const finalQuillContentDivRegex = /<div[^>]*class\s*=\s*["'][^"']*content[^"']*["'][^>]*>([\s\S]*?)<\/div>/i;
+                            const finalQuillContentMatch = finalQuillHtml.match(finalQuillContentDivRegex);
+                            if (finalQuillContentMatch && finalQuillContentMatch[1]) {
+                                finalQuillHtml = finalQuillContentMatch[1];
+                                console.log('✅ 最終清理：已從 Quill HTML 中提取 .content div 內的內容，避免重複插入');
                             }
                             
                             const beforeContent = originalContent.substring(0, startIndex + startTag.length);
