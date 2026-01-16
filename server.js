@@ -4258,6 +4258,9 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
         const randomAmount = (min, max) => randomInt(min, max).toLocaleString();
         
+        // 檢查是否為入住提醒郵件（需要在整個函數中使用）
+        const isCheckinReminder = key === 'checkin_reminder';
+        
         // 計算日期
         const today = new Date();
         const checkInDate = new Date(today.getTime() + randomInt(1, 30) * 24 * 60 * 60 * 1000);
@@ -4375,7 +4378,6 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             const hasStyleTag = testContent.includes('<style>') || testContent.includes('<style ');
             
             // 對於入住提醒郵件，特別檢查是否包含深灰色背景色 #262A33
-            const isCheckinReminder = key === 'checkin_reminder';
             const hasCorrectHeaderColor = !isCheckinReminder || testContent.includes('#262A33');
             
             // 如果缺少完整結構或樣式，使用資料庫中的完整模板
