@@ -4298,10 +4298,6 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             hotelPhone: await db.getSetting('hotel_phone') || '02-1234-5678'
         };
         
-        // 確保測試郵件包含完整的 HTML 結構和 CSS 樣式
-        // 對於測試郵件，如果使用編輯器內容，強制檢查並使用資料庫中的完整模板以確保樣式正確
-        let testContent = content;
-        
         // 為了確保測試郵件發送實際會收到的內容，我們應該使用與實際發送相同的邏輯
         // 即使用 replaceTemplateVariables 函數，它需要從資料庫讀取的完整模板
         // 如果使用編輯器內容，我們仍然使用資料庫中的完整模板，以確保測試郵件與實際發送一致
