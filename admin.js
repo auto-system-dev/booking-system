@@ -3,92 +3,150 @@
 // 立即確認腳本開始執行
 console.log('🚀 admin.js 腳本開始執行', new Date().toISOString());
 
-// 立即設置關鍵函數到 window，確保在任何其他代碼執行前就可用
-// 使用最簡單的方式，不依賴任何其他代碼
-// 強制設置，不使用 || 運算符，確保函數一定會被設置
+// 立即定義 handleLogin 函數，確保在任何其他代碼執行前就可用
+// 直接定義真正的函數，不使用佔位符邏輯
 if (typeof window !== 'undefined') {
-    window.handleLogin = function(event) {
-        // 檢查是否已經被真正的函數覆蓋
-        const currentFn = window.handleLogin;
-        const fnString = currentFn.toString();
-        // 如果函數內容不包含「尚未完全載入」，說明已經被真正的函數覆蓋
-        if (!fnString.includes('尚未完全載入')) {
-            // 已經是真實函數，直接調用
-            return currentFn(event);
+    // 處理登入 - 直接定義為 window.handleLogin，確保立即可用
+    window.handleLogin = async function handleLogin(event) {
+        if (event && typeof event.preventDefault === 'function') {
+            event.preventDefault();
         }
         
-        console.warn('⚠️ handleLogin 函數尚未完全載入，請稍候...');
-        // 檢查全局作用域中是否有 handleLogin 函數（可能已經被提升）
-        // 使用 try-catch 來安全地檢查
-        let realHandleLogin = null;
+        console.log('🔐 開始處理登入...');
+        
+        const username = document.getElementById('loginUsername')?.value;
+        const password = document.getElementById('loginPassword')?.value;
+        const errorDiv = document.getElementById('loginError');
+        
+        // 驗證輸入
+        if (!username || !password) {
+            console.warn('⚠️ 帳號或密碼為空');
+            if (errorDiv) {
+                errorDiv.textContent = '請輸入帳號和密碼';
+                errorDiv.style.display = 'block';
+            }
+            return;
+        }
+        
+        // 清除錯誤訊息
+        if (errorDiv) {
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
+        }
+        
+        // 顯示載入狀態
+        const submitBtn = document.querySelector('#loginForm button[type="submit"]');
+        const originalBtnText = submitBtn?.textContent;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = '登入中...';
+        }
+        
         try {
-            // 嘗試從全局作用域獲取
-            if (typeof handleLogin === 'function') {
-                const realFnString = handleLogin.toString();
-                if (!realFnString.includes('尚未完全載入')) {
-                    realHandleLogin = handleLogin;
-                }
-            }
-        } catch (e) {
-            // 忽略錯誤
-        }
-        
-        if (realHandleLogin && realHandleLogin !== window.handleLogin) {
-            console.log('✅ 找到真正的 handleLogin 函數，立即調用並覆蓋');
-            // 立即覆蓋並調用
-            window.handleLogin = realHandleLogin;
-            return realHandleLogin(event);
-        }
-        // 否則等待函數載入（使用輪詢機制，最多等待 2 秒）
-        let attempts = 0;
-        const maxAttempts = 20; // 20 次 * 100ms = 2 秒
-        
-        const checkInterval = setInterval(function() {
-            attempts++;
+            console.log('📡 發送登入請求到 /api/admin/login...');
+            const response = await fetch('/api/admin/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include', // 重要：包含 cookies
+                body: JSON.stringify({ username, password })
+            });
             
-            // 檢查 window.handleLogin 是否已被覆蓋
-            const checkFn = window.handleLogin;
-            const checkFnString = checkFn.toString();
-            if (!checkFnString.includes('尚未完全載入')) {
-                console.log('✅ 找到真正的 handleLogin 函數，調用');
-                clearInterval(checkInterval);
-                checkFn(event);
-                return;
-            }
+            console.log('📥 收到登入回應:', {
+                status: response.status,
+                statusText: response.statusText,
+                ok: response.ok
+            });
             
-            // 檢查全局作用域中是否有 handleLogin 函數
+            let result;
             try {
-                if (typeof handleLogin === 'function') {
-                    const realFnString = handleLogin.toString();
-                    if (!realFnString.includes('尚未完全載入') && handleLogin !== window.handleLogin) {
-                        console.log('✅ 找到真正的 handleLogin 函數，調用並覆蓋');
-                        clearInterval(checkInterval);
-                        window.handleLogin = handleLogin; // 立即覆蓋
-                        handleLogin(event);
-                        return;
-                    }
-                }
-            } catch (e) {
-                // 忽略錯誤
+                result = await response.json();
+                console.log('📥 登入回應內容:', result);
+            } catch (parseError) {
+                console.error('❌ 無法解析登入回應 JSON:', parseError);
+                const text = await response.text();
+                console.error('❌ 回應內容（文字）:', text);
+                throw new Error('伺服器回應格式錯誤');
             }
             
-            // 超過最大嘗試次數
-            if (attempts >= maxAttempts) {
-                clearInterval(checkInterval);
-                console.error('❌ handleLogin 函數載入失敗（超時）');
-                const errorDiv = document.getElementById('loginError');
+            if (result.success) {
+                // 登入成功
+                console.log('✅ 登入成功，準備顯示管理後台');
+                
+                // 立即顯示管理後台（如果 showAdminPage 函數已定義）
+                if (typeof showAdminPage === 'function') {
+                    showAdminPage(result.admin);
+                }
+                
+                // 強制刷新頁面顯示（確保所有樣式都正確應用）
+                requestAnimationFrame(() => {
+                    const adminPage = document.getElementById('adminPage');
+                    const loginPage = document.getElementById('loginPage');
+                    if (adminPage) {
+                        adminPage.style.display = 'flex';
+                        adminPage.style.visibility = 'visible';
+                        adminPage.style.opacity = '1';
+                    }
+                    if (loginPage) {
+                        loginPage.style.display = 'none';
+                    }
+                });
+                
+                // 等待一小段時間確保頁面已顯示，再載入資料
+                setTimeout(() => {
+                    console.log('📊 開始載入資料...');
+                    const adminPage = document.getElementById('adminPage');
+                    if (adminPage) {
+                        const computedStyle = window.getComputedStyle(adminPage);
+                        console.log('🔍 最終檢查 - adminPage 顯示狀態:', {
+                            display: computedStyle.display,
+                            visibility: computedStyle.visibility,
+                            opacity: computedStyle.opacity
+                        });
+                    }
+                    
+                    // 如果相關函數已定義，則載入資料
+                    if (typeof loadBookings === 'function') {
+                        loadBookings().catch(err => {
+                            console.error('❌ 載入訂房記錄失敗:', err);
+                        });
+                    }
+                    if (typeof loadStatistics === 'function') {
+                        loadStatistics().catch(err => {
+                            console.error('❌ 載入統計資料失敗:', err);
+                        });
+                    }
+                }, 200);
+            } else {
+                // 登入失敗
+                console.warn('⚠️ 登入失敗:', result.message);
                 if (errorDiv) {
-                    errorDiv.textContent = '系統錯誤：登入功能無法使用，請重新整理頁面';
+                    errorDiv.textContent = result.message || '登入失敗，請檢查帳號密碼';
                     errorDiv.style.display = 'block';
                 }
             }
-        }, 100);
+        } catch (error) {
+            console.error('❌ 登入錯誤:', error);
+            console.error('錯誤堆疊:', error.stack);
+            if (errorDiv) {
+                errorDiv.textContent = '登入時發生錯誤：' + (error.message || '請稍後再試');
+                errorDiv.style.display = 'block';
+            }
+        } finally {
+            // 恢復按鈕狀態
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalBtnText || '登入';
+            }
+        }
     };
+    
     // 確認設置成功
     if (typeof window.handleLogin === 'function') {
-        console.log('✅ handleLogin 佔位符函數已設置:', typeof window.handleLogin, '長度:', window.handleLogin.toString().length);
+        console.log('✅ handleLogin 函數已設置:', typeof window.handleLogin);
     } else {
-        console.error('❌ handleLogin 佔位符函數設置失敗');
+        console.error('❌ handleLogin 函數設置失敗');
     }
 } else {
     console.error('❌ window 對象不存在，無法設置 handleLogin');
@@ -96,28 +154,6 @@ if (typeof window !== 'undefined') {
 
 // 立即確認 window.handleLogin 是否已設置
 console.log('🔍 [腳本開頭] window.handleLogin 狀態:', typeof window.handleLogin);
-
-// 立即執行，確認腳本已載入
-console.log('✅ admin.js 腳本已載入', new Date().toISOString());
-console.log('✅ window.handleLogin 狀態:', typeof window.handleLogin);
-
-// 確保腳本載入完成後，再次確認 handleLogin 函數
-if (typeof window !== 'undefined') {
-    // 使用 setTimeout 確保所有代碼都執行完畢
-    setTimeout(function() {
-        if (typeof window.handleLogin === 'function') {
-            const fnString = window.handleLogin.toString();
-            const isPlaceholder = fnString.includes('尚未完全載入');
-            if (!isPlaceholder) {
-                console.log('✅ [延遲確認] handleLogin 已成功設置，函數長度:', fnString.length);
-            } else {
-                console.warn('⚠️ [延遲確認] handleLogin 仍然是佔位符函數');
-            }
-        } else {
-            console.error('❌ [延遲確認] handleLogin 未定義，當前類型:', typeof window.handleLogin);
-        }
-    }, 100);
-}
 
 // 全局錯誤處理
 window.addEventListener('error', function(event) {
@@ -333,150 +369,7 @@ function showAdminPage(admin) {
     }
 }
 
-// 處理登入
-// 直接定義為 window.handleLogin，確保立即可用
-window.handleLogin = async function handleLogin(event) {
-    if (event && typeof event.preventDefault === 'function') {
-        event.preventDefault();
-    }
-    
-    console.log('🔐 開始處理登入...');
-    
-    const username = document.getElementById('loginUsername')?.value;
-    const password = document.getElementById('loginPassword')?.value;
-    const errorDiv = document.getElementById('loginError');
-    
-    // 驗證輸入
-    if (!username || !password) {
-        console.warn('⚠️ 帳號或密碼為空');
-        if (errorDiv) {
-            errorDiv.textContent = '請輸入帳號和密碼';
-            errorDiv.style.display = 'block';
-        }
-        return;
-    }
-    
-    // 清除錯誤訊息
-    if (errorDiv) {
-        errorDiv.style.display = 'none';
-        errorDiv.textContent = '';
-    }
-    
-    // 顯示載入狀態
-    const submitBtn = document.querySelector('#loginForm button[type="submit"]');
-    const originalBtnText = submitBtn?.textContent;
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = '登入中...';
-    }
-    
-    try {
-        console.log('📡 發送登入請求到 /api/admin/login...');
-        const response = await fetch('/api/admin/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'include', // 重要：包含 cookies
-            body: JSON.stringify({ username, password })
-        });
-        
-        console.log('📥 收到登入回應:', {
-            status: response.status,
-            statusText: response.statusText,
-            ok: response.ok
-        });
-        
-        let result;
-        try {
-            result = await response.json();
-            console.log('📥 登入回應內容:', result);
-        } catch (parseError) {
-            console.error('❌ 無法解析登入回應 JSON:', parseError);
-            const text = await response.text();
-            console.error('❌ 回應內容（文字）:', text);
-            throw new Error('伺服器回應格式錯誤');
-        }
-        
-        if (result.success) {
-            // 登入成功
-            console.log('✅ 登入成功，準備顯示管理後台');
-            
-            // 立即顯示管理後台
-            showAdminPage(result.admin);
-            
-            // 強制刷新頁面顯示（確保所有樣式都正確應用）
-            requestAnimationFrame(() => {
-                const adminPage = document.getElementById('adminPage');
-                if (adminPage) {
-                    adminPage.style.display = 'flex';
-                    adminPage.style.visibility = 'visible';
-                    adminPage.style.opacity = '1';
-                }
-            });
-            
-            // 等待一小段時間確保頁面已顯示，再載入資料
-            setTimeout(() => {
-                console.log('📊 開始載入資料...');
-                const adminPage = document.getElementById('adminPage');
-                const computedStyle = window.getComputedStyle(adminPage);
-                console.log('🔍 最終檢查 - adminPage 顯示狀態:', {
-                    display: computedStyle.display,
-                    visibility: computedStyle.visibility,
-                    opacity: computedStyle.opacity
-                });
-                
-                loadBookings().catch(err => {
-                    console.error('❌ 載入訂房記錄失敗:', err);
-                });
-                loadStatistics().catch(err => {
-                    console.error('❌ 載入統計資料失敗:', err);
-                });
-            }, 200);
-        } else {
-            // 登入失敗
-            console.warn('⚠️ 登入失敗:', result.message);
-            if (errorDiv) {
-                errorDiv.textContent = result.message || '登入失敗，請檢查帳號密碼';
-                errorDiv.style.display = 'block';
-            }
-        }
-    } catch (error) {
-        console.error('❌ 登入錯誤:', error);
-        console.error('錯誤堆疊:', error.stack);
-        if (errorDiv) {
-            errorDiv.textContent = '登入時發生錯誤：' + (error.message || '請稍後再試');
-            errorDiv.style.display = 'block';
-        }
-    } finally {
-        // 恢復按鈕狀態
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = originalBtnText || '登入';
-        }
-    }
-}
-
-// handleLogin 已直接定義為 window.handleLogin，無需額外暴露
-// 立即確認函數已正確設置
-(function() {
-    'use strict';
-    try {
-        if (typeof window.handleLogin === 'function') {
-            const fnString = window.handleLogin.toString();
-            const isPlaceholder = fnString.includes('尚未完全載入');
-            if (!isPlaceholder) {
-                console.log('✅ handleLogin 已成功設置到 window.handleLogin，函數長度:', fnString.length);
-            } else {
-                console.error('❌ handleLogin 仍然是佔位符函數');
-            }
-        } else {
-            console.error('❌ handleLogin 設置失敗，當前類型:', typeof window.handleLogin);
-        }
-    } catch (e) {
-        console.error('❌ 檢查 handleLogin 時發生錯誤:', e);
-    }
-})();
+// handleLogin 已在檔案開頭定義，此處無需重複定義
 
 // 處理登出
 async function handleLogout() {
