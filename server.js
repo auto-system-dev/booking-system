@@ -5408,48 +5408,44 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     const hasFullHtmlStructure = content.includes('<!DOCTYPE html>') || 
                                  (content.includes('<html') && content.includes('</html>'));
     
-    // 檢查是否包含必要的 CSS 樣式（特別是 .header 樣式）
-    // 更嚴格的檢查：必須有 .header 樣式定義，且包含 background 或 background-color
-    const hasHeaderStyle = content.includes('.header') && 
-                           (content.includes('background') || content.includes('background-color')) &&
-                           content.includes('.content') &&
-                           content.includes('.container');
-    
     // 檢查是否包含 <style> 標籤
     const hasStyleTag = content.includes('<style>') || content.includes('<style ');
     
-    // 檢查樣式是否完整（必須包含所有必要的 CSS 類別）
-    const hasCompleteStyles = hasStyleTag && 
-                             content.includes('.header') &&
-                             content.includes('.content') &&
-                             content.includes('.container') &&
-                             (content.match(/\.header\s*\{[\s\S]*?\}/i) || content.includes('.header {'));
+    // 檢查是否有基本的 HTML 結構（body 標籤）
+    const hasBodyTag = content.includes('<body>') || content.includes('<body ');
     
-    // 檢查是否有完整的 HTML 結構元素
-    const hasContainer = content.includes('class="container') || content.includes("class='container");
-    const hasHeader = content.includes('class="header') || content.includes("class='header");
-    const hasContent = content.includes('class="content') || content.includes("class='content");
-    
-    // 如果缺少完整結構或樣式，自動修復
-    if (!hasFullHtmlStructure || !hasHeaderStyle || !hasStyleTag || !hasCompleteStyles || 
-        !hasContainer || !hasHeader || !hasContent) {
+    // 只檢查最基本的結構：HTML 文檔結構和樣式標籤
+    // 不再強制要求 .header、.content、.container 等類別（支援簡單排版樣式）
+    if (!hasFullHtmlStructure || !hasStyleTag || !hasBodyTag) {
         console.log('⚠️ 郵件模板缺少基本 HTML 結構或樣式，自動修復中...', {
             templateKey: template.key || template.template_key,
             hasFullHtmlStructure,
             hasStyleTag,
+            hasBodyTag,
             contentLength: content.length
         });
         
-        // 基本文字樣式
+        // 基本文字樣式（與資料庫模板保持一致）
         const basicStyle = `
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; }
+        h1 { color: #333; font-size: 28px; font-weight: bold; margin-bottom: 10px; margin-top: 0; }
+        h2 { color: #333; font-size: 20px; font-weight: bold; margin-top: 30px; margin-bottom: 15px; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
+        h3 { color: #333; font-size: 18px; font-weight: bold; margin-top: 25px; margin-bottom: 12px; }
+        p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
+        .greeting { font-size: 18px; margin-bottom: 8px; }
+        .intro-text { font-size: 16px; color: #555; margin-bottom: 20px; }
+        .info-section { margin: 20px 0; }
+        .info-item { margin: 10px 0; font-size: 16px; }
+        .info-label { font-weight: bold; color: #333; display: inline-block; min-width: 120px; }
+        .info-value { color: #333; }
+        .highlight-box { background-color: #f8f9fa; border-left: 4px solid #007bff; padding: 15px; margin: 20px 0; border-radius: 4px; }
+        .warning-box { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px; }
+        .info-box { background-color: #e7f3ff; border-left: 4px solid #17a2b8; padding: 15px; margin: 20px 0; border-radius: 4px; }
+        strong { color: #333; font-weight: bold; }
+        ul, ol { margin: 15px 0; padding-left: 30px; }
+        li { margin: 8px 0; font-size: 16px; line-height: 1.8; }
+        .section-title { font-size: 20px; font-weight: bold; margin-top: 30px; margin-bottom: 15px; }
+        .footer-text { font-size: 14px; color: #666; margin-top: 30px; text-align: center; }
     `;
         
         // 如果沒有完整的 HTML 結構，包裝現有內容
