@@ -4504,6 +4504,44 @@ async function showEmailTemplateModal(templateKey) {
                     checkinSettings.style.display = 'block';
                     document.getElementById('daysBeforeCheckin').value = template.days_before_checkin || 1;
                     document.getElementById('sendHourCheckin').value = template.send_hour_checkin || 9;
+                    
+                    // 載入區塊設定
+                    const blockSettings = template.block_settings ? JSON.parse(template.block_settings) : {};
+                    
+                    // 訂房資訊區塊
+                    const bookingInfoEnabled = blockSettings.booking_info?.enabled !== false;
+                    const bookingInfoContent = blockSettings.booking_info?.content || '';
+                    document.getElementById('checkinBlockBookingInfo').checked = bookingInfoEnabled;
+                    document.getElementById('checkinBlockBookingInfoContent').value = bookingInfoContent;
+                    
+                    // 交通路線區塊
+                    const transportEnabled = blockSettings.transport?.enabled !== false;
+                    const transportContent = blockSettings.transport?.content || '';
+                    document.getElementById('checkinBlockTransport').checked = transportEnabled;
+                    document.getElementById('checkinBlockTransportContent').value = transportContent;
+                    
+                    // 停車資訊區塊
+                    const parkingEnabled = blockSettings.parking?.enabled !== false;
+                    const parkingContent = blockSettings.parking?.content || '';
+                    document.getElementById('checkinBlockParking').checked = parkingEnabled;
+                    document.getElementById('checkinBlockParkingContent').value = parkingContent;
+                    
+                    // 入住注意事項區塊
+                    const notesEnabled = blockSettings.notes?.enabled !== false;
+                    const notesContent = blockSettings.notes?.content || '';
+                    document.getElementById('checkinBlockNotes').checked = notesEnabled;
+                    document.getElementById('checkinBlockNotesContent').value = notesContent;
+                    
+                    // 聯絡資訊區塊
+                    const contactEnabled = blockSettings.contact?.enabled !== false;
+                    const contactContent = blockSettings.contact?.content || '';
+                    document.getElementById('checkinBlockContact').checked = contactEnabled;
+                    document.getElementById('checkinBlockContactContent').value = contactContent;
+                    
+                    // 如果沒有設定，從系統設定載入預設值
+                    if (!transportContent && !parkingContent && !notesContent) {
+                        await loadCheckinBlockDefaults();
+                    }
                 }
             } else if (templateKey === 'feedback_request') {
                 if (feedbackSettings) {
@@ -5786,6 +5824,32 @@ async function saveEmailTemplate(event) {
             data.send_hour_checkin = parseInt(sendHourCheckinEl.value) || 9;
             console.log('✅ 已添加入住提醒設定:', { days_before_checkin: data.days_before_checkin, send_hour_checkin: data.send_hour_checkin });
         }
+        
+        // 保存區塊設定
+        const blockSettings = {
+            booking_info: {
+                enabled: document.getElementById('checkinBlockBookingInfo').checked,
+                content: document.getElementById('checkinBlockBookingInfoContent').value
+            },
+            transport: {
+                enabled: document.getElementById('checkinBlockTransport').checked,
+                content: document.getElementById('checkinBlockTransportContent').value
+            },
+            parking: {
+                enabled: document.getElementById('checkinBlockParking').checked,
+                content: document.getElementById('checkinBlockParkingContent').value
+            },
+            notes: {
+                enabled: document.getElementById('checkinBlockNotes').checked,
+                content: document.getElementById('checkinBlockNotesContent').value
+            },
+            contact: {
+                enabled: document.getElementById('checkinBlockContact').checked,
+                content: document.getElementById('checkinBlockContactContent').value
+            }
+        };
+        data.block_settings = JSON.stringify(blockSettings);
+        console.log('✅ 已保存入住提醒區塊設定:', blockSettings);
     } else if (templateKey === 'feedback_request') {
         const daysAfterCheckoutEl = document.getElementById('daysAfterCheckout');
         const sendHourFeedbackEl = document.getElementById('sendHourFeedback');

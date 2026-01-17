@@ -1028,6 +1028,69 @@
                                 <input type="number" id="sendHourCheckin" min="0" max="23" value="9" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
                             </div>
                         </div>
+                        
+                        <h3 style="margin-top: 25px; font-size: 16px; color: #333; border-top: 1px solid #ddd; padding-top: 15px;">郵件內容區塊設定</h3>
+                        <small style="display: block; margin-bottom: 15px; color: #666; line-height: 1.6;">
+                            💡 提示：您可以自訂每個區塊的內容，並控制是否顯示。使用 HTML 標籤可以調整格式（如 &lt;strong&gt;粗體&lt;/strong&gt;、&lt;ul&gt;&lt;li&gt;列表&lt;/li&gt;&lt;/ul&gt; 等）。
+                        </small>
+                        
+                        <!-- 訂房資訊區塊 -->
+                        <div class="checkin-block-setting" style="background: white; padding: 15px; border-radius: 5px; margin-bottom: 15px; border: 1px solid #ddd;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                <label style="display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 600; font-size: 15px;">
+                                    <input type="checkbox" id="checkinBlockBookingInfo" checked style="width: 18px; height: 18px;">
+                                    <span>📅 訂房資訊</span>
+                                </label>
+                            </div>
+                            <textarea id="checkinBlockBookingInfoContent" rows="4" placeholder="訂房資訊內容（HTML格式）" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Microsoft JhengHei', Arial, sans-serif; font-size: 14px; line-height: 1.6;"></textarea>
+                            <small style="display: block; margin-top: 5px; color: #666;">可使用變數：{{bookingId}}, {{checkInDate}}, {{checkOutDate}}, {{roomType}}</small>
+                        </div>
+                        
+                        <!-- 交通路線區塊 -->
+                        <div class="checkin-block-setting" style="background: white; padding: 15px; border-radius: 5px; margin-bottom: 15px; border: 1px solid #ddd;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                <label style="display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 600; font-size: 15px;">
+                                    <input type="checkbox" id="checkinBlockTransport" checked style="width: 18px; height: 18px;">
+                                    <span>📍 交通路線</span>
+                                </label>
+                            </div>
+                            <textarea id="checkinBlockTransportContent" rows="8" placeholder="交通路線內容（HTML格式）" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Microsoft JhengHei', Arial, sans-serif; font-size: 14px; line-height: 1.6;"></textarea>
+                            <small style="display: block; margin-top: 5px; color: #666;">可使用變數：{{hotelAddress}}</small>
+                        </div>
+                        
+                        <!-- 停車資訊區塊 -->
+                        <div class="checkin-block-setting" style="background: white; padding: 15px; border-radius: 5px; margin-bottom: 15px; border: 1px solid #ddd;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                <label style="display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 600; font-size: 15px;">
+                                    <input type="checkbox" id="checkinBlockParking" checked style="width: 18px; height: 18px;">
+                                    <span>🅿️ 停車資訊</span>
+                                </label>
+                            </div>
+                            <textarea id="checkinBlockParkingContent" rows="8" placeholder="停車資訊內容（HTML格式）" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Microsoft JhengHei', Arial, sans-serif; font-size: 14px; line-height: 1.6;"></textarea>
+                        </div>
+                        
+                        <!-- 入住注意事項區塊 -->
+                        <div class="checkin-block-setting" style="background: white; padding: 15px; border-radius: 5px; margin-bottom: 15px; border: 1px solid #ddd;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                <label style="display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 600; font-size: 15px;">
+                                    <input type="checkbox" id="checkinBlockNotes" checked style="width: 18px; height: 18px;">
+                                    <span>⚠️ 入住注意事項</span>
+                                </label>
+                            </div>
+                            <textarea id="checkinBlockNotesContent" rows="8" placeholder="入住注意事項內容（HTML格式）" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Microsoft JhengHei', Arial, sans-serif; font-size: 14px; line-height: 1.6;"></textarea>
+                        </div>
+                        
+                        <!-- 聯絡資訊區塊 -->
+                        <div class="checkin-block-setting" style="background: white; padding: 15px; border-radius: 5px; margin-bottom: 15px; border: 1px solid #ddd;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                <label style="display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 600; font-size: 15px;">
+                                    <input type="checkbox" id="checkinBlockContact" checked style="width: 18px; height: 18px;">
+                                    <span>📞 聯絡資訊</span>
+                                </label>
+                            </div>
+                            <textarea id="checkinBlockContactContent" rows="6" placeholder="聯絡資訊內容（HTML格式）" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Microsoft JhengHei', Arial, sans-serif; font-size: 14px; line-height: 1.6;"></textarea>
+                            <small style="display: block; margin-top: 5px; color: #666;">可使用變數：{{hotelPhone}}, {{hotelEmail}}</small>
+                        </div>
                     </div>
                     
                     <!-- 感謝入住設定 -->

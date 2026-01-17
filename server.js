@@ -6142,15 +6142,53 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
         }
     }
     
-    // 入住提醒郵件專用變數：從系統設定讀取可編輯內容
+    // 入住提醒郵件專用變數：從模板的 block_settings 讀取可編輯內容
     // 這些內容可以由業主在後台自由修改，不影響郵件排版
-    // 優先使用 additionalData 中的值（測試郵件時使用），否則從資料庫讀取
     if (template.key === 'checkin_reminder') {
-        // 交通路線
-        if (!variables['{{checkinTransport}}']) {
-            let checkinTransport = await db.getSetting('checkin_reminder_transport') || '';
+        // 解析區塊設定
+        let blockSettings = {};
+        if (template.block_settings) {
+            try {
+                blockSettings = typeof template.block_settings === 'string' 
+                    ? JSON.parse(template.block_settings) 
+                    : template.block_settings;
+            } catch (e) {
+                console.warn('⚠️ 解析 block_settings 失敗:', e);
+            }
+        }
+        
+        // 訂房資訊區塊
+        const showBookingInfo = blockSettings.booking_info?.enabled !== false;
+        let bookingInfoContent = blockSettings.booking_info?.content || '';
+        if (!bookingInfoContent) {
+            // 預設訂房資訊內容
+            bookingInfoContent = `<div class="info-row">
+    <span class="info-label">訂房編號</span>
+    <span class="info-value"><strong>{{bookingId}}</strong></span>
+</div>
+<div class="info-row">
+    <span class="info-label">入住日期</span>
+    <span class="info-value">{{checkInDate}}</span>
+</div>
+<div class="info-row">
+    <span class="info-label">退房日期</span>
+    <span class="info-value">{{checkOutDate}}</span>
+</div>
+<div class="info-row" style="border-bottom: none;">
+    <span class="info-label">房型</span>
+    <span class="info-value">{{roomType}}</span>
+</div>`;
+        }
+        variables['{{showBookingInfo}}'] = showBookingInfo ? 'true' : '';
+        variables['{{bookingInfoContent}}'] = bookingInfoContent;
+        
+        // 交通路線區塊
+        const showTransport = blockSettings.transport?.enabled !== false;
+        let checkinTransport = blockSettings.transport?.content || '';
+        if (!checkinTransport) {
+            // 從系統設定讀取或使用預設值
+            checkinTransport = await db.getSetting('checkin_reminder_transport') || '';
             if (!checkinTransport) {
-                // 如果沒有設定，使用預設值
                 const hotelAddress = await db.getSetting('hotel_address') || '';
                 checkinTransport = `<p style="margin: 0 0 15px 0; font-size: 17px; font-weight: 600;">地址：${hotelAddress || '台北市信義區信義路五段7號'}</p>
 <div style="margin-bottom: 15px;">
@@ -6168,15 +6206,18 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     </ul>
 </div>`;
             }
-            // 替換 {{hotelAddress}} 變數
-            const hotelAddress = await db.getSetting('hotel_address') || '';
-            checkinTransport = checkinTransport.replace(/\{\{hotelAddress\}\}/g, hotelAddress);
-            variables['{{checkinTransport}}'] = checkinTransport;
         }
+        // 替換 {{hotelAddress}} 變數
+        const hotelAddress = await db.getSetting('hotel_address') || '';
+        checkinTransport = checkinTransport.replace(/\{\{hotelAddress\}\}/g, hotelAddress);
+        variables['{{showTransport}}'] = showTransport ? 'true' : '';
+        variables['{{checkinTransport}}'] = checkinTransport;
         
-        // 停車資訊
-        if (!variables['{{checkinParking}}']) {
-            let checkinParking = await db.getSetting('checkin_reminder_parking') || '';
+        // 停車資訊區塊
+        const showParking = blockSettings.parking?.enabled !== false;
+        let checkinParking = blockSettings.parking?.content || '';
+        if (!checkinParking) {
+            checkinParking = await db.getSetting('checkin_reminder_parking') || '';
             if (!checkinParking) {
                 checkinParking = `<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場位置：</strong>B1-B3 地下停車場</p>
 <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車費用：</strong></p>
@@ -6187,12 +6228,15 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
 <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場開放時間：</strong>24 小時</p>
 <p style="margin: 0; font-size: 15px; color: #666;">⚠️ 停車位有限，建議提前預約</p>`;
             }
-            variables['{{checkinParking}}'] = checkinParking;
         }
+        variables['{{showParking}}'] = showParking ? 'true' : '';
+        variables['{{checkinParking}}'] = checkinParking;
         
-        // 入住注意事項
-        if (!variables['{{checkinNotes}}']) {
-            let checkinNotes = await db.getSetting('checkin_reminder_notes') || '';
+        // 入住注意事項區塊
+        const showNotes = blockSettings.notes?.enabled !== false;
+        let checkinNotes = blockSettings.notes?.content || '';
+        if (!checkinNotes) {
+            checkinNotes = await db.getSetting('checkin_reminder_notes') || '';
             if (!checkinNotes) {
                 checkinNotes = `<ul style="margin: 0; padding-left: 25px;">
     <li>入住時間：<strong>下午 3:00 後</strong></li>
@@ -6204,8 +6248,22 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     <li>如需延遲退房，請提前告知櫃檯</li>
 </ul>`;
             }
-            variables['{{checkinNotes}}'] = checkinNotes;
         }
+        variables['{{showNotes}}'] = showNotes ? 'true' : '';
+        variables['{{checkinNotes}}'] = checkinNotes;
+        
+        // 聯絡資訊區塊
+        const showContact = blockSettings.contact?.enabled !== false;
+        let checkinContact = blockSettings.contact?.content || '';
+        if (!checkinContact) {
+            // 預設聯絡資訊內容
+            checkinContact = `<p style="margin: 0 0 12px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
+<p style="margin: 0; font-size: 16px;"><strong>服務時間：</strong>24 小時</p>`;
+        }
+        variables['{{showContact}}'] = showContact ? 'true' : '';
+        variables['{{checkinContact}}'] = checkinContact;
     }
     
     Object.keys(variables).forEach(key => {

@@ -470,10 +470,18 @@ async function initPostgreSQL() {
                     send_hour_feedback INTEGER,
                     days_reserved INTEGER,
                     send_hour_payment_reminder INTEGER,
+                    block_settings TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
+            
+            // 添加 block_settings 欄位（如果不存在）
+            try {
+                await query(`ALTER TABLE email_templates ADD COLUMN IF NOT EXISTS block_settings TEXT`);
+            } catch (e) {
+                // 欄位可能已存在，忽略錯誤
+            }
             console.log('✅ 郵件模板表已準備就緒');
             
             // 建立管理員資料表
@@ -642,48 +650,40 @@ async function initEmailTemplates() {
             <p class="greeting">親愛的 {{guestName}} 您好，</p>
             <p class="intro-text">感謝您選擇我們的住宿服務！我們期待您明天的到來。</p>
             
+            {{#if showBookingInfo}}
             <div class="info-box">
                 <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">📅 訂房資訊</div>
-                <div class="info-row">
-                    <span class="info-label">訂房編號</span>
-                    <span class="info-value"><strong>{{bookingId}}</strong></span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">入住日期</span>
-                    <span class="info-value">{{checkInDate}}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">退房日期</span>
-                    <span class="info-value">{{checkOutDate}}</span>
-                </div>
-                <div class="info-row" style="border-bottom: none;">
-                    <span class="info-label">房型</span>
-                    <span class="info-value">{{roomType}}</span>
-                </div>
+                {{bookingInfoContent}}
             </div>
+            {{/if}}
             
+            {{#if showTransport}}
             <div class="info-section">
                 <div class="info-section-title">📍 交通路線</div>
                 {{checkinTransport}}
             </div>
+            {{/if}}
             
+            {{#if showParking}}
             <div class="info-section">
                 <div class="info-section-title">🅿️ 停車資訊</div>
                 {{checkinParking}}
             </div>
+            {{/if}}
             
+            {{#if showNotes}}
             <div class="highlight-box">
                 <div class="section-title" style="margin-top: 0; margin-bottom: 15px; color: #856404;">⚠️ 入住注意事項</div>
                 {{checkinNotes}}
             </div>
+            {{/if}}
             
+            {{#if showContact}}
             <div class="info-section">
                 <div class="info-section-title">📞 聯絡資訊</div>
-                <p style="margin: 0 0 12px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
-                <p style="margin: 0; font-size: 16px;"><strong>服務時間：</strong>24 小時</p>
+                {{checkinContact}}
             </div>
+            {{/if}}
             
             <p style="margin-top: 35px; font-size: 17px; font-weight: 500;">期待您的到來，祝您住宿愉快！</p>
         </div>
@@ -1544,6 +1544,7 @@ function initSQLite() {
                                             send_hour_feedback INTEGER,
                                             days_reserved INTEGER,
                                             send_hour_payment_reminder INTEGER,
+                                            block_settings TEXT,
                                             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                                             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                                         )
@@ -1557,7 +1558,20 @@ function initSQLite() {
                                         } else {
                                             console.log('✅ 郵件模板表已準備就緒');
                                             
-                                            // 建立管理員資料表
+                                            // 添加 block_settings 欄位（如果不存在）
+                                            db.run(`ALTER TABLE email_templates ADD COLUMN block_settings TEXT`, (alterErr) => {
+                                                if (alterErr && !alterErr.message.includes('duplicate column')) {
+                                                    console.warn('⚠️  添加 block_settings 欄位時發生錯誤:', alterErr.message);
+                                                }
+                                                // 繼續初始化
+                                                initEmailTemplates().then(() => {
+                                                    resolve();
+                                                }).catch(reject);
+                                            });
+                                            return; // 提前返回，避免重複執行
+                                        }
+                                        
+                                        // 建立管理員資料表
                                             db.run(`
                                                 CREATE TABLE IF NOT EXISTS admins (
                                                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2657,7 +2671,7 @@ async function getEmailTemplateByKey(templateKey) {
 
 async function updateEmailTemplate(templateKey, data) {
     try {
-        const { template_name, subject, content, is_enabled, days_before_checkin, send_hour_checkin, days_after_checkout, send_hour_feedback, days_reserved, send_hour_payment_reminder } = data;
+        const { template_name, subject, content, is_enabled, days_before_checkin, send_hour_checkin, days_after_checkout, send_hour_feedback, days_reserved, send_hour_payment_reminder, block_settings } = data;
         
         console.log(`📝 資料庫更新郵件模板: ${templateKey}`);
         console.log(`   接收到的設定值:`, {
@@ -2666,7 +2680,8 @@ async function updateEmailTemplate(templateKey, data) {
             days_after_checkout,
             send_hour_feedback,
             days_reserved,
-            send_hour_payment_reminder
+            send_hour_payment_reminder,
+            block_settings: block_settings ? '已提供' : '未提供'
         });
         
         const sql = usePostgreSQL ? `
@@ -2675,14 +2690,16 @@ async function updateEmailTemplate(templateKey, data) {
                 days_before_checkin = $5, send_hour_checkin = $6,
                 days_after_checkout = $7, send_hour_feedback = $8,
                 days_reserved = $9, send_hour_payment_reminder = $10,
+                block_settings = $11,
                 updated_at = CURRENT_TIMESTAMP 
-            WHERE template_key = $11
+            WHERE template_key = $12
         ` : `
             UPDATE email_templates 
             SET template_name = ?, subject = ?, content = ?, is_enabled = ?,
                 days_before_checkin = ?, send_hour_checkin = ?,
                 days_after_checkout = ?, send_hour_feedback = ?,
                 days_reserved = ?, send_hour_payment_reminder = ?,
+                block_settings = ?,
                 updated_at = CURRENT_TIMESTAMP 
             WHERE template_key = ?
         `;
@@ -2696,6 +2713,7 @@ async function updateEmailTemplate(templateKey, data) {
             send_hour_feedback !== undefined ? send_hour_feedback : null,
             days_reserved !== undefined ? days_reserved : null,
             send_hour_payment_reminder !== undefined ? send_hour_payment_reminder : null,
+            block_settings || null,
             templateKey
         ];
         
