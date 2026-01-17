@@ -4265,6 +4265,11 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
                     message: '找不到該郵件模板'
                 });
             }
+            // 如果提供了 block_settings，使用編輯器中的區塊設定（用於測試郵件）
+            if (req.body.blockSettings && key === 'checkin_reminder') {
+                template.block_settings = JSON.stringify(req.body.blockSettings);
+                console.log('✅ 測試郵件使用編輯器中的區塊設定');
+            }
         } else {
             // 從資料庫讀取最新的模板內容
             template = await db.getEmailTemplateByKey(key);
@@ -4334,24 +4339,9 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             hotelPhone: await db.getSetting('hotel_phone') || '02-1234-5678'
         };
         
-        // 為了確保測試郵件發送實際會收到的內容，我們應該使用與實際發送相同的邏輯
-        // 即使用 replaceTemplateVariables 函數，它需要從資料庫讀取的完整模板
-        // 如果使用編輯器內容，我們仍然使用資料庫中的完整模板，以確保測試郵件與實際發送一致
-        if (useEditorContent) {
-            console.log('⚠️ 測試郵件使用編輯器內容，但為了確保與實際發送一致，將使用資料庫中的完整模板');
-            const originalTemplate = await db.getEmailTemplateByKey(key);
-            if (originalTemplate && originalTemplate.content) {
-                // 使用資料庫中的完整模板（與實際發送時一致）
-                template.content = originalTemplate.content;
-                template.subject = originalTemplate.subject;
-                console.log('✅ 已使用資料庫中的完整模板（與實際發送一致）');
-            } else {
-                console.warn('⚠️ 無法取得資料庫模板，使用編輯器內容');
-            }
-        }
-        
-        // 確保使用資料庫中的模板內容（與實際發送時一致）
-        // 更新 template 對象以使用資料庫中的內容
+        // 確保使用正確的模板內容
+        // 如果使用編輯器內容，使用編輯器中的內容（包括區塊設定）
+        // 否則使用資料庫中的內容
         template.content = template.content || content;
         template.subject = template.subject || subject;
         

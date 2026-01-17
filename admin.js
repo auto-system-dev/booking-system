@@ -4468,7 +4468,26 @@ async function showEmailTemplateModal(templateKey) {
                     
                     // 訂房資訊區塊
                     const bookingInfoEnabled = blockSettings.booking_info?.enabled !== false;
-                    const bookingInfoContent = blockSettings.booking_info?.content || '';
+                    let bookingInfoContent = blockSettings.booking_info?.content || '';
+                    // 如果沒有設定，使用預設內容
+                    if (!bookingInfoContent) {
+                        bookingInfoContent = `<div class="info-row">
+    <span class="info-label">訂房編號</span>
+    <span class="info-value"><strong>{{bookingId}}</strong></span>
+</div>
+<div class="info-row">
+    <span class="info-label">入住日期</span>
+    <span class="info-value">{{checkInDate}}</span>
+</div>
+<div class="info-row">
+    <span class="info-label">退房日期</span>
+    <span class="info-value">{{checkOutDate}}</span>
+</div>
+<div class="info-row" style="border-bottom: none;">
+    <span class="info-label">房型</span>
+    <span class="info-value">{{roomType}}</span>
+</div>`;
+                    }
                     document.getElementById('checkinBlockBookingInfo').checked = bookingInfoEnabled;
                     document.getElementById('checkinBlockBookingInfoContent').value = bookingInfoContent;
                     
@@ -4492,7 +4511,14 @@ async function showEmailTemplateModal(templateKey) {
                     
                     // 聯絡資訊區塊
                     const contactEnabled = blockSettings.contact?.enabled !== false;
-                    const contactContent = blockSettings.contact?.content || '';
+                    let contactContent = blockSettings.contact?.content || '';
+                    // 如果沒有設定，使用預設內容
+                    if (!contactContent) {
+                        contactContent = `<p style="margin: 0 0 12px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
+<p style="margin: 0; font-size: 16px;"><strong>服務時間：</strong>24 小時</p>`;
+                    }
                     document.getElementById('checkinBlockContact').checked = contactEnabled;
                     document.getElementById('checkinBlockContactContent').value = contactContent;
                     
@@ -4912,6 +4938,33 @@ async function showEmailTemplateModal(templateKey) {
                             }
                         }
                         
+                        // 如果是入住提醒郵件，收集區塊設定
+                        let blockSettings = null;
+                        if (templateKey === 'checkin_reminder') {
+                            blockSettings = {
+                                booking_info: {
+                                    enabled: document.getElementById('checkinBlockBookingInfo').checked,
+                                    content: document.getElementById('checkinBlockBookingInfoContent').value
+                                },
+                                transport: {
+                                    enabled: document.getElementById('checkinBlockTransport').checked,
+                                    content: document.getElementById('checkinBlockTransportContent').value
+                                },
+                                parking: {
+                                    enabled: document.getElementById('checkinBlockParking').checked,
+                                    content: document.getElementById('checkinBlockParkingContent').value
+                                },
+                                notes: {
+                                    enabled: document.getElementById('checkinBlockNotes').checked,
+                                    content: document.getElementById('checkinBlockNotesContent').value
+                                },
+                                contact: {
+                                    enabled: document.getElementById('checkinBlockContact').checked,
+                                    content: document.getElementById('checkinBlockContactContent').value
+                                }
+                            };
+                        }
+                        
                         // 發送測試郵件
                         const response = await fetch(`/api/email-templates/${templateKey}/test`, {
                             method: 'POST',
@@ -4922,7 +4975,8 @@ async function showEmailTemplateModal(templateKey) {
                                 email: email,
                                 useEditorContent: true,
                                 subject: subject,
-                                content: content
+                                content: content,
+                                blockSettings: blockSettings
                             })
                         });
                         
