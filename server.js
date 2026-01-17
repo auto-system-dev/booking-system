@@ -441,6 +441,39 @@ const sanitizeInput = (req, res, next) => {
                 return;
             }
             
+            // 對入住提醒郵件內容設定的 value 欄位進行特殊處理（HTML 內容，跳過 SQL Injection 檢測）
+            // 這些設定包含 HTML 格式的內容，需要允許 HTML 標籤
+            const isCheckinReminderSettingsRequest = req.path && 
+                req.path.includes('/api/admin/settings/checkin_reminder_');
+            
+            if (isCheckinReminderSettingsRequest && req.body.value) {
+                // 入住提醒郵件內容設定的 value 欄位是 HTML 內容，跳過 SQL Injection 和 XSS 檢測
+                // 但仍需要清理其他欄位
+                const { value, ...rest } = req.body;
+                req.body = {
+                    ...sanitizeObject(rest, {
+                        checkSQLInjection: true,
+                        checkXSS: true
+                    }),
+                    value: value // 保留原始 HTML 內容，不進行任何檢測或清理
+                };
+                // 繼續處理 query 和 params
+                if (req.query) {
+                    req.query = sanitizeObject(req.query, {
+                        checkSQLInjection: true,
+                        checkXSS: true
+                    });
+                }
+                if (req.params) {
+                    req.params = sanitizeObject(req.params, {
+                        checkSQLInjection: true,
+                        checkXSS: true
+                    });
+                }
+                next();
+                return;
+            }
+            
             if (req.body.value && isWeekdaySettingsRequest) {
                 // 驗證是否為有效的 JSON 格式
                 try {
