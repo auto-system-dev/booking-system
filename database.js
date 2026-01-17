@@ -1563,15 +1563,13 @@ function initSQLite() {
                                                 if (alterErr && !alterErr.message.includes('duplicate column')) {
                                                     console.warn('⚠️  添加 block_settings 欄位時發生錯誤:', alterErr.message);
                                                 }
-                                                // 繼續初始化
-                                                initEmailTemplates().then(() => {
-                                                    resolve();
-                                                }).catch(reject);
+                                                // 繼續建立管理員資料表
+                                                createAdminsTable();
                                             });
-                                            return; // 提前返回，避免重複執行
                                         }
                                         
-                                        // 建立管理員資料表
+                                        function createAdminsTable() {
+                                            // 建立管理員資料表
                                             db.run(`
                                                 CREATE TABLE IF NOT EXISTS admins (
                                                     id INTEGER PRIMARY KEY AUTOINCREMENT,
