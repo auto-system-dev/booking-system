@@ -412,17 +412,18 @@ const sanitizeInput = (req, res, next) => {
                 (req.path.includes('/api/email-templates/') && 
                  (req.method === 'PUT' || (req.method === 'POST' && req.path.includes('/test'))));
             
-            if (isEmailTemplateRequest && req.body.content) {
+            if (isEmailTemplateRequest) {
                 // 郵件模板的 content 欄位是 HTML 內容，跳過 SQL Injection 檢測
+                // blockSettings 也包含 HTML 內容，需要跳過檢測
                 // 但仍需要清理其他欄位
-                // 注意：content 欄位是 HTML，不應該進行 XSS 檢測（因為它本身就是 HTML）
-                const { content, ...rest } = req.body;
+                const { content, blockSettings, ...rest } = req.body;
                 req.body = {
                     ...sanitizeObject(rest, {
                         checkSQLInjection: true,
                         checkXSS: true
                     }),
-                    content: content // 保留原始 HTML 內容，不進行任何檢測或清理
+                    ...(content ? { content: content } : {}), // 保留原始 HTML 內容，不進行任何檢測或清理
+                    ...(blockSettings ? { blockSettings: blockSettings } : {}) // 保留 blockSettings（包含 HTML），不進行檢測
                 };
                 // 繼續處理 query 和 params
                 if (req.query) {
