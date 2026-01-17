@@ -431,10 +431,7 @@ async function initPostgreSQL() {
                 ['hotel_address', '', '旅館地址（顯示在郵件最下面）'],
                 ['hotel_email', '', '旅館信箱（顯示在郵件最下面）'],
                 ['admin_email', process.env.ADMIN_EMAIL || 'cheng701107@gmail.com', '管理員通知信箱（新訂房通知郵件會寄到此信箱）'],
-                ['weekday_settings', JSON.stringify({ weekdays: [1, 2, 3, 4, 5] }), '平日/假日設定（JSON 格式：{"weekdays": [1,2,3,4,5]}，預設週一到週五為平日）'],
-                ['checkin_reminder_transport', '<p style="margin: 0 0 15px 0; font-size: 17px; font-weight: 600;">地址：{{hotelAddress}}</p>\n<div style="margin-bottom: 15px;">\n    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">大眾運輸：</p>\n    <ul style="margin: 0; padding-left: 25px;">\n        <li>捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>\n        <li>公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>\n    </ul>\n</div>\n<div>\n    <p style="margin: 8px 0; font-size: 16px; font-weight: 600;">自行開車：</p>\n    <ul style="margin: 0; padding-left: 25px;">\n        <li>國道一號：下「信義交流道」，沿信義路直行約3公里</li>\n        <li>國道三號：下「木柵交流道」，接信義快速道路</li>\n    </ul>\n</div>', '入住提醒郵件 - 交通路線內容（HTML格式）'],
-                ['checkin_reminder_parking', '<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場位置：</strong>B1-B3 地下停車場</p>\n<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車費用：</strong></p>\n<ul style="margin: 0 0 12px 0; padding-left: 25px;">\n    <li>住宿客人：每日 NT$ 200（可無限次進出）</li>\n    <li>臨時停車：每小時 NT$ 50</li>\n</ul>\n<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場開放時間：</strong>24 小時</p>\n<p style="margin: 0; font-size: 15px; color: #666;">⚠️ 停車位有限，建議提前預約</p>', '入住提醒郵件 - 停車資訊內容（HTML格式）'],
-                ['checkin_reminder_notes', '<ul style="margin: 0; padding-left: 25px;">\n    <li>入住時間：<strong>下午 3:00 後</strong></li>\n    <li>退房時間：<strong>上午 11:00 前</strong></li>\n    <li>請攜帶身分證件辦理入住手續</li>\n    <li>房間內禁止吸菸，違者將收取清潔費 NT$ 3,000</li>\n    <li>請保持安靜，避免影響其他住客</li>\n    <li>貴重物品請妥善保管，建議使用房間保險箱</li>\n    <li>如需延遲退房，請提前告知櫃檯</li>\n</ul>', '入住提醒郵件 - 入住注意事項內容（HTML格式）']
+                ['weekday_settings', JSON.stringify({ weekdays: [1, 2, 3, 4, 5] }), '平日/假日設定（JSON 格式：{"weekdays": [1,2,3,4,5]}，預設週一到週五為平日）']
             ];
             
             for (const [key, value, description] of defaultSettings) {
@@ -1489,10 +1486,7 @@ function initSQLite() {
                                         ['hotel_address', '', '旅館地址（顯示在郵件最下面）'],
                                         ['hotel_email', '', '旅館信箱（顯示在郵件最下面）'],
                                         ['admin_email', process.env.ADMIN_EMAIL || 'cheng701107@gmail.com', '管理員通知信箱（新訂房通知郵件會寄到此信箱）'],
-                                        ['weekday_settings', JSON.stringify({ weekdays: [1, 2, 3, 4, 5] }), '平日/假日設定（JSON 格式：{"weekdays": [1,2,3,4,5]}，預設週一到週五為平日）'],
-                                        ['checkin_reminder_transport', '<p style="margin: 0 0 15px 0; font-size: 17px; font-weight: 600;">地址：{{hotelAddress}}</p>\n<div style="margin-bottom: 15px;">\n    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">大眾運輸：</p>\n    <ul style="margin: 0; padding-left: 25px;">\n        <li>捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>\n        <li>公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>\n    </ul>\n</div>\n<div>\n    <p style="margin: 8px 0; font-size: 16px; font-weight: 600;">自行開車：</p>\n    <ul style="margin: 0; padding-left: 25px;">\n        <li>國道一號：下「信義交流道」，沿信義路直行約3公里</li>\n        <li>國道三號：下「木柵交流道」，接信義快速道路</li>\n    </ul>\n</div>', '入住提醒郵件 - 交通路線內容（HTML格式）'],
-                                        ['checkin_reminder_parking', '<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場位置：</strong>B1-B3 地下停車場</p>\n<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車費用：</strong></p>\n<ul style="margin: 0 0 12px 0; padding-left: 25px;">\n    <li>住宿客人：每日 NT$ 200（可無限次進出）</li>\n    <li>臨時停車：每小時 NT$ 50</li>\n</ul>\n<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場開放時間：</strong>24 小時</p>\n<p style="margin: 0; font-size: 15px; color: #666;">⚠️ 停車位有限，建議提前預約</p>', '入住提醒郵件 - 停車資訊內容（HTML格式）'],
-                                        ['checkin_reminder_notes', '<ul style="margin: 0; padding-left: 25px;">\n    <li>入住時間：<strong>下午 3:00 後</strong></li>\n    <li>退房時間：<strong>上午 11:00 前</strong></li>\n    <li>請攜帶身分證件辦理入住手續</li>\n    <li>房間內禁止吸菸，違者將收取清潔費 NT$ 3,000</li>\n    <li>請保持安靜，避免影響其他住客</li>\n    <li>貴重物品請妥善保管，建議使用房間保險箱</li>\n    <li>如需延遲退房，請提前告知櫃檯</li>\n</ul>', '入住提醒郵件 - 入住注意事項內容（HTML格式）']
+                                        ['weekday_settings', JSON.stringify({ weekdays: [1, 2, 3, 4, 5] }), '平日/假日設定（JSON 格式：{"weekdays": [1,2,3,4,5]}，預設週一到週五為平日）']
                                     ];
                                     
                                     // 初始化預設設定

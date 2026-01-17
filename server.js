@@ -4384,30 +4384,6 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             ...(testData.hotelPhone ? { '{{hotelPhone}}': testData.hotelPhone } : {})
         };
         
-        // 如果是入住提醒郵件，添加可編輯內容變數（從系統設定讀取）
-        if (key === 'checkin_reminder') {
-            const checkinTransport = await db.getSetting('checkin_reminder_transport') || '';
-            const checkinParking = await db.getSetting('checkin_reminder_parking') || '';
-            const checkinNotes = await db.getSetting('checkin_reminder_notes') || '';
-            const hotelAddress = await db.getSetting('hotel_address') || '';
-            
-            // 處理交通路線（替換 {{hotelAddress}} 變數）
-            let processedTransport = checkinTransport || '';
-            if (processedTransport) {
-                processedTransport = processedTransport.replace(/\{\{hotelAddress\}\}/g, hotelAddress);
-            }
-            
-            if (processedTransport) {
-                additionalData['{{checkinTransport}}'] = processedTransport;
-            }
-            if (checkinParking) {
-                additionalData['{{checkinParking}}'] = checkinParking;
-            }
-            if (checkinNotes) {
-                additionalData['{{checkinNotes}}'] = checkinNotes;
-            }
-        }
-        
         // 使用與實際發送相同的 replaceTemplateVariables 函數
         // 這確保測試郵件與實際發送的郵件完全一致
         let testContent, testSubject;
