@@ -350,16 +350,25 @@ function showAdminPage(admin) {
             }
         }
         
-        // 再次驗證頁面是否可見
-        setTimeout(() => {
-            const finalStyle = window.getComputedStyle(adminPage);
-            if (finalStyle.display === 'none' || finalStyle.visibility === 'hidden') {
-                console.error('❌ 頁面仍然隱藏，嘗試最後的修復');
-                adminPage.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important; min-height: 100vh !important; position: relative !important;');
-            } else {
-                console.log('✅ 管理後台頁面已成功顯示');
-            }
-        }, 100);
+        // 立即載入初始資料（不等待，讓頁面先顯示）
+        const loadPromises = [];
+        if (typeof loadBookings === 'function') {
+            loadPromises.push(loadBookings().catch(err => {
+                console.error('❌ 載入訂房記錄失敗:', err);
+            }));
+        }
+        if (typeof loadStatistics === 'function') {
+            loadPromises.push(loadStatistics().catch(err => {
+                console.error('❌ 載入統計資料失敗:', err);
+            }));
+        }
+        
+        // 不等待載入完成
+        Promise.all(loadPromises).then(() => {
+            console.log('✅ 初始資料載入完成');
+        }).catch(err => {
+            console.error('❌ 初始資料載入過程中有錯誤:', err);
+        });
         
     } catch (error) {
         console.error('❌ 顯示管理後台時發生錯誤:', error);
