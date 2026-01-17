@@ -77,10 +77,8 @@ if (typeof window !== 'undefined') {
                 // 立即顯示管理後台（如果 showAdminPage 函數已定義）
                 if (typeof showAdminPage === 'function') {
                     showAdminPage(result.admin);
-                }
-                
-                // 強制刷新頁面顯示（確保所有樣式都正確應用）
-                requestAnimationFrame(() => {
+                } else {
+                    // 如果 showAdminPage 未定義，直接切換頁面
                     const adminPage = document.getElementById('adminPage');
                     const loginPage = document.getElementById('loginPage');
                     if (adminPage) {
@@ -91,33 +89,30 @@ if (typeof window !== 'undefined') {
                     if (loginPage) {
                         loginPage.style.display = 'none';
                     }
-                });
+                }
                 
-                // 等待一小段時間確保頁面已顯示，再載入資料
-                setTimeout(() => {
-                    console.log('📊 開始載入資料...');
-                    const adminPage = document.getElementById('adminPage');
-                    if (adminPage) {
-                        const computedStyle = window.getComputedStyle(adminPage);
-                        console.log('🔍 最終檢查 - adminPage 顯示狀態:', {
-                            display: computedStyle.display,
-                            visibility: computedStyle.visibility,
-                            opacity: computedStyle.opacity
-                        });
-                    }
-                    
-                    // 如果相關函數已定義，則載入資料
-                    if (typeof loadBookings === 'function') {
-                        loadBookings().catch(err => {
-                            console.error('❌ 載入訂房記錄失敗:', err);
-                        });
-                    }
-                    if (typeof loadStatistics === 'function') {
-                        loadStatistics().catch(err => {
-                            console.error('❌ 載入統計資料失敗:', err);
-                        });
-                    }
-                }, 200);
+                // 立即開始載入資料（不等待延遲）
+                console.log('📊 開始載入資料...');
+                
+                // 並行載入資料，不等待
+                const loadPromises = [];
+                if (typeof loadBookings === 'function') {
+                    loadPromises.push(loadBookings().catch(err => {
+                        console.error('❌ 載入訂房記錄失敗:', err);
+                    }));
+                }
+                if (typeof loadStatistics === 'function') {
+                    loadPromises.push(loadStatistics().catch(err => {
+                        console.error('❌ 載入統計資料失敗:', err);
+                    }));
+                }
+                
+                // 不等待載入完成，讓頁面立即顯示
+                Promise.all(loadPromises).then(() => {
+                    console.log('✅ 資料載入完成');
+                }).catch(err => {
+                    console.error('❌ 資料載入過程中有錯誤:', err);
+                });
             } else {
                 // 登入失敗
                 console.warn('⚠️ 登入失敗:', result.message);
@@ -198,13 +193,19 @@ async function checkAuthStatus() {
     try {
         console.log('🔐 檢查登入狀態...');
         
-        // 檢查狀態時也取得 CSRF Token
-        console.log('🔑 取得 CSRF Token...');
-        await getCsrfToken();
-        console.log('🔑 CSRF Token 已取得');
+        // 並行取得 CSRF Token 和檢查登入狀態，減少等待時間
+        console.log('🔑 並行取得 CSRF Token 和檢查登入狀態...');
+        const [csrfResult, response] = await Promise.all([
+            getCsrfToken().catch(err => {
+                console.warn('⚠️ 取得 CSRF Token 失敗（非關鍵）:', err);
+                return null;
+            }),
+            adminFetch('/api/admin/check-auth')
+        ]);
         
-        console.log('📡 發送檢查登入狀態請求到 /api/admin/check-auth...');
-        const response = await adminFetch('/api/admin/check-auth');
+        if (csrfResult) {
+            console.log('🔑 CSRF Token 已取得');
+        }
         
         console.log('📡 API 回應狀態:', {
             ok: response?.ok,

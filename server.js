@@ -1972,32 +1972,30 @@ app.post('/api/admin/login', loginLimiter, validateLogin, async (req, res) => {
                 useSecureCookie: useSecureCookie
             });
             
-            // 明確儲存 Session（確保 Cookie 被設定）
-            // 注意：express-session 會在回應發送時自動設定 Cookie
+            // 記錄登入日誌（異步執行，不阻塞回應）
+            logAction(req, 'login', null, null, {
+                username: admin.username,
+                role: admin.role
+            }).catch(err => console.error('記錄登入日誌失敗:', err));
+            
+            // 立即回應登入成功（express-session 會在回應發送時自動設定 Cookie）
+            // 不等待 session.save()，讓回應更快
+            res.json({
+                success: true,
+                message: '登入成功',
+                admin: {
+                    username: admin.username,
+                    role: admin.role
+                }
+            });
+            
+            // 異步保存 Session（不阻塞回應）
             req.session.save((err) => {
                 if (err) {
                     console.error('❌ 儲存 Session 錯誤:', err);
-                    return res.status(500).json({
-                        success: false,
-                        message: '登入時發生錯誤：無法儲存 Session'
-                    });
+                } else {
+                    console.log('✅ Session 已保存');
                 }
-                
-                // 記錄登入日誌（在 session 儲存後）
-                logAction(req, 'login', null, null, {
-                    username: admin.username,
-                    role: admin.role
-                }).catch(err => console.error('記錄登入日誌失敗:', err));
-                
-                // 回應登入成功（express-session 會在回應發送時設定 Cookie）
-                res.json({
-                    success: true,
-                    message: '登入成功',
-                    admin: {
-                        username: admin.username,
-                        role: admin.role
-                    }
-                });
             });
         } else {
             // 記錄登入失敗日誌（不包含管理員資訊）
