@@ -3141,6 +3141,65 @@ async function saveEcpaySettings() {
     }
 }
 
+// 儲存入住提醒郵件內容設定
+async function saveCheckinReminderSettings() {
+    const checkinTransport = document.getElementById('checkinReminderTransport').value;
+    const checkinParking = document.getElementById('checkinReminderParking').value;
+    const checkinNotes = document.getElementById('checkinReminderNotes').value;
+    
+    try {
+        const [transportResponse, parkingResponse, notesResponse] = await Promise.all([
+            adminFetch('/api/admin/settings/checkin_reminder_transport', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: checkinTransport,
+                    description: '入住提醒郵件 - 交通路線內容（HTML格式）'
+                })
+            }),
+            adminFetch('/api/admin/settings/checkin_reminder_parking', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: checkinParking,
+                    description: '入住提醒郵件 - 停車資訊內容（HTML格式）'
+                })
+            }),
+            adminFetch('/api/admin/settings/checkin_reminder_notes', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: checkinNotes,
+                    description: '入住提醒郵件 - 入住注意事項內容（HTML格式）'
+                })
+            })
+        ]);
+        
+        const results = await Promise.all([
+            transportResponse.json(),
+            parkingResponse.json(),
+            notesResponse.json()
+        ]);
+        
+        const allSuccess = results.every(r => r.success);
+        if (allSuccess) {
+            showSuccess('入住提醒郵件內容已儲存');
+        } else {
+            const errorMsg = results.find(r => !r.success)?.message || '請稍後再試';
+            showError('儲存失敗：' + errorMsg);
+        }
+    } catch (error) {
+        console.error('儲存入住提醒內容設定錯誤:', error);
+        showError('儲存時發生錯誤：' + error.message);
+    }
+}
+
 // 儲存旅館資訊設定
 async function saveHotelInfoSettings() {
     const hotelName = document.getElementById('hotelName').value;
@@ -3522,6 +3581,20 @@ async function loadSettings() {
             
             // Google 評價連結
             document.getElementById('googleReviewUrl').value = settings.google_review_url || '';
+            
+            // 入住提醒郵件內容設定
+            const checkinTransportInput = document.getElementById('checkinReminderTransport');
+            const checkinParkingInput = document.getElementById('checkinReminderParking');
+            const checkinNotesInput = document.getElementById('checkinReminderNotes');
+            if (checkinTransportInput) {
+                checkinTransportInput.value = settings.checkin_reminder_transport || '';
+            }
+            if (checkinParkingInput) {
+                checkinParkingInput.value = settings.checkin_reminder_parking || '';
+            }
+            if (checkinNotesInput) {
+                checkinNotesInput.value = settings.checkin_reminder_notes || '';
+            }
             
             // Resend 發信設定
             const resendApiKeyInput = document.getElementById('resendApiKey');

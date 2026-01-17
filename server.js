@@ -4351,6 +4351,30 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             ...(testData.hotelPhone ? { '{{hotelPhone}}': testData.hotelPhone } : {})
         };
         
+        // 如果是入住提醒郵件，添加可編輯內容變數（從系統設定讀取）
+        if (key === 'checkin_reminder') {
+            const checkinTransport = await db.getSetting('checkin_reminder_transport') || '';
+            const checkinParking = await db.getSetting('checkin_reminder_parking') || '';
+            const checkinNotes = await db.getSetting('checkin_reminder_notes') || '';
+            const hotelAddress = await db.getSetting('hotel_address') || '';
+            
+            // 處理交通路線（替換 {{hotelAddress}} 變數）
+            let processedTransport = checkinTransport || '';
+            if (processedTransport) {
+                processedTransport = processedTransport.replace(/\{\{hotelAddress\}\}/g, hotelAddress);
+            }
+            
+            if (processedTransport) {
+                additionalData['{{checkinTransport}}'] = processedTransport;
+            }
+            if (checkinParking) {
+                additionalData['{{checkinParking}}'] = checkinParking;
+            }
+            if (checkinNotes) {
+                additionalData['{{checkinNotes}}'] = checkinNotes;
+            }
+        }
+        
         // 使用與實際發送相同的 replaceTemplateVariables 函數
         // 這確保測試郵件與實際發送的郵件完全一致
         let testContent, testSubject;
@@ -5126,53 +5150,24 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             
             <div class="info-section">
                 <div class="info-section-title">📍 交通路線</div>
-                <p style="margin: 0 0 15px 0; font-size: 17px; font-weight: 600;">地址：台北市信義區信義路五段7號</p>
-                <div style="margin-bottom: 15px;">
-                    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">大眾運輸：</p>
-                    <ul style="margin: 0; padding-left: 25px;">
-                        <li>捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
-                        <li>公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>
-                    </ul>
-                </div>
-                <div>
-                    <p style="margin: 8px 0; font-size: 16px; font-weight: 600;">自行開車：</p>
-                    <ul style="margin: 0; padding-left: 25px;">
-                        <li>國道一號：下「信義交流道」，沿信義路直行約3公里</li>
-                        <li>國道三號：下「木柵交流道」，接信義快速道路</li>
-                    </ul>
-                </div>
+                {{checkinTransport}}
             </div>
             
             <div class="info-section">
                 <div class="info-section-title">🅿️ 停車資訊</div>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場位置：</strong>B1-B3 地下停車場</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車費用：</strong></p>
-                <ul style="margin: 0 0 12px 0; padding-left: 25px;">
-                    <li>住宿客人：每日 NT$ 200（可無限次進出）</li>
-                    <li>臨時停車：每小時 NT$ 50</li>
-                </ul>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場開放時間：</strong>24 小時</p>
-                <p style="margin: 0; font-size: 15px; color: #666;">⚠️ 停車位有限，建議提前預約</p>
+                {{checkinParking}}
             </div>
             
             <div class="highlight-box">
                 <div class="section-title" style="margin-top: 0; margin-bottom: 15px; color: #856404;">⚠️ 入住注意事項</div>
-                <ul style="margin: 0; padding-left: 25px;">
-                    <li>入住時間：<strong>下午 3:00 後</strong></li>
-                    <li>退房時間：<strong>上午 11:00 前</strong></li>
-                    <li>請攜帶身分證件辦理入住手續</li>
-                    <li>房間內禁止吸菸，違者將收取清潔費 NT$ 3,000</li>
-                    <li>請保持安靜，避免影響其他住客</li>
-                    <li>貴重物品請妥善保管，建議使用房間保險箱</li>
-                    <li>如需延遲退房，請提前告知櫃檯</li>
-                </ul>
+                {{checkinNotes}}
             </div>
             
             <div class="info-section">
                 <div class="info-section-title">📞 聯絡資訊</div>
                 <p style="margin: 0 0 12px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>02-1234-5678</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>service@hotel.com</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
                 <p style="margin: 0; font-size: 16px;"><strong>服務時間：</strong>24 小時</p>
             </div>
             
@@ -6111,6 +6106,72 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
             variables['{{hotelPhone}}'] = hotelPhone;
         } else {
             variables['{{hotelPhone}}'] = '02-1234-5678'; // 預設值
+        }
+    }
+    
+    // 入住提醒郵件專用變數：從系統設定讀取可編輯內容
+    // 這些內容可以由業主在後台自由修改，不影響郵件排版
+    // 優先使用 additionalData 中的值（測試郵件時使用），否則從資料庫讀取
+    if (template.key === 'checkin_reminder') {
+        // 交通路線
+        if (!variables['{{checkinTransport}}']) {
+            let checkinTransport = await db.getSetting('checkin_reminder_transport') || '';
+            if (!checkinTransport) {
+                // 如果沒有設定，使用預設值
+                const hotelAddress = await db.getSetting('hotel_address') || '';
+                checkinTransport = `<p style="margin: 0 0 15px 0; font-size: 17px; font-weight: 600;">地址：${hotelAddress || '台北市信義區信義路五段7號'}</p>
+<div style="margin-bottom: 15px;">
+    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">大眾運輸：</p>
+    <ul style="margin: 0; padding-left: 25px;">
+        <li>捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
+        <li>公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>
+    </ul>
+</div>
+<div>
+    <p style="margin: 8px 0; font-size: 16px; font-weight: 600;">自行開車：</p>
+    <ul style="margin: 0; padding-left: 25px;">
+        <li>國道一號：下「信義交流道」，沿信義路直行約3公里</li>
+        <li>國道三號：下「木柵交流道」，接信義快速道路</li>
+    </ul>
+</div>`;
+            }
+            // 替換 {{hotelAddress}} 變數
+            const hotelAddress = await db.getSetting('hotel_address') || '';
+            checkinTransport = checkinTransport.replace(/\{\{hotelAddress\}\}/g, hotelAddress);
+            variables['{{checkinTransport}}'] = checkinTransport;
+        }
+        
+        // 停車資訊
+        if (!variables['{{checkinParking}}']) {
+            let checkinParking = await db.getSetting('checkin_reminder_parking') || '';
+            if (!checkinParking) {
+                checkinParking = `<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場位置：</strong>B1-B3 地下停車場</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車費用：</strong></p>
+<ul style="margin: 0 0 12px 0; padding-left: 25px;">
+    <li>住宿客人：每日 NT$ 200（可無限次進出）</li>
+    <li>臨時停車：每小時 NT$ 50</li>
+</ul>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場開放時間：</strong>24 小時</p>
+<p style="margin: 0; font-size: 15px; color: #666;">⚠️ 停車位有限，建議提前預約</p>`;
+            }
+            variables['{{checkinParking}}'] = checkinParking;
+        }
+        
+        // 入住注意事項
+        if (!variables['{{checkinNotes}}']) {
+            let checkinNotes = await db.getSetting('checkin_reminder_notes') || '';
+            if (!checkinNotes) {
+                checkinNotes = `<ul style="margin: 0; padding-left: 25px;">
+    <li>入住時間：<strong>下午 3:00 後</strong></li>
+    <li>退房時間：<strong>上午 11:00 前</strong></li>
+    <li>請攜帶身分證件辦理入住手續</li>
+    <li>房間內禁止吸菸，違者將收取清潔費 NT$ 3,000</li>
+    <li>請保持安靜，避免影響其他住客</li>
+    <li>貴重物品請妥善保管，建議使用房間保險箱</li>
+    <li>如需延遲退房，請提前告知櫃檯</li>
+</ul>`;
+            }
+            variables['{{checkinNotes}}'] = checkinNotes;
         }
     }
     
