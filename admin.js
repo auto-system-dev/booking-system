@@ -106,11 +106,20 @@ if (typeof window !== 'undefined') {
             if (result.success) {
                 // 登入成功
                 console.log('✅ 登入成功，準備顯示管理後台');
+                console.log('✅ 管理員資訊:', result.admin);
+                
+                // 清除任何錯誤訊息
+                if (errorDiv) {
+                    errorDiv.style.display = 'none';
+                    errorDiv.textContent = '';
+                }
                 
                 // 立即顯示管理後台（如果 showAdminPage 函數已定義）
                 if (typeof showAdminPage === 'function') {
+                    console.log('✅ 使用 showAdminPage 函數顯示管理後台');
                     showAdminPage(result.admin);
                 } else {
+                    console.log('⚠️ showAdminPage 函數未定義，直接切換頁面');
                     // 如果 showAdminPage 未定義，直接切換頁面
                     const adminPage = document.getElementById('adminPage');
                     const loginPage = document.getElementById('loginPage');
@@ -118,9 +127,13 @@ if (typeof window !== 'undefined') {
                         adminPage.style.display = 'flex';
                         adminPage.style.visibility = 'visible';
                         adminPage.style.opacity = '1';
+                        console.log('✅ adminPage 已顯示');
+                    } else {
+                        console.error('❌ 找不到 adminPage 元素');
                     }
                     if (loginPage) {
                         loginPage.style.display = 'none';
+                        console.log('✅ loginPage 已隱藏');
                     }
                 }
                 
@@ -156,10 +169,28 @@ if (typeof window !== 'undefined') {
             }
         } catch (error) {
             console.error('❌ 登入錯誤:', error);
+            console.error('錯誤類型:', error.name);
+            console.error('錯誤訊息:', error.message);
             console.error('錯誤堆疊:', error.stack);
+            
+            // 提供更詳細的錯誤訊息
+            let errorMessage = '登入時發生錯誤：' + (error.message || '請稍後再試');
+            if (error.message && error.message.includes('Failed to fetch')) {
+                errorMessage = '無法連接到伺服器。請檢查：\n1. 網路連線是否正常\n2. 伺服器是否正在運行\n3. 是否有防火牆或代理阻擋';
+            } else if (error.message && error.message.includes('NetworkError')) {
+                errorMessage = '網路錯誤。請檢查網路連線。';
+            } else if (error.message && error.message.includes('CORS')) {
+                errorMessage = '跨域請求被阻止。請聯繫管理員。';
+            }
+            
             if (errorDiv) {
-                errorDiv.textContent = '登入時發生錯誤：' + (error.message || '請稍後再試');
+                errorDiv.textContent = errorMessage;
                 errorDiv.style.display = 'block';
+                errorDiv.style.whiteSpace = 'pre-line'; // 允許換行
+                console.log('✅ 錯誤訊息已顯示給用戶');
+            } else {
+                console.error('❌ 找不到 errorDiv 元素，無法顯示錯誤訊息');
+                alert(errorMessage); // 備用方案：使用 alert
             }
         } finally {
             // 恢復按鈕狀態
@@ -195,6 +226,31 @@ if (typeof window.handleLogin === 'function') {
 } else {
     console.error('❌ [腳本開頭] handleLogin 函數設置失敗，當前類型:', typeof window.handleLogin);
 }
+
+// 添加測試登入功能（僅用於調試）
+window.testLogin = async function(username = 'admin', password = 'admin123') {
+    console.log('🧪 測試登入功能...');
+    console.log('🧪 測試帳號:', username);
+    
+    try {
+        const response = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ username, password })
+        });
+        
+        console.log('🧪 測試回應狀態:', response.status, response.statusText);
+        const result = await response.json();
+        console.log('🧪 測試回應內容:', result);
+        
+        return result;
+    } catch (error) {
+        console.error('🧪 測試登入失敗:', error);
+        throw error;
+    }
+};
+console.log('✅ 測試登入功能已添加，可在控制台使用: testLogin("admin", "admin123")');
 
 // 全局錯誤處理
 window.addEventListener('error', function(event) {
