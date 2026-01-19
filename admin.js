@@ -5583,702 +5583,168 @@ async function saveEmailTemplate(event) {
 
 // 發送測試郵件
 async function sendTestEmail() {
-                    // 檢查是否有 .content div（圖卡樣式的結構）
-                    const hasContentDiv = /class\s*=\s*["'][^"']*content[^"']*["']/i.test(originalContent);
-                
-                console.log('檢查 .content div:', {
-                    hasContentDiv,
-                    originalContentLength: originalContent.length,
-                    hasClassContent: originalContent.includes('class') && originalContent.includes('content'),
-                    bodyContent: originalContent.match(/<body[^>]*>([\s\S]{0,500})/i)?.[1]?.substring(0, 200)
-                });
-                
-                if (hasContentDiv) {
-                    // 只替換 .content div 內的內容，保留 .container 和 .header
-                    // 使用更智能的方式：找到 .content div 的開始位置，然後找到對應的結束標籤
-                    // 需要處理嵌套的 div，所以不能簡單地用非貪婪匹配
-                    const contentDivStartRegex = /<div[^>]*class\s*=\s*["'][^"']*content[^"']*["'][^>]*>/i;
-                    const startMatch = originalContent.match(contentDivStartRegex);
-                    
-                    if (startMatch) {
-                        const startIndex = startMatch.index;
-                        const startTag = startMatch[0];
-                        const afterStartTag = originalContent.substring(startIndex + startTag.length);
-                        
-                        // 計算嵌套的 div 層級，找到對應的結束標籤
-                        let divCount = 1;
-                        let currentIndex = 0;
-                        let endIndex = -1;
-                        
-                        while (currentIndex < afterStartTag.length && divCount > 0) {
-                            const openDiv = afterStartTag.indexOf('<div', currentIndex);
-                            const closeDiv = afterStartTag.indexOf('</div>', currentIndex);
-                            
-                            if (closeDiv === -1) break;
-                            
-                            if (openDiv !== -1 && openDiv < closeDiv) {
-                                divCount++;
-                                currentIndex = openDiv + 4;
-                            } else {
-                                divCount--;
-                                if (divCount === 0) {
-                                    endIndex = closeDiv;
-                                    break;
-                                }
-                                currentIndex = closeDiv + 6;
-                            }
-                        }
-                        
-                        if (endIndex !== -1) {
-                            // 找到了對應的結束標籤，替換 .content div 內的內容
-                            // 但需要確保保留原始內容中的 CSS 類別（如 .info-box 和 .highlight）
-                            const originalContentInner = afterStartTag.substring(0, endIndex);
-                            
-                            // 檢查 Quill HTML 是否包含 CSS 類別
-                            const hasInfoBoxInQuill = quillHtml.includes('class="info-box') || quillHtml.includes("class='info-box");
-                            const hasHighlightInQuill = quillHtml.includes('class="highlight') || quillHtml.includes("class='highlight");
-                            const hasInfoBoxInOriginal = originalContentInner.includes('class="info-box') || originalContentInner.includes("class='info-box");
-                            const hasHighlightInOriginal = originalContentInner.includes('class="highlight') || originalContentInner.includes("class='highlight");
-                            
-                            let finalQuillHtml = quillHtml;
-                            
-                            // 如果原始內容有 CSS 類別，但 Quill HTML 沒有，需要保留原始結構
-                            if ((hasInfoBoxInOriginal || hasHighlightInOriginal) && (!hasInfoBoxInQuill && !hasHighlightInQuill)) {
-                                console.log('⚠️ Quill HTML 缺少 CSS 類別，保留原始結構並更新內容...');
-                                
-                                // 使用原始結構，但用 Quill 的內容替換每個 div 內的內容
-                                finalQuillHtml = originalContentInner;
-                                
-                                // 提取所有帶有類別的 div，並用 Quill 的對應內容替換
-                                const styledDivRegex = /<div[^>]*class\s*=\s*["'](info-box|highlight)["'][^>]*>([\s\S]*?)<\/div>/gi;
-                                let styledDivMatch;
-                                
-                                while ((styledDivMatch = styledDivRegex.exec(originalContentInner)) !== null) {
-                                    const fullDiv = styledDivMatch[0];
-                                    const divClass = styledDivMatch[1];
-                                    const originalDivContent = styledDivMatch[2];
-                                    
-                                    // 提取原始 div 內容中的關鍵文字
-                                    const originalText = originalDivContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-                                    
-                                    // 在 Quill HTML 中查找包含這些文字的內容
-                                    if (originalText.length > 10) {
-                                        // 使用關鍵字匹配
-                                        const keywords = originalText.split(/\s+/).filter(w => w.length > 2).slice(0, 5);
-                                        if (keywords.length > 0) {
-                                            // 在 Quill HTML 中查找包含這些關鍵字的內容區塊
-                                            // 使用更寬鬆的匹配
-                                            const keywordPattern = keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*?');
-                                            const quillMatch = finalQuillHtml.match(new RegExp(`([\\s\\S]{0,3000}${keywordPattern}[\\s\\S]{0,3000})`, 'i'));
-                                            
-                                            if (quillMatch) {
-                                                const quillContent = quillMatch[1].trim();
-                                                
-                                                // 提取 div 的開始標籤
-                                                const divStartTag = fullDiv.match(/(<div[^>]*class\s*=\s*["'](info-box|highlight)["'][^>]*>)/i)?.[1];
-                                                if (divStartTag) {
-                                                    // 替換原始 div 的內容
-                                                    finalQuillHtml = finalQuillHtml.replace(
-                                                        fullDiv,
-                                                        divStartTag + quillContent + '</div>'
-                                                    );
-                                                    console.log(`✅ 已保留 .${divClass} 類別並更新內容`);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                
-                                // 處理不在 styled div 中的其他內容
-                                // 提取原始內容中所有非 styled div 的內容
-                                const otherContent = originalContentInner.replace(/<div[^>]*class\s*=\s*["'](info-box|highlight)["'][^>]*>[\s\S]*?<\/div>/gi, '').trim();
-                                
-                                if (otherContent.length > 20) {
-                                    // 在 Quill HTML 中查找這些內容（排除已經在 styled div 中的）
-                                    const otherText = otherContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-                                    const otherKeywords = otherText.split(/\s+/).filter(w => w.length > 2).slice(0, 5);
-                                    
-                                    if (otherKeywords.length > 0) {
-                                        const otherPattern = otherKeywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*?');
-                                        const otherMatch = finalQuillHtml.match(new RegExp(`([\\s\\S]{0,5000}${otherPattern}[\\s\\S]{0,5000})`, 'i'));
-                                        
-                                        if (otherMatch) {
-                                            const otherQuillContent = otherMatch[1].trim();
-                                            // 檢查是否已經在 finalQuillHtml 中（通過檢查關鍵字）
-                                            const alreadyIncluded = otherKeywords.some(k => finalQuillHtml.includes(k));
-                                            if (!alreadyIncluded) {
-                                                // 將其他內容插入到開頭
-                                                finalQuillHtml = otherQuillContent + finalQuillHtml;
-                                                console.log('✅ 已添加其他內容');
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // 重要：再次檢查 finalQuillHtml 是否包含完整的 HTML 結構，如果是，只提取純內容
-                            const finalQuillContentDivRegex = /<div[^>]*class\s*=\s*["'][^"']*content[^"']*["'][^>]*>([\s\S]*?)<\/div>/i;
-                            const finalQuillContentMatch = finalQuillHtml.match(finalQuillContentDivRegex);
-                            if (finalQuillContentMatch && finalQuillContentMatch[1]) {
-                                finalQuillHtml = finalQuillContentMatch[1];
-                                console.log('✅ 最終清理：已從 Quill HTML 中提取 .content div 內的內容，避免重複插入');
-                            }
-                            
-                            const beforeContent = originalContent.substring(0, startIndex + startTag.length);
-                            const afterContent = originalContent.substring(startIndex + startTag.length + endIndex);
-                            content = beforeContent + finalQuillHtml + afterContent;
-                            console.log('✅ 使用原始 HTML 結構，只替換 .content div 內的內容（保留 .container 和 .header，並嘗試保留 CSS 類別）');
-                        } else {
-                            // 如果無法找到對應的結束標籤，嘗試從資料庫讀取
-                            console.warn('⚠️ 無法找到 .content div 的結束標籤，嘗試從資料庫讀取原始模板');
-                            try {
-                                const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
-                                const templateResult = await templateResponse.json();
-                                if (templateResult.success && templateResult.data && templateResult.data.content) {
-                                    const templateContent = templateResult.data.content;
-                                    const templateStartMatch = templateContent.match(contentDivStartRegex);
-                                    if (templateStartMatch) {
-                                        const templateStartIndex = templateStartMatch.index;
-                                        const templateStartTag = templateStartMatch[0];
-                                        const templateAfterStartTag = templateContent.substring(templateStartIndex + templateStartTag.length);
-                                        
-                                        let templateDivCount = 1;
-                                        let templateCurrentIndex = 0;
-                                        let templateEndIndex = -1;
-                                        
-                                        while (templateCurrentIndex < templateAfterStartTag.length && templateDivCount > 0) {
-                                            const templateOpenDiv = templateAfterStartTag.indexOf('<div', templateCurrentIndex);
-                                            const templateCloseDiv = templateAfterStartTag.indexOf('</div>', templateCurrentIndex);
-                                            
-                                            if (templateCloseDiv === -1) break;
-                                            
-                                            if (templateOpenDiv !== -1 && templateOpenDiv < templateCloseDiv) {
-                                                templateDivCount++;
-                                                templateCurrentIndex = templateOpenDiv + 4;
-                                            } else {
-                                                templateDivCount--;
-                                                if (templateDivCount === 0) {
-                                                    templateEndIndex = templateCloseDiv;
-                                                    break;
-                                                }
-                                                templateCurrentIndex = templateCloseDiv + 6;
-                                            }
-                                        }
-                                        
-                                        if (templateEndIndex !== -1) {
-                                            const templateBeforeContent = templateContent.substring(0, templateStartIndex + templateStartTag.length);
-                                            const templateAfterContent = templateContent.substring(templateStartIndex + templateStartTag.length + templateEndIndex);
-                                            content = templateBeforeContent + quillHtml + templateAfterContent;
-                                            console.log('✅ 使用資料庫模板結構，只替換 .content div 內的內容');
-                                        } else {
-                                            // 如果資料庫模板也無法匹配，直接使用 Quill 內容替換 body
-                                            if (templateContent.includes('<body>')) {
-                                                content = templateContent.replace(
-                                                    /<body[^>]*>[\s\S]*?<\/body>/i,
-                                                    `<body>${quillHtml}</body>`
-                                                );
-                                                console.log('✅ 使用資料庫模板結構，只替換 body 內容（簡單排版）');
-                                            } else {
-                                                content = templateContent;
-                                                console.log('⚠️ 資料庫模板沒有 body，使用完整模板（後端會修復）');
-                                            }
-                                        }
-                                    } else {
-                                        // 如果資料庫模板沒有 .content div（簡單排版），直接替換 body 內容
-                                        if (templateContent.includes('<body>')) {
-                                            content = templateContent.replace(
-                                                /<body[^>]*>[\s\S]*?<\/body>/i,
-                                                `<body>${quillHtml}</body>`
-                                            );
-                                            console.log('✅ 使用資料庫模板結構，只替換 body 內容（簡單排版）');
-                                        } else {
-                                            content = templateContent;
-                                            console.log('⚠️ 資料庫模板沒有 body，使用完整模板（後端會修復）');
-                                        }
-                                    }
-                                } else {
-                                    // 如果無法取得資料庫模板，使用原始替換方式
-                                    content = originalContent.replace(
-                                        /<body[^>]*>[\s\S]*?<\/body>/i,
-                                        `<body>${quillHtml}</body>`
-                                    );
-                                    console.log('⚠️ 無法取得資料庫模板，使用原始替換方式');
-                                }
-                            } catch (e) {
-                                console.error('獲取資料庫模板失敗:', e);
-                                content = originalContent.replace(
-                                    /<body[^>]*>[\s\S]*?<\/body>/i,
-                                    `<body>${quillHtml}</body>`
-                                );
-                            }
-                        }
-                    } else {
-                        // 如果正則匹配失敗（沒有 .content div），直接使用 Quill 內容替換 body
-                        console.log('✅ 簡單排版模板：直接使用 Quill 內容替換 body');
-                        content = originalContent.replace(
-                            /<body[^>]*>[\s\S]*?<\/body>/i,
-                            `<body>${quillHtml}</body>`
-                        );
-                        console.log('✅ 已替換 body 內容，保留原始 HTML 結構和樣式');
-                    }
-                    } else {
-                        // 如果沒有 .content div（簡單排版），直接使用 Quill 編輯器的內容
-                        // 保留原始 HTML 結構（head、style 等），只替換 body 內容
-                        console.log('✅ 簡單排版模板：直接使用 Quill 編輯器的內容');
-                        if (originalContent.includes('<body>')) {
-                            // 只替換 body 內容，保留 head 和 style
-                            content = originalContent.replace(
-                                /<body[^>]*>[\s\S]*?<\/body>/i,
-                                `<body>${quillHtml}</body>`
-                            );
-                            console.log('✅ 已替換 body 內容，保留原始 HTML 結構和樣式');
-                        } else {
-                            // 如果沒有 body，嘗試從資料庫讀取原始模板以保留完整的 CSS 樣式
-                            try {
-                                const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
-                                const templateResult = await templateResponse.json();
-                                if (templateResult.success && templateResult.data && templateResult.data.content) {
-                                    const templateContent = templateResult.data.content;
-                                    // 如果資料庫模板有完整的 HTML 結構，使用其結構但替換 body 內容
-                                    if (templateContent.includes('<body>')) {
-                                        content = templateContent.replace(
-                                            /<body[^>]*>[\s\S]*?<\/body>/i,
-                                            `<body>${quillHtml}</body>`
-                                        );
-                                        console.log('✅ 使用資料庫模板的完整結構（包含完整 CSS 樣式），只替換 body 內容');
-                                    } else {
-                                        // 如果資料庫模板也不完整，創建完整的簡單排版 HTML
-                                        const basicStyle = `
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
-    `;
-                                        content = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>${basicStyle}</style>
-</head>
-<body>
-    ${quillHtml}
-</body>
-</html>`;
-                                        console.log('✅ 創建完整的簡單排版 HTML 結構');
-                                    }
-                                } else {
-                                    // 如果無法取得資料庫模板，創建完整的簡單排版 HTML
-                                    const basicStyle = `
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
-    `;
-                                    content = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>${basicStyle}</style>
-</head>
-<body>
-    ${quillHtml}
-</body>
-</html>`;
-                                    console.log('✅ 創建完整的簡單排版 HTML 結構（無法取得資料庫模板）');
-                                }
-                            } catch (e) {
-                                console.error('獲取資料庫模板失敗:', e);
-                                // 如果失敗，創建完整的簡單排版 HTML
-                                const basicStyle = `
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
-    `;
-                                content = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>${basicStyle}</style>
-</head>
-<body>
-    ${quillHtml}
-</body>
-</html>`;
-                                console.log('✅ 創建完整的簡單排版 HTML 結構（錯誤處理）');
-                            }
-                        }
-                    }
-            } else if (originalContent.includes('<html')) {
-                // 如果有 html 標籤但沒有 body，在 html 標籤內添加 body
-                // 檢查是否有 .content div（圖卡樣式的結構）
-                const hasContentDiv = originalContent.includes('class="content"') || originalContent.includes("class='content'");
-                
-                if (hasContentDiv && originalContent.includes('<body>')) {
-                    // 只替換 .content div 內的內容，保留 .container 和 .header
+    const testEmailInput = document.getElementById('testEmailAddress');
+    const testEmailBtn = document.getElementById('sendTestEmailBtn');
+    const testEmailStatus = document.getElementById('testEmailStatus');
+    const form = document.getElementById('emailTemplateForm');
+    const templateKey = form.dataset.templateKey;
+    
+    if (!templateKey) {
+        showError('找不到模板代碼');
+        return;
+    }
+    
+    const email = testEmailInput.value.trim();
+    if (!email) {
+        testEmailStatus.style.display = 'block';
+        testEmailStatus.style.color = '#e74c3c';
+        testEmailStatus.textContent = '請輸入 Email 地址';
+        return;
+    }
+    
+    // 簡單的 Email 格式驗證
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        testEmailStatus.style.display = 'block';
+        testEmailStatus.style.color = '#e74c3c';
+        testEmailStatus.textContent = '請輸入有效的 Email 地址';
+        return;
+    }
+    
+    // 禁用按鈕並顯示載入狀態
+    testEmailBtn.disabled = true;
+    testEmailBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">hourglass_empty</span>發送中...';
+    testEmailStatus.style.display = 'none';
+    
+    try {
+        // 獲取當前模板內容（與儲存邏輯相同，保留完整的 HTML 結構）
+        let content = '';
+        if (isHtmlMode) {
+            content = document.getElementById('emailTemplateContent').value;
+        } else {
+            const quillHtml = quillEditor.root.innerHTML;
+            const originalContent = document.getElementById('emailTemplateContent').value;
+            
+            // 使用與儲存邏輯相同的方法，確保保留完整的 HTML 結構和 CSS
+            if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
+                if (originalContent.includes('<body>')) {
+                    // 保留完整的 HTML 結構，只替換 body 內容
                     content = originalContent.replace(
-                        /(<div[^>]*class\s*=\s*["']content["'][^>]*>)([\s\S]*?)(<\/div>\s*<\/div>\s*<\/body>)/i,
-                        `$1${quillHtml}$3`
+                        /<body[^>]*>[\s\S]*?<\/body>/i,
+                        `<body>${quillHtml}</body>`
                     );
-                    console.log('✅ 在 HTML 標籤內，只替換 .content div 內的內容（保留 .container 和 .header）');
                 } else {
-                    content = originalContent.replace(
-                        /<html[^>]*>([\s\S]*?)<\/html>/i,
-                        (match, innerContent) => {
-                            if (innerContent.includes('<body>')) {
-                                return match.replace(/<body[^>]*>[\s\S]*?<\/body>/i, `<body>${quillHtml}</body>`);
-                            } else {
-                                return `<html${match.match(/<html([^>]*)>/)?.[1] || ''}>${innerContent}<body>${quillHtml}</body></html>`;
-                            }
-                        }
-                    );
-                    console.log('在 HTML 標籤內添加 body');
+                    content = originalContent;
                 }
             } else {
-                // 如果沒有 body，嘗試從資料庫讀取原始模板以保留完整的 CSS 樣式
+                // 如果原始內容不是完整 HTML，從資料庫讀取模板結構
                 try {
                     const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
                     const templateResult = await templateResponse.json();
                     if (templateResult.success && templateResult.data && templateResult.data.content) {
                         const templateContent = templateResult.data.content;
-                        // 如果資料庫模板有完整的 HTML 結構，使用其結構但替換 body 內容
                         if (templateContent.includes('<body>')) {
                             content = templateContent.replace(
                                 /<body[^>]*>[\s\S]*?<\/body>/i,
                                 `<body>${quillHtml}</body>`
                             );
-                            console.log('✅ 使用資料庫模板的完整結構（包含完整 CSS 樣式）');
                         } else {
-                            // 如果資料庫模板也不完整，創建完整的簡單排版 HTML
-                            const basicStyle = `
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
-    `;
-                            content = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>${basicStyle}</style>
-</head>
-<body>
-    ${quillHtml}
-</body>
-</html>`;
-                            console.log('✅ 創建完整的簡單排版 HTML 結構');
+                            content = quillHtml;
                         }
                     } else {
-                        // 如果無法取得資料庫模板，創建完整的簡單排版 HTML
-                        const basicStyle = `
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
-    `;
-                        content = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>${basicStyle}</style>
-</head>
-<body>
-    ${quillHtml}
-</body>
-</html>`;
-                        console.log('✅ 創建完整的簡單排版 HTML 結構（無法取得資料庫模板）');
+                        content = quillHtml;
                     }
                 } catch (e) {
                     console.error('獲取資料庫模板失敗:', e);
-                    // 如果失敗，創建完整的簡單排版 HTML
-                    const basicStyle = `
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
-    `;
-                    content = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>${basicStyle}</style>
-</head>
-<body>
-    ${quillHtml}
-</body>
-</html>`;
-                    console.log('✅ 創建完整的簡單排版 HTML 結構（錯誤處理）');
+                    content = quillHtml;
                 }
-            }
-        } else {
-            // 如果原始內容不是完整 HTML，嘗試從資料庫讀取原始模板以保留完整的 CSS 樣式
-            try {
-                const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
-                const templateResult = await templateResponse.json();
-                if (templateResult.success && templateResult.data && templateResult.data.content) {
-                    const templateContent = templateResult.data.content;
-                    // 如果資料庫模板有完整的 HTML 結構，使用其結構但替換 body 內容
-                    if (templateContent.includes('<body>')) {
-                        content = templateContent.replace(
-                            /<body[^>]*>[\s\S]*?<\/body>/i,
-                            `<body>${quillHtml}</body>`
-                        );
-                        console.log('✅ 使用資料庫模板的完整結構（包含完整 CSS 樣式）');
-                    } else {
-                        // 如果資料庫模板也不完整，創建完整的簡單排版 HTML
-                        const basicStyle = `
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
-    `;
-                        content = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>${basicStyle}</style>
-</head>
-<body>
-    ${quillHtml}
-</body>
-</html>`;
-                        console.log('✅ 創建完整的簡單排版 HTML 結構');
-                    }
-                } else {
-                    // 如果無法取得資料庫模板，創建完整的簡單排版 HTML
-                    const basicStyle = `
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
-    `;
-                    content = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>${basicStyle}</style>
-</head>
-<body>
-    ${quillHtml}
-</body>
-</html>`;
-                    console.log('✅ 創建完整的簡單排版 HTML 結構（無法取得資料庫模板）');
-                }
-            } catch (e) {
-                console.error('獲取資料庫模板失敗:', e);
-                // 如果失敗，創建完整的簡單排版 HTML
-                const basicStyle = `
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
-    `;
-                content = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>${basicStyle}</style>
-</head>
-<body>
-    ${quillHtml}
-</body>
-</html>`;
-                console.log('✅ 創建完整的簡單排版 HTML 結構（錯誤處理）');
             }
         }
         
-        console.log('最終儲存內容長度:', content.length);
-        console.log('最終儲存內容預覽（前 500 字元）:', content.substring(0, 500));
-    }
-    
-    // 確保 content 不為空
-    if (!content || content.trim() === '') {
-        showError('郵件模板內容不能為空');
-        return;
-    }
-    
-    const data = {
-        template_name: templateName,
-        subject: templateSubject,
-        content: content,  // 使用從編輯器獲取的內容
-        is_enabled: document.getElementById('emailTemplateEnabled').checked ? 1 : 0
-    };
-    
-    console.log('📝 準備儲存的資料:', {
-        template_name: data.template_name,
-        subject: data.subject,
-        content_length: data.content.length,
-        content_preview: data.content.substring(0, 200),
-        is_enabled: data.is_enabled
-    });
-    
-    // 根據模板類型添加對應的設定值
-    console.log('🔍 檢查模板類型:', templateKey);
-    console.log('🔍 當前 data 物件:', data);
-    
-    if (templateKey === 'checkin_reminder') {
-        const daysBeforeCheckinEl = document.getElementById('daysBeforeCheckin');
-        const sendHourCheckinEl = document.getElementById('sendHourCheckin');
-        console.log('🔍 入住提醒元素:', { 
-            daysBeforeCheckinEl: daysBeforeCheckinEl ? '找到' : '未找到',
-            sendHourCheckinEl: sendHourCheckinEl ? '找到' : '未找到',
-            daysBeforeCheckinValue: daysBeforeCheckinEl ? daysBeforeCheckinEl.value : 'N/A',
-            sendHourCheckinValue: sendHourCheckinEl ? sendHourCheckinEl.value : 'N/A'
-        });
-        if (daysBeforeCheckinEl && sendHourCheckinEl) {
-            data.days_before_checkin = parseInt(daysBeforeCheckinEl.value) || 1;
-            data.send_hour_checkin = parseInt(sendHourCheckinEl.value) || 9;
-            console.log('✅ 已添加入住提醒設定:', { days_before_checkin: data.days_before_checkin, send_hour_checkin: data.send_hour_checkin });
-        }
+        // 獲取主旨
+        const subject = document.getElementById('emailTemplateSubject').value;
         
-        // 保存區塊設定
-        const blockSettings = {
-            booking_info: {
-                enabled: document.getElementById('checkinBlockBookingInfo').checked,
-                content: document.getElementById('checkinBlockBookingInfoContent').value
-            },
-            transport: {
-                enabled: document.getElementById('checkinBlockTransport').checked,
-                content: document.getElementById('checkinBlockTransportContent').value
-            },
-            parking: {
-                enabled: document.getElementById('checkinBlockParking').checked,
-                content: document.getElementById('checkinBlockParkingContent').value
-            },
-            notes: {
-                enabled: document.getElementById('checkinBlockNotes').checked,
-                content: document.getElementById('checkinBlockNotesContent').value
-            },
-            contact: {
-                enabled: document.getElementById('checkinBlockContact').checked,
-                content: document.getElementById('checkinBlockContactContent').value
-            }
+        // 獲取模板名稱
+        const templateName = document.getElementById('emailTemplateName').value;
+        
+        // 準備請求資料
+        const requestData = {
+            email: email,
+            useEditorContent: true,
+            content: content,
+            subject: subject
         };
-        data.block_settings = JSON.stringify(blockSettings);
-        console.log('✅ 已保存入住提醒區塊設定:', blockSettings);
-    } else if (templateKey === 'feedback_request') {
-        const daysAfterCheckoutEl = document.getElementById('daysAfterCheckout');
-        const sendHourFeedbackEl = document.getElementById('sendHourFeedback');
-        console.log('🔍 感謝入住元素:', { 
-            daysAfterCheckoutEl: daysAfterCheckoutEl ? '找到' : '未找到',
-            sendHourFeedbackEl: sendHourFeedbackEl ? '找到' : '未找到',
-            daysAfterCheckoutValue: daysAfterCheckoutEl ? daysAfterCheckoutEl.value : 'N/A',
-            sendHourFeedbackValue: sendHourFeedbackEl ? sendHourFeedbackEl.value : 'N/A'
-        });
-        if (daysAfterCheckoutEl && sendHourFeedbackEl) {
-            data.days_after_checkout = parseInt(daysAfterCheckoutEl.value) || 1;
-            data.send_hour_feedback = parseInt(sendHourFeedbackEl.value) || 10;
-            console.log('✅ 已添加感謝入住設定:', { days_after_checkout: data.days_after_checkout, send_hour_feedback: data.send_hour_feedback });
-        }
-    } else if (templateKey === 'payment_reminder') {
-        const daysReservedEl = document.getElementById('daysReserved');
-        const sendHourPaymentReminderEl = document.getElementById('sendHourPaymentReminder');
-        console.log('🔍 匯款提醒元素檢查:', { 
-            daysReservedEl: daysReservedEl ? '✅ 找到' : '❌ 未找到',
-            sendHourPaymentReminderEl: sendHourPaymentReminderEl ? '✅ 找到' : '❌ 未找到',
-            daysReservedValue: daysReservedEl ? daysReservedEl.value : 'N/A',
-            sendHourPaymentReminderValue: sendHourPaymentReminderEl ? sendHourPaymentReminderEl.value : 'N/A'
-        });
-        if (daysReservedEl && sendHourPaymentReminderEl) {
-            const daysReservedValue = daysReservedEl.value;
-            const sendHourValue = sendHourPaymentReminderEl.value;
-            console.log('🔍 原始輸入值:', { daysReservedValue, sendHourValue });
-            data.days_reserved = parseInt(daysReservedValue) || 3;
-            data.send_hour_payment_reminder = parseInt(sendHourValue) || 9;
-            console.log('✅ 已添加匯款提醒設定:', { 
-                days_reserved: data.days_reserved, 
-                send_hour_payment_reminder: data.send_hour_payment_reminder 
-            });
-        } else {
-            console.error('❌ 找不到匯款提醒設定元素！');
-            console.error('   嘗試查找的元素 ID: daysReserved, sendHourPaymentReminder');
-            console.error('   當前頁面中的所有 input 元素:', Array.from(document.querySelectorAll('input')).map(el => el.id));
-        }
-    } else {
-        console.warn('⚠️ 未知的模板類型:', templateKey);
-    }
-    
-    console.log('🔍 添加設定後的 data 物件:', data);
-    
-    try {
-        console.log('準備儲存模板:', templateKey);
-        console.log('儲存資料:', {
-            template_name: data.template_name,
-            subject: data.subject,
-            content_length: data.content.length,
-            is_enabled: data.is_enabled,
-            days_before_checkin: data.days_before_checkin,
-            send_hour_checkin: data.send_hour_checkin,
-            days_after_checkout: data.days_after_checkout,
-            send_hour_feedback: data.send_hour_feedback,
-            days_reserved: data.days_reserved,
-            send_hour_payment_reminder: data.send_hour_payment_reminder
-        });
-        console.log('完整資料物件:', data);
         
-        const response = await fetch(`/api/email-templates/${templateKey}`, {
-            method: 'PUT',
+        // 如果是入住提醒郵件，添加區塊設定
+        if (templateKey === 'checkin_reminder') {
+            const blockSettings = {
+                booking_info: {
+                    enabled: document.getElementById('checkinBlockBookingInfo').checked,
+                    content: document.getElementById('checkinBlockBookingInfoContent').value
+                },
+                transport: {
+                    enabled: document.getElementById('checkinBlockTransport').checked,
+                    content: document.getElementById('checkinBlockTransportContent').value
+                },
+                parking: {
+                    enabled: document.getElementById('checkinBlockParking').checked,
+                    content: document.getElementById('checkinBlockParkingContent').value
+                },
+                notes: {
+                    enabled: document.getElementById('checkinBlockNotes').checked,
+                    content: document.getElementById('checkinBlockNotesContent').value
+                },
+                contact: {
+                    enabled: document.getElementById('checkinBlockContact').checked,
+                    content: document.getElementById('checkinBlockContactContent').value
+                }
+            };
+            requestData.blockSettings = blockSettings;
+        }
+        
+        console.log('📧 發送測試郵件請求:', {
+            templateKey,
+            email,
+            contentLength: content.length,
+            subject,
+            hasBlockSettings: !!requestData.blockSettings
+        });
+        
+        const response = await fetch(`/api/email-templates/${templateKey}/test`, {
+            method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify(data)
+            credentials: 'include',
+            body: JSON.stringify(requestData)
         });
         
         const result = await response.json();
-        console.log('儲存回應:', result);
+        console.log('📧 測試郵件回應:', result);
         
         if (result.success) {
-            console.log('✅ 儲存成功，開始重新載入模板列表...');
-            alert('郵件模板已儲存');
-            closeEmailTemplateModal();
-            // 重新載入模板列表以確保顯示最新內容
-            await loadEmailTemplates();
-            console.log('✅ 模板列表重新載入完成');
+            testEmailStatus.style.display = 'block';
+            testEmailStatus.style.color = '#27ae60';
+            testEmailStatus.textContent = '測試郵件已發送，請檢查收件箱';
         } else {
-            console.error('❌ 儲存失敗:', result);
-            showError('儲存失敗：' + (result.message || '未知錯誤'));
+            testEmailStatus.style.display = 'block';
+            testEmailStatus.style.color = '#e74c3c';
+            testEmailStatus.textContent = '發送失敗：' + (result.message || '未知錯誤');
         }
     } catch (error) {
-        console.error('儲存時發生錯誤:', error);
-        showError('儲存時發生錯誤：' + error.message);
+        console.error('發送測試郵件錯誤:', error);
+        testEmailStatus.style.display = 'block';
+        testEmailStatus.style.color = '#e74c3c';
+        testEmailStatus.textContent = '發送時發生錯誤：' + (error.message || '請稍後再試');
+    } finally {
+        // 恢復按鈕狀態
+        testEmailBtn.disabled = false;
+        testEmailBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">mail</span>發送測試郵件';
     }
 }
+
+// 移除錯誤的代碼片段 - 這些代碼不應該在這裡
+// 以下是錯誤的代碼片段，已移除
 
 // 發送測試郵件
 async function sendTestEmail() {
