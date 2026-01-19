@@ -44,19 +44,51 @@ if (typeof window !== 'undefined') {
         
         try {
             console.log('📡 發送登入請求到 /api/admin/login...');
-            const response = await fetch('/api/admin/login', {
+            console.log('📡 請求詳情:', {
+                url: '/api/admin/login',
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'include', // 重要：包含 cookies
-                body: JSON.stringify({ username, password })
+                username: username,
+                hasPassword: !!password
             });
+            
+            let response;
+            try {
+                response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include', // 重要：包含 cookies
+                    body: JSON.stringify({ username, password })
+                });
+            } catch (fetchError) {
+                console.error('❌ Fetch 請求失敗:', fetchError);
+                console.error('錯誤類型:', fetchError.name);
+                console.error('錯誤訊息:', fetchError.message);
+                console.error('錯誤堆疊:', fetchError.stack);
+                
+                // 提供更詳細的錯誤訊息
+                let errorMessage = '無法連接到伺服器';
+                if (fetchError.message.includes('Failed to fetch')) {
+                    errorMessage = '無法連接到伺服器，請檢查網路連線或伺服器狀態';
+                } else if (fetchError.message.includes('NetworkError')) {
+                    errorMessage = '網路錯誤，請檢查網路連線';
+                } else if (fetchError.message.includes('CORS')) {
+                    errorMessage = '跨域請求被阻止，請聯繫管理員';
+                }
+                
+                if (errorDiv) {
+                    errorDiv.textContent = errorMessage;
+                    errorDiv.style.display = 'block';
+                }
+                throw fetchError;
+            }
             
             console.log('📥 收到登入回應:', {
                 status: response.status,
                 statusText: response.statusText,
-                ok: response.ok
+                ok: response.ok,
+                headers: Object.fromEntries(response.headers.entries())
             });
             
             let result;
@@ -67,6 +99,7 @@ if (typeof window !== 'undefined') {
                 console.error('❌ 無法解析登入回應 JSON:', parseError);
                 const text = await response.text();
                 console.error('❌ 回應內容（文字）:', text);
+                console.error('❌ 回應狀態:', response.status, response.statusText);
                 throw new Error('伺服器回應格式錯誤');
             }
             

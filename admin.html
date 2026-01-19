@@ -1164,14 +1164,45 @@
                 }
                 
                 try {
-                    const response = await fetch('/api/admin/login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ username, password })
-                    });
+                    console.log('📡 [備用] 發送登入請求...');
+                    let response;
+                    try {
+                        response = await fetch('/api/admin/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ username, password })
+                        });
+                    } catch (fetchError) {
+                        console.error('❌ [備用] Fetch 請求失敗:', fetchError);
+                        let errorMessage = '無法連接到伺服器';
+                        if (fetchError.message.includes('Failed to fetch')) {
+                            errorMessage = '無法連接到伺服器，請檢查網路連線或伺服器狀態';
+                        } else if (fetchError.message.includes('NetworkError')) {
+                            errorMessage = '網路錯誤，請檢查網路連線';
+                        }
+                        if (errorDiv) {
+                            errorDiv.textContent = errorMessage;
+                            errorDiv.style.display = 'block';
+                        }
+                        throw fetchError;
+                    }
                     
-                    const result = await response.json();
+                    console.log('📥 [備用] 收到回應:', response.status, response.statusText);
+                    
+                    let result;
+                    try {
+                        result = await response.json();
+                    } catch (parseError) {
+                        console.error('❌ [備用] 無法解析回應:', parseError);
+                        const text = await response.text();
+                        console.error('❌ [備用] 回應內容:', text);
+                        if (errorDiv) {
+                            errorDiv.textContent = '伺服器回應格式錯誤，請重新整理頁面';
+                            errorDiv.style.display = 'block';
+                        }
+                        return;
+                    }
                     
                     if (result.success) {
                         console.log('✅ [備用] 登入成功');
@@ -1195,8 +1226,14 @@
                     }
                 } catch (error) {
                     console.error('❌ [備用] 登入錯誤:', error);
+                    console.error('錯誤類型:', error.name);
+                    console.error('錯誤訊息:', error.message);
                     if (errorDiv) {
-                        errorDiv.textContent = '登入時發生錯誤：' + (error.message || '請稍後再試');
+                        let errorMessage = '登入時發生錯誤：' + (error.message || '請稍後再試');
+                        if (error.message && error.message.includes('Failed to fetch')) {
+                            errorMessage = '無法連接到伺服器，請檢查網路連線或伺服器狀態';
+                        }
+                        errorDiv.textContent = errorMessage;
                         errorDiv.style.display = 'block';
                     }
                 } finally {
