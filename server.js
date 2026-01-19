@@ -4152,28 +4152,7 @@ app.put('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res)
         }
         
         // 移除自動修復邏輯，直接使用前端傳來的內容
-        // 如果前端需要修復，應該在前端處理
-        /*
-        // 檢查是否包含基本的 HTML 結構
-        const hasFullHtmlStructure = finalContent.includes('<!DOCTYPE html>') || 
-                                     (finalContent.includes('<html') && finalContent.includes('</html>'));
-        
-        // 檢查是否包含 <style> 標籤
-        const hasStyleTag = finalContent.includes('<style>') || finalContent.includes('<style ');
-        
-        // 如果缺少基本結構或樣式，自動修復
-        if (!hasFullHtmlStructure || !hasStyleTag) {
-            console.log('⚠️ 保存的模板缺少基本 HTML 結構或樣式，自動修復中...', {
-                key,
-                hasFullHtmlStructure,
-                hasStyleTag,
-                contentLength: finalContent.length
-            });
-            
-            // 移除自動修復邏輯 - 直接使用前端傳來的內容
-            // 前端已經處理好 HTML 結構，後端不應該修改用戶編輯的內容
-            console.warn('⚠️ 保存的模板缺少基本 HTML 結構或樣式，但直接使用前端傳來的內容（不進行自動修復）');
-        }
+        // 前端已經處理好 HTML 結構，後端不應該修改用戶編輯的內容
         
         // 準備更新資料
         const updateData = {
