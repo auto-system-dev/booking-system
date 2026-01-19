@@ -4272,6 +4272,10 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             // 使用編輯器中的內容（用戶修改後的內容）
             content = req.body.content;
             subject = req.body.subject;
+            console.log(`📧 測試郵件：使用編輯器中的內容 (${key})`);
+            console.log(`   內容長度: ${content.length} 字元`);
+            console.log(`   主旨: ${subject}`);
+            
             // 仍然需要從資料庫讀取模板以獲取模板名稱和其他資訊
             template = await db.getEmailTemplateByKey(key);
             if (!template) {
@@ -4283,6 +4287,7 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             // 使用編輯器中的內容和主題覆蓋資料庫中的值（用於測試郵件）
             template.content = content;
             template.subject = subject;
+            console.log(`✅ 已將編輯器內容設置到模板物件`);
             
             // 如果提供了 block_settings，使用編輯器中的區塊設定（用於測試郵件）
             if (req.body.blockSettings && key === 'checkin_reminder') {
@@ -4291,6 +4296,9 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
                     ? req.body.blockSettings 
                     : JSON.stringify(req.body.blockSettings);
                 console.log('✅ 測試郵件使用編輯器中的區塊設定');
+                console.log('   區塊設定:', JSON.stringify(req.body.blockSettings, null, 2));
+            } else if (key === 'checkin_reminder') {
+                console.log('⚠️ 入住提醒郵件但未提供 blockSettings，將使用資料庫中的設定');
             }
         } else {
             // 從資料庫讀取最新的模板內容
@@ -4362,10 +4370,9 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         };
         
         // 確保使用正確的模板內容
-        // 如果使用編輯器內容，使用編輯器中的內容（包括區塊設定）
-        // 否則使用資料庫中的內容
-        template.content = template.content || content;
-        template.subject = template.subject || subject;
+        // 如果使用編輯器內容，template.content 和 template.subject 已經在第 4284-4285 行設置
+        // 如果沒有使用編輯器內容，則使用資料庫中的內容（template.content 和 template.subject 已經從資料庫讀取）
+        // 這裡不需要再次設置，因為已經在 useEditorContent 分支中處理過了
         
         // 創建模擬的 booking 對象，用於 replaceTemplateVariables 函數
         const mockBooking = {

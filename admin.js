@@ -6077,6 +6077,33 @@ ${quillHtml}
         
         const subject = document.getElementById('emailTemplateSubject').value;
         
+        // 如果是入住提醒郵件，獲取區塊設定
+        let blockSettings = null;
+        if (templateKey === 'checkin_reminder') {
+            blockSettings = {
+                booking_info: {
+                    enabled: document.getElementById('checkinBlockBookingInfo').checked,
+                    content: document.getElementById('checkinBlockBookingInfoContent').value
+                },
+                transport: {
+                    enabled: document.getElementById('checkinBlockTransport').checked,
+                    content: document.getElementById('checkinBlockTransportContent').value
+                },
+                parking: {
+                    enabled: document.getElementById('checkinBlockParking').checked,
+                    content: document.getElementById('checkinBlockParkingContent').value
+                },
+                notes: {
+                    enabled: document.getElementById('checkinBlockNotes').checked,
+                    content: document.getElementById('checkinBlockNotesContent').value
+                },
+                contact: {
+                    enabled: document.getElementById('checkinBlockContact').checked,
+                    content: document.getElementById('checkinBlockContactContent').value
+                }
+            };
+        }
+        
         // 使用編輯器中的內容（用戶修改後的內容），但保留完整的 HTML 結構
         const response = await fetch(`/api/email-templates/${templateKey}/test`, {
             method: 'POST',
@@ -6087,7 +6114,8 @@ ${quillHtml}
                 email: email,
                 useEditorContent: true,  // 使用編輯器中的內容
                 subject: subject,
-                content: content
+                content: content,
+                ...(blockSettings ? { blockSettings: blockSettings } : {})  // 如果有區塊設定，一併發送
             })
         });
         
