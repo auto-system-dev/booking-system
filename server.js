@@ -5800,7 +5800,16 @@ async function generateEmailFromTemplate(templateKey, booking, bankInfo = null, 
 
 // 替換郵件模板中的變數
 async function replaceTemplateVariables(template, booking, bankInfo = null, additionalData = {}) {
-    let content = template.content;
+    // 確保模板內容存在（支援多種欄位名稱）
+    let content = template.content || template.template_content || '';
+    if (!content || content.trim() === '') {
+        console.error('❌ 郵件模板內容為空:', {
+            templateKey: template.key || template.template_key,
+            hasContent: !!template.content,
+            hasTemplateContent: !!template.template_content
+        });
+        throw new Error('郵件模板內容為空');
+    }
     
     // 日誌：確認 bankInfo 是否正確傳遞
     console.log('🔍 replaceTemplateVariables - bankInfo 檢查:', {
@@ -6109,7 +6118,8 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     
     // 入住提醒郵件專用變數：從模板的 block_settings 讀取可編輯內容
     // 這些內容可以由業主在後台自由修改，不影響郵件排版
-    if (template.key === 'checkin_reminder') {
+    const templateKey = template.key || template.template_key;
+    if (templateKey === 'checkin_reminder') {
         // 解析區塊設定
         let blockSettings = {};
         if (template.block_settings) {
@@ -6412,7 +6422,17 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     // 移除 {{hotelInfoFooter}} 變數（如果存在）
     content = content.replace(/\{\{hotelInfoFooter\}\}/g, '');
     
-    let subject = template.subject;
+    // 確保模板主題存在（支援多種欄位名稱）
+    let subject = template.subject || template.template_subject || '';
+    if (!subject || subject.trim() === '') {
+        console.error('❌ 郵件模板主題為空:', {
+            templateKey: template.key || template.template_key,
+            hasSubject: !!template.subject,
+            hasTemplateSubject: !!template.template_subject
+        });
+        throw new Error('郵件模板主題為空');
+    }
+    
     Object.keys(variables).forEach(key => {
         subject = subject.replace(new RegExp(key, 'g'), variables[key]);
     });
@@ -6750,7 +6770,28 @@ async function sendCheckinReminderEmails() {
         
         for (const booking of bookings) {
             try {
+                // 檢查模板內容是否存在
+                const templateContent = template.content || '';
+                const templateSubject = template.subject || '';
+                
+                if (!templateContent || templateContent.trim() === '') {
+                    console.error(`❌ 入住提醒模板內容為空，跳過發送 (${booking.booking_id})`);
+                    continue;
+                }
+                if (!templateSubject || templateSubject.trim() === '') {
+                    console.error(`❌ 入住提醒模板主題為空，跳過發送 (${booking.booking_id})`);
+                    continue;
+                }
+                
+                console.log(`📧 準備發送入住提醒郵件 (${booking.booking_id})，模板內容長度: ${templateContent.length} 字元`);
+                
                 const { subject, content } = await replaceTemplateVariables(template, booking);
+                
+                // 檢查生成的郵件內容
+                if (!content || content.trim() === '') {
+                    console.error(`❌ 生成的郵件內容為空，跳過發送 (${booking.booking_id})`);
+                    continue;
+                }
                 
                 const mailOptions = {
                     from: emailUser,
