@@ -5103,48 +5103,40 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             <p class="greeting">親愛的 {{guestName}} 您好，</p>
             <p class="intro-text">感謝您選擇我們的住宿服務！我們期待您明天的到來。</p>
             
+            {{#if showBookingInfo}}
             <div class="info-box">
                 <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">📅 訂房資訊</div>
-                <div class="info-row">
-                    <span class="info-label">訂房編號</span>
-                    <span class="info-value"><strong>{{bookingId}}</strong></span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">入住日期</span>
-                    <span class="info-value">{{checkInDate}}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">退房日期</span>
-                    <span class="info-value">{{checkOutDate}}</span>
-                </div>
-                <div class="info-row" style="border-bottom: none;">
-                    <span class="info-label">房型</span>
-                    <span class="info-value">{{roomType}}</span>
-                </div>
+                {{bookingInfoContent}}
             </div>
+            {{/if}}
             
+            {{#if showTransport}}
             <div class="info-section">
                 <div class="info-section-title">📍 交通路線</div>
                 {{checkinTransport}}
             </div>
+            {{/if}}
             
+            {{#if showParking}}
             <div class="info-section">
                 <div class="info-section-title">🅿️ 停車資訊</div>
                 {{checkinParking}}
             </div>
+            {{/if}}
             
+            {{#if showNotes}}
             <div class="highlight-box">
                 <div class="section-title" style="margin-top: 0; margin-bottom: 15px; color: #856404;">⚠️ 入住注意事項</div>
                 {{checkinNotes}}
             </div>
+            {{/if}}
             
+            {{#if showContact}}
             <div class="info-section">
                 <div class="info-section-title">📞 聯絡資訊</div>
-                <p style="margin: 0 0 12px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
-                <p style="margin: 0; font-size: 16px;"><strong>服務時間：</strong>24 小時</p>
+                {{checkinContact}}
             </div>
+            {{/if}}
             
             <p style="margin-top: 35px; font-size: 17px; font-weight: 500;">期待您的到來，祝您住宿愉快！</p>
         </div>
@@ -5152,7 +5144,47 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 </body>
 </html>`,
                 days_before_checkin: 1,
-                send_hour_checkin: 9
+                send_hour_checkin: 9,
+                block_settings: JSON.stringify({
+                    booking_info: {
+                        enabled: true,
+                        content: `<div class="info-row">
+    <span class="info-label">訂房編號</span>
+    <span class="info-value"><strong>{{bookingId}}</strong></span>
+</div>
+<div class="info-row">
+    <span class="info-label">入住日期</span>
+    <span class="info-value">{{checkInDate}}</span>
+</div>
+<div class="info-row">
+    <span class="info-label">退房日期</span>
+    <span class="info-value">{{checkOutDate}}</span>
+</div>
+<div class="info-row" style="border-bottom: none;">
+    <span class="info-label">房型</span>
+    <span class="info-value">{{roomType}}</span>
+</div>`
+                    },
+                    transport: {
+                        enabled: true,
+                        content: ''
+                    },
+                    parking: {
+                        enabled: true,
+                        content: ''
+                    },
+                    notes: {
+                        enabled: true,
+                        content: ''
+                    },
+                    contact: {
+                        enabled: true,
+                        content: `<p style="margin: 0 0 12px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
+<p style="margin: 0; font-size: 16px;"><strong>服務時間：</strong>24 小時</p>`
+                    }
+                })
             },
             {
                 key: 'feedback_request',
@@ -5705,7 +5737,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
                 });
             }
             
-            await db.updateEmailTemplate(template.key, {
+            const updateData = {
                 template_name: template.name,
                 subject: template.subject,
                 content: template.content,
@@ -5716,7 +5748,14 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
                 send_hour_feedback: template.send_hour_feedback,
                 days_reserved: template.days_reserved,
                 send_hour_payment_reminder: template.send_hour_payment_reminder
-            });
+            };
+            
+            // 如果是入住提醒模板，也重置 block_settings
+            if (template.key === 'checkin_reminder' && template.block_settings) {
+                updateData.block_settings = template.block_settings;
+            }
+            
+            await db.updateEmailTemplate(template.key, updateData);
             
             res.json({
                 success: true,
@@ -5725,7 +5764,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
         } else {
             // 更新所有模板為預設原始排版樣式（無圖卡樣式）
             for (const template of defaultTemplates) {
-                await db.updateEmailTemplate(template.key, {
+                const updateData = {
                     template_name: template.name,
                     subject: template.subject,
                     content: template.content,
@@ -5736,7 +5775,14 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
                     send_hour_feedback: template.send_hour_feedback,
                     days_reserved: template.days_reserved,
                     send_hour_payment_reminder: template.send_hour_payment_reminder
-                });
+                };
+                
+                // 如果是入住提醒模板，也重置 block_settings
+                if (template.key === 'checkin_reminder' && template.block_settings) {
+                    updateData.block_settings = template.block_settings;
+                }
+                
+                await db.updateEmailTemplate(template.key, updateData);
             }
             
             res.json({
