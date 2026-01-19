@@ -4280,9 +4280,16 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
                     message: '找不到該郵件模板'
                 });
             }
+            // 使用編輯器中的內容和主題覆蓋資料庫中的值（用於測試郵件）
+            template.content = content;
+            template.subject = subject;
+            
             // 如果提供了 block_settings，使用編輯器中的區塊設定（用於測試郵件）
             if (req.body.blockSettings && key === 'checkin_reminder') {
-                template.block_settings = JSON.stringify(req.body.blockSettings);
+                // block_settings 可以是物件或字串，統一處理
+                template.block_settings = typeof req.body.blockSettings === 'string' 
+                    ? req.body.blockSettings 
+                    : JSON.stringify(req.body.blockSettings);
                 console.log('✅ 測試郵件使用編輯器中的區塊設定');
             }
         } else {
@@ -6860,7 +6867,9 @@ async function sendCheckinReminderEmails() {
                 }
                 
                 console.log(`📧 準備發送入住提醒郵件 (${booking.booking_id})，模板內容長度: ${templateContent.length} 字元`);
+                console.log(`📋 使用資料庫中保存的模板內容和區塊設定`);
                 
+                // 使用資料庫中保存的模板（包括 block_settings）生成郵件
                 const { subject, content } = await replaceTemplateVariables(template, booking);
                 
                 // 檢查生成的郵件內容
