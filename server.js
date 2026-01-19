@@ -4131,9 +4131,29 @@ app.put('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res)
             });
         }
         
-        // 確保保存的模板包含基本的 HTML 結構
+        // 直接使用前端傳來的內容，不進行自動修復
+        // 前端已經處理好 HTML 結構，後端不應該修改用戶編輯的內容
         let finalContent = content;
         
+        console.log(`📝 保存郵件模板內容 (${key}):`, {
+            contentLength: finalContent.length,
+            hasFullHtmlStructure: finalContent.includes('<!DOCTYPE html>') || (finalContent.includes('<html') && finalContent.includes('</html>')),
+            hasStyleTag: finalContent.includes('<style>') || finalContent.includes('<style '),
+            contentPreview: finalContent.substring(0, 200)
+        });
+        
+        // 只在內容完全為空時才進行修復（不應該發生，因為前端已經驗證）
+        if (!finalContent || finalContent.trim() === '') {
+            console.error('❌ 保存的模板內容為空，這不應該發生');
+            return res.status(400).json({
+                success: false,
+                message: '郵件模板內容不能為空'
+            });
+        }
+        
+        // 移除自動修復邏輯，直接使用前端傳來的內容
+        // 如果前端需要修復，應該在前端處理
+        /*
         // 檢查是否包含基本的 HTML 結構
         const hasFullHtmlStructure = finalContent.includes('<!DOCTYPE html>') || 
                                      (finalContent.includes('<html') && finalContent.includes('</html>'));
@@ -4150,61 +4170,9 @@ app.put('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res)
                 contentLength: finalContent.length
             });
             
-            // 基本文字樣式
-            const basicStyle = `
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
-    `;
-            
-            // 如果沒有完整的 HTML 結構，包裝現有內容
-            if (!hasFullHtmlStructure) {
-                // 提取實際內容
-                let bodyContent = finalContent;
-                if (finalContent.includes('<body>')) {
-                    const bodyMatch = finalContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-                    if (bodyMatch && bodyMatch[1]) {
-                        bodyContent = bodyMatch[1];
-                    }
-                }
-                
-                finalContent = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>${basicStyle}</style>
-</head>
-<body>
-    ${bodyContent}
-</body>
-</html>`;
-            } else if (!hasStyleTag) {
-                // 如果有 HTML 結構但缺少樣式標籤，添加基本樣式
-                if (finalContent.includes('<head>')) {
-                    finalContent = finalContent.replace(
-                        /<head[^>]*>/i,
-                        `<head>
-    <meta charset="UTF-8">
-    <style>${basicStyle}</style>`
-                    );
-                } else {
-                    finalContent = finalContent.replace(
-                        /<html[^>]*>/i,
-                        `<html>
-<head>
-    <meta charset="UTF-8">
-    <style>${basicStyle}</style>
-</head>`
-                    );
-                }
-            }
-            
-            console.log('✅ 模板已自動修復，添加基本的 HTML 結構和樣式');
+            // 移除自動修復邏輯 - 直接使用前端傳來的內容
+            // 前端已經處理好 HTML 結構，後端不應該修改用戶編輯的內容
+            console.warn('⚠️ 保存的模板缺少基本 HTML 結構或樣式，但直接使用前端傳來的內容（不進行自動修復）');
         }
         
         // 準備更新資料

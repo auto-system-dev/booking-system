@@ -5819,14 +5819,29 @@ async function saveEmailTemplate(event) {
         }
         
         console.log('最終儲存內容長度:', content.length);
+        console.log('最終儲存內容預覽（前 500 字元）:', content.substring(0, 500));
+    }
+    
+    // 確保 content 不為空
+    if (!content || content.trim() === '') {
+        showError('郵件模板內容不能為空');
+        return;
     }
     
     const data = {
         template_name: templateName,
         subject: templateSubject,
-        content: content,
+        content: content,  // 使用從編輯器獲取的內容
         is_enabled: document.getElementById('emailTemplateEnabled').checked ? 1 : 0
     };
+    
+    console.log('📝 準備儲存的資料:', {
+        template_name: data.template_name,
+        subject: data.subject,
+        content_length: data.content.length,
+        content_preview: data.content.substring(0, 200),
+        is_enabled: data.is_enabled
+    });
     
     // 根據模板類型添加對應的設定值
     console.log('🔍 檢查模板類型:', templateKey);
