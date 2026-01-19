@@ -4694,6 +4694,28 @@ async function showEmailTemplateModal(templateKey) {
                 
                 // 監聽編輯器內容變更，自動更新預覽
                 quillEditor.on('text-change', function() {
+                    // 同步更新 textarea 的值，確保儲存時使用最新的內容
+                    const quillHtml = quillEditor.root.innerHTML;
+                    const textarea = document.getElementById('emailTemplateContent');
+                    if (textarea) {
+                        const originalContent = textarea.value;
+                        // 如果原始內容是完整 HTML，只替換 body 內容
+                        if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
+                            if (originalContent.includes('<body>')) {
+                                textarea.value = originalContent.replace(
+                                    /<body[^>]*>[\s\S]*?<\/body>/i,
+                                    `<body>${quillHtml}</body>`
+                                );
+                            } else {
+                                // 如果沒有 body，保持原樣（不應該發生）
+                                textarea.value = originalContent;
+                            }
+                        } else {
+                            // 如果原始內容不是完整 HTML，直接使用 Quill 的內容
+                            textarea.value = quillHtml;
+                        }
+                    }
+                    
                     if (isPreviewVisible && !isHtmlMode) {
                         // 使用防抖，避免頻繁更新
                         clearTimeout(window.previewUpdateTimer);
@@ -5217,67 +5239,261 @@ async function saveEmailTemplate(event) {
     if (isHtmlMode) {
         // HTML 模式：直接從 textarea 獲取
         content = document.getElementById('emailTemplateContent').value;
+        console.log('📝 HTML 模式：從 textarea 獲取內容，長度:', content.length);
     } else {
-        // 可視化模式：從 Quill 獲取 HTML，然後包裝成完整的 HTML 文檔
-        // 使用 root.innerHTML 以保留所有 HTML 結構和屬性（包括 class、style）
-        let quillHtml = quillEditor.root.innerHTML;
+        // 可視化模式：從 Quill 獲取 HTML
+        // 由於 text-change 事件已經同步更新了 textarea，直接使用 textarea 的值
+        // 這樣可以確保使用最新的內容，並且保留完整的 HTML 結構
+        const textarea = document.getElementById('emailTemplateContent');
+        content = textarea ? textarea.value : quillEditor.root.innerHTML;
         
-        console.log('📝 從 Quill 獲取的 HTML 長度:', quillHtml.length);
-        console.log('📝 從 Quill 獲取的 HTML 前 500 字元:', quillHtml.substring(0, 500));
+        console.log('📝 可視化模式：從 textarea 獲取內容（已同步），長度:', content.length);
+        console.log('📝 內容預覽（前 500 字元）:', content.substring(0, 500));
         
-        // 重要：確保 quillHtml 不包含 .header div 或重複的標題，只保留 .content div 內的實際內容
-        // 移除可能的 .header div（如果用戶在編輯器中添加了）
-        quillHtml = quillHtml.replace(/<div[^>]*class\s*=\s*["'][^"']*header[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, '');
-        // 移除可能的 .container div（如果用戶在編輯器中添加了）
-        quillHtml = quillHtml.replace(/<div[^>]*class\s*=\s*["'][^"']*container[^"']*["'][^>]*>/gi, '');
-        quillHtml = quillHtml.replace(/<\/div>\s*<\/div>\s*$/i, '');
-        // 移除可能的單獨 h1 標題（如果用戶在編輯器中添加了，但這應該在 .header 中）
-        // 注意：這裡只移除明顯是標題的 h1，不要移除內容中的 h1
-        // 我們假設如果 h1 在開頭且包含「入住提醒」等關鍵字，可能是重複的標題
-        const titlePatterns = ['入住提醒', '匯款期限提醒', '感謝您的入住', '訂房確認成功', '新訂房通知', '付款完成確認', '訂房已自動取消'];
-        for (const pattern of titlePatterns) {
-            const titleRegex = new RegExp(`<h1[^>]*>\\s*[🏨]*\\s*${pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*</h1>\\s*`, 'i');
-            if (titleRegex.test(quillHtml)) {
-                quillHtml = quillHtml.replace(titleRegex, '');
-                console.log(`✅ 已移除重複的標題: ${pattern}`);
+        // 如果 textarea 的內容不是完整 HTML，從資料庫讀取模板結構
+        if (content && !content.includes('<!DOCTYPE html>') && !content.includes('<html')) {
+            console.log('⚠️ textarea 內容不是完整 HTML，從資料庫讀取模板結構');
+            try {
+                const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
+                const templateResult = await templateResponse.json();
+                if (templateResult.success && templateResult.data && templateResult.data.content) {
+                    const templateContent = templateResult.data.content;
+                    // 使用模板的結構，但替換 body 內容為 Quill 的內容
+                    if (templateContent.includes('<body>')) {
+                        content = templateContent.replace(
+                            /<body[^>]*>[\s\S]*?<\/body>/i,
+                            `<body>${content}</body>`
+                        );
+                        console.log('✅ 使用資料庫模板結構，替換 body 內容');
+                    } else {
+                        // 如果模板沒有 body，直接使用 Quill 的內容
+                        content = content;
+                    }
+                }
+            } catch (e) {
+                console.error('獲取資料庫模板失敗:', e);
+                // 如果失敗，直接使用 Quill 的內容（不完整，但至少保存了用戶的修改）
             }
         }
         
-        // 重要：清理 quillHtml，移除可能的重複內容結構
-        // 如果 quillHtml 包含完整的 HTML 結構（包含 .content div），只提取 .content div 內的內容
-        const quillContentDivRegex = /<div[^>]*class\s*=\s*["'][^"']*content[^"']*["'][^>]*>([\s\S]*?)<\/div>/i;
-        const quillContentMatch = quillHtml.match(quillContentDivRegex);
-        if (quillContentMatch && quillContentMatch[1]) {
-            // 如果 Quill HTML 已經包含 .content div，只提取其內容，避免重複
-            quillHtml = quillContentMatch[1];
-            console.log('✅ 已從 Quill HTML 中提取 .content div 內的內容，避免重複');
+        // 備用：如果上面的邏輯沒有獲取到內容，直接使用 Quill 的內容
+        if (!content || content.trim() === '') {
+            const quillHtml = quillEditor.root.innerHTML;
+            console.log('⚠️ 使用備用方案：直接從 Quill 獲取內容');
+            
+            // 從資料庫讀取模板結構
+            try {
+                const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
+                const templateResult = await templateResponse.json();
+                if (templateResult.success && templateResult.data && templateResult.data.content) {
+                    const templateContent = templateResult.data.content;
+                    if (templateContent.includes('<body>')) {
+                        content = templateContent.replace(
+                            /<body[^>]*>[\s\S]*?<\/body>/i,
+                            `<body>${quillHtml}</body>`
+                        );
+                        console.log('✅ 使用資料庫模板結構（備用方案）');
+                    } else {
+                        content = quillHtml;
+                    }
+                } else {
+                    content = quillHtml;
+                }
+            } catch (e) {
+                console.error('獲取資料庫模板失敗（備用方案）:', e);
+                content = quillHtml;
+            }
         }
         
-        // 確保保留重要的 CSS 類別（如 .info-box, .highlight, .info-row 等）
-        // 檢查是否有這些類別，如果沒有但原始內容有，嘗試從原始內容中提取並合併
-        const importantClasses = ['info-box', 'highlight', 'info-row', 'info-label', 'info-value'];
-        const hasImportantClasses = importantClasses.some(cls => quillHtml.includes(`class="${cls}`) || quillHtml.includes(`class='${cls}`));
-        
-        if (!hasImportantClasses) {
-            console.log('⚠️ Quill HTML 缺少重要的 CSS 類別，嘗試從原始內容中保留');
-            // 這裡的邏輯會在後續處理中從原始內容中提取並合併
+        // 如果 content 仍然為空，這不應該發生，但為了安全起見
+        if (!content || content.trim() === '') {
+            console.error('❌ 內容為空，使用 Quill 的內容作為最後備用方案');
+            const quillHtml = quillEditor.root.innerHTML;
+            // 從資料庫讀取模板結構
+            try {
+                const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
+                const templateResult = await templateResponse.json();
+                if (templateResult.success && templateResult.data && templateResult.data.content) {
+                    const templateContent = templateResult.data.content;
+                    if (templateContent.includes('<body>')) {
+                        content = templateContent.replace(
+                            /<body[^>]*>[\s\S]*?<\/body>/i,
+                            `<body>${quillHtml}</body>`
+                        );
+                    } else {
+                        content = quillHtml;
+                    }
+                } else {
+                    content = quillHtml;
+                }
+            } catch (e) {
+                console.error('獲取資料庫模板失敗（最後備用方案）:', e);
+                content = quillHtml;
+            }
         }
         
-        // 獲取原始完整內容（用於保留 HTML 結構）
-        const originalContent = document.getElementById('emailTemplateContent').value;
+        // 移除所有舊的複雜邏輯，因為 textarea 已經被同步更新了
+        // 舊的複雜邏輯已移除，直接使用上面獲取的 content
         
-        console.log('儲存時 - Quill HTML 長度（清理後）:', quillHtml.length);
-        console.log('儲存時 - 原始內容長度:', originalContent.length);
+        console.log('最終儲存內容長度:', content.length);
+        console.log('最終儲存內容預覽（前 500 字元）:', content.substring(0, 500));
+    }
+    
+    // 確保 content 不為空
+    if (!content || content.trim() === '') {
+        showError('郵件模板內容不能為空');
+        return;
+    }
+    
+    const data = {
+        template_name: templateName,
+        subject: templateSubject,
+        content: content,  // 使用從編輯器獲取的內容
+        is_enabled: document.getElementById('emailTemplateEnabled').checked ? 1 : 0
+    };
+    
+    console.log('📝 準備儲存的資料:', {
+        template_name: data.template_name,
+        subject: data.subject,
+        content_length: data.content.length,
+        content_preview: data.content.substring(0, 200),
+        is_enabled: data.is_enabled
+    });
+    
+    // 根據模板類型添加對應的設定值
+    console.log('🔍 檢查模板類型:', templateKey);
+    console.log('🔍 當前 data 物件:', data);
+    
+    if (templateKey === 'checkin_reminder') {
+        const daysBeforeCheckinEl = document.getElementById('daysBeforeCheckin');
+        const sendHourCheckinEl = document.getElementById('sendHourCheckin');
+        console.log('🔍 入住提醒元素:', { 
+            daysBeforeCheckinEl: daysBeforeCheckinEl ? '找到' : '未找到',
+            sendHourCheckinEl: sendHourCheckinEl ? '找到' : '未找到',
+            daysBeforeCheckinValue: daysBeforeCheckinEl ? daysBeforeCheckinEl.value : 'N/A',
+            sendHourCheckinValue: sendHourCheckinEl ? sendHourCheckinEl.value : 'N/A'
+        });
+        if (daysBeforeCheckinEl && sendHourCheckinEl) {
+            data.days_before_checkin = parseInt(daysBeforeCheckinEl.value) || 1;
+            data.send_hour_checkin = parseInt(sendHourCheckinEl.value) || 9;
+            console.log('✅ 已添加入住提醒設定:', { days_before_checkin: data.days_before_checkin, send_hour_checkin: data.send_hour_checkin });
+        }
         
-        // 現在所有模板都使用簡單排版（沒有 .content div），直接使用 Quill 編輯器的內容
-        // 不再需要特殊處理新模板
+        // 保存區塊設定
+        const blockSettings = {
+            booking_info: {
+                enabled: document.getElementById('checkinBlockBookingInfo').checked,
+                content: document.getElementById('checkinBlockBookingInfoContent').value
+            },
+            transport: {
+                enabled: document.getElementById('checkinBlockTransport').checked,
+                content: document.getElementById('checkinBlockTransportContent').value
+            },
+            parking: {
+                enabled: document.getElementById('checkinBlockParking').checked,
+                content: document.getElementById('checkinBlockParkingContent').value
+            },
+            notes: {
+                enabled: document.getElementById('checkinBlockNotes').checked,
+                content: document.getElementById('checkinBlockNotesContent').value
+            },
+            contact: {
+                enabled: document.getElementById('checkinBlockContact').checked,
+                content: document.getElementById('checkinBlockContactContent').value
+            }
+        };
+        data.block_settings = JSON.stringify(blockSettings);
+        console.log('✅ 已保存入住提醒區塊設定:', blockSettings);
+    } else if (templateKey === 'feedback_request') {
+        const daysAfterCheckoutEl = document.getElementById('daysAfterCheckout');
+        const sendHourFeedbackEl = document.getElementById('sendHourFeedback');
+        console.log('🔍 感謝入住元素:', { 
+            daysAfterCheckoutEl: daysAfterCheckoutEl ? '找到' : '未找到',
+            sendHourFeedbackEl: sendHourFeedbackEl ? '找到' : '未找到',
+            daysAfterCheckoutValue: daysAfterCheckoutEl ? daysAfterCheckoutEl.value : 'N/A',
+            sendHourFeedbackValue: sendHourFeedbackEl ? sendHourFeedbackEl.value : 'N/A'
+        });
+        if (daysAfterCheckoutEl && sendHourFeedbackEl) {
+            data.days_after_checkout = parseInt(daysAfterCheckoutEl.value) || 1;
+            data.send_hour_feedback = parseInt(sendHourFeedbackEl.value) || 10;
+            console.log('✅ 已添加感謝入住設定:', { days_after_checkout: data.days_after_checkout, send_hour_feedback: data.send_hour_feedback });
+        }
+    } else if (templateKey === 'payment_reminder') {
+        const daysReservedEl = document.getElementById('daysReserved');
+        const sendHourPaymentReminderEl = document.getElementById('sendHourPaymentReminder');
+        console.log('🔍 匯款提醒元素檢查:', { 
+            daysReservedEl: daysReservedEl ? '✅ 找到' : '❌ 未找到',
+            sendHourPaymentReminderEl: sendHourPaymentReminderEl ? '✅ 找到' : '❌ 未找到',
+            daysReservedValue: daysReservedEl ? daysReservedEl.value : 'N/A',
+            sendHourPaymentReminderValue: sendHourPaymentReminderEl ? sendHourPaymentReminderEl.value : 'N/A'
+        });
+        if (daysReservedEl && sendHourPaymentReminderEl) {
+            const daysReservedValue = daysReservedEl.value;
+            const sendHourValue = sendHourPaymentReminderEl.value;
+            console.log('🔍 原始輸入值:', { daysReservedValue, sendHourValue });
+            data.days_reserved = parseInt(daysReservedValue) || 3;
+            data.send_hour_payment_reminder = parseInt(sendHourValue) || 9;
+            console.log('✅ 已添加匯款提醒設定:', { 
+                days_reserved: data.days_reserved, 
+                send_hour_payment_reminder: data.send_hour_payment_reminder 
+            });
+        } else {
+            console.error('❌ 找不到匯款提醒設定元素！');
+            console.error('   嘗試查找的元素 ID: daysReserved, sendHourPaymentReminder');
+            console.error('   當前頁面中的所有 input 元素:', Array.from(document.querySelectorAll('input')).map(el => el.id));
+        }
+    } else {
+        console.warn('⚠️ 未知的模板類型:', templateKey);
+    }
+    
+    console.log('🔍 添加設定後的 data 物件:', data);
+    
+    try {
+        console.log('準備儲存模板:', templateKey);
+        console.log('儲存資料:', {
+            template_name: data.template_name,
+            subject: data.subject,
+            content_length: data.content.length,
+            is_enabled: data.is_enabled,
+            days_before_checkin: data.days_before_checkin,
+            send_hour_checkin: data.send_hour_checkin,
+            days_after_checkout: data.days_after_checkout,
+            send_hour_feedback: data.send_hour_feedback,
+            days_reserved: data.days_reserved,
+            send_hour_payment_reminder: data.send_hour_payment_reminder
+        });
+        console.log('完整資料物件:', data);
         
-        // 如果還沒有設置 content，使用 Quill 編輯器的內容
-        if (!content) {
-            // 檢查原始內容是否包含完整的 HTML 結構
-            if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
-                // 如果原始內容是完整 HTML，檢查是否有 .content div（圖卡樣式）或簡單排版（沒有 .content div）
-                if (originalContent.includes('<body>')) {
+        const response = await fetch(`/api/email-templates/${templateKey}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        console.log('儲存回應:', result);
+        
+        if (result.success) {
+            console.log('✅ 儲存成功，開始重新載入模板列表...');
+            alert('郵件模板已儲存');
+            closeEmailTemplateModal();
+            // 重新載入模板列表以確保顯示最新內容
+            await loadEmailTemplates();
+            console.log('✅ 模板列表重新載入完成');
+        } else {
+            console.error('❌ 儲存失敗:', result);
+            showError('儲存失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('儲存時發生錯誤:', error);
+        showError('儲存時發生錯誤：' + error.message);
+    }
+}
+
+// 發送測試郵件
+async function sendTestEmail() {
                     // 檢查是否有 .content div（圖卡樣式的結構）
                     const hasContentDiv = /class\s*=\s*["'][^"']*content[^"']*["']/i.test(originalContent);
                 
