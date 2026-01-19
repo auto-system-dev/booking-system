@@ -6132,167 +6132,8 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
         }
     }
     
-    // 入住提醒郵件專用變數：從模板的 block_settings 讀取可編輯內容
-    // 這些內容可以由業主在後台自由修改，不影響郵件排版
-    const templateKey = template.key || template.template_key;
-    if (templateKey === 'checkin_reminder') {
-        // 解析區塊設定
-        let blockSettings = {};
-        if (template.block_settings) {
-            try {
-                blockSettings = typeof template.block_settings === 'string' 
-                    ? JSON.parse(template.block_settings) 
-                    : template.block_settings;
-                console.log('✅ 已讀取入住提醒區塊設定:', {
-                    hasBookingInfo: !!blockSettings.booking_info,
-                    hasTransport: !!blockSettings.transport,
-                    hasParking: !!blockSettings.parking,
-                    hasNotes: !!blockSettings.notes,
-                    hasContact: !!blockSettings.contact
-                });
-            } catch (e) {
-                console.warn('⚠️ 解析 block_settings 失敗:', e);
-            }
-        } else {
-            console.log('⚠️ 入住提醒模板沒有 block_settings，將使用預設內容');
-        }
-        
-        // 輔助函數：替換區塊內容中的變數
-        const replaceBlockVariables = (blockContent) => {
-            if (!blockContent) return '';
-            let result = blockContent;
-            Object.keys(variables).forEach(key => {
-                const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp(escapedKey, 'g');
-                result = result.replace(regex, variables[key]);
-            });
-            return result;
-        };
-        
-        // 訂房資訊區塊
-        const showBookingInfo = blockSettings.booking_info?.enabled !== false;
-        let bookingInfoContent = blockSettings.booking_info?.content || '';
-        if (!bookingInfoContent) {
-            // 預設訂房資訊內容
-            bookingInfoContent = `<div class="info-row">
-    <span class="info-label">訂房編號</span>
-    <span class="info-value"><strong>{{bookingId}}</strong></span>
-</div>
-<div class="info-row">
-    <span class="info-label">入住日期</span>
-    <span class="info-value">{{checkInDate}}</span>
-</div>
-<div class="info-row">
-    <span class="info-label">退房日期</span>
-    <span class="info-value">{{checkOutDate}}</span>
-</div>
-<div class="info-row" style="border-bottom: none;">
-    <span class="info-label">房型</span>
-    <span class="info-value">{{roomType}}</span>
-</div>`;
-        }
-        // 替換區塊內容中的變數
-        bookingInfoContent = replaceBlockVariables(bookingInfoContent);
-        variables['{{showBookingInfo}}'] = showBookingInfo ? 'true' : '';
-        variables['{{bookingInfoContent}}'] = bookingInfoContent;
-        
-        // 交通路線區塊
-        const showTransport = blockSettings.transport?.enabled !== false;
-        let checkinTransport = blockSettings.transport?.content || '';
-        if (!checkinTransport) {
-            // 從系統設定讀取或使用預設值
-            checkinTransport = await db.getSetting('checkin_reminder_transport') || '';
-            if (!checkinTransport) {
-                const hotelAddress = await db.getSetting('hotel_address') || '';
-                checkinTransport = `<p style="margin: 0 0 15px 0; font-size: 17px; font-weight: 600;">地址：${hotelAddress || '台北市信義區信義路五段7號'}</p>
-<div style="margin-bottom: 15px;">
-    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">大眾運輸：</p>
-    <ul style="margin: 0; padding-left: 25px;">
-        <li>捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
-        <li>公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>
-    </ul>
-</div>
-<div>
-    <p style="margin: 8px 0; font-size: 16px; font-weight: 600;">自行開車：</p>
-    <ul style="margin: 0; padding-left: 25px;">
-        <li>國道一號：下「信義交流道」，沿信義路直行約3公里</li>
-        <li>國道三號：下「木柵交流道」，接信義快速道路</li>
-    </ul>
-</div>`;
-            }
-        }
-        // 替換 {{hotelAddress}} 變數
-        const hotelAddress = await db.getSetting('hotel_address') || '';
-        checkinTransport = checkinTransport.replace(/\{\{hotelAddress\}\}/g, hotelAddress);
-        // 替換區塊內容中的其他變數
-        checkinTransport = replaceBlockVariables(checkinTransport);
-        variables['{{showTransport}}'] = showTransport ? 'true' : '';
-        variables['{{checkinTransport}}'] = checkinTransport;
-        
-        // 停車資訊區塊
-        const showParking = blockSettings.parking?.enabled !== false;
-        let checkinParking = blockSettings.parking?.content || '';
-        if (!checkinParking) {
-            checkinParking = await db.getSetting('checkin_reminder_parking') || '';
-            if (!checkinParking) {
-                checkinParking = `<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場位置：</strong>B1-B3 地下停車場</p>
-<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車費用：</strong></p>
-<ul style="margin: 0 0 12px 0; padding-left: 25px;">
-    <li>住宿客人：每日 NT$ 200（可無限次進出）</li>
-    <li>臨時停車：每小時 NT$ 50</li>
-</ul>
-<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場開放時間：</strong>24 小時</p>
-<p style="margin: 0; font-size: 15px; color: #666;">⚠️ 停車位有限，建議提前預約</p>`;
-            }
-        }
-        // 替換區塊內容中的變數
-        checkinParking = replaceBlockVariables(checkinParking);
-        variables['{{showParking}}'] = showParking ? 'true' : '';
-        variables['{{checkinParking}}'] = checkinParking;
-        
-        // 入住注意事項區塊
-        const showNotes = blockSettings.notes?.enabled !== false;
-        let checkinNotes = blockSettings.notes?.content || '';
-        if (!checkinNotes) {
-            checkinNotes = await db.getSetting('checkin_reminder_notes') || '';
-            if (!checkinNotes) {
-                checkinNotes = `<ul style="margin: 0; padding-left: 25px;">
-    <li>入住時間：<strong>下午 3:00 後</strong></li>
-    <li>退房時間：<strong>上午 11:00 前</strong></li>
-    <li>請攜帶身分證件辦理入住手續</li>
-    <li>房間內禁止吸菸，違者將收取清潔費 NT$ 3,000</li>
-    <li>請保持安靜，避免影響其他住客</li>
-    <li>貴重物品請妥善保管，建議使用房間保險箱</li>
-    <li>如需延遲退房，請提前告知櫃檯</li>
-</ul>`;
-            }
-        }
-        // 替換區塊內容中的變數
-        checkinNotes = replaceBlockVariables(checkinNotes);
-        variables['{{showNotes}}'] = showNotes ? 'true' : '';
-        variables['{{checkinNotes}}'] = checkinNotes;
-        
-        // 聯絡資訊區塊
-        const showContact = blockSettings.contact?.enabled !== false;
-        let checkinContact = blockSettings.contact?.content || '';
-        if (!checkinContact) {
-            // 預設聯絡資訊內容
-            checkinContact = `<p style="margin: 0 0 12px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
-<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
-<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
-<p style="margin: 0; font-size: 16px;"><strong>服務時間：</strong>24 小時</p>`;
-        }
-        // 替換區塊內容中的變數
-        checkinContact = replaceBlockVariables(checkinContact);
-        variables['{{showContact}}'] = showContact ? 'true' : '';
-        variables['{{checkinContact}}'] = checkinContact;
-    }
-    
-    Object.keys(variables).forEach(key => {
-        content = content.replace(new RegExp(key, 'g'), variables[key]);
-    });
-    
     // 處理嵌套條件區塊的輔助函數（改進版，能正確處理嵌套結構）
+    // 需要在處理入住提醒區塊之前定義
     function processConditionalBlock(content, condition, conditionName) {
         const startTag = `{{#if ${conditionName}}}`;
         const elseTag = '{{else}}';
@@ -6376,6 +6217,194 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
         }
         
         return content;
+    }
+    
+    // 入住提醒郵件專用變數：從模板的 block_settings 讀取可編輯內容
+    // 這些內容可以由業主在後台自由修改，不影響郵件排版
+    const templateKey = template.key || template.template_key;
+    if (templateKey === 'checkin_reminder') {
+        // 解析區塊設定
+        let blockSettings = {};
+        if (template.block_settings) {
+            try {
+                blockSettings = typeof template.block_settings === 'string' 
+                    ? JSON.parse(template.block_settings) 
+                    : template.block_settings;
+                console.log('✅ 已讀取入住提醒區塊設定:', {
+                    hasBookingInfo: !!blockSettings.booking_info,
+                    hasTransport: !!blockSettings.transport,
+                    hasParking: !!blockSettings.parking,
+                    hasNotes: !!blockSettings.notes,
+                    hasContact: !!blockSettings.contact
+                });
+            } catch (e) {
+                console.warn('⚠️ 解析 block_settings 失敗:', e);
+            }
+        } else {
+            console.log('⚠️ 入住提醒模板沒有 block_settings，將使用預設內容');
+        }
+        
+        // 輔助函數：替換區塊內容中的變數
+        const replaceBlockVariables = (blockContent) => {
+            if (!blockContent) return '';
+            let result = blockContent;
+            Object.keys(variables).forEach(key => {
+                const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(escapedKey, 'g');
+                result = result.replace(regex, variables[key]);
+            });
+            return result;
+        };
+        
+        // 訂房資訊區塊
+        const showBookingInfo = blockSettings.booking_info?.enabled !== false;
+        let bookingInfoContent = blockSettings.booking_info?.content || '';
+        if (!bookingInfoContent) {
+            // 預設訂房資訊內容
+            bookingInfoContent = `<div class="info-row">
+    <span class="info-label">訂房編號</span>
+    <span class="info-value"><strong>{{bookingId}}</strong></span>
+</div>
+<div class="info-row">
+    <span class="info-label">入住日期</span>
+    <span class="info-value">{{checkInDate}}</span>
+</div>
+<div class="info-row">
+    <span class="info-label">退房日期</span>
+    <span class="info-value">{{checkOutDate}}</span>
+</div>
+<div class="info-row" style="border-bottom: none;">
+    <span class="info-label">房型</span>
+    <span class="info-value">{{roomType}}</span>
+</div>`;
+        }
+        // 替換區塊內容中的變數
+        bookingInfoContent = replaceBlockVariables(bookingInfoContent);
+        // 不將 show* 變數加入 variables，而是直接使用 processConditionalBlock 處理
+        // 先將區塊內容設置到 variables，但不在這裡處理條件判斷
+        variables['{{bookingInfoContent}}'] = bookingInfoContent;
+        
+        // 交通路線區塊
+        const showTransport = blockSettings.transport?.enabled !== false;
+        let checkinTransport = blockSettings.transport?.content || '';
+        if (!checkinTransport) {
+            // 從系統設定讀取或使用預設值
+            checkinTransport = await db.getSetting('checkin_reminder_transport') || '';
+            if (!checkinTransport) {
+                const hotelAddress = await db.getSetting('hotel_address') || '';
+                checkinTransport = `<p style="margin: 0 0 15px 0; font-size: 17px; font-weight: 600;">地址：${hotelAddress || '台北市信義區信義路五段7號'}</p>
+<div style="margin-bottom: 15px;">
+    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">大眾運輸：</p>
+    <ul style="margin: 0; padding-left: 25px;">
+        <li>捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
+        <li>公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>
+    </ul>
+</div>
+<div>
+    <p style="margin: 8px 0; font-size: 16px; font-weight: 600;">自行開車：</p>
+    <ul style="margin: 0; padding-left: 25px;">
+        <li>國道一號：下「信義交流道」，沿信義路直行約3公里</li>
+        <li>國道三號：下「木柵交流道」，接信義快速道路</li>
+    </ul>
+</div>`;
+            }
+        }
+        // 替換 {{hotelAddress}} 變數
+        const hotelAddress = await db.getSetting('hotel_address') || '';
+        checkinTransport = checkinTransport.replace(/\{\{hotelAddress\}\}/g, hotelAddress);
+        // 替換區塊內容中的其他變數
+        checkinTransport = replaceBlockVariables(checkinTransport);
+        variables['{{checkinTransport}}'] = checkinTransport;
+        
+        // 停車資訊區塊
+        const showParking = blockSettings.parking?.enabled !== false;
+        let checkinParking = blockSettings.parking?.content || '';
+        if (!checkinParking) {
+            checkinParking = await db.getSetting('checkin_reminder_parking') || '';
+            if (!checkinParking) {
+                checkinParking = `<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場位置：</strong>B1-B3 地下停車場</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車費用：</strong></p>
+<ul style="margin: 0 0 12px 0; padding-left: 25px;">
+    <li>住宿客人：每日 NT$ 200（可無限次進出）</li>
+    <li>臨時停車：每小時 NT$ 50</li>
+</ul>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場開放時間：</strong>24 小時</p>
+<p style="margin: 0; font-size: 15px; color: #666;">⚠️ 停車位有限，建議提前預約</p>`;
+            }
+        }
+        // 替換區塊內容中的變數
+        checkinParking = replaceBlockVariables(checkinParking);
+        variables['{{checkinParking}}'] = checkinParking;
+        
+        // 入住注意事項區塊
+        const showNotes = blockSettings.notes?.enabled !== false;
+        let checkinNotes = blockSettings.notes?.content || '';
+        if (!checkinNotes) {
+            checkinNotes = await db.getSetting('checkin_reminder_notes') || '';
+            if (!checkinNotes) {
+                checkinNotes = `<ul style="margin: 0; padding-left: 25px;">
+    <li>入住時間：<strong>下午 3:00 後</strong></li>
+    <li>退房時間：<strong>上午 11:00 前</strong></li>
+    <li>請攜帶身分證件辦理入住手續</li>
+    <li>房間內禁止吸菸，違者將收取清潔費 NT$ 3,000</li>
+    <li>請保持安靜，避免影響其他住客</li>
+    <li>貴重物品請妥善保管，建議使用房間保險箱</li>
+    <li>如需延遲退房，請提前告知櫃檯</li>
+</ul>`;
+            }
+        }
+        // 替換區塊內容中的變數
+        checkinNotes = replaceBlockVariables(checkinNotes);
+        variables['{{checkinNotes}}'] = checkinNotes;
+        
+        // 聯絡資訊區塊
+        const showContact = blockSettings.contact?.enabled !== false;
+        let checkinContact = blockSettings.contact?.content || '';
+        if (!checkinContact) {
+            // 預設聯絡資訊內容
+            checkinContact = `<p style="margin: 0 0 12px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
+<p style="margin: 0; font-size: 16px;"><strong>服務時間：</strong>24 小時</p>`;
+        }
+        // 替換區塊內容中的變數
+        checkinContact = replaceBlockVariables(checkinContact);
+        variables['{{checkinContact}}'] = checkinContact;
+        
+        // 儲存區塊顯示狀態，用於後續的條件處理
+        // 這些變數不會被替換，而是直接用於 processConditionalBlock
+        const blockConditions = {
+            showBookingInfo,
+            showTransport,
+            showParking,
+            showNotes,
+            showContact
+        };
+        
+        // 先替換區塊內容變數（但不替換 show* 變數）
+        Object.keys(variables).forEach(key => {
+            // 跳過 show* 變數，它們將用於條件判斷
+            if (!key.includes('show')) {
+                content = content.replace(new RegExp(key, 'g'), variables[key]);
+            }
+        });
+        
+        // 處理入住提醒郵件的區塊條件（在處理其他條件之前）
+        content = processConditionalBlock(content, blockConditions.showBookingInfo, 'showBookingInfo');
+        content = processConditionalBlock(content, blockConditions.showTransport, 'showTransport');
+        content = processConditionalBlock(content, blockConditions.showParking, 'showParking');
+        content = processConditionalBlock(content, blockConditions.showNotes, 'showNotes');
+        content = processConditionalBlock(content, blockConditions.showContact, 'showContact');
+        
+        // 現在替換剩餘的變數（包括區塊內容中的變數）
+        Object.keys(variables).forEach(key => {
+            content = content.replace(new RegExp(key, 'g'), variables[key]);
+        });
+    } else {
+        // 非入住提醒郵件，正常處理變數替換
+        Object.keys(variables).forEach(key => {
+            content = content.replace(new RegExp(key, 'g'), variables[key]);
+        });
     }
     
     // 按順序處理條件區塊（從內到外，確保嵌套條件先被處理）
