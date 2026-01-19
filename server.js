@@ -414,16 +414,19 @@ const sanitizeInput = (req, res, next) => {
             
             if (isEmailTemplateRequest) {
                 // 郵件模板的 content 欄位是 HTML 內容，跳過 SQL Injection 檢測
-                // blockSettings 也包含 HTML 內容，需要跳過檢測
+                // blockSettings 和 block_settings 也包含 HTML 內容，需要跳過檢測
                 // 但仍需要清理其他欄位
-                const { content, blockSettings, ...rest } = req.body;
+                const { content, blockSettings, block_settings, ...rest } = req.body;
+                // 統一使用 blockSettings（如果 block_settings 存在，優先使用它）
+                const finalBlockSettings = blockSettings || block_settings;
+                
                 req.body = {
                     ...sanitizeObject(rest, {
                         checkSQLInjection: true,
                         checkXSS: true
                     }),
                     ...(content ? { content: content } : {}), // 保留原始 HTML 內容，不進行任何檢測或清理
-                    ...(blockSettings ? { blockSettings: blockSettings } : {}) // 保留 blockSettings（包含 HTML），不進行檢測
+                    ...(finalBlockSettings ? { blockSettings: finalBlockSettings } : {}) // 保留 blockSettings（包含 HTML），不進行檢測
                 };
                 // 繼續處理 query 和 params
                 if (req.query) {
@@ -4085,7 +4088,8 @@ app.put('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res)
             days_after_checkout,
             send_hour_feedback,
             days_reserved,
-            send_hour_payment_reminder
+            send_hour_payment_reminder,
+            blockSettings  // 入住提醒郵件的區塊設定
         } = req.body;
         
         console.log(`📝 更新郵件模板: ${key}`);
@@ -4203,7 +4207,8 @@ app.put('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res)
             console.log('✅ 模板已自動修復，添加基本的 HTML 結構和樣式');
         }
         
-        const result = await db.updateEmailTemplate(key, {
+        // 準備更新資料
+        const updateData = {
             template_name,
             subject,
             content: finalContent,  // 使用修復後的內容
@@ -4214,7 +4219,18 @@ app.put('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res)
             send_hour_feedback,
             days_reserved,
             send_hour_payment_reminder
-        });
+        };
+        
+        // 如果有 blockSettings，添加到更新資料中
+        if (blockSettings !== undefined) {
+            // blockSettings 可能是物件或字串（JSON），統一轉換為字串
+            updateData.block_settings = typeof blockSettings === 'string' 
+                ? blockSettings 
+                : JSON.stringify(blockSettings);
+            console.log('✅ 包含區塊設定，將一併更新');
+        }
+        
+        const result = await db.updateEmailTemplate(key, updateData);
         
         console.log(`✅ 郵件模板已更新，影響行數: ${result.changes}`);
         
