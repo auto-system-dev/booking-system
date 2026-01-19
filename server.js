@@ -6127,10 +6127,31 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
                 blockSettings = typeof template.block_settings === 'string' 
                     ? JSON.parse(template.block_settings) 
                     : template.block_settings;
+                console.log('✅ 已讀取入住提醒區塊設定:', {
+                    hasBookingInfo: !!blockSettings.booking_info,
+                    hasTransport: !!blockSettings.transport,
+                    hasParking: !!blockSettings.parking,
+                    hasNotes: !!blockSettings.notes,
+                    hasContact: !!blockSettings.contact
+                });
             } catch (e) {
                 console.warn('⚠️ 解析 block_settings 失敗:', e);
             }
+        } else {
+            console.log('⚠️ 入住提醒模板沒有 block_settings，將使用預設內容');
         }
+        
+        // 輔助函數：替換區塊內容中的變數
+        const replaceBlockVariables = (blockContent) => {
+            if (!blockContent) return '';
+            let result = blockContent;
+            Object.keys(variables).forEach(key => {
+                const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(escapedKey, 'g');
+                result = result.replace(regex, variables[key]);
+            });
+            return result;
+        };
         
         // 訂房資訊區塊
         const showBookingInfo = blockSettings.booking_info?.enabled !== false;
@@ -6154,6 +6175,8 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     <span class="info-value">{{roomType}}</span>
 </div>`;
         }
+        // 替換區塊內容中的變數
+        bookingInfoContent = replaceBlockVariables(bookingInfoContent);
         variables['{{showBookingInfo}}'] = showBookingInfo ? 'true' : '';
         variables['{{bookingInfoContent}}'] = bookingInfoContent;
         
@@ -6185,6 +6208,8 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
         // 替換 {{hotelAddress}} 變數
         const hotelAddress = await db.getSetting('hotel_address') || '';
         checkinTransport = checkinTransport.replace(/\{\{hotelAddress\}\}/g, hotelAddress);
+        // 替換區塊內容中的其他變數
+        checkinTransport = replaceBlockVariables(checkinTransport);
         variables['{{showTransport}}'] = showTransport ? 'true' : '';
         variables['{{checkinTransport}}'] = checkinTransport;
         
@@ -6204,6 +6229,8 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
 <p style="margin: 0; font-size: 15px; color: #666;">⚠️ 停車位有限，建議提前預約</p>`;
             }
         }
+        // 替換區塊內容中的變數
+        checkinParking = replaceBlockVariables(checkinParking);
         variables['{{showParking}}'] = showParking ? 'true' : '';
         variables['{{checkinParking}}'] = checkinParking;
         
@@ -6224,6 +6251,8 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
 </ul>`;
             }
         }
+        // 替換區塊內容中的變數
+        checkinNotes = replaceBlockVariables(checkinNotes);
         variables['{{showNotes}}'] = showNotes ? 'true' : '';
         variables['{{checkinNotes}}'] = checkinNotes;
         
@@ -6237,6 +6266,8 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
 <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
 <p style="margin: 0; font-size: 16px;"><strong>服務時間：</strong>24 小時</p>`;
         }
+        // 替換區塊內容中的變數
+        checkinContact = replaceBlockVariables(checkinContact);
         variables['{{showContact}}'] = showContact ? 'true' : '';
         variables['{{checkinContact}}'] = checkinContact;
     }
