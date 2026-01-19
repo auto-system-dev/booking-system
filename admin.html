@@ -1130,6 +1130,85 @@
     </script>
     <!-- 備用初始化：確保即使 admin.js 載入失敗也能顯示登入頁 -->
     <script>
+        // 備用登入函數（如果 admin.js 載入失敗）
+        if (typeof window.handleLogin === 'undefined') {
+            window.handleLogin = async function handleLogin(event) {
+                if (event && typeof event.preventDefault === 'function') {
+                    event.preventDefault();
+                }
+                
+                console.log('🔐 [備用] 開始處理登入...');
+                
+                const username = document.getElementById('loginUsername')?.value;
+                const password = document.getElementById('loginPassword')?.value;
+                const errorDiv = document.getElementById('loginError');
+                
+                if (!username || !password) {
+                    if (errorDiv) {
+                        errorDiv.textContent = '請輸入帳號和密碼';
+                        errorDiv.style.display = 'block';
+                    }
+                    return;
+                }
+                
+                if (errorDiv) {
+                    errorDiv.style.display = 'none';
+                    errorDiv.textContent = '';
+                }
+                
+                const submitBtn = document.querySelector('#loginForm button[type="submit"]');
+                const originalBtnText = submitBtn?.textContent;
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = '登入中...';
+                }
+                
+                try {
+                    const response = await fetch('/api/admin/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ username, password })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        console.log('✅ [備用] 登入成功');
+                        const adminPage = document.getElementById('adminPage');
+                        const loginPage = document.getElementById('loginPage');
+                        if (adminPage) {
+                            adminPage.style.display = 'flex';
+                            adminPage.style.visibility = 'visible';
+                            adminPage.style.opacity = '1';
+                        }
+                        if (loginPage) {
+                            loginPage.style.display = 'none';
+                        }
+                        // 重新載入頁面以載入完整的 admin.js
+                        window.location.reload();
+                    } else {
+                        if (errorDiv) {
+                            errorDiv.textContent = result.message || '登入失敗，請檢查帳號密碼';
+                            errorDiv.style.display = 'block';
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ [備用] 登入錯誤:', error);
+                    if (errorDiv) {
+                        errorDiv.textContent = '登入時發生錯誤：' + (error.message || '請稍後再試');
+                        errorDiv.style.display = 'block';
+                    }
+                } finally {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = originalBtnText || '登入';
+                    }
+                }
+            };
+            console.log('✅ [備用] handleLogin 函數已設置');
+        }
+        
         // 如果 admin.js 載入失敗，至少顯示登入頁
         window.addEventListener('error', function(e) {
             if (e.filename && e.filename.includes('admin.js')) {
