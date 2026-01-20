@@ -6759,24 +6759,17 @@ ${htmlEnd}`;
             checkinTransport = await db.getSetting('checkin_reminder_transport') || '';
             if (!checkinTransport) {
                 const hotelAddress = await db.getSetting('hotel_address') || '';
-                checkinTransport = `<div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e8e8e8;">
-    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #333;">地址：</p>
-    <p style="margin: 0; font-size: 15px; color: #666; line-height: 1.6;">${hotelAddress || '台北市信義區信義路五段7號'}</p>
-</div>
-<div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e8e8e8;">
-    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #333;">大眾運輸：</p>
-    <ul style="margin: 0; padding-left: 25px;">
-        <li>捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
-        <li>公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>
-    </ul>
-</div>
-<div style="margin-bottom: 0;">
-    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #333;">自行開車：</p>
-    <ul style="margin: 0; padding-left: 25px;">
-        <li>國道一號：下「信義交流道」，沿信義路直行約3公里</li>
-        <li>國道三號：下「木柵交流道」，接信義快速道路</li>
-    </ul>
-</div>`;
+                checkinTransport = `<p style="margin: 0 0 10px 0; font-size: 15px; color: #444; line-height: 1.6;"><strong>地址：</strong>${hotelAddress || '台北市信義區信義路五段7號'}</p>
+<p style="margin: 0 0 10px 0; font-size: 15px; color: #444; line-height: 1.6;"><strong>大眾運輸：</strong></p>
+<ul style="margin: 0 0 15px 0; padding-left: 25px; font-size: 15px; color: #444; line-height: 1.8;">
+    <li style="margin-bottom: 5px;">捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
+    <li style="margin-bottom: 0;">公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>
+</ul>
+<p style="margin: 0 0 10px 0; font-size: 15px; color: #444; line-height: 1.6;"><strong>自行開車：</strong></p>
+<ul style="margin: 0; padding-left: 25px; font-size: 15px; color: #444; line-height: 1.8;">
+    <li style="margin-bottom: 5px;">國道一號：下「信義交流道」，沿信義路直行約3公里</li>
+    <li style="margin-bottom: 0;">國道三號：下「木柵交流道」，接信義快速道路</li>
+</ul>`;
             }
         }
         // 替換 {{hotelAddress}} 變數
@@ -6792,24 +6785,14 @@ ${htmlEnd}`;
         if (!checkinParking) {
             checkinParking = await db.getSetting('checkin_reminder_parking') || '';
             if (!checkinParking) {
-                checkinParking = `<div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e8e8e8;">
-    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #333;">停車場位置：</p>
-    <p style="margin: 0; font-size: 15px; color: #666; line-height: 1.6;">B1-B3 地下停車場</p>
-</div>
-<div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e8e8e8;">
-    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #333;">停車費用：</p>
-    <ul style="margin: 0; padding-left: 25px;">
-        <li>住宿客人：每日 NT$ 200（可無限次進出）</li>
-        <li>臨時停車：每小時 NT$ 50</li>
-    </ul>
-</div>
-<div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e8e8e8;">
-    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #333;">停車場開放時間：</p>
-    <p style="margin: 0; font-size: 15px; color: #666; line-height: 1.6;">24 小時</p>
-</div>
-<div style="margin-bottom: 0;">
-    <p style="margin: 0; font-size: 15px; color: #856404; line-height: 1.6;">⚠️ 停車位有限，建議提前預約</p>
-</div>`;
+                checkinParking = `<p style="margin: 0 0 10px 0; font-size: 15px; color: #444; line-height: 1.6;"><strong>停車場位置：</strong>B1-B3 地下停車場</p>
+<p style="margin: 0 0 10px 0; font-size: 15px; color: #444; line-height: 1.6;"><strong>停車費用：</strong></p>
+<ul style="margin: 0 0 15px 0; padding-left: 25px; font-size: 15px; color: #444; line-height: 1.8;">
+    <li style="margin-bottom: 5px;">住宿客人：每日 NT$ 200（可無限次進出）</li>
+    <li style="margin-bottom: 0;">臨時停車：每小時 NT$ 50</li>
+</ul>
+<p style="margin: 0 0 10px 0; font-size: 15px; color: #444; line-height: 1.6;"><strong>停車場開放時間：</strong>24 小時</p>
+<p style="margin: 15px 0 0 0; font-size: 15px; color: #856404; line-height: 1.6;">⚠️ 停車位有限，建議提前預約</p>`;
             }
         }
         // 替換區塊內容中的變數
@@ -6822,14 +6805,14 @@ ${htmlEnd}`;
         if (!checkinNotes) {
             checkinNotes = await db.getSetting('checkin_reminder_notes') || '';
             if (!checkinNotes) {
-                checkinNotes = `<ul style="margin: 0; padding-left: 25px;">
-    <li>入住時間：<strong>下午 3:00 後</strong></li>
-    <li>退房時間：<strong>上午 11:00 前</strong></li>
-    <li>請攜帶身分證件辦理入住手續</li>
-    <li>房間內禁止吸菸，違者將收取清潔費 NT$ 3,000</li>
-    <li>請保持安靜，避免影響其他住客</li>
-    <li>貴重物品請妥善保管，建議使用房間保險箱</li>
-    <li>如需延遲退房，請提前告知櫃檯</li>
+                checkinNotes = `<p style="margin: 0 0 8px 0; font-size: 15px; color: #444; line-height: 1.6;">入住時間：<strong>下午 3:00 後</strong></p>
+<p style="margin: 0 0 10px 0; font-size: 15px; color: #444; line-height: 1.6;">退房時間：<strong>上午 11:30 前</strong></p>
+<ul style="margin: 0; padding-left: 25px; font-size: 15px; color: #444; line-height: 1.8;">
+    <li style="margin-bottom: 5px;">請攜帶身分證件辦理入住手續</li>
+    <li style="margin-bottom: 5px;">房間內禁止吸菸，違者將收取清潔費 NT$ 3,000</li>
+    <li style="margin-bottom: 5px;">請保持安靜，避免影響其他住客</li>
+    <li style="margin-bottom: 5px;">貴重物品請妥善保管，建議使用房間保險箱</li>
+    <li style="margin-bottom: 0;">如需延遲退房，請提前告知櫃檯</li>
 </ul>`;
             }
         }
