@@ -101,19 +101,13 @@ function containsSQLInjection(input) {
         return false;
     }
     
-    // 先檢查是否為有效的 JSON 格式（特別是 weekday_settings 格式）
-    // 如果是有效的 JSON，跳過 SQL Injection 檢測
+    // 先檢查是否為有效的 JSON 格式
+    // 如果是有效的 JSON，跳過 SQL Injection 檢測（因為 JSON 格式本身是安全的）
     try {
         const parsed = JSON.parse(input);
-        // 檢查是否為 weekday_settings 格式：{"weekdays": [0-6的數字陣列]}
-        if (parsed && typeof parsed === 'object' && Array.isArray(parsed.weekdays)) {
-            const isValidWeekdaySettings = parsed.weekdays.every(d => 
-                Number.isInteger(d) && d >= 0 && d <= 6
-            );
-            if (isValidWeekdaySettings) {
-                // 有效的 weekday_settings JSON，不視為 SQL Injection
-                return false;
-            }
+        // 如果是有效的 JSON 物件或陣列，不視為 SQL Injection
+        if (parsed && typeof parsed === 'object') {
+            return false;
         }
     } catch (e) {
         // 不是有效的 JSON，繼續檢查 SQL Injection
@@ -256,8 +250,17 @@ function sanitizeObject(obj, options = {}) {
         return obj.map(item => sanitizeObject(item, options));
     }
     
+    // 獲取要排除的欄位名稱列表
+    const excludeFields = options.excludeFields || [];
+    
     const sanitized = {};
     for (const [key, value] of Object.entries(obj)) {
+        // 如果欄位在排除列表中，直接跳過檢查
+        if (excludeFields.includes(key)) {
+            sanitized[key] = value;
+            continue;
+        }
+        
         if (value == null) {
             sanitized[key] = value;
         } else if (typeof value === 'string') {

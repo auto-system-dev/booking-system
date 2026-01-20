@@ -423,7 +423,8 @@ const sanitizeInput = (req, res, next) => {
                 req.body = {
                     ...sanitizeObject(rest, {
                         checkSQLInjection: true,
-                        checkXSS: true
+                        checkXSS: true,
+                        excludeFields: ['content', 'blockSettings', 'block_settings'] // 排除這些欄位，避免遞迴檢查
                     }),
                     ...(content ? { content: content } : {}), // 保留原始 HTML 內容，不進行任何檢測或清理
                     ...(finalBlockSettings ? { blockSettings: finalBlockSettings } : {}) // 保留 blockSettings（包含 HTML），不進行檢測
