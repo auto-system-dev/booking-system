@@ -4643,8 +4643,7 @@ async function showEmailTemplateModal(templateKey) {
                     mergedContent = mergedContent.replace(/\{\{#if showContact\}\}/g, '');
                     mergedContent = mergedContent.replace(/\{\{\/if\}\}/g, '');
                     
-                    // 更新要載入的內容
-                    htmlContent = mergedContent;
+                    // 更新模板內容，後續載入流程會從 template.content 取得內容
                     template.content = mergedContent;
                 }
             } else if (templateKey === 'feedback_request') {
