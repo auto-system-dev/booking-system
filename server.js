@@ -5199,7 +5199,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
         }
         .section-title { 
             color: #333; 
-            font-size: 20px; 
+            font-size: 22px; 
             font-weight: bold; 
             margin: 0 0 18px 0; 
             display: flex; 
@@ -5217,7 +5217,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             box-shadow: 0 1px 3px rgba(33,150,243,0.1);
         }
         .info-section-title { 
-            font-size: 19px; 
+            font-size: 22px; 
             font-weight: bold; 
             color: #1976d2; 
             margin: 0 0 16px 0;
@@ -6759,16 +6759,19 @@ ${htmlEnd}`;
             checkinTransport = await db.getSetting('checkin_reminder_transport') || '';
             if (!checkinTransport) {
                 const hotelAddress = await db.getSetting('hotel_address') || '';
-                checkinTransport = `<p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #333;">地址：${hotelAddress || '台北市信義區信義路五段7號'}</p>
-<div style="margin-bottom: 15px;">
+                checkinTransport = `<div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e8e8e8;">
+    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #333;">地址：</p>
+    <p style="margin: 0; font-size: 15px; color: #666; line-height: 1.6;">${hotelAddress || '台北市信義區信義路五段7號'}</p>
+</div>
+<div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e8e8e8;">
     <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #333;">大眾運輸：</p>
     <ul style="margin: 0; padding-left: 25px;">
         <li>捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
         <li>公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>
     </ul>
 </div>
-<div>
-    <p style="margin: 8px 0; font-size: 16px; font-weight: 600; color: #333;">自行開車：</p>
+<div style="margin-bottom: 0;">
+    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #333;">自行開車：</p>
     <ul style="margin: 0; padding-left: 25px;">
         <li>國道一號：下「信義交流道」，沿信義路直行約3公里</li>
         <li>國道三號：下「木柵交流道」，接信義快速道路</li>
@@ -6789,14 +6792,24 @@ ${htmlEnd}`;
         if (!checkinParking) {
             checkinParking = await db.getSetting('checkin_reminder_parking') || '';
             if (!checkinParking) {
-                checkinParking = `<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場位置：</strong>B1-B3 地下停車場</p>
-<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車費用：</strong></p>
-<ul style="margin: 0 0 12px 0; padding-left: 25px;">
-    <li>住宿客人：每日 NT$ 200（可無限次進出）</li>
-    <li>臨時停車：每小時 NT$ 50</li>
-</ul>
-<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場開放時間：</strong>24 小時</p>
-<p style="margin: 0; font-size: 15px; color: #666;">⚠️ 停車位有限，建議提前預約</p>`;
+                checkinParking = `<div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e8e8e8;">
+    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #333;">停車場位置：</p>
+    <p style="margin: 0; font-size: 15px; color: #666; line-height: 1.6;">B1-B3 地下停車場</p>
+</div>
+<div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e8e8e8;">
+    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #333;">停車費用：</p>
+    <ul style="margin: 0; padding-left: 25px;">
+        <li>住宿客人：每日 NT$ 200（可無限次進出）</li>
+        <li>臨時停車：每小時 NT$ 50</li>
+    </ul>
+</div>
+<div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #e8e8e8;">
+    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #333;">停車場開放時間：</p>
+    <p style="margin: 0; font-size: 15px; color: #666; line-height: 1.6;">24 小時</p>
+</div>
+<div style="margin-bottom: 0;">
+    <p style="margin: 0; font-size: 15px; color: #856404; line-height: 1.6;">⚠️ 停車位有限，建議提前預約</p>
+</div>`;
             }
         }
         // 替換區塊內容中的變數
