@@ -6119,7 +6119,7 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     // 檢查是否有基本的 HTML 結構（body 標籤）
     const hasBodyTag = content.includes('<body>') || content.includes('<body ');
     
-    const templateKey = template.key || template.template_key;
+    // templateKey 已在上面聲明，這裡不需要重複聲明
     const isCheckinReminder = templateKey === 'checkin_reminder';
     
     // 對於入住提醒郵件，如果缺少完整結構，嘗試從資料庫讀取原始模板結構
