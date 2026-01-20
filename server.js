@@ -6073,20 +6073,47 @@ app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, admi
             }
         }
         
-        // 還原為最初的圖卡樣式：將區塊內容設為空字串，使用代碼中的預設值
+        // 使用最新的預設內容（直接寫入，確保編輯器可以看到）
+        const hotelAddress = await db.getSetting('hotel_address') || 'XXX';
+        
         blockSettings.transport = {
             enabled: blockSettings.transport?.enabled !== false,
-            content: '' // 空字串表示使用代碼中的預設值
+            content: `<p style="margin: 0 0 12px 0; font-size: 16px;"><strong>地址：</strong>${hotelAddress}</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>大眾運輸：</strong></p>
+<ul style="margin: 0 0 12px 0; padding-left: 24px;">
+    <li style="margin: 4px 0; font-size: 16px;">捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
+    <li style="margin: 4px 0; font-size: 16px;">公車：搭乘20、32、46路公車至「信義行政中心站」</li>
+</ul>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>自行開車：</strong></p>
+<ul style="margin: 0; padding-left: 24px;">
+    <li style="margin: 4px 0; font-size: 16px;">國道一號：下「信義交流道」，沿信義路直行約3公里</li>
+    <li style="margin: 4px 0; font-size: 16px;">國道三號：下「木柵交流道」，接信義快速道路</li>
+</ul>`
         };
         
         blockSettings.parking = {
             enabled: blockSettings.parking?.enabled !== false,
-            content: '' // 空字串表示使用代碼中的預設值
+            content: `<p style="margin: 0 0 12px 0; font-size: 16px;"><strong>停車場位置：</strong>B1-B3 地下停車場</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車費用：</strong></p>
+<ul style="margin: 0 0 12px 0; padding-left: 24px;">
+    <li style="margin: 4px 0; font-size: 16px;">住宿客人：毎日NT$200（可無限次進出）</li>
+    <li style="margin: 4px 0; font-size: 16px;">臨時停車：每小時 NT$50</li>
+</ul>
+<p style="margin: 0 0 12px 0; font-size: 16px;"><strong>停車場開放時間：</strong>24小時</p>
+<p style="margin: 0; font-size: 16px;">▲停車位有限，建議提前預約</p>`
         };
         
         blockSettings.notes = {
             enabled: blockSettings.notes?.enabled !== false,
-            content: '' // 空字串表示使用代碼中的預設值
+            content: `<ul style="margin: 0; padding-left: 24px; list-style-type: disc;">
+    <li style="margin: 6px 0; font-size: 16px;">入住時間：下午3:00後</li>
+    <li style="margin: 6px 0; font-size: 16px;">退房時間：上午11:30前</li>
+    <li style="margin: 6px 0; font-size: 16px;">請攜帶身分證件辦理入住手續</li>
+    <li style="margin: 6px 0; font-size: 16px;">房間內禁止吸菸，違者將收取清潔費NT$3,000</li>
+    <li style="margin: 6px 0; font-size: 16px;">請保持安靜，避免影響其他住客</li>
+    <li style="margin: 6px 0; font-size: 16px;">貴重物品請妥善保管，建議使用房間保險箱</li>
+    <li style="margin: 6px 0; font-size: 16px;">如需延遲退房，請提前告知櫃檯</li>
+</ul>`
         };
         
         // 保留其他區塊設定不變
