@@ -6889,7 +6889,7 @@ ${htmlEnd}`;
         ...additionalData // 合併額外的變數
     };
     
-    // 如果 additionalData 中沒有 hotelEmail 和 hotelPhone，則從資料庫取得
+    // 如果 additionalData 中沒有 hotelEmail、hotelPhone、hotelAddress，則從資料庫取得
     if (!variables['{{hotelEmail}}']) {
         const hotelEmail = await db.getSetting('hotel_email') || '';
         if (hotelEmail) {
@@ -6904,6 +6904,15 @@ ${htmlEnd}`;
             variables['{{hotelPhone}}'] = hotelPhone;
         } else {
             variables['{{hotelPhone}}'] = '02-1234-5678'; // 預設值
+        }
+    }
+    // 地址變數：供模板中直接使用 {{hotelAddress}}
+    if (!variables['{{hotelAddress}}']) {
+        const hotelAddress = await db.getSetting('hotel_address') || '';
+        if (hotelAddress) {
+            variables['{{hotelAddress}}'] = hotelAddress;
+        } else {
+            variables['{{hotelAddress}}'] = ''; // 若未設定地址則留空，避免顯示 {{hotelAddress}}
         }
     }
     
