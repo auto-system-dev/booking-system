@@ -5857,15 +5857,85 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     // 檢查是否有基本的 HTML 結構（body 標籤）
     const hasBodyTag = content.includes('<body>') || content.includes('<body ');
     
-    // 只檢查最基本的結構：HTML 文檔結構和樣式標籤
-    // 不再強制要求 .header、.content、.container 等類別（支援簡單排版樣式）
-    if (!hasFullHtmlStructure || !hasStyleTag || !hasBodyTag) {
-        console.log('⚠️ 郵件模板缺少基本 HTML 結構或樣式，自動修復中...', {
-            templateKey: template.key || template.template_key,
+    const templateKey = template.key || template.template_key;
+    const isCheckinReminder = templateKey === 'checkin_reminder';
+    
+    // 對於入住提醒郵件，如果缺少完整結構，嘗試從資料庫讀取原始模板結構
+    if ((!hasFullHtmlStructure || !hasStyleTag || !hasBodyTag) && isCheckinReminder) {
+        console.log('⚠️ 入住提醒郵件模板缺少完整 HTML 結構，嘗試從資料庫讀取原始模板...', {
+            templateKey,
             hasFullHtmlStructure,
             hasStyleTag,
             hasBodyTag,
             contentLength: content.length
+        });
+        
+        try {
+            // 從資料庫讀取原始模板（包含完整的 HTML 結構和樣式）
+            const originalTemplate = await db.getEmailTemplateByKey(templateKey);
+            if (originalTemplate && originalTemplate.content && 
+                (originalTemplate.content.includes('<!DOCTYPE html>') || originalTemplate.content.includes('<html'))) {
+                // 提取原始模板的 HTML 結構和樣式
+                const originalContent = originalTemplate.content;
+                
+                // 提取當前內容的 body 部分（用戶修改的內容）
+                let bodyContent = content;
+                if (content.includes('<body>')) {
+                    const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                    if (bodyMatch && bodyMatch[1]) {
+                        bodyContent = bodyMatch[1];
+                    }
+                }
+                
+                // 從原始模板提取 head 部分（包含樣式）
+                if (originalContent.includes('<head>')) {
+                    const headMatch = originalContent.match(/<head[^>]*>([\s\S]*?)<\/head>/i);
+                    if (headMatch && headMatch[1]) {
+                        // 提取 body 標籤的開始部分
+                        const bodyStartMatch = originalContent.match(/<body[^>]*>/i);
+                        const bodyStart = bodyStartMatch ? bodyStartMatch[0] : '<body>';
+                        
+                        // 提取 body 標籤的結束部分
+                        const bodyEnd = originalContent.includes('</body>') ? '</body>' : '';
+                        
+                        // 提取 html 和 head 標籤
+                        const htmlStartMatch = originalContent.match(/<html[^>]*>/i);
+                        const htmlStart = htmlStartMatch ? htmlStartMatch[0] : '<html>';
+                        const htmlEnd = originalContent.includes('</html>') ? '</html>' : '';
+                        
+                        // 重組完整的 HTML 結構
+                        content = `<!DOCTYPE html>
+${htmlStart}
+<head>${headMatch[1]}</head>
+${bodyStart}
+    ${bodyContent}
+${bodyEnd}
+${htmlEnd}`;
+                        
+                        console.log('✅ 已使用資料庫原始模板的 HTML 結構和樣式');
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('⚠️ 無法從資料庫讀取原始模板，使用基本樣式:', error.message);
+        }
+    }
+    
+    // 重新檢查內容（可能在上面已經修復了）
+    const stillMissingStructure = !content.includes('<!DOCTYPE html>') && 
+                                  !(content.includes('<html') && content.includes('</html>'));
+    const stillMissingStyle = !content.includes('<style>') && !content.includes('<style ');
+    const stillMissingBody = !content.includes('<body>') && !content.includes('<body ');
+    
+    // 如果仍然缺少完整結構，使用基本樣式（非入住提醒郵件，或讀取失敗的情況）
+    if (stillMissingStructure || stillMissingStyle || stillMissingBody) {
+        console.log('⚠️ 郵件模板缺少基本 HTML 結構或樣式，自動修復中...', {
+            templateKey,
+            stillMissingStructure,
+            stillMissingStyle,
+            stillMissingBody,
+            contentLength: content.length,
+            isCheckinReminder
         });
         
         // 基本文字樣式（與資料庫模板保持一致）
@@ -5892,7 +5962,7 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     `;
         
         // 如果沒有完整的 HTML 結構，包裝現有內容
-        if (!hasFullHtmlStructure) {
+        if (stillMissingStructure) {
             // 提取實際內容
             let bodyContent = content;
             if (content.includes('<body>')) {
@@ -5912,7 +5982,7 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     ${bodyContent}
 </body>
 </html>`;
-        } else if (!hasStyleTag) {
+        } else if (stillMissingStyle) {
             // 如果有 HTML 結構但缺少樣式標籤，添加基本樣式
             if (content.includes('<head>')) {
                 content = content.replace(
