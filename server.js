@@ -5404,15 +5404,15 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
                     },
                     transport: {
                         enabled: true,
-                        content: ''
+                        content: '' // 空字串表示使用代碼中的預設值（已更新為新格式）
                     },
                     parking: {
                         enabled: true,
-                        content: ''
+                        content: '' // 空字串表示使用代碼中的預設值（已更新為新格式）
                     },
                     notes: {
                         enabled: true,
-                        content: ''
+                        content: '' // 空字串表示使用代碼中的預設值（已更新為新格式）
                     },
                     contact: {
                         enabled: true,
