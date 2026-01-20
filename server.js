@@ -6121,11 +6121,292 @@ app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, admi
             };
         }
         
+        // 使用最新的預設模板內容（包含新的 CSS 樣式）
+        const defaultTemplateContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { 
+            font-family: 'Microsoft JhengHei', 'PingFang TC', 'Helvetica Neue', Arial, sans-serif; 
+            line-height: 1.7; 
+            color: #333; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f5f5f5;
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 0;
+            background-color: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header { 
+            background: linear-gradient(135deg, #262A33 0%, #1a1d24 100%); 
+            color: white; 
+            padding: 35px 30px; 
+            text-align: center; 
+            border-radius: 0;
+        }
+        .header h1 { 
+            font-size: 28px; 
+            font-weight: bold; 
+            margin: 0 0 8px 0; 
+            letter-spacing: 0.5px;
+        }
+        .header p { 
+            font-size: 16px; 
+            margin: 0; 
+            opacity: 0.9;
+            font-weight: 300;
+        }
+        .content { 
+            background: #ffffff; 
+            padding: 35px 30px; 
+            border-radius: 0;
+        }
+        .greeting { 
+            font-size: 18px; 
+            font-weight: 500; 
+            margin-bottom: 10px; 
+            color: #333;
+        }
+        .intro-text { 
+            font-size: 16px; 
+            color: #555; 
+            margin-bottom: 30px; 
+            line-height: 1.8;
+        }
+        .info-box { 
+            background: #ffffff; 
+            padding: 25px; 
+            border-radius: 10px; 
+            margin: 0 0 20px 0; 
+            border: 1px solid #e8e8e8;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .info-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 14px 0; 
+            border-bottom: 1px solid #e8e8e8; 
+        }
+        .info-row:last-child { 
+            border-bottom: none; 
+        }
+        .info-label { 
+            font-weight: 600; 
+            color: #666; 
+            font-size: 15px; 
+            min-width: 120px;
+            flex-shrink: 0;
+        }
+        .info-value { 
+            color: #333; 
+            font-size: 15px; 
+            text-align: right; 
+            font-weight: 500;
+            flex: 1;
+            margin-left: 15px;
+        }
+        .info-value strong { 
+            color: #262A33; 
+            font-weight: 700; 
+            font-size: 16px;
+        }
+        .section-title { 
+            color: #333; 
+            font-size: 22px; 
+            font-weight: bold; 
+            margin: 0 0 18px 0; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e8e8e8;
+        }
+        .info-section { 
+            background: #e3f2fd; 
+            border: 1px solid #90caf9; 
+            border-radius: 10px; 
+            padding: 22px; 
+            margin: 0 0 20px 0;
+            box-shadow: 0 1px 3px rgba(33,150,243,0.1);
+        }
+        .info-section-title { 
+            font-size: 22px; 
+            font-weight: bold; 
+            color: #1976d2; 
+            margin: 0 0 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(144,202,249,0.5);
+        }
+        .highlight-box { 
+            background: #fff9c4; 
+            border: 1px solid #ffd54f; 
+            border-radius: 10px; 
+            padding: 22px; 
+            margin: 0 0 20px 0;
+            box-shadow: 0 1px 3px rgba(255,193,7,0.1);
+        }
+        .highlight-box .section-title {
+            color: #856404;
+            border-bottom-color: rgba(255,213,79,0.5);
+        }
+        p { 
+            margin: 0 0 12px 0; 
+            font-size: 15px; 
+            line-height: 1.8; 
+            color: #444;
+        }
+        p:last-child {
+            margin-bottom: 0;
+        }
+        strong { 
+            color: #333; 
+            font-weight: 700; 
+        }
+        ul { 
+            margin: 12px 0; 
+            padding-left: 28px; 
+            list-style-position: outside;
+        }
+        li { 
+            margin: 8px 0; 
+            font-size: 15px; 
+            line-height: 1.8; 
+            color: #444;
+        }
+        .section-content {
+            margin-top: 12px;
+        }
+        .section-content p {
+            margin-bottom: 10px;
+        }
+        .section-content p:last-child {
+            margin-bottom: 0;
+        }
+        .contact-info {
+            background: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 12px;
+        }
+        .contact-info p {
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+        .contact-info p:last-child {
+            margin-bottom: 0;
+        }
+        .contact-info strong {
+            color: #1976d2;
+            min-width: 80px;
+            display: inline-block;
+        }
+        .closing-message {
+            margin-top: 35px;
+            padding-top: 25px;
+            border-top: 1px solid #e8e8e8;
+            text-align: center;
+            font-size: 17px;
+            font-weight: 500;
+            color: #333;
+        }
+        @media only screen and (max-width: 600px) {
+            .content {
+                padding: 25px 20px;
+            }
+            .info-row {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 12px 0;
+            }
+            .info-label {
+                margin-bottom: 4px;
+            }
+            .info-value {
+                text-align: left;
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏨 入住提醒</h1>
+            <p>歡迎您明天的到來</p>
+        </div>
+        <div class="content">
+            <p class="greeting">親愛的 {{guestName}} 您好，</p>
+            <p class="intro-text">感謝您選擇我們的住宿服務！我們期待您明天的到來。</p>
+            
+            {{#if showBookingInfo}}
+            <div class="info-box">
+                <div class="section-title">📅 訂房資訊</div>
+                <div class="section-content">
+                    {{bookingInfoContent}}
+                </div>
+            </div>
+            {{/if}}
+            
+            {{#if showTransport}}
+            <div class="info-section">
+                <div class="info-section-title">📍 交通路線</div>
+                <div class="section-content">
+                    {{checkinTransport}}
+                </div>
+            </div>
+            {{/if}}
+            
+            {{#if showParking}}
+            <div class="info-section">
+                <div class="info-section-title">🅿️ 停車資訊</div>
+                <div class="section-content">
+                    {{checkinParking}}
+                </div>
+            </div>
+            {{/if}}
+            
+            {{#if showNotes}}
+            <div class="highlight-box">
+                <div class="section-title">⚠️ 入住注意事項</div>
+                <div class="section-content">
+                    {{checkinNotes}}
+                </div>
+            </div>
+            {{/if}}
+            
+            {{#if showContact}}
+            <div class="info-section">
+                <div class="info-section-title">📞 聯絡資訊</div>
+                <div class="section-content">
+                    <div class="contact-info">
+                        {{checkinContact}}
+                    </div>
+                </div>
+            </div>
+            {{/if}}
+            
+            <p class="closing-message">期待您的到來，祝您住宿愉快！</p>
+        </div>
+    </div>
+</body>
+</html>`;
+        
         // 更新模板（需要提供所有必要欄位，避免 null 值錯誤）
+        // 同時更新主模板的 content（包含新的 CSS 樣式）和 block_settings
         await db.updateEmailTemplate('checkin_reminder', {
             template_name: template.template_name || template.name || '入住提醒',
             subject: template.subject || '【入住提醒】歡迎您明天入住',
-            content: template.content || '',
+            content: defaultTemplateContent, // 使用最新的預設模板內容
             is_enabled: template.is_enabled !== undefined ? template.is_enabled : 1,
             days_before_checkin: template.days_before_checkin !== undefined ? template.days_before_checkin : 1,
             send_hour_checkin: template.send_hour_checkin !== undefined ? template.send_hour_checkin : 9,
