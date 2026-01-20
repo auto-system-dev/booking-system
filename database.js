@@ -665,11 +665,11 @@ async function initEmailTemplates() {
             line-height: 1.8;
         }
         .info-box { 
-            background: #f8f9fa; 
+            background: #ffffff; 
             padding: 25px; 
             border-radius: 10px; 
             margin: 0 0 20px 0; 
-            border-left: 5px solid #262A33;
+            border: 1px solid #e8e8e8;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         .info-row { 
@@ -704,25 +704,25 @@ async function initEmailTemplates() {
         }
         .section-title { 
             color: #333; 
-            font-size: 20px; 
+            font-size: 22px; 
             font-weight: bold; 
             margin: 0 0 18px 0; 
             display: flex; 
             align-items: center; 
             gap: 8px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #e8e8e8;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e8e8e8;
         }
         .info-section { 
-            background: #f0f7ff; 
-            border: 2px solid #2196f3; 
+            background: #e3f2fd; 
+            border: 1px solid #90caf9; 
             border-radius: 10px; 
             padding: 22px; 
             margin: 0 0 20px 0;
             box-shadow: 0 1px 3px rgba(33,150,243,0.1);
         }
         .info-section-title { 
-            font-size: 19px; 
+            font-size: 22px; 
             font-weight: bold; 
             color: #1976d2; 
             margin: 0 0 16px 0;
@@ -730,11 +730,11 @@ async function initEmailTemplates() {
             align-items: center;
             gap: 8px;
             padding-bottom: 10px;
-            border-bottom: 2px solid rgba(33,150,243,0.2);
+            border-bottom: 1px solid rgba(144,202,249,0.5);
         }
         .highlight-box { 
-            background: #fffbf0; 
-            border: 2px solid #ffc107; 
+            background: #fff9c4; 
+            border: 1px solid #ffd54f; 
             border-radius: 10px; 
             padding: 22px; 
             margin: 0 0 20px 0;
@@ -742,7 +742,7 @@ async function initEmailTemplates() {
         }
         .highlight-box .section-title {
             color: #856404;
-            border-bottom-color: rgba(255,193,7,0.3);
+            border-bottom-color: rgba(255,213,79,0.5);
         }
         p { 
             margin: 0 0 12px 0; 

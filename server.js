@@ -5160,11 +5160,11 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             line-height: 1.8;
         }
         .info-box { 
-            background: #f8f9fa; 
+            background: #ffffff; 
             padding: 25px; 
             border-radius: 10px; 
             margin: 0 0 20px 0; 
-            border-left: 5px solid #262A33;
+            border: 1px solid #e8e8e8;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         .info-row { 
@@ -5199,25 +5199,25 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
         }
         .section-title { 
             color: #333; 
-            font-size: 20px; 
+            font-size: 22px; 
             font-weight: bold; 
             margin: 0 0 18px 0; 
             display: flex; 
             align-items: center; 
             gap: 8px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #e8e8e8;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e8e8e8;
         }
         .info-section { 
-            background: #f0f7ff; 
-            border: 2px solid #2196f3; 
+            background: #e3f2fd; 
+            border: 1px solid #90caf9; 
             border-radius: 10px; 
             padding: 22px; 
             margin: 0 0 20px 0;
             box-shadow: 0 1px 3px rgba(33,150,243,0.1);
         }
         .info-section-title { 
-            font-size: 19px; 
+            font-size: 22px; 
             font-weight: bold; 
             color: #1976d2; 
             margin: 0 0 16px 0;
@@ -5225,11 +5225,11 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             align-items: center;
             gap: 8px;
             padding-bottom: 10px;
-            border-bottom: 2px solid rgba(33,150,243,0.2);
+            border-bottom: 1px solid rgba(144,202,249,0.5);
         }
         .highlight-box { 
-            background: #fffbf0; 
-            border: 2px solid #ffc107; 
+            background: #fff9c4; 
+            border: 1px solid #ffd54f; 
             border-radius: 10px; 
             padding: 22px; 
             margin: 0 0 20px 0;
@@ -5237,7 +5237,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
         }
         .highlight-box .section-title {
             color: #856404;
-            border-bottom-color: rgba(255,193,7,0.3);
+            border-bottom-color: rgba(255,213,79,0.5);
         }
         p { 
             margin: 0 0 12px 0; 
@@ -6759,16 +6759,16 @@ ${htmlEnd}`;
             checkinTransport = await db.getSetting('checkin_reminder_transport') || '';
             if (!checkinTransport) {
                 const hotelAddress = await db.getSetting('hotel_address') || '';
-                checkinTransport = `<p><strong>地址：</strong>${hotelAddress || '台北市信義區信義路五段7號'}</p>
-<p><strong>大眾運輸：</strong></p>
-<ul>
-    <li>捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
-    <li>公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>
+                checkinTransport = `<p style="margin: 0 0 12px 0; font-size: 16px;"><strong>地址：</strong>${hotelAddress || 'XXX'}</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>大眾運輸：</strong></p>
+<ul style="margin: 0 0 12px 0; padding-left: 24px;">
+    <li style="margin: 4px 0; font-size: 16px;">捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
+    <li style="margin: 4px 0; font-size: 16px;">公車：搭乘20、32、46路公車至「信義行政中心站」</li>
 </ul>
-<p><strong>自行開車：</strong></p>
-<ul>
-    <li>國道一號：下「信義交流道」，沿信義路直行約3公里</li>
-    <li>國道三號：下「木柵交流道」，接信義快速道路</li>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>自行開車：</strong></p>
+<ul style="margin: 0; padding-left: 24px;">
+    <li style="margin: 4px 0; font-size: 16px;">國道一號：下「信義交流道」，沿信義路直行約3公里</li>
+    <li style="margin: 4px 0; font-size: 16px;">國道三號：下「木柵交流道」，接信義快速道路</li>
 </ul>`;
             }
         }
@@ -6785,14 +6785,14 @@ ${htmlEnd}`;
         if (!checkinParking) {
             checkinParking = await db.getSetting('checkin_reminder_parking') || '';
             if (!checkinParking) {
-                checkinParking = `<p><strong>停車場位置：</strong>B1-B3 地下停車場</p>
-<p><strong>停車費用：</strong></p>
-<ul>
-    <li>住宿客人：每日 NT$ 200（可無限次進出）</li>
-    <li>臨時停車：每小時 NT$ 50</li>
+                checkinParking = `<p style="margin: 0 0 12px 0; font-size: 16px;"><strong>停車場位置：</strong>B1-B3 地下停車場</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車費用：</strong></p>
+<ul style="margin: 0 0 12px 0; padding-left: 24px;">
+    <li style="margin: 4px 0; font-size: 16px;">住宿客人：毎日NT$200（可無限次進出）</li>
+    <li style="margin: 4px 0; font-size: 16px;">臨時停車：每小時 NT$50</li>
 </ul>
-<p><strong>停車場開放時間：</strong>24 小時</p>
-<p>⚠️ 停車位有限，建議提前預約</p>`;
+<p style="margin: 0 0 12px 0; font-size: 16px;"><strong>停車場開放時間：</strong>24小時</p>
+<p style="margin: 0; font-size: 16px;">▲停車位有限，建議提前預約</p>`;
             }
         }
         // 替換區塊內容中的變數
@@ -6805,14 +6805,14 @@ ${htmlEnd}`;
         if (!checkinNotes) {
             checkinNotes = await db.getSetting('checkin_reminder_notes') || '';
             if (!checkinNotes) {
-                checkinNotes = `<p>入住時間：<strong>下午 3:00 後</strong></p>
-<p>退房時間：<strong>上午 11:30 前</strong></p>
-<ul>
-    <li>請攜帶身分證件辦理入住手續</li>
-    <li>房間內禁止吸菸，違者將收取清潔費 NT$ 3,000</li>
-    <li>請保持安靜，避免影響其他住客</li>
-    <li>貴重物品請妥善保管，建議使用房間保險箱</li>
-    <li>如需延遲退房，請提前告知櫃檯</li>
+                checkinNotes = `<ul style="margin: 0; padding-left: 24px; list-style-type: disc;">
+    <li style="margin: 6px 0; font-size: 16px;">入住時間：下午3:00後</li>
+    <li style="margin: 6px 0; font-size: 16px;">退房時間：上午11:30前</li>
+    <li style="margin: 6px 0; font-size: 16px;">請攜帶身分證件辦理入住手續</li>
+    <li style="margin: 6px 0; font-size: 16px;">房間內禁止吸菸，違者將收取清潔費NT$3,000</li>
+    <li style="margin: 6px 0; font-size: 16px;">請保持安靜，避免影響其他住客</li>
+    <li style="margin: 6px 0; font-size: 16px;">貴重物品請妥善保管，建議使用房間保險箱</li>
+    <li style="margin: 6px 0; font-size: 16px;">如需延遲退房，請提前告知櫃檯</li>
 </ul>`;
             }
         }
