@@ -4146,6 +4146,40 @@ window.resetCurrentTemplateToDefault = async function resetCurrentTemplateToDefa
     }
 };
 
+// 清除入住提醒郵件的區塊內容（使用新的預設格式）
+async function clearCheckinBlocks() {
+    if (!confirm('確定要清除入住提醒郵件的區塊內容嗎？系統將使用最新的預設格式。此操作不會影響其他設定。')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/email-templates/checkin_reminder/clear-blocks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('已清除區塊內容，系統將使用新的預設格式');
+            
+            // 重新載入模板以顯示新的預設內容
+            const form = document.getElementById('emailTemplateForm');
+            if (form && form.dataset.templateKey === 'checkin_reminder') {
+                // 重新載入模板
+                await showEmailTemplateModal('checkin_reminder');
+            }
+        } else {
+            showError('清除失敗：' + result.message);
+        }
+    } catch (error) {
+        console.error('清除入住提醒區塊內容錯誤:', error);
+        showError('清除失敗：' + error.message);
+    }
+}
+
 // 切換編輯模式（可視化 / HTML）
 // 直接定義為 window.toggleEditorMode，確保在事件監聽器設置前就可用
 window.toggleEditorMode = function toggleEditorMode() {
@@ -5201,6 +5235,21 @@ async function showEmailTemplateModal(templateKey) {
                     }
                 });
                 console.log('✅ resetTemplateStyleBtn 按鈕事件監聽器已設置');
+            }
+            
+            // 設置清除入住提醒區塊內容按鈕的事件監聽器
+            const clearCheckinBlocksBtn = document.getElementById('clearCheckinBlocksBtn');
+            if (clearCheckinBlocksBtn) {
+                const newClearBtn = clearCheckinBlocksBtn.cloneNode(true);
+                clearCheckinBlocksBtn.parentNode.replaceChild(newClearBtn, clearCheckinBlocksBtn);
+                
+                newClearBtn.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    await clearCheckinBlocks();
+                });
+                
+                console.log('✅ clearCheckinBlocksBtn 按鈕事件監聽器已設置');
             }
             
             // 設置簡化模式按鈕的事件監聽器

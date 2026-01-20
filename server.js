@@ -6049,6 +6049,96 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
     }
 });
 
+// API: 清除入住提醒郵件的區塊內容（使用新的預設格式）
+app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        // 取得入住提醒模板
+        const template = await db.getEmailTemplateByKey('checkin_reminder');
+        if (!template) {
+            return res.status(404).json({
+                success: false,
+                message: '找不到入住提醒模板'
+            });
+        }
+        
+        // 解析現有的 block_settings
+        let blockSettings = {};
+        if (template.block_settings) {
+            try {
+                blockSettings = typeof template.block_settings === 'string' 
+                    ? JSON.parse(template.block_settings) 
+                    : template.block_settings;
+            } catch (e) {
+                console.warn('⚠️ 解析 block_settings 失敗:', e);
+            }
+        }
+        
+        // 清除區塊內容（保留 enabled 狀態），讓系統使用代碼中的新預設值
+        blockSettings.transport = {
+            enabled: blockSettings.transport?.enabled !== false,
+            content: '' // 空字串表示使用代碼中的預設值
+        };
+        blockSettings.parking = {
+            enabled: blockSettings.parking?.enabled !== false,
+            content: '' // 空字串表示使用代碼中的預設值
+        };
+        blockSettings.notes = {
+            enabled: blockSettings.notes?.enabled !== false,
+            content: '' // 空字串表示使用代碼中的預設值
+        };
+        
+        // 保留其他區塊設定不變
+        if (!blockSettings.booking_info) {
+            blockSettings.booking_info = {
+                enabled: true,
+                content: `<div class="info-row">
+    <span class="info-label">訂房編號</span>
+    <span class="info-value"><strong>{{bookingId}}</strong></span>
+</div>
+<div class="info-row">
+    <span class="info-label">入住日期</span>
+    <span class="info-value">{{checkInDate}}</span>
+</div>
+<div class="info-row">
+    <span class="info-label">退房日期</span>
+    <span class="info-value">{{checkOutDate}}</span>
+</div>
+<div class="info-row" style="border-bottom: none;">
+    <span class="info-label">房型</span>
+    <span class="info-value">{{roomType}}</span>
+</div>`
+            };
+        }
+        if (!blockSettings.contact) {
+            blockSettings.contact = {
+                enabled: true,
+                content: `<p style="margin: 0 0 12px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
+<p style="margin: 0; font-size: 16px;"><strong>服務時間：</strong>24 小時</p>`
+            };
+        }
+        
+        // 更新模板
+        await db.updateEmailTemplate('checkin_reminder', {
+            block_settings: JSON.stringify(blockSettings)
+        });
+        
+        console.log('✅ 已清除入住提醒郵件的區塊內容，將使用新的預設格式');
+        
+        res.json({
+            success: true,
+            message: '已清除入住提醒郵件的區塊內容，系統將使用新的預設格式'
+        });
+    } catch (error) {
+        console.error('清除入住提醒區塊內容錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '清除區塊內容失敗：' + error.message
+        });
+    }
+});
+
 // ==================== 自動郵件發送功能 ====================
 
 // 從數據庫讀取模板並替換變數（通用函數）

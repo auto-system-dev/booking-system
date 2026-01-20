@@ -1001,9 +1001,15 @@
                             </div>
                         </div>
                         
-                        <h3 style="margin-top: 25px; font-size: 16px; color: #333; border-top: 1px solid #ddd; padding-top: 15px;">郵件內容區塊設定</h3>
+                        <h3 style="margin-top: 25px; font-size: 16px; color: #333; border-top: 1px solid #ddd; padding-top: 15px; display: flex; align-items: center; justify-content: space-between;">
+                            <span>郵件內容區塊設定</span>
+                            <button type="button" id="clearCheckinBlocksBtn" class="btn-secondary" style="padding: 5px 12px; font-size: 12px; display: flex; align-items: center; gap: 4px;" title="清除區塊內容，使用新的預設格式">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">refresh</span>
+                                使用新格式
+                            </button>
+                        </h3>
                         <small style="display: block; margin-bottom: 15px; color: #666; line-height: 1.6;">
-                            💡 提示：您可以自訂每個區塊的內容，並控制是否顯示。使用 HTML 標籤可以調整格式（如 &lt;strong&gt;粗體&lt;/strong&gt;、&lt;ul&gt;&lt;li&gt;列表&lt;/li&gt;&lt;/ul&gt; 等）。
+                            💡 提示：您可以自訂每個區塊的內容，並控制是否顯示。使用 HTML 標籤可以調整格式（如 &lt;strong&gt;粗體&lt;/strong&gt;、&lt;ul&gt;&lt;li&gt;列表&lt;/li&gt;&lt;/ul&gt; 等）。點擊「使用新格式」按鈕可清除舊內容並使用最新的預設格式。
                         </small>
                         
                         <!-- 訂房資訊區塊 -->
