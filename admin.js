@@ -4565,13 +4565,17 @@ async function showEmailTemplateModal(templateKey) {
                     document.getElementById('daysBeforeCheckin').value = template.days_before_checkin || 1;
                     document.getElementById('sendHourCheckin').value = template.send_hour_checkin || 9;
                     
-                    // 載入區塊設定
+                    // 載入區塊設定並合併到主郵件內容中
                     const blockSettings = template.block_settings ? JSON.parse(template.block_settings) : {};
                     
-                    // 訂房資訊區塊
-                    const bookingInfoEnabled = blockSettings.booking_info?.enabled !== false;
+                    // 讀取各區塊內容
                     let bookingInfoContent = blockSettings.booking_info?.content || '';
-                    // 如果沒有設定，使用預設內容
+                    let transportContent = blockSettings.transport?.content || '';
+                    let parkingContent = blockSettings.parking?.content || '';
+                    let notesContent = blockSettings.notes?.content || '';
+                    let contactContent = blockSettings.contact?.content || '';
+                    
+                    // 如果區塊內容為空，使用預設值
                     if (!bookingInfoContent) {
                         bookingInfoContent = `<div class="info-row">
     <span class="info-label">訂房編號</span>
@@ -4590,50 +4594,58 @@ async function showEmailTemplateModal(templateKey) {
     <span class="info-value">{{roomType}}</span>
 </div>`;
                     }
-                    document.getElementById('checkinBlockBookingInfo').checked = bookingInfoEnabled;
-                    document.getElementById('checkinBlockBookingInfoContent').value = bookingInfoContent;
-                    
-                    // 交通路線區塊
-                    const transportEnabled = blockSettings.transport?.enabled !== false;
-                    const transportContent = blockSettings.transport?.content || '';
-                    document.getElementById('checkinBlockTransport').checked = transportEnabled;
-                    document.getElementById('checkinBlockTransportContent').value = transportContent;
-                    // 表單模式（優先使用 data）
-                    try {
-                        populateCheckinStructuredFields(blockSettings);
-                    } catch (e) {
-                        console.warn('⚠️ 填入入住提醒表單欄位失敗:', e);
-                    }
-                    
-                    // 停車資訊區塊
-                    const parkingEnabled = blockSettings.parking?.enabled !== false;
-                    const parkingContent = blockSettings.parking?.content || '';
-                    document.getElementById('checkinBlockParking').checked = parkingEnabled;
-                    document.getElementById('checkinBlockParkingContent').value = parkingContent;
-                    
-                    // 入住注意事項區塊
-                    const notesEnabled = blockSettings.notes?.enabled !== false;
-                    const notesContent = blockSettings.notes?.content || '';
-                    document.getElementById('checkinBlockNotes').checked = notesEnabled;
-                    document.getElementById('checkinBlockNotesContent').value = notesContent;
-                    
-                    // 聯絡資訊區塊
-                    const contactEnabled = blockSettings.contact?.enabled !== false;
-                    let contactContent = blockSettings.contact?.content || '';
-                    // 如果沒有設定，使用預設內容
                     if (!contactContent) {
                         contactContent = `<p style="margin: 0 0 12px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
 <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
 <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
 <p style="margin: 0; font-size: 16px;"><strong>服務時間：</strong>24 小時</p>`;
                     }
-                    document.getElementById('checkinBlockContact').checked = contactEnabled;
-                    document.getElementById('checkinBlockContactContent').value = contactContent;
                     
-                    // 如果沒有設定，從系統設定載入預設值
-                    if (!transportContent && !parkingContent && !notesContent) {
-                        // 這裡原本會從系統設定載入預設內容，現在改為完全顯示資料庫中的內容，避免混淆
+                    // 將區塊內容合併到主郵件內容中（替換變數）
+                    let mergedContent = template.content || '';
+                    
+                    // 替換區塊變數為實際內容
+                    if (blockSettings.booking_info?.enabled !== false && bookingInfoContent) {
+                        mergedContent = mergedContent.replace(/\{\{bookingInfoContent\}\}/g, bookingInfoContent);
+                    } else {
+                        mergedContent = mergedContent.replace(/\{\{#if showBookingInfo\}\}[\s\S]*?\{\{\/if\}\}/g, '');
                     }
+                    
+                    if (blockSettings.transport?.enabled !== false && transportContent) {
+                        mergedContent = mergedContent.replace(/\{\{checkinTransport\}\}/g, transportContent);
+                    } else {
+                        mergedContent = mergedContent.replace(/\{\{#if showTransport\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+                    }
+                    
+                    if (blockSettings.parking?.enabled !== false && parkingContent) {
+                        mergedContent = mergedContent.replace(/\{\{checkinParking\}\}/g, parkingContent);
+                    } else {
+                        mergedContent = mergedContent.replace(/\{\{#if showParking\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+                    }
+                    
+                    if (blockSettings.notes?.enabled !== false && notesContent) {
+                        mergedContent = mergedContent.replace(/\{\{checkinNotes\}\}/g, notesContent);
+                    } else {
+                        mergedContent = mergedContent.replace(/\{\{#if showNotes\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+                    }
+                    
+                    if (blockSettings.contact?.enabled !== false && contactContent) {
+                        mergedContent = mergedContent.replace(/\{\{checkinContact\}\}/g, contactContent);
+                    } else {
+                        mergedContent = mergedContent.replace(/\{\{#if showContact\}\}[\s\S]*?\{\{\/if\}\}/g, '');
+                    }
+                    
+                    // 移除條件判斷標籤（因為已經處理過了）
+                    mergedContent = mergedContent.replace(/\{\{#if showBookingInfo\}\}/g, '');
+                    mergedContent = mergedContent.replace(/\{\{#if showTransport\}\}/g, '');
+                    mergedContent = mergedContent.replace(/\{\{#if showParking\}\}/g, '');
+                    mergedContent = mergedContent.replace(/\{\{#if showNotes\}\}/g, '');
+                    mergedContent = mergedContent.replace(/\{\{#if showContact\}\}/g, '');
+                    mergedContent = mergedContent.replace(/\{\{\/if\}\}/g, '');
+                    
+                    // 更新要載入的內容
+                    htmlContent = mergedContent;
+                    template.content = mergedContent;
                 }
             } else if (templateKey === 'feedback_request') {
                 if (feedbackSettings) {
@@ -5641,31 +5653,16 @@ async function saveEmailTemplate(event) {
             console.log('✅ 已添加入住提醒設定:', { days_before_checkin: data.days_before_checkin, send_hour_checkin: data.send_hour_checkin });
         }
         
-        // 保存區塊設定
-        const blockSettings = {
-            booking_info: {
-                enabled: document.getElementById('checkinBlockBookingInfo').checked,
-                content: document.getElementById('checkinBlockBookingInfoContent').value
-            },
-            transport: {
-                enabled: document.getElementById('checkinBlockTransport').checked,
-                content: document.getElementById('checkinBlockTransportContent').value
-            },
-            parking: {
-                enabled: document.getElementById('checkinBlockParking').checked,
-                content: document.getElementById('checkinBlockParkingContent').value
-            },
-            notes: {
-                enabled: document.getElementById('checkinBlockNotes').checked,
-                content: document.getElementById('checkinBlockNotesContent').value
-            },
-            contact: {
-                enabled: document.getElementById('checkinBlockContact').checked,
-                content: document.getElementById('checkinBlockContactContent').value
-            }
-        };
-        data.block_settings = JSON.stringify(blockSettings);
-        console.log('✅ 已保存入住提醒區塊設定:', blockSettings);
+        // 不再使用區塊設定，所有內容都直接儲存在 content 中
+        // 保留空的 block_settings 結構以維持相容性
+        data.block_settings = JSON.stringify({
+            booking_info: { enabled: true, content: '' },
+            transport: { enabled: true, content: '' },
+            parking: { enabled: true, content: '' },
+            notes: { enabled: true, content: '' },
+            contact: { enabled: true, content: '' }
+        });
+        console.log('✅ 入住提醒模板：所有內容已合併到主郵件內容中');
     } else if (templateKey === 'feedback_request') {
         const daysAfterCheckoutEl = document.getElementById('daysAfterCheckout');
         const sendHourFeedbackEl = document.getElementById('sendHourFeedback');
