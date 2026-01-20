@@ -622,8 +622,136 @@ let calendarStartDate = null;
 let sortColumn = null; // 當前排序欄位
 let sortDirection = 'asc'; // 排序方向：'asc' 或 'desc'
 
-// Quill 編輯器實例
-let quillEditor = null;
+// 入住提醒郵件範本內容
+const CHECKIN_REMINDER_TEMPLATE = `<div class="container">
+
+    <p style="font-size:15px; margin:0 0 6px 0;">
+        親愛的 {{guestName}} 您好，
+    </p>
+    <p style="font-size:14px; margin:0 0 18px 0;">
+        感謝您選擇我們的住宿服務，我們期待您明天的到來。
+    </p>
+
+    <!-- 訂房資訊卡片 -->
+    <div class="card">
+        <div class="card-header-dark">
+            <span class="icon">📅</span>
+            <span>訂房資訊</span>
+        </div>
+        <div class="card-body">
+            <table class="booking-table">
+                <tr>
+                    <td class="booking-label">訂房編號</td>
+                    <td class="booking-value booking-value-strong">{{bookingId}}</td>
+                </tr>
+                <tr>
+                    <td class="booking-label">入住日期</td>
+                    <td class="booking-value">{{checkInDate}}</td>
+                </tr>
+                <tr>
+                    <td class="booking-label">退房日期</td>
+                    <td class="booking-value">{{checkOutDate}}</td>
+                </tr>
+                <tr>
+                    <td class="booking-label">房型</td>
+                    <td class="booking-value">{{roomType}}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- 交通路線 -->
+    <div class="section-card section-transport">
+        <div class="section-header">
+            <span class="icon">📍</span>
+            <span>交通路線</span>
+        </div>
+        <div class="section-body">
+            <p><strong>地址：</strong>{{hotelAddress}}</p>
+
+            <p class="mb-4"><strong>大眾運輸：</strong></p>
+            <ul>
+                <li>捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
+                <li>公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>
+            </ul>
+
+            <p class="mt-16 mb-4"><strong>自行開車：</strong></p>
+            <ul>
+                <li>國道一號：下「信義交流道」，沿信義路直行約3公里</li>
+                <li>國道三號：下「木柵交流道」，接信義快速道路</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 停車資訊 -->
+    <div class="section-card section-parking">
+        <div class="section-header">
+            <span class="icon">🅿️</span>
+            <span>停車資訊</span>
+        </div>
+        <div class="section-body">
+            <p><strong>停車場位置：</strong>B1-B3 地下停車場</p>
+
+            <p class="mb-4"><strong>停車費用：</strong></p>
+            <ul>
+                <li>住宿客人：每日 NT$ 200（可無限次進出）</li>
+                <li>臨時停車：每小時 NT$ 50</li>
+            </ul>
+
+            <p class="mt-16"><strong>停車場開放時間：</strong>24 小時</p>
+            <p class="mt-16">⚠ 停車位有限，建議提前預約</p>
+        </div>
+    </div>
+
+    <!-- 入住注意事項 -->
+    <div class="section-card section-notes">
+        <div class="section-header">
+            <span class="icon">⚠️</span>
+            <span>入住注意事項</span>
+        </div>
+        <div class="section-body">
+            <ul>
+                <li>入住時間：<strong>下午 3:00 後</strong></li>
+                <li>退房時間：<strong>上午 11:30 前</strong></li>
+                <li>請攜帶身分證件辦理入住手續</li>
+                <li>房間內禁止吸菸，違者將收取清潔費 NT$ 3,000</li>
+                <li>請保持安靜，避免影響其他住客</li>
+                <li>貴重物品請妥善保管，建議使用房間保險箱</li>
+                <li>如需延遲退房，請提前告知櫃檯</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 聯絡資訊 -->
+    <div class="section-card section-contact">
+        <div class="section-header">
+            <span class="icon">📞</span>
+            <span>聯絡資訊</span>
+        </div>
+        <div class="section-body">
+            <p>如有任何問題，歡迎隨時聯繫我們：</p>
+            <p><strong>電話：</strong>{{hotelPhone}}</p>
+            <p><strong>Email：</strong>{{hotelEmail}}</p>
+            <p><strong>服務時間：</strong>24 小時</p>
+        </div>
+    </div>
+
+    <p class="footer-text">
+        期待您的到來，祝您住宿愉快！
+    </p>
+</div>`;
+
+// 還原入住提醒範本
+function restoreCheckinReminderTemplate() {
+    if (!confirm('確定要還原為範本內容嗎？這將覆蓋目前的編輯內容。')) {
+        return;
+    }
+    const textarea = document.getElementById('emailTemplateContent');
+    if (textarea) {
+        textarea.value = CHECKIN_REMINDER_TEMPLATE;
+        alert('已還原為範本內容');
+    }
+}
 let isHtmlMode = false;
 let isPreviewVisible = false; // 預覽是否顯示
 let currentEmailStyle = 'card'; // 當前郵件樣式
@@ -4505,7 +4633,6 @@ async function showEmailTemplateModal(templateKey) {
             const modal = document.getElementById('emailTemplateModal');
             const title = document.getElementById('emailTemplateModalTitle');
             const form = document.getElementById('emailTemplateForm');
-            const editorContainer = document.getElementById('emailTemplateEditor');
             const textarea = document.getElementById('emailTemplateContent');
             
             // 檢查並修復錯誤的模板名稱和主旨（防止 email 地址格式）
@@ -4567,7 +4694,21 @@ async function showEmailTemplateModal(templateKey) {
                     // ✅ 完全手動版：不再自動從 block_settings 合併或改寫 content
                     // 之後編輯器看到的內容 = 資料庫裡存的 content，儲存時也只更新 content
                 }
-            } else if (templateKey === 'feedback_request') {
+                // 顯示「還原範本」按鈕
+                const restoreBtn = document.getElementById('restoreTemplateBtn');
+                if (restoreBtn) {
+                    restoreBtn.style.display = 'flex';
+                    restoreBtn.onclick = restoreCheckinReminderTemplate;
+                }
+            } else {
+                // 隱藏「還原範本」按鈕（非入住提醒模板）
+                const restoreBtn = document.getElementById('restoreTemplateBtn');
+                if (restoreBtn) {
+                    restoreBtn.style.display = 'none';
+                }
+            }
+            
+            if (templateKey === 'feedback_request') {
                 if (feedbackSettings) {
                     feedbackSettings.style.display = 'block';
                     document.getElementById('daysAfterCheckout').value = template.days_after_checkout || 1;
@@ -4589,175 +4730,7 @@ async function showEmailTemplateModal(templateKey) {
                 }
             }
             
-            // 初始化 Quill 編輯器（如果還沒有）
-            if (!quillEditor) {
-                // 自定義 Blot 以保留 CSS 類別和樣式
-                const Block = Quill.import('blots/block');
-                const Inline = Quill.import('blots/inline');
-                const BlockEmbed = Quill.import('blots/block/embed');
-                
-                // 註冊自定義 Div Blot（保留 class 和 style 屬性）
-                class DivBlot extends Block {
-                    static tagName = 'div';
-                    static className = '';
-                    
-                    static create(value) {
-                        const node = super.create();
-                        if (typeof value === 'object') {
-                            if (value.class) {
-                                node.setAttribute('class', value.class);
-                            }
-                            if (value.style) {
-                                node.setAttribute('style', value.style);
-                            }
-                        }
-                        return node;
-                    }
-                    
-                    static formats(node) {
-                        const formats = {};
-                        if (node.hasAttribute('class')) {
-                            formats.class = node.getAttribute('class');
-                        }
-                        if (node.hasAttribute('style')) {
-                            formats.style = node.getAttribute('style');
-                        }
-                        return formats;
-                    }
-                    
-                    format(name, value) {
-                        if (name === 'class' || name === 'style') {
-                            if (value) {
-                                this.domNode.setAttribute(name, value);
-                            } else {
-                                this.domNode.removeAttribute(name);
-                            }
-                        } else {
-                            super.format(name, value);
-                        }
-                    }
-                }
-                
-                // 註冊自定義 Span Blot（保留 class 和 style 屬性）
-                class SpanBlot extends Inline {
-                    static tagName = 'span';
-                    static className = '';
-                    
-                    static create(value) {
-                        const node = super.create();
-                        if (typeof value === 'object') {
-                            if (value.class) {
-                                node.setAttribute('class', value.class);
-                            }
-                            if (value.style) {
-                                node.setAttribute('style', value.style);
-                            }
-                        }
-                        return node;
-                    }
-                    
-                    static formats(node) {
-                        const formats = {};
-                        if (node.hasAttribute('class')) {
-                            formats.class = node.getAttribute('class');
-                        }
-                        if (node.hasAttribute('style')) {
-                            formats.style = node.getAttribute('style');
-                        }
-                        return formats;
-                    }
-                    
-                    format(name, value) {
-                        if (name === 'class' || name === 'style') {
-                            if (value) {
-                                this.domNode.setAttribute(name, value);
-                            } else {
-                                this.domNode.removeAttribute(name);
-                            }
-                        } else {
-                            super.format(name, value);
-                        }
-                    }
-                }
-                
-                Quill.register(DivBlot);
-                Quill.register(SpanBlot);
-                
-                quillEditor = new Quill('#emailTemplateEditor', {
-                    theme: 'snow',
-                    modules: {
-                        toolbar: [
-                            [{ 'header': [1, 2, 3, false] }],
-                            ['bold', 'italic', 'underline', 'strike'],
-                            [{ 'color': [] }, { 'background': [] }],
-                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                            [{ 'align': [] }],
-                            ['link', 'image'],
-                            ['clean']
-                        ],
-                        clipboard: {
-                            // 允許更多 HTML 標籤和屬性
-                            matchVisual: false,
-                            // 保留所有 class 和 style 屬性
-                            preserveWhitespace: true
-                        }
-                    },
-                    placeholder: '開始編輯郵件內容...',
-                    // 允許更多 HTML 標籤和格式
-                    formats: ['bold', 'italic', 'underline', 'strike', 'color', 'background', 
-                             'header', 'list', 'align', 'link', 'image', 'blockquote', 'code-block',
-                             'div', 'span', 'class', 'style']
-                });
-                
-                // 自定義 Quill 的 HTML 處理，保留所有 class 和 style
-                const originalPasteHTML = quillEditor.clipboard.convert;
-                quillEditor.clipboard.convert = function(html) {
-                    // 使用 dangerouslyPasteHTML 以保留更多 HTML 結構
-                    return originalPasteHTML.call(this, html);
-                };
-                
-                // 覆蓋 Quill 的 HTML 輸出，確保保留所有屬性
-                const originalGetHTML = quillEditor.getHTML;
-                quillEditor.getHTML = function() {
-                    return this.root.innerHTML;
-                };
-                
-                // 監聽編輯器內容變更，自動更新預覽
-                quillEditor.on('text-change', function() {
-                    // 同步更新 textarea 的值，確保儲存時使用最新的內容
-                    const quillHtml = quillEditor.root.innerHTML;
-                    const textarea = document.getElementById('emailTemplateContent');
-                    if (textarea) {
-                        const originalContent = textarea.value;
-                        // 如果原始內容是完整 HTML，只替換 body 內容
-                        if (originalContent && (originalContent.includes('<!DOCTYPE html>') || originalContent.includes('<html'))) {
-                            if (originalContent.includes('<body>')) {
-                                textarea.value = originalContent.replace(
-                                    /<body[^>]*>[\s\S]*?<\/body>/i,
-                                    `<body>${quillHtml}</body>`
-                                );
-                            } else {
-                                // 如果沒有 body，保持原樣（不應該發生）
-                                textarea.value = originalContent;
-                            }
-                        } else {
-                            // 如果原始內容不是完整 HTML，直接使用 Quill 的內容
-                            textarea.value = quillHtml;
-                        }
-                    }
-                    
-                    if (isPreviewVisible && !isHtmlMode) {
-                        // 使用防抖，避免頻繁更新
-                        clearTimeout(window.previewUpdateTimer);
-                        window.previewUpdateTimer = setTimeout(() => {
-                            refreshEmailPreview();
-                        }, 300);
-                    }
-                });
-            }
-            
-            // 將 HTML 內容載入到 Quill 編輯器
-            // ✅ 完全手動版：對於 checkin_reminder，直接使用 template.content，不做任何處理
+            // ✅ 簡化版：直接將內容載入到 textarea，不使用 Quill 編輯器
             let htmlContent = template.content || '';
             
             console.log('載入模板內容，原始長度:', htmlContent.length);
@@ -4767,8 +4740,7 @@ async function showEmailTemplateModal(templateKey) {
                 console.log('✅ 入住提醒模板：完全手動模式，直接使用原始內容');
                 // 不做任何處理，直接使用 template.content
             } else {
-                // 其他模板保持原有邏輯
-                // 如果是完整的 HTML 文檔，提取 body 內容
+                // 其他模板：如果是完整的 HTML 文檔，提取 body 內容
                 if (htmlContent.includes('<body>')) {
                     const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
                     if (bodyMatch) {
@@ -4776,137 +4748,16 @@ async function showEmailTemplateModal(templateKey) {
                         console.log('提取 body 內容後，長度:', htmlContent.length);
                     }
                 }
-                
-                // 檢查是否有 .content div，如果有，只提取 .content div 內的內容
-                const contentDivStartRegex = /<div[^>]*class\s*=\s*["'][^"']*content[^"']*["'][^>]*>/i;
-                const contentStartMatch = htmlContent.match(contentDivStartRegex);
-                
-                if (contentStartMatch) {
-                    const startIndex = contentStartMatch.index;
-                    const startTag = contentStartMatch[0];
-                    const afterStartTag = htmlContent.substring(startIndex + startTag.length);
-                    
-                    // 計算嵌套的 div 層級，找到對應的結束標籤
-                    let divCount = 1;
-                    let currentIndex = 0;
-                    let endIndex = -1;
-                    
-                    while (currentIndex < afterStartTag.length && divCount > 0) {
-                        const openDiv = afterStartTag.indexOf('<div', currentIndex);
-                        const closeDiv = afterStartTag.indexOf('</div>', currentIndex);
-                        
-                        if (closeDiv === -1) break;
-                        
-                        if (openDiv !== -1 && openDiv < closeDiv) {
-                            divCount++;
-                            currentIndex = openDiv + 4;
-                        } else {
-                            divCount--;
-                            if (divCount === 0) {
-                                endIndex = closeDiv;
-                                break;
-                            }
-                            currentIndex = closeDiv + 6;
-                        }
-                    }
-                    
-                    if (endIndex !== -1) {
-                        // 只提取 .content div 內的內容，移除 .header div
-                        htmlContent = afterStartTag.substring(0, endIndex);
-                        // 移除可能的 .header div（如果還在內容中）
-                        htmlContent = htmlContent.replace(/<div[^>]*class\s*=\s*["'][^"']*header[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, '');
-                        console.log('✅ 已提取 .content div 內的內容，移除 .header，長度:', htmlContent.length);
-                    } else {
-                        // 如果無法找到結束標籤，至少移除 .header div
-                        htmlContent = htmlContent.replace(/<div[^>]*class\s*=\s*["'][^"']*header[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, '');
-                        console.log('⚠️ 無法找到 .content div 結束標籤，已移除 .header div');
-                    }
-                } else {
-                    // 如果沒有 .content div，至少移除 .header div
-                    htmlContent = htmlContent.replace(/<div[^>]*class\s*=\s*["'][^"']*header[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, '');
-                    console.log('⚠️ 未找到 .content div，已移除 .header div');
-                }
             }
-            
-            // 確保 Quill 編輯器已初始化
-            if (!quillEditor) {
-                console.error('Quill 編輯器未初始化');
-                showError('編輯器初始化失敗，請重新整理頁面');
-                return;
-            }
-            
-            // 先更新 textarea（用於儲存和作為備份）
-            textarea.value = template.content || '';
             
             // 先顯示模態框
             modal.classList.add('active');
             
-            // 初始化預覽狀態（固定使用預設的圖卡樣式）
-            currentEmailStyle = 'card';
-            isPreviewVisible = false;
-            
-            // 預設使用可視化模式（用戶要求）
-            isHtmlMode = false;
-            editorContainer.style.display = 'block';
-            textarea.style.display = 'none';
-            const toggleBtn = document.getElementById('toggleEditorModeBtn');
-            if (toggleBtn) {
-                toggleBtn.textContent = '切換到 HTML 模式';
-                // 確保 toggleEditorMode 函數已定義
-                if (typeof toggleEditorMode === 'function') {
-                    toggleBtn.onclick = toggleEditorMode;
-                } else {
-                    console.error('toggleEditorMode 函數未定義');
-                    toggleBtn.onclick = function() {
-                        console.error('toggleEditorMode 函數未定義，無法切換編輯模式');
-                        alert('編輯模式切換功能暫時無法使用，請重新載入頁面');
-                    };
-                }
+            // 直接將內容載入到 textarea
+            if (textarea) {
+                textarea.value = htmlContent || '';
+                console.log('✅ 內容已載入到 textarea，長度:', textarea.value.length);
             }
-            
-            // 先設置 textarea（作為備份）
-            textarea.value = template.content || '';
-            
-            // 使用 setTimeout 確保模態框完全顯示後再載入內容
-            setTimeout(() => {
-                try {
-                    console.log('開始載入內容到編輯器');
-                    console.log('要載入的 HTML 內容長度:', htmlContent.length);
-                    
-                    // 如果內容為空，直接返回
-                    if (!htmlContent || htmlContent.trim() === '') {
-                        console.log('⚠️ 內容為空，跳過載入');
-                        quillEditor.setText('郵件內容為空，請編輯內容...');
-                        return;
-                    }
-                    
-                    // 先清空編輯器
-                    quillEditor.setText('');
-                    
-                    // 方法：使用 Quill 的標準方法載入內容（傳統模式）
-                    try {
-                        // 先清空編輯器
-                        quillEditor.setText('');
-                        
-                        // 使用 dangerouslyPasteHTML 方法載入內容
-                        quillEditor.clipboard.dangerouslyPasteHTML(0, htmlContent);
-                        console.log('✅ 內容已載入到編輯器');
-                    } catch (error) {
-                        console.error('❌ 載入內容時發生錯誤:', error);
-                        // Fallback: 直接設置 innerHTML
-                        quillEditor.root.innerHTML = htmlContent;
-                    }
-                } catch (error) {
-                    console.error('❌ 載入內容到 Quill 時發生錯誤:', error);
-                    // 最後的 fallback - 直接設置並忽略錯誤
-                    try {
-                        quillEditor.root.innerHTML = htmlContent;
-                        console.log('✅ 使用 fallback 方法（直接設置 innerHTML）');
-                    } catch (fallbackError) {
-                        console.error('❌ 所有載入方法都失敗:', fallbackError);
-                    }
-                }
-            }, 500);
             
             // 儲存 templateKey 以便儲存時使用
             form.dataset.templateKey = templateKey;
@@ -6164,28 +6015,15 @@ async function resetEmailTemplateToDefault(templateKey, templateName) {
 
 // 插入變數到編輯器
 function insertVariable(variable) {
-    if (isHtmlMode) {
-        // HTML 模式：插入到 textarea
-        const textarea = document.getElementById('emailTemplateContent');
+    // ✅ 簡化版：直接插入到 textarea
+    const textarea = document.getElementById('emailTemplateContent');
+    if (textarea) {
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
         const text = textarea.value;
         textarea.value = text.substring(0, start) + variable + text.substring(end);
         textarea.focus();
         textarea.setSelectionRange(start + variable.length, start + variable.length);
-        // 更新預覽
-        if (isPreviewVisible) {
-            refreshEmailPreview();
-        }
-    } else {
-        // 可視化模式：插入到 Quill
-        const range = quillEditor.getSelection(true);
-        quillEditor.insertText(range.index, variable, 'user');
-        quillEditor.setSelection(range.index + variable.length);
-        // 更新預覽
-        if (isPreviewVisible) {
-            setTimeout(() => refreshEmailPreview(), 100);
-        }
     }
 }
 
