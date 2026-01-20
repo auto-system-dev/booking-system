@@ -5199,7 +5199,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
         }
         .section-title { 
             color: #333; 
-            font-size: 22px; 
+            font-size: 20px; 
             font-weight: bold; 
             margin: 0 0 18px 0; 
             display: flex; 
@@ -5217,7 +5217,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             box-shadow: 0 1px 3px rgba(33,150,243,0.1);
         }
         .info-section-title { 
-            font-size: 22px; 
+            font-size: 19px; 
             font-weight: bold; 
             color: #1976d2; 
             margin: 0 0 16px 0;
@@ -5444,7 +5444,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
         .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
         .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
         .info-value strong { color: #333; font-weight: 700; }
-        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
+        .section-title { color: #333; font-size: 20px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
         .section-title:first-of-type { margin-top: 0; }
         p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
         .greeting { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
@@ -5550,7 +5550,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
         .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
         .info-value strong { color: #333; font-weight: 700; }
         .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
+        .section-title { color: #333; font-size: 20px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
         .section-title:first-of-type { margin-top: 0; }
         p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
         .greeting { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
@@ -5706,7 +5706,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
         .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
         .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
         .info-value strong { color: #333; font-weight: 700; }
-        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
+        .section-title { color: #333; font-size: 20px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
         .section-title:first-of-type { margin-top: 0; }
         p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
         .intro-text { font-size: 16px; color: #555; margin-bottom: 25px; }
