@@ -6134,7 +6134,32 @@ app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, admi
             block_settings: JSON.stringify(blockSettings)
         });
         
-        console.log('✅ 已清除入住提醒郵件的區塊內容，將使用新的預設格式');
+        // 同時清除系統設定中的舊內容，確保使用代碼中的新預設值
+        console.log('🔄 開始清除系統設定中的舊內容...');
+        const oldTransport = await db.getSetting('checkin_reminder_transport');
+        const oldParking = await db.getSetting('checkin_reminder_parking');
+        const oldNotes = await db.getSetting('checkin_reminder_notes');
+        console.log('   清除前的系統設定:', {
+            transport: oldTransport ? `有內容 (${oldTransport.length} 字元)` : '空',
+            parking: oldParking ? `有內容 (${oldParking.length} 字元)` : '空',
+            notes: oldNotes ? `有內容 (${oldNotes.length} 字元)` : '空'
+        });
+        
+        await db.updateSetting('checkin_reminder_transport', '');
+        await db.updateSetting('checkin_reminder_parking', '');
+        await db.updateSetting('checkin_reminder_notes', '');
+        
+        // 驗證清除是否成功
+        const newTransport = await db.getSetting('checkin_reminder_transport');
+        const newParking = await db.getSetting('checkin_reminder_parking');
+        const newNotes = await db.getSetting('checkin_reminder_notes');
+        console.log('   清除後的系統設定:', {
+            transport: newTransport || '空',
+            parking: newParking || '空',
+            notes: newNotes || '空'
+        });
+        
+        console.log('✅ 已清除入住提醒郵件的區塊內容和系統設定，將使用新的預設格式');
         
         res.json({
             success: true,
