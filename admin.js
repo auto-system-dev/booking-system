@@ -5079,31 +5079,11 @@ async function showEmailTemplateModal(templateKey) {
                             }
                         }
                         
-                        // 如果是入住提醒郵件，收集區塊設定
+                        // 如果是入住提醒郵件，不再使用區塊設定（所有內容已合併到主內容中）
                         let blockSettings = null;
                         if (templateKey === 'checkin_reminder') {
-                            blockSettings = {
-                                booking_info: {
-                                    enabled: document.getElementById('checkinBlockBookingInfo').checked,
-                                    content: document.getElementById('checkinBlockBookingInfoContent').value
-                                },
-                                transport: {
-                                    enabled: document.getElementById('checkinBlockTransport').checked,
-                                    content: document.getElementById('checkinBlockTransportContent').value
-                                },
-                                parking: {
-                                    enabled: document.getElementById('checkinBlockParking').checked,
-                                    content: document.getElementById('checkinBlockParkingContent').value
-                                },
-                                notes: {
-                                    enabled: document.getElementById('checkinBlockNotes').checked,
-                                    content: document.getElementById('checkinBlockNotesContent').value
-                                },
-                                contact: {
-                                    enabled: document.getElementById('checkinBlockContact').checked,
-                                    content: document.getElementById('checkinBlockContactContent').value
-                                }
-                            };
+                            // 所有內容已合併到 content 中，不需要 blockSettings
+                            blockSettings = null;
                         }
                         
                         // 發送測試郵件
@@ -5849,51 +5829,10 @@ async function sendTestEmail() {
         
         console.log('📧 測試郵件：不發送編輯器內容，讓後端直接從資料庫讀取完整模板');
         
-        // 如果是入住提醒郵件，添加區塊設定（從資料庫讀取，確保使用最新的設定）
+        // 如果是入住提醒郵件，不再使用區塊設定（所有內容已合併到主內容中）
         if (templateKey === 'checkin_reminder') {
-            // 從 UI 元素獲取區塊設定（這些設定應該已經從資料庫載入）
-            // 若是入住提醒：用表單內容自動組回 HTML（仍寫入 block_settings.*.content），並同步存入 data
-            let structuredData = null;
-            if (templateKey === 'checkin_reminder') {
-                structuredData = readCheckinStructuredForm();
-                const transportHtml = generateCheckinTransportHtmlFromForm(structuredData.transport);
-                const parkingHtml = generateCheckinParkingHtmlFromForm(structuredData.parking);
-                const notesHtml = generateCheckinNotesHtmlFromForm(structuredData.notes);
-                // 同步更新進階 textarea，避免使用者看到空白/也方便後續除錯
-                const transportTA = document.getElementById('checkinBlockTransportContent');
-                const parkingTA = document.getElementById('checkinBlockParkingContent');
-                const notesTA = document.getElementById('checkinBlockNotesContent');
-                if (transportTA) transportTA.value = transportHtml;
-                if (parkingTA) parkingTA.value = parkingHtml;
-                if (notesTA) notesTA.value = notesHtml;
-            }
-
-            const blockSettings = {
-                booking_info: {
-                    enabled: document.getElementById('checkinBlockBookingInfo').checked,
-                    content: document.getElementById('checkinBlockBookingInfoContent').value
-                },
-                transport: {
-                    enabled: document.getElementById('checkinBlockTransport').checked,
-                    content: document.getElementById('checkinBlockTransportContent').value,
-                    data: structuredData ? structuredData.transport : undefined
-                },
-                parking: {
-                    enabled: document.getElementById('checkinBlockParking').checked,
-                    content: document.getElementById('checkinBlockParkingContent').value,
-                    data: structuredData ? structuredData.parking : undefined
-                },
-                notes: {
-                    enabled: document.getElementById('checkinBlockNotes').checked,
-                    content: document.getElementById('checkinBlockNotesContent').value,
-                    data: structuredData ? structuredData.notes : undefined
-                },
-                contact: {
-                    enabled: document.getElementById('checkinBlockContact').checked,
-                    content: document.getElementById('checkinBlockContactContent').value
-                }
-            };
-            requestData.blockSettings = blockSettings;
+            // 所有內容已合併到主郵件內容中，不需要 blockSettings
+            requestData.blockSettings = null;
         }
         
         console.log('📧 發送測試郵件請求:', {
@@ -6058,31 +5997,11 @@ ${quillHtml}
         
         const subject = document.getElementById('emailTemplateSubject').value;
         
-        // 如果是入住提醒郵件，獲取區塊設定
+        // 如果是入住提醒郵件，不再使用區塊設定（所有內容已合併到主內容中）
         let blockSettings = null;
         if (templateKey === 'checkin_reminder') {
-            blockSettings = {
-                booking_info: {
-                    enabled: document.getElementById('checkinBlockBookingInfo').checked,
-                    content: document.getElementById('checkinBlockBookingInfoContent').value
-                },
-                transport: {
-                    enabled: document.getElementById('checkinBlockTransport').checked,
-                    content: document.getElementById('checkinBlockTransportContent').value
-                },
-                parking: {
-                    enabled: document.getElementById('checkinBlockParking').checked,
-                    content: document.getElementById('checkinBlockParkingContent').value
-                },
-                notes: {
-                    enabled: document.getElementById('checkinBlockNotes').checked,
-                    content: document.getElementById('checkinBlockNotesContent').value
-                },
-                contact: {
-                    enabled: document.getElementById('checkinBlockContact').checked,
-                    content: document.getElementById('checkinBlockContactContent').value
-                }
-            };
+            // 所有內容已合併到主郵件內容中，不需要 blockSettings
+            blockSettings = null;
         }
         
         // 使用編輯器中的內容（用戶修改後的內容），但保留完整的 HTML 結構
