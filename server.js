@@ -6632,19 +6632,22 @@ ${htmlEnd}`;
             checkinTransport = await db.getSetting('checkin_reminder_transport') || '';
             if (!checkinTransport) {
                 const hotelAddress = await db.getSetting('hotel_address') || '';
-                checkinTransport = `<p style="margin: 0 0 15px 0; font-size: 17px; font-weight: 600;">地址：${hotelAddress || '台北市信義區信義路五段7號'}</p>
-<div style="margin-bottom: 15px;">
-    <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">大眾運輸：</p>
-    <ul style="margin: 0; padding-left: 25px;">
-        <li>捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
-        <li>公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>
+                checkinTransport = `<div style="margin-bottom: 20px;">
+    <p style="margin: 0 0 12px 0; font-size: 17px; font-weight: 600; color: #333;">📍 地址</p>
+    <p style="margin: 0; font-size: 16px; color: #555; line-height: 1.6;">${hotelAddress || '台北市信義區信義路五段7號'}</p>
+</div>
+<div style="margin-bottom: 20px;">
+    <p style="margin: 0 0 12px 0; font-size: 17px; font-weight: 600; color: #333;">🚇 大眾運輸</p>
+    <ul style="margin: 0; padding-left: 24px; list-style-type: disc;">
+        <li style="margin-bottom: 8px; font-size: 15px; color: #555; line-height: 1.7;">捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘</li>
+        <li style="margin-bottom: 0; font-size: 15px; color: #555; line-height: 1.7;">公車：搭乘 20、32、46 路公車至「信義行政中心站」</li>
     </ul>
 </div>
 <div>
-    <p style="margin: 8px 0; font-size: 16px; font-weight: 600;">自行開車：</p>
-    <ul style="margin: 0; padding-left: 25px;">
-        <li>國道一號：下「信義交流道」，沿信義路直行約3公里</li>
-        <li>國道三號：下「木柵交流道」，接信義快速道路</li>
+    <p style="margin: 0 0 12px 0; font-size: 17px; font-weight: 600; color: #333;">🚗 自行開車</p>
+    <ul style="margin: 0; padding-left: 24px; list-style-type: disc;">
+        <li style="margin-bottom: 8px; font-size: 15px; color: #555; line-height: 1.7;">國道一號：下「信義交流道」，沿信義路直行約3公里</li>
+        <li style="margin-bottom: 0; font-size: 15px; color: #555; line-height: 1.7;">國道三號：下「木柵交流道」，接信義快速道路</li>
     </ul>
 </div>`;
             }
@@ -6662,14 +6665,24 @@ ${htmlEnd}`;
         if (!checkinParking) {
             checkinParking = await db.getSetting('checkin_reminder_parking') || '';
             if (!checkinParking) {
-                checkinParking = `<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場位置：</strong>B1-B3 地下停車場</p>
-<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車費用：</strong></p>
-<ul style="margin: 0 0 12px 0; padding-left: 25px;">
-    <li>住宿客人：每日 NT$ 200（可無限次進出）</li>
-    <li>臨時停車：每小時 NT$ 50</li>
-</ul>
-<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>停車場開放時間：</strong>24 小時</p>
-<p style="margin: 0; font-size: 15px; color: #666;">⚠️ 停車位有限，建議提前預約</p>`;
+                checkinParking = `<div style="margin-bottom: 18px;">
+    <p style="margin: 0 0 8px 0; font-size: 17px; font-weight: 600; color: #333;">🅿️ 停車場位置</p>
+    <p style="margin: 0; font-size: 15px; color: #555; line-height: 1.6;">B1-B3 地下停車場</p>
+</div>
+<div style="margin-bottom: 18px;">
+    <p style="margin: 0 0 10px 0; font-size: 17px; font-weight: 600; color: #333;">💰 停車費用</p>
+    <ul style="margin: 0; padding-left: 24px; list-style-type: disc;">
+        <li style="margin-bottom: 6px; font-size: 15px; color: #555; line-height: 1.7;">住宿客人：每日 NT$ 200（可無限次進出）</li>
+        <li style="margin-bottom: 0; font-size: 15px; color: #555; line-height: 1.7;">臨時停車：每小時 NT$ 50</li>
+    </ul>
+</div>
+<div style="margin-bottom: 18px;">
+    <p style="margin: 0 0 8px 0; font-size: 17px; font-weight: 600; color: #333;">⏰ 停車場開放時間</p>
+    <p style="margin: 0; font-size: 15px; color: #555; line-height: 1.6;">24 小時</p>
+</div>
+<div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 15px; border-radius: 4px;">
+    <p style="margin: 0; font-size: 15px; color: #856404; line-height: 1.6;">⚠️ 停車位有限，建議提前預約</p>
+</div>`;
             }
         }
         // 替換區塊內容中的變數
@@ -6682,15 +6695,23 @@ ${htmlEnd}`;
         if (!checkinNotes) {
             checkinNotes = await db.getSetting('checkin_reminder_notes') || '';
             if (!checkinNotes) {
-                checkinNotes = `<ul style="margin: 0; padding-left: 25px;">
-    <li>入住時間：<strong>下午 3:00 後</strong></li>
-    <li>退房時間：<strong>上午 11:00 前</strong></li>
-    <li>請攜帶身分證件辦理入住手續</li>
-    <li>房間內禁止吸菸，違者將收取清潔費 NT$ 3,000</li>
-    <li>請保持安靜，避免影響其他住客</li>
-    <li>貴重物品請妥善保管，建議使用房間保險箱</li>
-    <li>如需延遲退房，請提前告知櫃檯</li>
-</ul>`;
+                checkinNotes = `<div style="margin-bottom: 12px;">
+    <p style="margin: 0 0 8px 0; font-size: 17px; font-weight: 600; color: #333;">⏰ 入住退房時間</p>
+    <ul style="margin: 0; padding-left: 24px; list-style-type: disc;">
+        <li style="margin-bottom: 6px; font-size: 15px; color: #555; line-height: 1.7;">入住時間：<strong style="color: #333;">下午 3:00 後</strong></li>
+        <li style="margin-bottom: 0; font-size: 15px; color: #555; line-height: 1.7;">退房時間：<strong style="color: #333;">上午 11:30 前</strong></li>
+    </ul>
+</div>
+<div>
+    <p style="margin: 0 0 10px 0; font-size: 17px; font-weight: 600; color: #333;">📋 重要提醒</p>
+    <ul style="margin: 0; padding-left: 24px; list-style-type: disc;">
+        <li style="margin-bottom: 8px; font-size: 15px; color: #555; line-height: 1.7;">請攜帶身分證件辦理入住手續</li>
+        <li style="margin-bottom: 8px; font-size: 15px; color: #555; line-height: 1.7;">房間內禁止吸菸，違者將收取清潔費 NT$ 3,000</li>
+        <li style="margin-bottom: 8px; font-size: 15px; color: #555; line-height: 1.7;">請保持安靜，避免影響其他住客</li>
+        <li style="margin-bottom: 8px; font-size: 15px; color: #555; line-height: 1.7;">貴重物品請妥善保管，建議使用房間保險箱</li>
+        <li style="margin-bottom: 0; font-size: 15px; color: #555; line-height: 1.7;">如需延遲退房，請提前告知櫃檯</li>
+    </ul>
+</div>`;
             }
         }
         // 替換區塊內容中的變數
