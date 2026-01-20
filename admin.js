@@ -4757,69 +4757,75 @@ async function showEmailTemplateModal(templateKey) {
             }
             
             // 將 HTML 內容載入到 Quill 編輯器
-            // 需要先提取 body 內容（因為模板可能包含完整的 HTML 結構）
-            // 重要：只提取 .content div 內的內容，不要包含 .header div，避免重複標題
+            // ✅ 完全手動版：對於 checkin_reminder，直接使用 template.content，不做任何處理
             let htmlContent = template.content || '';
             
             console.log('載入模板內容，原始長度:', htmlContent.length);
             
-            // 如果是完整的 HTML 文檔，提取 body 內容
-            if (htmlContent.includes('<body>')) {
-                const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-                if (bodyMatch) {
-                    htmlContent = bodyMatch[1];
-                    console.log('提取 body 內容後，長度:', htmlContent.length);
-                }
-            }
-            
-            // 檢查是否有 .content div，如果有，只提取 .content div 內的內容
-            const contentDivStartRegex = /<div[^>]*class\s*=\s*["'][^"']*content[^"']*["'][^>]*>/i;
-            const contentStartMatch = htmlContent.match(contentDivStartRegex);
-            
-            if (contentStartMatch) {
-                const startIndex = contentStartMatch.index;
-                const startTag = contentStartMatch[0];
-                const afterStartTag = htmlContent.substring(startIndex + startTag.length);
-                
-                // 計算嵌套的 div 層級，找到對應的結束標籤
-                let divCount = 1;
-                let currentIndex = 0;
-                let endIndex = -1;
-                
-                while (currentIndex < afterStartTag.length && divCount > 0) {
-                    const openDiv = afterStartTag.indexOf('<div', currentIndex);
-                    const closeDiv = afterStartTag.indexOf('</div>', currentIndex);
-                    
-                    if (closeDiv === -1) break;
-                    
-                    if (openDiv !== -1 && openDiv < closeDiv) {
-                        divCount++;
-                        currentIndex = openDiv + 4;
-                    } else {
-                        divCount--;
-                        if (divCount === 0) {
-                            endIndex = closeDiv;
-                            break;
-                        }
-                        currentIndex = closeDiv + 6;
+            // 對於 checkin_reminder，完全手動模式，不做任何 HTML 處理
+            if (templateKey === 'checkin_reminder') {
+                console.log('✅ 入住提醒模板：完全手動模式，直接使用原始內容');
+                // 不做任何處理，直接使用 template.content
+            } else {
+                // 其他模板保持原有邏輯
+                // 如果是完整的 HTML 文檔，提取 body 內容
+                if (htmlContent.includes('<body>')) {
+                    const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                    if (bodyMatch) {
+                        htmlContent = bodyMatch[1];
+                        console.log('提取 body 內容後，長度:', htmlContent.length);
                     }
                 }
                 
-                if (endIndex !== -1) {
-                    // 只提取 .content div 內的內容，移除 .header div
-                    htmlContent = afterStartTag.substring(0, endIndex);
-                    // 移除可能的 .header div（如果還在內容中）
-                    htmlContent = htmlContent.replace(/<div[^>]*class\s*=\s*["'][^"']*header[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, '');
-                    console.log('✅ 已提取 .content div 內的內容，移除 .header，長度:', htmlContent.length);
+                // 檢查是否有 .content div，如果有，只提取 .content div 內的內容
+                const contentDivStartRegex = /<div[^>]*class\s*=\s*["'][^"']*content[^"']*["'][^>]*>/i;
+                const contentStartMatch = htmlContent.match(contentDivStartRegex);
+                
+                if (contentStartMatch) {
+                    const startIndex = contentStartMatch.index;
+                    const startTag = contentStartMatch[0];
+                    const afterStartTag = htmlContent.substring(startIndex + startTag.length);
+                    
+                    // 計算嵌套的 div 層級，找到對應的結束標籤
+                    let divCount = 1;
+                    let currentIndex = 0;
+                    let endIndex = -1;
+                    
+                    while (currentIndex < afterStartTag.length && divCount > 0) {
+                        const openDiv = afterStartTag.indexOf('<div', currentIndex);
+                        const closeDiv = afterStartTag.indexOf('</div>', currentIndex);
+                        
+                        if (closeDiv === -1) break;
+                        
+                        if (openDiv !== -1 && openDiv < closeDiv) {
+                            divCount++;
+                            currentIndex = openDiv + 4;
+                        } else {
+                            divCount--;
+                            if (divCount === 0) {
+                                endIndex = closeDiv;
+                                break;
+                            }
+                            currentIndex = closeDiv + 6;
+                        }
+                    }
+                    
+                    if (endIndex !== -1) {
+                        // 只提取 .content div 內的內容，移除 .header div
+                        htmlContent = afterStartTag.substring(0, endIndex);
+                        // 移除可能的 .header div（如果還在內容中）
+                        htmlContent = htmlContent.replace(/<div[^>]*class\s*=\s*["'][^"']*header[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, '');
+                        console.log('✅ 已提取 .content div 內的內容，移除 .header，長度:', htmlContent.length);
+                    } else {
+                        // 如果無法找到結束標籤，至少移除 .header div
+                        htmlContent = htmlContent.replace(/<div[^>]*class\s*=\s*["'][^"']*header[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, '');
+                        console.log('⚠️ 無法找到 .content div 結束標籤，已移除 .header div');
+                    }
                 } else {
-                    // 如果無法找到結束標籤，至少移除 .header div
+                    // 如果沒有 .content div，至少移除 .header div
                     htmlContent = htmlContent.replace(/<div[^>]*class\s*=\s*["'][^"']*header[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, '');
-                    console.log('⚠️ 無法找到 .content div 結束標籤，已移除 .header div');
+                    console.log('⚠️ 未找到 .content div，已移除 .header div');
                 }
-            } else {
-                // 如果沒有 .content div，至少移除 .header div
-                htmlContent = htmlContent.replace(/<div[^>]*class\s*=\s*["'][^"']*header[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, '');
-                console.log('⚠️ 未找到 .content div，已移除 .header div');
             }
             
             // 確保 Quill 編輯器已初始化
@@ -5409,17 +5415,32 @@ async function saveEmailTemplate(event) {
     }
     
     // 根據當前模式獲取內容
+    // ✅ 完全手動版：對於 checkin_reminder，直接使用 textarea 的原始 HTML，不做任何處理
     let content = '';
-    if (isHtmlMode) {
+    const textarea = document.getElementById('emailTemplateContent');
+    
+    if (templateKey === 'checkin_reminder') {
+        // 對於入住提醒，完全手動模式：直接使用 textarea 的值（如果存在）
+        if (textarea && textarea.value) {
+            content = textarea.value;
+            console.log('✅ 入住提醒模板（完全手動模式）：直接使用 textarea 的原始 HTML，長度:', content.length);
+        } else if (isHtmlMode) {
+            content = '';
+            console.warn('⚠️ 入住提醒模板：textarea 為空，但處於 HTML 模式');
+        } else {
+            // 如果 textarea 為空，使用 Quill 的內容（但這不應該發生）
+            content = quillEditor ? quillEditor.root.innerHTML : '';
+            console.warn('⚠️ 入住提醒模板：textarea 為空，使用 Quill 內容（可能不完整）');
+        }
+    } else if (isHtmlMode) {
         // HTML 模式：直接從 textarea 獲取
-        content = document.getElementById('emailTemplateContent').value;
+        content = textarea ? textarea.value : '';
         console.log('📝 HTML 模式：從 textarea 獲取內容，長度:', content.length);
     } else {
         // 可視化模式：從 Quill 獲取 HTML
         // 由於 text-change 事件已經同步更新了 textarea，直接使用 textarea 的值
         // 這樣可以確保使用最新的內容，並且保留完整的 HTML 結構
-        const textarea = document.getElementById('emailTemplateContent');
-        content = textarea ? textarea.value : quillEditor.root.innerHTML;
+        content = textarea ? textarea.value : (quillEditor ? quillEditor.root.innerHTML : '');
         
         console.log('📝 可視化模式：從 textarea 獲取內容（已同步），長度:', content.length);
         console.log('📝 內容預覽（前 500 字元）:', content.substring(0, 500));
