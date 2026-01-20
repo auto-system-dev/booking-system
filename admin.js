@@ -4629,6 +4629,12 @@ async function showEmailTemplateModal(templateKey) {
                     const transportContent = blockSettings.transport?.content || '';
                     document.getElementById('checkinBlockTransport').checked = transportEnabled;
                     document.getElementById('checkinBlockTransportContent').value = transportContent;
+                    // 表單模式（優先使用 data）
+                    try {
+                        populateCheckinStructuredFields(blockSettings);
+                    } catch (e) {
+                        console.warn('⚠️ 填入入住提醒表單欄位失敗:', e);
+                    }
                     
                     // 停車資訊區塊
                     const parkingEnabled = blockSettings.parking?.enabled !== false;
@@ -5319,6 +5325,155 @@ async function showEmailTemplateModal(templateKey) {
     }
 }
 
+// ===== 入住提醒（checkin_reminder）表單式編輯：data <-> html =====
+function _getVal(id) {
+    const el = document.getElementById(id);
+    return el ? (el.value || '').trim() : '';
+}
+
+function _setVal(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = value ?? '';
+}
+
+function _splitLines(text) {
+    return (text || '')
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean);
+}
+
+function getDefaultCheckinStructuredData() {
+    return {
+        transport: {
+            address: '{{hotelAddress}}',
+            mrt: '捷運：搭乘板南線至「市政府站」，從2號出口步行約5分鐘',
+            bus: '公車：搭乘 20、32、46 路公車至「信義行政中心站」',
+            driveLines: [
+                '國道一號：下「信義交流道」，沿信義路直行約3公里',
+                '國道三號：下「木柵交流道」，接信義快速道路'
+            ]
+        },
+        parking: {
+            location: 'B1-B3 地下停車場',
+            feeGuest: '住宿客人：每日 NT$ 200（可無限次進出）',
+            feeTemp: '臨時停車：每小時 NT$ 50',
+            openTime: '24 小時',
+            note: '⚠️ 停車位有限，建議提前預約'
+        },
+        notes: {
+            checkinTime: '下午 3:00 後',
+            checkoutTime: '上午 11:30 前',
+            reminders: [
+                '請攜帶身分證件辦理入住手續',
+                '房間內禁止吸菸，違者將收取清潔費 NT$ 3,000',
+                '請保持安靜，避免影響其他住客',
+                '貴重物品請妥善保管，建議使用房間保險箱',
+                '如需延遲退房，請提前告知櫃檯'
+            ]
+        }
+    };
+}
+
+function generateCheckinTransportHtmlFromForm(data) {
+    const address = (data.address || '{{hotelAddress}}').trim();
+    const mrt = (data.mrt || '').trim();
+    const bus = (data.bus || '').trim();
+    const driveLines = Array.isArray(data.driveLines) ? data.driveLines : _splitLines(data.driveLines);
+
+    const transitItems = [mrt, bus].filter(Boolean).map(t => `<li>${escapeHtml(t)}</li>`).join('');
+    const driveItems = driveLines.filter(Boolean).map(t => `<li>${escapeHtml(t)}</li>`).join('');
+
+    return `<p style="margin: 0 0 10px 0; font-size: 15px; color: #444; line-height: 1.6;"><strong>地址：</strong>${escapeHtml(address)}</p>
+<p style="margin: 0 0 10px 0; font-size: 15px; color: #444; line-height: 1.6;"><strong>大眾運輸：</strong></p>
+<ul style="margin: 0 0 15px 0; padding-left: 25px; font-size: 15px; color: #444; line-height: 1.8;">
+    ${transitItems || '<li>（請填寫交通資訊）</li>'}
+</ul>
+<p style="margin: 0 0 10px 0; font-size: 15px; color: #444; line-height: 1.6;"><strong>自行開車：</strong></p>
+<ul style="margin: 0; padding-left: 25px; font-size: 15px; color: #444; line-height: 1.8;">
+    ${driveItems || '<li>（請填寫開車路線）</li>'}
+</ul>`;
+}
+
+function generateCheckinParkingHtmlFromForm(data) {
+    const location = (data.location || '').trim();
+    const feeGuest = (data.feeGuest || '').trim();
+    const feeTemp = (data.feeTemp || '').trim();
+    const openTime = (data.openTime || '').trim();
+    const note = (data.note || '').trim();
+
+    const feeItems = [feeGuest, feeTemp].filter(Boolean).map(t => `<li>${escapeHtml(t)}</li>`).join('');
+
+    return `<p style="margin: 0 0 10px 0; font-size: 15px; color: #444; line-height: 1.6;"><strong>停車場位置：</strong>${escapeHtml(location || '（請填寫停車場位置）')}</p>
+<p style="margin: 0 0 10px 0; font-size: 15px; color: #444; line-height: 1.6;"><strong>停車費用：</strong></p>
+<ul style="margin: 0 0 15px 0; padding-left: 25px; font-size: 15px; color: #444; line-height: 1.8;">
+    ${feeItems || '<li>（請填寫停車費用）</li>'}
+</ul>
+<p style="margin: 0 0 10px 0; font-size: 15px; color: #444; line-height: 1.6;"><strong>停車場開放時間：</strong>${escapeHtml(openTime || '（請填寫開放時間）')}</p>
+${note ? `<p style="margin: 15px 0 0 0; font-size: 15px; color: #856404; line-height: 1.6;">${escapeHtml(note)}</p>` : ''}`;
+}
+
+function generateCheckinNotesHtmlFromForm(data) {
+    const checkinTime = (data.checkinTime || '').trim();
+    const checkoutTime = (data.checkoutTime || '').trim();
+    const reminders = Array.isArray(data.reminders) ? data.reminders : _splitLines(data.reminders);
+    const reminderItems = reminders.filter(Boolean).map(t => `<li>${escapeHtml(t)}</li>`).join('');
+
+    return `<p style="margin: 0 0 8px 0; font-size: 15px; color: #444; line-height: 1.6;">入住時間：<strong>${escapeHtml(checkinTime || '（請填寫入住時間）')}</strong></p>
+<p style="margin: 0 0 15px 0; font-size: 15px; color: #444; line-height: 1.6;">退房時間：<strong>${escapeHtml(checkoutTime || '（請填寫退房時間）')}</strong></p>
+<ul style="margin: 0; padding-left: 25px; font-size: 15px; color: #444; line-height: 1.8;">
+    ${reminderItems || '<li>（請填寫提醒事項）</li>'}
+</ul>`;
+}
+
+function readCheckinStructuredForm() {
+    const driveLines = _splitLines(_getVal('checkinTransportDriveLines'));
+    const reminders = _splitLines(_getVal('checkinNotesReminderLines'));
+    return {
+        transport: {
+            address: _getVal('checkinTransportAddress') || '{{hotelAddress}}',
+            mrt: _getVal('checkinTransportMrt'),
+            bus: _getVal('checkinTransportBus'),
+            driveLines
+        },
+        parking: {
+            location: _getVal('checkinParkingLocation'),
+            feeGuest: _getVal('checkinParkingFeeGuest'),
+            feeTemp: _getVal('checkinParkingFeeTemp'),
+            openTime: _getVal('checkinParkingOpenTime'),
+            note: _getVal('checkinParkingNote')
+        },
+        notes: {
+            checkinTime: _getVal('checkinNotesCheckinTime'),
+            checkoutTime: _getVal('checkinNotesCheckoutTime'),
+            reminders
+        }
+    };
+}
+
+function populateCheckinStructuredFields(blockSettings) {
+    const defaults = getDefaultCheckinStructuredData();
+    const transportData = (blockSettings.transport && blockSettings.transport.data) ? blockSettings.transport.data : defaults.transport;
+    const parkingData = (blockSettings.parking && blockSettings.parking.data) ? blockSettings.parking.data : defaults.parking;
+    const notesData = (blockSettings.notes && blockSettings.notes.data) ? blockSettings.notes.data : defaults.notes;
+
+    _setVal('checkinTransportAddress', transportData.address ?? defaults.transport.address);
+    _setVal('checkinTransportMrt', transportData.mrt ?? defaults.transport.mrt);
+    _setVal('checkinTransportBus', transportData.bus ?? defaults.transport.bus);
+    _setVal('checkinTransportDriveLines', Array.isArray(transportData.driveLines) ? transportData.driveLines.join('\n') : (transportData.driveLines || defaults.transport.driveLines.join('\n')));
+
+    _setVal('checkinParkingLocation', parkingData.location ?? defaults.parking.location);
+    _setVal('checkinParkingFeeGuest', parkingData.feeGuest ?? defaults.parking.feeGuest);
+    _setVal('checkinParkingFeeTemp', parkingData.feeTemp ?? defaults.parking.feeTemp);
+    _setVal('checkinParkingOpenTime', parkingData.openTime ?? defaults.parking.openTime);
+    _setVal('checkinParkingNote', parkingData.note ?? defaults.parking.note);
+
+    _setVal('checkinNotesCheckinTime', notesData.checkinTime ?? defaults.notes.checkinTime);
+    _setVal('checkinNotesCheckoutTime', notesData.checkoutTime ?? defaults.notes.checkoutTime);
+    _setVal('checkinNotesReminderLines', Array.isArray(notesData.reminders) ? notesData.reminders.join('\n') : (notesData.reminders || defaults.notes.reminders.join('\n')));
+}
+
 // 儲存郵件模板
 async function saveEmailTemplate(event) {
     event.preventDefault();
@@ -5732,6 +5887,22 @@ async function sendTestEmail() {
         // 如果是入住提醒郵件，添加區塊設定（從資料庫讀取，確保使用最新的設定）
         if (templateKey === 'checkin_reminder') {
             // 從 UI 元素獲取區塊設定（這些設定應該已經從資料庫載入）
+            // 若是入住提醒：用表單內容自動組回 HTML（仍寫入 block_settings.*.content），並同步存入 data
+            let structuredData = null;
+            if (templateKey === 'checkin_reminder') {
+                structuredData = readCheckinStructuredForm();
+                const transportHtml = generateCheckinTransportHtmlFromForm(structuredData.transport);
+                const parkingHtml = generateCheckinParkingHtmlFromForm(structuredData.parking);
+                const notesHtml = generateCheckinNotesHtmlFromForm(structuredData.notes);
+                // 同步更新進階 textarea，避免使用者看到空白/也方便後續除錯
+                const transportTA = document.getElementById('checkinBlockTransportContent');
+                const parkingTA = document.getElementById('checkinBlockParkingContent');
+                const notesTA = document.getElementById('checkinBlockNotesContent');
+                if (transportTA) transportTA.value = transportHtml;
+                if (parkingTA) parkingTA.value = parkingHtml;
+                if (notesTA) notesTA.value = notesHtml;
+            }
+
             const blockSettings = {
                 booking_info: {
                     enabled: document.getElementById('checkinBlockBookingInfo').checked,
@@ -5739,15 +5910,18 @@ async function sendTestEmail() {
                 },
                 transport: {
                     enabled: document.getElementById('checkinBlockTransport').checked,
-                    content: document.getElementById('checkinBlockTransportContent').value
+                    content: document.getElementById('checkinBlockTransportContent').value,
+                    data: structuredData ? structuredData.transport : undefined
                 },
                 parking: {
                     enabled: document.getElementById('checkinBlockParking').checked,
-                    content: document.getElementById('checkinBlockParkingContent').value
+                    content: document.getElementById('checkinBlockParkingContent').value,
+                    data: structuredData ? structuredData.parking : undefined
                 },
                 notes: {
                     enabled: document.getElementById('checkinBlockNotes').checked,
-                    content: document.getElementById('checkinBlockNotesContent').value
+                    content: document.getElementById('checkinBlockNotesContent').value,
+                    data: structuredData ? structuredData.notes : undefined
                 },
                 contact: {
                     enabled: document.getElementById('checkinBlockContact').checked,
