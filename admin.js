@@ -5711,9 +5711,10 @@ async function sendTestEmail() {
         console.log('📧 發送測試郵件請求:', {
             templateKey,
             email,
-            contentLength: content.length,
+            useEditorContent: false,
             subject,
-            hasBlockSettings: !!requestData.blockSettings
+            hasBlockSettings: !!requestData.blockSettings,
+            note: '不發送 content，讓後端直接從資料庫讀取完整的模板內容'
         });
         
         const response = await fetch(`/api/email-templates/${templateKey}/test`, {
