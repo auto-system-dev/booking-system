@@ -4475,37 +4475,6 @@ window.toggleEmailPreview = function toggleEmailPreview() {
     }
 };
 
-// 載入入住提醒區塊預設值（從系統設定）
-async function loadCheckinBlockDefaults() {
-    try {
-        const response = await fetch('/api/settings');
-        const result = await response.json();
-        if (result.success) {
-            const settings = result.data;
-            
-            // 載入交通路線
-            const transportInput = document.getElementById('checkinBlockTransportContent');
-            if (transportInput && settings.checkin_reminder_transport && !transportInput.value) {
-                transportInput.value = settings.checkin_reminder_transport;
-            }
-            
-            // 載入停車資訊
-            const parkingInput = document.getElementById('checkinBlockParkingContent');
-            if (parkingInput && settings.checkin_reminder_parking && !parkingInput.value) {
-                parkingInput.value = settings.checkin_reminder_parking;
-            }
-            
-            // 載入入住注意事項
-            const notesInput = document.getElementById('checkinBlockNotesContent');
-            if (notesInput && settings.checkin_reminder_notes && !notesInput.value) {
-                notesInput.value = settings.checkin_reminder_notes;
-            }
-        }
-    } catch (error) {
-        console.error('載入入住提醒區塊預設值失敗:', error);
-    }
-}
-
 // 顯示郵件模板編輯模態框
 async function showEmailTemplateModal(templateKey) {
     try {
@@ -4663,7 +4632,7 @@ async function showEmailTemplateModal(templateKey) {
                     
                     // 如果沒有設定，從系統設定載入預設值
                     if (!transportContent && !parkingContent && !notesContent) {
-                        await loadCheckinBlockDefaults();
+                        // 這裡原本會從系統設定載入預設內容，現在改為完全顯示資料庫中的內容，避免混淆
                     }
                 }
             } else if (templateKey === 'feedback_request') {
