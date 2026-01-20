@@ -4211,11 +4211,25 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             });
         }
         
-        // 如果前端明確要求使用編輯器中的內容，則使用 req.body 中的內容
-        // 否則從資料庫讀取最新的模板內容
+        // 優先從資料庫讀取最新的模板內容（確保使用最新的優化版本）
+        // 如果前端明確要求使用編輯器中的內容，則使用 req.body 中的內容覆蓋
         let content, subject;
         let template = null; // 確保 template 變數在整個函數中可用
         
+        // 先從資料庫讀取最新的模板內容（確保使用最新的優化版本）
+        template = await db.getEmailTemplateByKey(key);
+        if (!template) {
+            return res.status(404).json({
+                success: false,
+                message: '找不到該郵件模板'
+            });
+        }
+        
+        // 預設使用資料庫中的最新內容
+        content = template.content;
+        subject = template.subject;
+        
+        // 如果前端明確要求使用編輯器中的內容，則覆蓋資料庫中的值
         if (useEditorContent && req.body.content && req.body.subject) {
             // 使用編輯器中的內容（用戶修改後的內容）
             content = req.body.content;
@@ -4224,14 +4238,6 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             console.log(`   內容長度: ${content.length} 字元`);
             console.log(`   主旨: ${subject}`);
             
-            // 仍然需要從資料庫讀取模板以獲取模板名稱和其他資訊
-            template = await db.getEmailTemplateByKey(key);
-            if (!template) {
-                return res.status(404).json({
-                    success: false,
-                    message: '找不到該郵件模板'
-                });
-            }
             // 使用編輯器中的內容和主題覆蓋資料庫中的值（用於測試郵件）
             template.content = content;
             template.subject = subject;
@@ -4249,16 +4255,18 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
                 console.log('⚠️ 入住提醒郵件但未提供 blockSettings，將使用資料庫中的設定');
             }
         } else {
-            // 從資料庫讀取最新的模板內容
-            template = await db.getEmailTemplateByKey(key);
-            if (!template) {
-                return res.status(404).json({
-                    success: false,
-                    message: '找不到該郵件模板'
-                });
+            // 使用資料庫中的最新內容（預設行為）
+            console.log(`📧 測試郵件：使用資料庫中的最新內容 (${key})`);
+            console.log(`   內容長度: ${content.length} 字元`);
+            console.log(`   主旨: ${subject}`);
+            
+            // 對於入住提醒郵件，如果提供了 blockSettings，使用它們（即使不使用編輯器內容）
+            if (req.body.blockSettings && key === 'checkin_reminder') {
+                template.block_settings = typeof req.body.blockSettings === 'string' 
+                    ? req.body.blockSettings 
+                    : JSON.stringify(req.body.blockSettings);
+                console.log('✅ 測試郵件使用提供的區塊設定');
             }
-            content = template.content;
-            subject = template.subject;
         }
         
         // Email 格式驗證

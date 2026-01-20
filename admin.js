@@ -5668,15 +5668,18 @@ async function sendTestEmail() {
         const templateName = document.getElementById('emailTemplateName').value;
         
         // 準備請求資料
+        // 優先使用資料庫中的最新內容（確保重置後使用最新的優化版本）
+        // 如果用戶修改了編輯器內容，可以通過設置 useEditorContent: true 來使用編輯器內容
         const requestData = {
             email: email,
-            useEditorContent: true,
-            content: content,
+            useEditorContent: false, // 改為 false，讓後端使用資料庫中的最新內容（確保使用最新的優化版本）
+            content: content, // 仍然發送內容作為備用
             subject: subject
         };
         
-        // 如果是入住提醒郵件，添加區塊設定
+        // 如果是入住提醒郵件，添加區塊設定（從資料庫讀取，確保使用最新的設定）
         if (templateKey === 'checkin_reminder') {
+            // 從 UI 元素獲取區塊設定（這些設定應該已經從資料庫載入）
             const blockSettings = {
                 booking_info: {
                     enabled: document.getElementById('checkinBlockBookingInfo').checked,
