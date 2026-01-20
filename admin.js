@@ -5668,14 +5668,17 @@ async function sendTestEmail() {
         const templateName = document.getElementById('emailTemplateName').value;
         
         // 準備請求資料
-        // 優先使用資料庫中的最新內容（確保重置後使用最新的優化版本）
-        // 如果用戶修改了編輯器內容，可以通過設置 useEditorContent: true 來使用編輯器內容
+        // 重要：測試郵件應該直接使用資料庫中的完整模板內容，而不是編輯器中的部分內容
+        // 這樣可以確保使用最新的優化版本（包含完整的 HTML 結構和 CSS）
+        // 不發送 content，讓後端直接從資料庫讀取完整的模板內容
         const requestData = {
             email: email,
-            useEditorContent: false, // 改為 false，讓後端使用資料庫中的最新內容（確保使用最新的優化版本）
-            content: content, // 仍然發送內容作為備用
+            useEditorContent: false, // 設為 false，讓後端使用資料庫中的最新完整內容
             subject: subject
+            // 不發送 content，讓後端直接從資料庫讀取完整的模板內容（7873 字元）
         };
+        
+        console.log('📧 測試郵件：不發送編輯器內容，讓後端直接從資料庫讀取完整模板');
         
         // 如果是入住提醒郵件，添加區塊設定（從資料庫讀取，確保使用最新的設定）
         if (templateKey === 'checkin_reminder') {
