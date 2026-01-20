@@ -6299,7 +6299,7 @@ ${htmlEnd}`;
     
     // 入住提醒郵件專用變數：從模板的 block_settings 讀取可編輯內容
     // 這些內容可以由業主在後台自由修改，不影響郵件排版
-    const templateKey = template.key || template.template_key;
+    // templateKey 已在上面聲明，這裡直接使用
     if (templateKey === 'checkin_reminder') {
         // 解析區塊設定
         let blockSettings = {};
