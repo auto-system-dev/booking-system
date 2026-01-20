@@ -6075,9 +6075,22 @@ async function generateEmailFromTemplate(templateKey, booking, bankInfo = null, 
 async function replaceTemplateVariables(template, booking, bankInfo = null, additionalData = {}) {
     // 確保模板內容存在（支援多種欄位名稱）
     let content = template.content || template.template_content || '';
+    
+    const templateKey = template.key || template.template_key;
+    
+    // 添加日誌以確認接收到的模板內容
+    console.log(`🔍 replaceTemplateVariables - 接收到的模板內容 (${templateKey}):`, {
+        contentLength: content.length,
+        hasContent: !!content,
+        hasFullHtmlStructure: content.includes('<!DOCTYPE html>') || content.includes('<html'),
+        hasStyleTag: content.includes('<style>') || content.includes('<style '),
+        hasBodyTag: content.includes('<body>') || content.includes('<body '),
+        hasBlockSettings: !!template.block_settings
+    });
+    
     if (!content || content.trim() === '') {
         console.error('❌ 郵件模板內容為空:', {
-            templateKey: template.key || template.template_key,
+            templateKey: templateKey,
             hasContent: !!template.content,
             hasTemplateContent: !!template.template_content
         });
