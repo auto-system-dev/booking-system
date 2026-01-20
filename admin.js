@@ -4768,7 +4768,7 @@ async function showEmailTemplateModal(templateKey) {
                     }
                 }
                 
-                // 合併區塊內容到主內容中
+                // 合併區塊內容到主內容中（優先對應新版 card 版型的 section-card 結構）
                 // 替換交通路線區塊的內容
                 if (blockSettings.transport?.content && blockSettings.transport.content.trim()) {
                     const transportContent = blockSettings.transport.content.trim();
@@ -4830,8 +4830,27 @@ async function showEmailTemplateModal(templateKey) {
                 } else {
                     htmlContent = bodyContent;
                 }
+
+                // 🔁 兼容舊版：如果模板裡仍然使用 {{checkinTransport}} 等佔位符，
+                // 直接用 block_settings 的內容做字串替換，讓編輯器可以看到實際 HTML。
+                if (blockSettings.transport?.content && blockSettings.transport.content.trim()) {
+                    const transportContent = blockSettings.transport.content.trim();
+                    htmlContent = htmlContent.replace(/\{\{checkinTransport\}\}/g, transportContent);
+                }
+                if (blockSettings.parking?.content && blockSettings.parking.content.trim()) {
+                    const parkingContent = blockSettings.parking.content.trim();
+                    htmlContent = htmlContent.replace(/\{\{checkinParking\}\}/g, parkingContent);
+                }
+                if (blockSettings.notes?.content && blockSettings.notes.content.trim()) {
+                    const notesContent = blockSettings.notes.content.trim();
+                    htmlContent = htmlContent.replace(/\{\{checkinNotes\}\}/g, notesContent);
+                }
+                if (blockSettings.contact?.content && blockSettings.contact.content.trim()) {
+                    const contactContent = blockSettings.contact.content.trim();
+                    htmlContent = htmlContent.replace(/\{\{checkinContact\}\}/g, contactContent);
+                }
                 
-                console.log('✅ 已合併區塊內容到主內容，最終長度:', htmlContent.length);
+                console.log('✅ 已合併（含字串替換）區塊內容到主內容，最終長度:', htmlContent.length);
             } else {
                 // 其他模板：如果是完整的 HTML 文檔，提取 body 內容
                 if (htmlContent.includes('<body>')) {
