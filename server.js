@@ -4278,9 +4278,17 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             }
         } else {
             // 使用資料庫中的最新內容（預設行為）
+            // 重要：即使前端發送了 content，也不使用它，確保使用資料庫中的完整內容
             console.log(`📧 測試郵件：使用資料庫中的最新內容 (${key})`);
             console.log(`   內容長度: ${content.length} 字元`);
             console.log(`   主旨: ${subject}`);
+            console.log(`   前端是否發送了 content: ${!!req.body.content}`);
+            if (req.body.content) {
+                console.log(`   前端發送的 content 長度: ${req.body.content.length} 字元（將被忽略）`);
+            }
+            
+            // 確保使用資料庫中的完整內容，不使用前端發送的任何 content
+            // template.content 和 template.subject 已經從資料庫讀取，不需要修改
             
             // 對於入住提醒郵件，如果提供了 blockSettings，使用它們（即使不使用編輯器內容）
             if (req.body.blockSettings && key === 'checkin_reminder') {
