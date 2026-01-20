@@ -4229,6 +4229,28 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         content = template.content;
         subject = template.subject;
         
+        // 添加日誌以確認從資料庫讀取的內容
+        console.log(`📧 測試郵件：從資料庫讀取模板 (${key})`);
+        console.log(`   內容長度: ${content.length} 字元`);
+        console.log(`   主旨: ${subject}`);
+        console.log(`   是否有 block_settings: ${!!template.block_settings}`);
+        if (key === 'checkin_reminder' && template.block_settings) {
+            try {
+                const blockSettings = typeof template.block_settings === 'string' 
+                    ? JSON.parse(template.block_settings) 
+                    : template.block_settings;
+                console.log(`   區塊設定:`, {
+                    booking_info: blockSettings.booking_info?.enabled !== false ? '啟用' : '停用',
+                    transport: blockSettings.transport?.enabled !== false ? '啟用' : '停用',
+                    parking: blockSettings.parking?.enabled !== false ? '啟用' : '停用',
+                    notes: blockSettings.notes?.enabled !== false ? '啟用' : '停用',
+                    contact: blockSettings.contact?.enabled !== false ? '啟用' : '停用'
+                });
+            } catch (e) {
+                console.warn('⚠️ 解析 block_settings 失敗:', e);
+            }
+        }
+        
         // 如果前端明確要求使用編輯器中的內容，則覆蓋資料庫中的值
         if (useEditorContent && req.body.content && req.body.subject) {
             // 使用編輯器中的內容（用戶修改後的內容）
