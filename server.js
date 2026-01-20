@@ -5992,7 +5992,20 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
                 updateData.block_settings = template.block_settings;
             }
             
+            // 添加日誌以確認重置的內容
+            console.log(`🔄 重置郵件模板: ${template.key}`);
+            console.log(`   內容長度: ${template.content.length} 字元`);
+            console.log(`   是否有 block_settings: ${!!template.block_settings}`);
+            if (template.key === 'checkin_reminder') {
+                const hasNewCSS = template.content.includes('linear-gradient(135deg, #262A33') || 
+                                  template.content.includes('section-title') ||
+                                  template.content.includes('section-content');
+                console.log(`   是否包含新的優化 CSS: ${hasNewCSS}`);
+            }
+            
             await db.updateEmailTemplate(template.key, updateData);
+            
+            console.log(`✅ 郵件模板「${template.name}」已重置為預設的圖卡樣式`);
             
             res.json({
                 success: true,
