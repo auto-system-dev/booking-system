@@ -4735,10 +4735,103 @@ async function showEmailTemplateModal(templateKey) {
             
             console.log('載入模板內容，原始長度:', htmlContent.length);
             
-            // 對於 checkin_reminder，完全手動模式，不做任何 HTML 處理
+            // 對於 checkin_reminder，從 block_settings 讀取區塊內容並合併到主內容中
             if (templateKey === 'checkin_reminder') {
-                console.log('✅ 入住提醒模板：完全手動模式，直接使用原始內容');
-                // 不做任何處理，直接使用 template.content
+                console.log('✅ 入住提醒模板：從 block_settings 讀取區塊內容');
+                
+                // 解析 block_settings
+                let blockSettings = {};
+                if (template.block_settings) {
+                    try {
+                        blockSettings = typeof template.block_settings === 'string' 
+                            ? JSON.parse(template.block_settings) 
+                            : template.block_settings;
+                        console.log('✅ 已讀取 block_settings:', {
+                            hasTransport: !!blockSettings.transport?.content,
+                            hasParking: !!blockSettings.parking?.content,
+                            hasNotes: !!blockSettings.notes?.content,
+                            hasContact: !!blockSettings.contact?.content
+                        });
+                    } catch (e) {
+                        console.warn('⚠️ 解析 block_settings 失敗:', e);
+                    }
+                }
+                
+                // 提取 body 內容（如果有的話）
+                let bodyContent = htmlContent;
+                let hasFullHtml = false;
+                if (htmlContent.includes('<body>')) {
+                    const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                    if (bodyMatch) {
+                        bodyContent = bodyMatch[1];
+                        hasFullHtml = true;
+                    }
+                }
+                
+                // 合併區塊內容到主內容中
+                // 替換交通路線區塊的內容
+                if (blockSettings.transport?.content && blockSettings.transport.content.trim()) {
+                    const transportContent = blockSettings.transport.content.trim();
+                    // 尋找交通路線區塊的 section-body 並替換內容
+                    bodyContent = bodyContent.replace(
+                        /(<div[^>]*class\s*=\s*["'][^"']*section-card[^"']*section-transport[^"']*["'][^>]*>[\s\S]*?<div[^>]*class\s*=\s*["'][^"']*section-body[^"']*["'][^>]*>)([\s\S]*?)(<\/div>\s*<\/div>\s*<!--\s*停車資訊)/i,
+                        (match, start, oldContent, end) => {
+                            return start + transportContent + end;
+                        }
+                    );
+                }
+                
+                // 替換停車資訊區塊的內容
+                if (blockSettings.parking?.content && blockSettings.parking.content.trim()) {
+                    const parkingContent = blockSettings.parking.content.trim();
+                    bodyContent = bodyContent.replace(
+                        /(<div[^>]*class\s*=\s*["'][^"']*section-card[^"']*section-parking[^"']*["'][^>]*>[\s\S]*?<div[^>]*class\s*=\s*["'][^"']*section-body[^"']*["'][^>]*>)([\s\S]*?)(<\/div>\s*<\/div>\s*<!--\s*入住注意事項)/i,
+                        (match, start, oldContent, end) => {
+                            return start + parkingContent + end;
+                        }
+                    );
+                }
+                
+                // 替換入住注意事項區塊的內容
+                if (blockSettings.notes?.content && blockSettings.notes.content.trim()) {
+                    const notesContent = blockSettings.notes.content.trim();
+                    bodyContent = bodyContent.replace(
+                        /(<div[^>]*class\s*=\s*["'][^"']*section-card[^"']*section-notes[^"']*["'][^>]*>[\s\S]*?<div[^>]*class\s*=\s*["'][^"']*section-body[^"']*["'][^>]*>)([\s\S]*?)(<\/div>\s*<\/div>\s*<!--\s*聯絡資訊)/i,
+                        (match, start, oldContent, end) => {
+                            return start + notesContent + end;
+                        }
+                    );
+                }
+                
+                // 替換聯絡資訊區塊的內容
+                if (blockSettings.contact?.content && blockSettings.contact.content.trim()) {
+                    const contactContent = blockSettings.contact.content.trim();
+                    // 尋找最後一個聯絡資訊區塊
+                    const contactRegex = /(<div[^>]*class\s*=\s*["'][^"']*section-card[^"']*section-contact[^"']*["'][^>]*>[\s\S]*?<div[^>]*class\s*=\s*["'][^"']*section-body[^"']*["'][^>]*>)([\s\S]*?)(<\/div>\s*<\/div>)/gi;
+                    const matches = [...bodyContent.matchAll(contactRegex)];
+                    if (matches.length > 0) {
+                        // 替換最後一個匹配
+                        const lastMatch = matches[matches.length - 1];
+                        const startIndex = lastMatch.index;
+                        const endIndex = startIndex + lastMatch[0].length;
+                        bodyContent = bodyContent.substring(0, startIndex) + 
+                                    lastMatch[1] + contactContent + lastMatch[3] + 
+                                    bodyContent.substring(endIndex);
+                    }
+                }
+                
+                // 如果原始內容包含完整的 HTML 結構，保持結構；否則只使用 body 內容
+                if (hasFullHtml) {
+                    // 替換 body 標籤內的內容
+                    htmlContent = htmlContent.replace(
+                        /<body[^>]*>[\s\S]*?<\/body>/i,
+                        `<body>${bodyContent}</body>`
+                    );
+                } else {
+                    htmlContent = bodyContent;
+                }
+                
+                console.log('✅ 已合併區塊內容到主內容，最終長度:', htmlContent.length);
             } else {
                 // 其他模板：如果是完整的 HTML 文檔，提取 body 內容
                 if (htmlContent.includes('<body>')) {
