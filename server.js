@@ -6119,8 +6119,18 @@ app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, admi
             };
         }
         
-        // 更新模板
+        // 更新模板（需要提供所有必要欄位，避免 null 值錯誤）
         await db.updateEmailTemplate('checkin_reminder', {
+            template_name: template.template_name || template.name || '入住提醒',
+            subject: template.subject || '【入住提醒】歡迎您明天入住',
+            content: template.content || '',
+            is_enabled: template.is_enabled !== undefined ? template.is_enabled : 1,
+            days_before_checkin: template.days_before_checkin !== undefined ? template.days_before_checkin : 1,
+            send_hour_checkin: template.send_hour_checkin !== undefined ? template.send_hour_checkin : 9,
+            days_after_checkout: template.days_after_checkout !== undefined ? template.days_after_checkout : null,
+            send_hour_feedback: template.send_hour_feedback !== undefined ? template.send_hour_feedback : null,
+            days_reserved: template.days_reserved !== undefined ? template.days_reserved : null,
+            send_hour_payment_reminder: template.send_hour_payment_reminder !== undefined ? template.send_hour_payment_reminder : null,
             block_settings: JSON.stringify(blockSettings)
         });
         
