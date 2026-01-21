@@ -612,97 +612,118 @@ async function initEmailTemplates() {
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #4caf50; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
-        .header p { font-size: 18px; margin: 0; opacity: 0.95; }
-        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #4caf50; }
-        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
-        .info-row:last-child { border-bottom: none; }
-        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
-        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
-        .info-value strong { color: #333; font-weight: 700; }
-        .section-title { color: #333; font-size: 20px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
-        .section-title:first-of-type { margin-top: 0; }
-        p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
-        .greeting { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
-        .intro-text { font-size: 16px; color: #555; margin-bottom: 25px; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; background-color: #ffffff; }
+        .header { background: #262A33; color: white; padding: 35px 30px; text-align: center; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 8px 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .header p { font-size: 16px; margin: 0; opacity: 0.9; }
+        .content { background: #ffffff; padding: 30px; }
+        .greeting { font-size: 15px; margin: 0 0 6px 0; }
+        .intro-text { font-size: 14px; margin: 0 0 18px 0; color: #555; }
+        .card { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 8px; margin: 0 0 20px 0; overflow: hidden; }
+        .card-header-dark { background: #262A33; color: white; padding: 15px 20px; display: flex; align-items: center; gap: 10px; }
+        .card-header-dark .icon { font-size: 20px; }
+        .card-header-dark span:last-child { font-size: 18px; font-weight: 600; }
+        .card-body { padding: 20px; }
+        .booking-table { width: 100%; border-collapse: collapse; }
+        .booking-table td { padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .booking-table tr:last-child td { border-bottom: none; }
+        .booking-label { font-weight: 600; color: #666; font-size: 15px; width: 120px; }
+        .booking-value { color: #333; font-size: 15px; text-align: right; }
+        .booking-value-strong { font-weight: 700; color: #262A33; }
+        .section-card { border-radius: 8px; margin: 0 0 20px 0; overflow: hidden; border: 1px solid; }
+        .section-transport { background: #e3f2fd; border-color: #90caf9; }
+        .section-parking { background: #e3f2fd; border-color: #90caf9; }
+        .section-notes { background: #fff9c4; border-color: #ffd54f; }
+        .section-contact { background: #e3f2fd; border-color: #90caf9; }
+        .section-header { padding: 15px 20px; display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
+        .section-transport .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-parking .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-notes .section-header { color: #856404; background: rgba(255, 193, 7, 0.2); }
+        .section-contact .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-header .icon { font-size: 20px; }
+        .section-body { padding: 20px; }
+        .section-body p { margin: 0 0 12px 0; font-size: 16px; }
+        .section-body p:last-child { margin-bottom: 0; }
+        .section-body ul { margin: 12px 0; padding-left: 24px; }
+        .section-body li { margin: 8px 0; font-size: 16px; }
+        .mb-4 { margin-bottom: 16px !important; }
+        .mt-16 { margin-top: 16px !important; }
+        .footer-text { text-align: center; font-size: 16px; color: #333; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e8e8e8; }
         strong { color: #333; font-weight: 700; }
-        ul { margin: 15px 0; padding-left: 30px; }
-        li { margin: 10px 0; font-size: 16px; line-height: 1.8; }
-        .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .info-section { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .info-section-title { font-size: 20px; font-weight: bold; color: #2e7d32; margin: 0 0 15px 0; }
-        .section-content { margin-top: 12px; }
-        .section-content p { margin-bottom: 10px; }
-        .section-content p:last-child { margin-bottom: 0; }
-        .contact-info { background: white; padding: 15px; border-radius: 6px; margin-top: 12px; }
-        .contact-info p { margin-bottom: 8px; font-size: 16px; }
-        .contact-info p:last-child { margin-bottom: 0; }
-        .contact-info strong { color: #2e7d32; min-width: 80px; display: inline-block; }
-        .closing-message { margin-top: 35px; padding-top: 25px; border-top: 1px solid #e8e8e8; text-align: center; font-size: 17px; font-weight: 500; color: #333; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🏨 入住提醒</h1>
+            <h1><span>🏨</span><span>入住提醒</span></h1>
             <p>歡迎您明天的到來</p>
         </div>
         <div class="content">
             <p class="greeting">親愛的 {{guestName}} 您好，</p>
-            <p class="intro-text">感謝您選擇我們的住宿服務！我們期待您明天的到來。</p>
+            <p class="intro-text">感謝您選擇我們的住宿服務，我們期待您明天的到來。</p>
             
             {{#if showBookingInfo}}
-            <div class="info-box">
-                <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">📅 訂房資訊</div>
-                <div class="section-content">
+            <div class="card">
+                <div class="card-header-dark">
+                    <span class="icon">📅</span>
+                    <span>訂房資訊</span>
+                </div>
+                <div class="card-body">
                     {{bookingInfoContent}}
                 </div>
             </div>
             {{/if}}
             
             {{#if showTransport}}
-            <div class="info-section">
-                <div class="info-section-title">📍 交通路線</div>
-                <div class="section-content">
+            <div class="section-card section-transport">
+                <div class="section-header">
+                    <span class="icon">📍</span>
+                    <span>交通路線</span>
+                </div>
+                <div class="section-body">
                     {{checkinTransport}}
                 </div>
             </div>
             {{/if}}
             
             {{#if showParking}}
-            <div class="info-section">
-                <div class="info-section-title">🅿️ 停車資訊</div>
-                <div class="section-content">
+            <div class="section-card section-parking">
+                <div class="section-header">
+                    <span class="icon">🅿️</span>
+                    <span>停車資訊</span>
+                </div>
+                <div class="section-body">
                     {{checkinParking}}
                 </div>
             </div>
             {{/if}}
             
             {{#if showNotes}}
-            <div class="highlight-box">
-                <div class="section-title" style="margin-top: 0; margin-bottom: 12px;">⚠️ 入住注意事項</div>
-                <div class="section-content">
+            <div class="section-card section-notes">
+                <div class="section-header">
+                    <span class="icon">⚠️</span>
+                    <span>入住注意事項</span>
+                </div>
+                <div class="section-body">
                     {{checkinNotes}}
                 </div>
             </div>
             {{/if}}
             
             {{#if showContact}}
-            <div class="info-section">
-                <div class="info-section-title">📞 聯絡資訊</div>
-                <div class="section-content">
-                    <div class="contact-info">
-                        {{checkinContact}}
-                    </div>
+            <div class="section-card section-contact">
+                <div class="section-header">
+                    <span class="icon">📞</span>
+                    <span>聯絡資訊</span>
+                </div>
+                <div class="section-body">
+                    {{checkinContact}}
                 </div>
             </div>
             {{/if}}
             
-            <p class="closing-message">期待您的到來，祝您住宿愉快！</p>
+            <p class="footer-text">期待您的到來，祝您住宿愉快！</p>
         </div>
     </div>
 </body>
