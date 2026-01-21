@@ -5173,15 +5173,18 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             {{#if showContact}}
             <div class="info-section">
                 <div class="info-section-title">📞 聯絡資訊</div>
-                <p style="margin: 0 0 15px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: underline;">{{hotelEmail}}</a></p>
-                <p style="margin: 0; font-size: 16px;"><strong>服務時間：</strong>24 小時</p>
+                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">如有任何問題，歡迎隨時聯繫我們：</p>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
+                    <p style="margin: 0 0 8px 0; font-size: 16px;"><strong style="color: #1976d2;">📧 Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: none;">{{hotelEmail}}</a></p>
+                    <p style="margin: 0; font-size: 16px;"><strong style="color: #1976d2;">📞 電話：</strong><a href="tel:{{hotelPhone}}" style="color: #1976d2; text-decoration: none;">{{hotelPhone}}</a></p>
+                </div>
+                <p style="margin: 0; font-size: 15px; color: #1976d2; font-weight: 600;">期待您的到來，祝您住宿愉快！</p>
             </div>
             {{/if}}
             
-            <p style="margin-top: 35px; font-size: 17px; font-weight: 500; text-align: center;">期待您的到來，祝您住宿愉快！</p>
-            <p style="margin-top: 10px; font-size: 16px; text-align: center; color: #666;">祝您 身體健康，萬事如意</p>
+            <p style="margin-top: 35px; font-size: 18px; font-weight: 600; text-align: center; color: #333;">期待您的到來，祝您住宿愉快！</p>
+            <p style="margin-top: 12px; font-size: 16px; text-align: center; color: #666; line-height: 1.8;">祝您 身體健康，萬事如意</p>
+            <p style="margin-top: 8px; font-size: 15px; text-align: center; color: #999;">感謝您的支持與信任</p>
         </div>
     </div>
 </body>
@@ -5935,15 +5938,18 @@ app.post('/api/email-templates/checkin_reminder/regenerate', requireAuth, adminL
             {{#if showContact}}
             <div class="info-section">
                 <div class="info-section-title">📞 聯絡資訊</div>
-                <p style="margin: 0 0 15px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: underline;">{{hotelEmail}}</a></p>
-                <p style="margin: 0; font-size: 16px;"><strong>服務時間：</strong>24 小時</p>
+                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">如有任何問題，歡迎隨時聯繫我們：</p>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
+                    <p style="margin: 0 0 8px 0; font-size: 16px;"><strong style="color: #1976d2;">📧 Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: none;">{{hotelEmail}}</a></p>
+                    <p style="margin: 0; font-size: 16px;"><strong style="color: #1976d2;">📞 電話：</strong><a href="tel:{{hotelPhone}}" style="color: #1976d2; text-decoration: none;">{{hotelPhone}}</a></p>
+                </div>
+                <p style="margin: 0; font-size: 15px; color: #1976d2; font-weight: 600;">期待您的到來，祝您住宿愉快！</p>
             </div>
             {{/if}}
             
-            <p style="margin-top: 35px; font-size: 17px; font-weight: 500; text-align: center;">期待您的到來，祝您住宿愉快！</p>
-            <p style="margin-top: 10px; font-size: 16px; text-align: center; color: #666;">祝您 身體健康，萬事如意</p>
+            <p style="margin-top: 35px; font-size: 18px; font-weight: 600; text-align: center; color: #333;">期待您的到來，祝您住宿愉快！</p>
+            <p style="margin-top: 12px; font-size: 16px; text-align: center; color: #666; line-height: 1.8;">祝您 身體健康，萬事如意</p>
+            <p style="margin-top: 8px; font-size: 15px; text-align: center; color: #999;">感謝您的支持與信任</p>
         </div>
     </div>
 </body>
@@ -6115,15 +6121,18 @@ app.post('/api/email-templates/checkin_reminder/force-update-card-format', requi
             {{#if showContact}}
             <div class="info-section">
                 <div class="info-section-title">📞 聯絡資訊</div>
-                <p style="margin: 0 0 15px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: underline;">{{hotelEmail}}</a></p>
-                <p style="margin: 0; font-size: 16px;"><strong>服務時間：</strong>24 小時</p>
+                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">如有任何問題，歡迎隨時聯繫我們：</p>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
+                    <p style="margin: 0 0 8px 0; font-size: 16px;"><strong style="color: #1976d2;">📧 Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: none;">{{hotelEmail}}</a></p>
+                    <p style="margin: 0; font-size: 16px;"><strong style="color: #1976d2;">📞 電話：</strong><a href="tel:{{hotelPhone}}" style="color: #1976d2; text-decoration: none;">{{hotelPhone}}</a></p>
+                </div>
+                <p style="margin: 0; font-size: 15px; color: #1976d2; font-weight: 600;">期待您的到來，祝您住宿愉快！</p>
             </div>
             {{/if}}
             
-            <p style="margin-top: 35px; font-size: 17px; font-weight: 500; text-align: center;">期待您的到來，祝您住宿愉快！</p>
-            <p style="margin-top: 10px; font-size: 16px; text-align: center; color: #666;">祝您 身體健康，萬事如意</p>
+            <p style="margin-top: 35px; font-size: 18px; font-weight: 600; text-align: center; color: #333;">期待您的到來，祝您住宿愉快！</p>
+            <p style="margin-top: 12px; font-size: 16px; text-align: center; color: #666; line-height: 1.8;">祝您 身體健康，萬事如意</p>
+            <p style="margin-top: 8px; font-size: 15px; text-align: center; color: #999;">感謝您的支持與信任</p>
         </div>
     </div>
 </body>
@@ -6323,15 +6332,18 @@ app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, admi
             {{#if showContact}}
             <div class="info-section">
                 <div class="info-section-title">📞 聯絡資訊</div>
-                <p style="margin: 0 0 15px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
-                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: underline;">{{hotelEmail}}</a></p>
-                <p style="margin: 0; font-size: 16px;"><strong>服務時間：</strong>24 小時</p>
+                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">如有任何問題，歡迎隨時聯繫我們：</p>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
+                    <p style="margin: 0 0 8px 0; font-size: 16px;"><strong style="color: #1976d2;">📧 Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: none;">{{hotelEmail}}</a></p>
+                    <p style="margin: 0; font-size: 16px;"><strong style="color: #1976d2;">📞 電話：</strong><a href="tel:{{hotelPhone}}" style="color: #1976d2; text-decoration: none;">{{hotelPhone}}</a></p>
+                </div>
+                <p style="margin: 0; font-size: 15px; color: #1976d2; font-weight: 600;">期待您的到來，祝您住宿愉快！</p>
             </div>
             {{/if}}
             
-            <p style="margin-top: 35px; font-size: 17px; font-weight: 500; text-align: center;">期待您的到來，祝您住宿愉快！</p>
-            <p style="margin-top: 10px; font-size: 16px; text-align: center; color: #666;">祝您 身體健康，萬事如意</p>
+            <p style="margin-top: 35px; font-size: 18px; font-weight: 600; text-align: center; color: #333;">期待您的到來，祝您住宿愉快！</p>
+            <p style="margin-top: 12px; font-size: 16px; text-align: center; color: #666; line-height: 1.8;">祝您 身體健康，萬事如意</p>
+            <p style="margin-top: 8px; font-size: 15px; text-align: center; color: #999;">感謝您的支持與信任</p>
         </div>
     </div>
 </body>
