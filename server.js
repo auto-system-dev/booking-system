@@ -5152,35 +5152,36 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             {{#if showTransport}}
             <div class="info-section">
                 <div class="info-section-title">📍 交通路線</div>
-                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">{{checkinTransport}}</p>
+                <p style="margin: 0 0 15px 0; font-size: 16px;">{{checkinTransport}}</p>
             </div>
             {{/if}}
             
             {{#if showParking}}
             <div class="info-section">
                 <div class="info-section-title">🅿️ 停車資訊</div>
-                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">{{checkinParking}}</p>
+                <p style="margin: 0 0 15px 0; font-size: 16px;">{{checkinParking}}</p>
             </div>
             {{/if}}
             
             {{#if showNotes}}
             <div class="highlight-box">
                 <div class="section-title" style="margin-top: 0; margin-bottom: 12px; color: #856404; justify-content: center;">⚠️ 入住注意事項</div>
-                <p style="margin: 0; font-size: 16px; line-height: 1.8;">{{checkinNotes}}</p>
+                <p style="margin: 0; font-size: 16px;">{{checkinNotes}}</p>
             </div>
             {{/if}}
             
             {{#if showContact}}
             <div class="info-section">
                 <div class="info-section-title">📞 聯絡資訊</div>
-                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">如有任何問題，歡迎隨時聯繫我們：</p>
-                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
-                    {{checkinContact}}
-                </div>
+                <p style="margin: 0 0 15px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
+                <p style="margin: 0; font-size: 15px; color: #1976d2; font-weight: 600;">期待您的到來，祝您住宿愉快！</p>
             </div>
             {{/if}}
             
-            <p style="margin-top: 35px; font-size: 18px; font-weight: 600; text-align: center; color: #333;">期待您的到來，祝您住宿愉快！</p>
+            <p style="margin-top: 35px; font-size: 17px; font-weight: 500; text-align: center;">期待您的到來，祝您住宿愉快！</p>
+            <p style="margin-top: 10px; font-size: 16px; text-align: center; color: #666;">祝您 身體健康，萬事如意</p>
         </div>
     </div>
 </body>
@@ -5908,35 +5909,36 @@ app.post('/api/email-templates/checkin_reminder/force-update-card-format', requi
             {{#if showTransport}}
             <div class="info-section">
                 <div class="info-section-title">📍 交通路線</div>
-                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">{{checkinTransport}}</p>
+                <p style="margin: 0 0 15px 0; font-size: 16px;">{{checkinTransport}}</p>
             </div>
             {{/if}}
             
             {{#if showParking}}
             <div class="info-section">
                 <div class="info-section-title">🅿️ 停車資訊</div>
-                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">{{checkinParking}}</p>
+                <p style="margin: 0 0 15px 0; font-size: 16px;">{{checkinParking}}</p>
             </div>
             {{/if}}
             
             {{#if showNotes}}
             <div class="highlight-box">
                 <div class="section-title" style="margin-top: 0; margin-bottom: 12px; color: #856404; justify-content: center;">⚠️ 入住注意事項</div>
-                <p style="margin: 0; font-size: 16px; line-height: 1.8;">{{checkinNotes}}</p>
+                <p style="margin: 0; font-size: 16px;">{{checkinNotes}}</p>
             </div>
             {{/if}}
             
             {{#if showContact}}
             <div class="info-section">
                 <div class="info-section-title">📞 聯絡資訊</div>
-                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">如有任何問題，歡迎隨時聯繫我們：</p>
-                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
-                    {{checkinContact}}
-                </div>
+                <p style="margin: 0 0 15px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
+                <p style="margin: 0; font-size: 15px; color: #1976d2; font-weight: 600;">期待您的到來，祝您住宿愉快！</p>
             </div>
             {{/if}}
             
-            <p style="margin-top: 35px; font-size: 18px; font-weight: 600; text-align: center; color: #333;">期待您的到來，祝您住宿愉快！</p>
+            <p style="margin-top: 35px; font-size: 17px; font-weight: 500; text-align: center;">期待您的到來，祝您住宿愉快！</p>
+            <p style="margin-top: 10px; font-size: 16px; text-align: center; color: #666;">祝您 身體健康，萬事如意</p>
         </div>
     </div>
 </body>
@@ -6115,35 +6117,36 @@ app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, admi
             {{#if showTransport}}
             <div class="info-section">
                 <div class="info-section-title">📍 交通路線</div>
-                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">{{checkinTransport}}</p>
+                <p style="margin: 0 0 15px 0; font-size: 16px;">{{checkinTransport}}</p>
             </div>
             {{/if}}
             
             {{#if showParking}}
             <div class="info-section">
                 <div class="info-section-title">🅿️ 停車資訊</div>
-                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">{{checkinParking}}</p>
+                <p style="margin: 0 0 15px 0; font-size: 16px;">{{checkinParking}}</p>
             </div>
             {{/if}}
             
             {{#if showNotes}}
             <div class="highlight-box">
                 <div class="section-title" style="margin-top: 0; margin-bottom: 12px; color: #856404; justify-content: center;">⚠️ 入住注意事項</div>
-                <p style="margin: 0; font-size: 16px; line-height: 1.8;">{{checkinNotes}}</p>
+                <p style="margin: 0; font-size: 16px;">{{checkinNotes}}</p>
             </div>
             {{/if}}
             
             {{#if showContact}}
             <div class="info-section">
                 <div class="info-section-title">📞 聯絡資訊</div>
-                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">如有任何問題，歡迎隨時聯繫我們：</p>
-                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
-                    {{checkinContact}}
-                </div>
+                <p style="margin: 0 0 15px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
+                <p style="margin: 0; font-size: 15px; color: #1976d2; font-weight: 600;">期待您的到來，祝您住宿愉快！</p>
             </div>
             {{/if}}
             
-            <p style="margin-top: 35px; font-size: 18px; font-weight: 600; text-align: center; color: #333;">期待您的到來，祝您住宿愉快！</p>
+            <p style="margin-top: 35px; font-size: 17px; font-weight: 500; text-align: center;">期待您的到來，祝您住宿愉快！</p>
+            <p style="margin-top: 10px; font-size: 16px; text-align: center; color: #666;">祝您 身體健康，萬事如意</p>
         </div>
     </div>
 </body>
@@ -7063,11 +7066,9 @@ ${htmlEnd}`;
         const showContact = blockSettings.contact?.enabled !== false;
         let checkinContact = blockSettings.contact?.content || '';
         if (!checkinContact) {
-            // 預設聯絡資訊內容
-            checkinContact = `<p style="margin: 0 0 12px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
-<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
-<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
-<p style="margin: 0; font-size: 16px;"><strong>服務時間：</strong>24 小時</p>`;
+            // 預設聯絡資訊內容（與感謝入住格式一致）
+            checkinContact = `<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>`;
         }
         // 替換區塊內容中的變數
         checkinContact = replaceBlockVariables(checkinContact);
