@@ -4156,11 +4156,14 @@ app.put('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res)
         // 前端已經處理好 HTML 結構，後端不應該修改用戶編輯的內容
         
         // 準備更新資料
+        // 將啟用狀態標準化為布林值：1/true => true，其餘（0/undefined/null/false）皆為 false
+        const normalizedEnabled = (is_enabled === 1 || is_enabled === true);
+
         const updateData = {
             template_name,
             subject,
             content: finalContent,  // 使用修復後的內容
-            is_enabled: is_enabled !== false,
+            is_enabled: normalizedEnabled,
             days_before_checkin,
             send_hour_checkin,
             days_after_checkout,
