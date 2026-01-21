@@ -1005,57 +1005,6 @@ body {
     margin: 0;
 }
 
-/* 郵件模板卡片：右上角操作區（啟用/編輯） */
-.template-card-actions {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 10px;
-}
-
-.template-card-actions-row {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.template-enable-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: #333;
-    user-select: none;
-}
-
-.template-toggle-btn {
-    padding: 4px 12px;
-    border-radius: 999px;
-    border: none;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.template-toggle-btn.on {
-    background: #dc3545;
-    color: #fff;
-}
-
-.template-toggle-btn.on:hover {
-    background: #c82333;
-}
-
-.template-toggle-btn.off {
-    background: #198754;
-    color: #fff;
-}
-
-.template-toggle-btn.off:hover {
-    background: #157347;
-}
-
 #templateContent {
     font-family: 'Courier New', monospace;
     font-size: 13px;
