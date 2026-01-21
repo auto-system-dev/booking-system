@@ -5106,216 +5106,38 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { 
-            font-family: 'Microsoft JhengHei', 'PingFang TC', 'Helvetica Neue', Arial, sans-serif; 
-            line-height: 1.7; 
-            color: #333; 
-            margin: 0; 
-            padding: 0; 
-            background-color: #f5f5f5;
-        }
-        .container { 
-            max-width: 600px; 
-            margin: 0 auto; 
-            padding: 0;
-            background-color: #ffffff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .header { 
-            background: linear-gradient(135deg, #262A33 0%, #1a1d24 100%); 
-            color: white; 
-            padding: 35px 30px; 
-            text-align: center; 
-            border-radius: 0;
-        }
-        .header h1 { 
-            font-size: 28px; 
-            font-weight: bold; 
-            margin: 0 0 8px 0; 
-            letter-spacing: 0.5px;
-        }
-        .header p { 
-            font-size: 16px; 
-            margin: 0; 
-            opacity: 0.9;
-            font-weight: 300;
-        }
-        .content { 
-            background: #ffffff; 
-            padding: 35px 30px; 
-            border-radius: 0;
-        }
-        .greeting { 
-            font-size: 18px; 
-            font-weight: 500; 
-            margin-bottom: 10px; 
-            color: #333;
-        }
-        .intro-text { 
-            font-size: 16px; 
-            color: #555; 
-            margin-bottom: 30px; 
-            line-height: 1.8;
-        }
-        .info-box { 
-            background: #ffffff; 
-            padding: 25px; 
-            border-radius: 10px; 
-            margin: 0 0 20px 0; 
-            border: 1px solid #e8e8e8;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-        .info-row { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            padding: 14px 0; 
-            border-bottom: 1px solid #e8e8e8; 
-        }
-        .info-row:last-child { 
-            border-bottom: none; 
-        }
-        .info-label { 
-            font-weight: 600; 
-            color: #666; 
-            font-size: 15px; 
-            min-width: 120px;
-            flex-shrink: 0;
-        }
-        .info-value { 
-            color: #333; 
-            font-size: 15px; 
-            text-align: right; 
-            font-weight: 500;
-            flex: 1;
-            margin-left: 15px;
-        }
-        .info-value strong { 
-            color: #262A33; 
-            font-weight: 700; 
-            font-size: 16px;
-        }
-        .section-title { 
-            color: #333; 
-            font-size: 22px; 
-            font-weight: bold; 
-            margin: 0 0 18px 0; 
-            display: flex; 
-            align-items: center; 
-            gap: 8px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #e8e8e8;
-        }
-        .info-section { 
-            background: #e3f2fd; 
-            border: 1px solid #90caf9; 
-            border-radius: 10px; 
-            padding: 22px; 
-            margin: 0 0 20px 0;
-            box-shadow: 0 1px 3px rgba(33,150,243,0.1);
-        }
-        .info-section-title { 
-            font-size: 22px; 
-            font-weight: bold; 
-            color: #1976d2; 
-            margin: 0 0 16px 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid rgba(144,202,249,0.5);
-        }
-        .highlight-box { 
-            background: #fff9c4; 
-            border: 1px solid #ffd54f; 
-            border-radius: 10px; 
-            padding: 22px; 
-            margin: 0 0 20px 0;
-            box-shadow: 0 1px 3px rgba(255,193,7,0.1);
-        }
-        .highlight-box .section-title {
-            color: #856404;
-            border-bottom-color: rgba(255,213,79,0.5);
-        }
-        p { 
-            margin: 0 0 12px 0; 
-            font-size: 15px; 
-            line-height: 1.8; 
-            color: #444;
-        }
-        p:last-child {
-            margin-bottom: 0;
-        }
-        strong { 
-            color: #333; 
-            font-weight: 700; 
-        }
-        ul { 
-            margin: 12px 0; 
-            padding-left: 28px; 
-            list-style-position: outside;
-        }
-        li { 
-            margin: 8px 0; 
-            font-size: 15px; 
-            line-height: 1.8; 
-            color: #444;
-        }
-        .section-content {
-            margin-top: 12px;
-        }
-        .section-content p {
-            margin-bottom: 10px;
-        }
-        .section-content p:last-child {
-            margin-bottom: 0;
-        }
-        .contact-info {
-            background: #ffffff;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 12px;
-        }
-        .contact-info p {
-            margin-bottom: 8px;
-            font-size: 15px;
-        }
-        .contact-info p:last-child {
-            margin-bottom: 0;
-        }
-        .contact-info strong {
-            color: #1976d2;
-            min-width: 80px;
-            display: inline-block;
-        }
-        .closing-message {
-            margin-top: 35px;
-            padding-top: 25px;
-            border-top: 1px solid #e8e8e8;
-            text-align: center;
-            font-size: 17px;
-            font-weight: 500;
-            color: #333;
-        }
-        @media only screen and (max-width: 600px) {
-            .content {
-                padding: 25px 20px;
-            }
-            .info-row {
-                flex-direction: column;
-                align-items: flex-start;
-                padding: 12px 0;
-            }
-            .info-label {
-                margin-bottom: 4px;
-            }
-            .info-value {
-                text-align: left;
-                margin-left: 0;
-            }
-        }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #4caf50; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
+        .header p { font-size: 18px; margin: 0; opacity: 0.95; }
+        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #4caf50; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
+        .info-value strong { color: #333; font-weight: 700; }
+        .section-title { color: #333; font-size: 20px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
+        .section-title:first-of-type { margin-top: 0; }
+        p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
+        .greeting { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+        .intro-text { font-size: 16px; color: #555; margin-bottom: 25px; }
+        strong { color: #333; font-weight: 700; }
+        ul { margin: 15px 0; padding-left: 30px; }
+        li { margin: 10px 0; font-size: 16px; line-height: 1.8; }
+        .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-section { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-section-title { font-size: 20px; font-weight: bold; color: #2e7d32; margin: 0 0 15px 0; }
+        .section-content { margin-top: 12px; }
+        .section-content p { margin-bottom: 10px; }
+        .section-content p:last-child { margin-bottom: 0; }
+        .contact-info { background: white; padding: 15px; border-radius: 6px; margin-top: 12px; }
+        .contact-info p { margin-bottom: 8px; font-size: 16px; }
+        .contact-info p:last-child { margin-bottom: 0; }
+        .contact-info strong { color: #2e7d32; min-width: 80px; display: inline-block; }
+        .closing-message { margin-top: 35px; padding-top: 25px; border-top: 1px solid #e8e8e8; text-align: center; font-size: 17px; font-weight: 500; color: #333; }
     </style>
 </head>
 <body>
@@ -5330,7 +5152,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             
             {{#if showBookingInfo}}
             <div class="info-box">
-                <div class="section-title">📅 訂房資訊</div>
+                <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">📅 訂房資訊</div>
                 <div class="section-content">
                     {{bookingInfoContent}}
                 </div>
@@ -5357,7 +5179,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             
             {{#if showNotes}}
             <div class="highlight-box">
-                <div class="section-title">⚠️ 入住注意事項</div>
+                <div class="section-title" style="margin-top: 0; margin-bottom: 12px;">⚠️ 入住注意事項</div>
                 <div class="section-content">
                     {{checkinNotes}}
                 </div>
@@ -6148,221 +5970,43 @@ app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, admi
             };
         }
         
-        // 使用最新的預設模板內容（包含新的 CSS 樣式）
+        // 使用最新的預設模板內容（使用圖卡樣式，與感謝入住一致）
         const defaultTemplateContent = `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { 
-            font-family: 'Microsoft JhengHei', 'PingFang TC', 'Helvetica Neue', Arial, sans-serif; 
-            line-height: 1.7; 
-            color: #333; 
-            margin: 0; 
-            padding: 0; 
-            background-color: #f5f5f5;
-        }
-        .container { 
-            max-width: 600px; 
-            margin: 0 auto; 
-            padding: 0;
-            background-color: #ffffff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .header { 
-            background: linear-gradient(135deg, #262A33 0%, #1a1d24 100%); 
-            color: white; 
-            padding: 35px 30px; 
-            text-align: center; 
-            border-radius: 0;
-        }
-        .header h1 { 
-            font-size: 28px; 
-            font-weight: bold; 
-            margin: 0 0 8px 0; 
-            letter-spacing: 0.5px;
-        }
-        .header p { 
-            font-size: 16px; 
-            margin: 0; 
-            opacity: 0.9;
-            font-weight: 300;
-        }
-        .content { 
-            background: #ffffff; 
-            padding: 35px 30px; 
-            border-radius: 0;
-        }
-        .greeting { 
-            font-size: 18px; 
-            font-weight: 500; 
-            margin-bottom: 10px; 
-            color: #333;
-        }
-        .intro-text { 
-            font-size: 16px; 
-            color: #555; 
-            margin-bottom: 30px; 
-            line-height: 1.8;
-        }
-        .info-box { 
-            background: #ffffff; 
-            padding: 25px; 
-            border-radius: 10px; 
-            margin: 0 0 20px 0; 
-            border: 1px solid #e8e8e8;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-        .info-row { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            padding: 14px 0; 
-            border-bottom: 1px solid #e8e8e8; 
-        }
-        .info-row:last-child { 
-            border-bottom: none; 
-        }
-        .info-label { 
-            font-weight: 600; 
-            color: #666; 
-            font-size: 15px; 
-            min-width: 120px;
-            flex-shrink: 0;
-        }
-        .info-value { 
-            color: #333; 
-            font-size: 15px; 
-            text-align: right; 
-            font-weight: 500;
-            flex: 1;
-            margin-left: 15px;
-        }
-        .info-value strong { 
-            color: #262A33; 
-            font-weight: 700; 
-            font-size: 16px;
-        }
-        .section-title { 
-            color: #333; 
-            font-size: 22px; 
-            font-weight: bold; 
-            margin: 0 0 18px 0; 
-            display: flex; 
-            align-items: center; 
-            gap: 8px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #e8e8e8;
-        }
-        .info-section { 
-            background: #e3f2fd; 
-            border: 1px solid #90caf9; 
-            border-radius: 10px; 
-            padding: 22px; 
-            margin: 0 0 20px 0;
-            box-shadow: 0 1px 3px rgba(33,150,243,0.1);
-        }
-        .info-section-title { 
-            font-size: 22px; 
-            font-weight: bold; 
-            color: #1976d2; 
-            margin: 0 0 16px 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid rgba(144,202,249,0.5);
-        }
-        .highlight-box { 
-            background: #fff9c4; 
-            border: 1px solid #ffd54f; 
-            border-radius: 10px; 
-            padding: 22px; 
-            margin: 0 0 20px 0;
-            box-shadow: 0 1px 3px rgba(255,193,7,0.1);
-        }
-        .highlight-box .section-title {
-            color: #856404;
-            border-bottom-color: rgba(255,213,79,0.5);
-        }
-        p { 
-            margin: 0 0 12px 0; 
-            font-size: 15px; 
-            line-height: 1.8; 
-            color: #444;
-        }
-        p:last-child {
-            margin-bottom: 0;
-        }
-        strong { 
-            color: #333; 
-            font-weight: 700; 
-        }
-        ul { 
-            margin: 12px 0; 
-            padding-left: 28px; 
-            list-style-position: outside;
-        }
-        li { 
-            margin: 8px 0; 
-            font-size: 15px; 
-            line-height: 1.8; 
-            color: #444;
-        }
-        .section-content {
-            margin-top: 12px;
-        }
-        .section-content p {
-            margin-bottom: 10px;
-        }
-        .section-content p:last-child {
-            margin-bottom: 0;
-        }
-        .contact-info {
-            background: #ffffff;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 12px;
-        }
-        .contact-info p {
-            margin-bottom: 8px;
-            font-size: 15px;
-        }
-        .contact-info p:last-child {
-            margin-bottom: 0;
-        }
-        .contact-info strong {
-            color: #1976d2;
-            min-width: 80px;
-            display: inline-block;
-        }
-        .closing-message {
-            margin-top: 35px;
-            padding-top: 25px;
-            border-top: 1px solid #e8e8e8;
-            text-align: center;
-            font-size: 17px;
-            font-weight: 500;
-            color: #333;
-        }
-        @media only screen and (max-width: 600px) {
-            .content {
-                padding: 25px 20px;
-            }
-            .info-row {
-                flex-direction: column;
-                align-items: flex-start;
-                padding: 12px 0;
-            }
-            .info-label {
-                margin-bottom: 4px;
-            }
-            .info-value {
-                text-align: left;
-                margin-left: 0;
-            }
-        }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #4caf50; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
+        .header p { font-size: 18px; margin: 0; opacity: 0.95; }
+        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #4caf50; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
+        .info-value strong { color: #333; font-weight: 700; }
+        .section-title { color: #333; font-size: 20px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
+        .section-title:first-of-type { margin-top: 0; }
+        p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
+        .greeting { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+        .intro-text { font-size: 16px; color: #555; margin-bottom: 25px; }
+        strong { color: #333; font-weight: 700; }
+        ul { margin: 15px 0; padding-left: 30px; }
+        li { margin: 10px 0; font-size: 16px; line-height: 1.8; }
+        .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-section { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-section-title { font-size: 20px; font-weight: bold; color: #2e7d32; margin: 0 0 15px 0; }
+        .section-content { margin-top: 12px; }
+        .section-content p { margin-bottom: 10px; }
+        .section-content p:last-child { margin-bottom: 0; }
+        .contact-info { background: white; padding: 15px; border-radius: 6px; margin-top: 12px; }
+        .contact-info p { margin-bottom: 8px; font-size: 16px; }
+        .contact-info p:last-child { margin-bottom: 0; }
+        .contact-info strong { color: #2e7d32; min-width: 80px; display: inline-block; }
+        .closing-message { margin-top: 35px; padding-top: 25px; border-top: 1px solid #e8e8e8; text-align: center; font-size: 17px; font-weight: 500; color: #333; }
     </style>
 </head>
 <body>
@@ -6377,7 +6021,7 @@ app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, admi
             
             {{#if showBookingInfo}}
             <div class="info-box">
-                <div class="section-title">📅 訂房資訊</div>
+                <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">📅 訂房資訊</div>
                 <div class="section-content">
                     {{bookingInfoContent}}
                 </div>
@@ -6404,7 +6048,7 @@ app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, admi
             
             {{#if showNotes}}
             <div class="highlight-box">
-                <div class="section-title">⚠️ 入住注意事項</div>
+                <div class="section-title" style="margin-top: 0; margin-bottom: 12px;">⚠️ 入住注意事項</div>
                 <div class="section-content">
                     {{checkinNotes}}
                 </div>
