@@ -1754,8 +1754,8 @@ async function saveBooking(bookingData) {
                 payment_amount, payment_method,
                 price_per_night, nights, total_amount, final_amount,
                 booking_date, email_sent, payment_status, status, addons, addons_total,
-                payment_deadline, days_reserved
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+                payment_deadline, days_reserved, line_user_id
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
             RETURNING id
         ` : `
             INSERT INTO bookings (
