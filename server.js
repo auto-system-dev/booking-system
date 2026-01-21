@@ -1282,17 +1282,23 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
             console.log('📧 線上刷卡：確認郵件將於付款完成後發送');
         }
         
-        // 發送管理員通知郵件（所有付款方式都需要）
-        try {
-            console.log('📤 發送管理員通知郵件...');
-            const adminResult = await sendEmail(adminMailOptions);
-            console.log('✅ 管理員通知郵件已發送');
-            if (adminResult && adminResult.messageId) {
-                console.log('   郵件 ID:', adminResult.messageId);
+        // 發送管理員通知郵件
+        // 線上刷卡：只在支付成功後發送（避免重複發送）
+        // 匯款轉帳：在建立訂房時發送
+        if (paymentMethod === 'transfer') {
+            try {
+                console.log('📤 發送管理員通知郵件（匯款轉帳）...');
+                const adminResult = await sendEmail(adminMailOptions);
+                console.log('✅ 管理員通知郵件已發送');
+                if (adminResult && adminResult.messageId) {
+                    console.log('   郵件 ID:', adminResult.messageId);
+                }
+            } catch (adminEmailError) {
+                console.error('❌ 管理員通知郵件發送失敗:', adminEmailError.message);
+                // 管理員郵件失敗不影響訂房流程
             }
-        } catch (adminEmailError) {
-            console.error('❌ 管理員通知郵件發送失敗:', adminEmailError.message);
-            // 管理員郵件失敗不影響訂房流程
+        } else {
+            console.log('📧 線上刷卡：管理員通知郵件將於付款完成後發送');
         }
 
         // 發送 LINE 訊息（如果有提供 LINE User ID 且付款方式為匯款轉帳）
@@ -7226,6 +7232,9 @@ ${htmlEnd}`;
     const isOnlineCardPaid = (paymentMethodValue === '線上刷卡' || paymentMethodValue === 'card') && 
                              (paymentStatus === 'paid' || paymentStatus === '已付款');
     
+    // 根據支付狀態決定金額標籤
+    const amountLabel = (paymentStatus === 'paid' || paymentStatus === '已付款') ? '已付金額' : '應付金額';
+    
     // 格式化日期時間（支援多種格式）
     const createdAt = booking.created_at || booking.createdAt || booking.bookingDate;
     let bookingDate = '';
@@ -7280,6 +7289,7 @@ ${htmlEnd}`;
         '{{bookingDateTime}}': bookingDateTime,
         '{{paymentStatus}}': paymentStatus,
         '{{isOnlineCardPaid}}': isOnlineCardPaid ? 'true' : 'false',
+        '{{amountLabel}}': amountLabel, // 已付金額 或 應付金額
         ...additionalData // 合併額外的變數
     };
     
@@ -7667,6 +7677,14 @@ ${htmlEnd}`;
         const regex = new RegExp(escapedKey, 'g');
         content = content.replace(regex, variables[key]);
     });
+    
+    // 如果已付款，自動將模板中的「應付金額」替換為「已付金額」
+    if (paymentStatus === 'paid' || paymentStatus === '已付款') {
+        // 替換各種可能的「應付金額」文字（包括 HTML 標籤內）
+        content = content.replace(/應付金額/g, '已付金額');
+        // 同時替換可能的顏色樣式，將紅色改為綠色（已付款）
+        content = content.replace(/color:\s*#e74c3c|color:\s*#667eea|color:\s*#f44336/g, 'color: #4caf50');
+    }
     
     // 移除 {{hotelInfoFooter}} 變數（如果存在）
     content = content.replace(/\{\{hotelInfoFooter\}\}/g, '');
