@@ -1756,12 +1756,19 @@ async function generateCustomerEmail(data) {
                         <span class="info-value">${data.paymentAmount} - ${data.paymentMethod}</span>
                     </div>
                     <div class="info-row" style="border-bottom: none; margin-top: 15px; padding-top: 15px; border-top: 2px solid #667eea;">
-                        <span class="info-label" style="font-size: 18px;">應付金額</span>
-                        <span class="info-value" style="font-size: 20px; color: #667eea; font-weight: 700;">NT$ ${data.finalAmount.toLocaleString()}</span>
+                        <span class="info-label" style="font-size: 18px;">${data.paymentStatus === 'paid' ? '已付金額' : '應付金額'}</span>
+                        <span class="info-value" style="font-size: 20px; color: ${data.paymentStatus === 'paid' ? '#4caf50' : '#667eea'}; font-weight: 700;">NT$ ${data.finalAmount.toLocaleString()}</span>
                     </div>
                 </div>
 
-                ${data.paymentAmount && data.paymentAmount.includes('訂金') ? (() => {
+                ${data.paymentStatus === 'paid' ? `
+                <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                    <p style="color: #2e7d32; font-weight: 600; margin: 0; font-size: 16px;">✅ 付款已完成！</p>
+                    <p style="color: #2e7d32; margin: 10px 0 0 0; font-size: 14px;">感謝您的付款，訂房已確認完成。</p>
+                </div>
+                ` : ''}
+
+                ${data.paymentAmount && data.paymentAmount.includes('訂金') && data.paymentStatus !== 'paid' ? (() => {
                     const remainingAmount = data.totalAmount - data.finalAmount;
                     return `
                 <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 15px; margin: 20px 0;">
@@ -1955,13 +1962,19 @@ function generateAdminEmail(data) {
                         <span class="info-value" style="color: #333; font-weight: 600;">NT$ ${(data.totalAmount || 0).toLocaleString()}</span>
                     </div>
                     <div class="info-row">
-                        <span class="info-label">應付金額</span>
-                        <span class="info-value" style="color: #e74c3c; font-weight: 700;">NT$ ${data.finalAmount.toLocaleString()}</span>
+                        <span class="info-label">${data.paymentStatus === 'paid' ? '已付金額' : '應付金額'}</span>
+                        <span class="info-value" style="color: ${data.paymentStatus === 'paid' ? '#4caf50' : '#e74c3c'}; font-weight: 700;">NT$ ${data.finalAmount.toLocaleString()}</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">支付方式</span>
                         <span class="info-value">${data.paymentAmount} - ${data.paymentMethod}</span>
                     </div>
+                    ${data.paymentStatus === 'paid' ? `
+                    <div class="info-row">
+                        <span class="info-label">付款狀態</span>
+                        <span class="info-value" style="color: #4caf50; font-weight: 700;">✅ 已付款</span>
+                    </div>
+                    ` : ''}
                     <div class="info-row">
                         <span class="info-label">訂房時間</span>
                         <span class="info-value">${new Date(data.bookingDate).toLocaleString('zh-TW')}</span>
@@ -3817,6 +3830,7 @@ const handlePaymentResult = async (req, res) => {
                             paymentAmount: booking.payment_amount,
                             paymentMethod: booking.payment_method,
                             paymentMethodCode: 'card',
+                            paymentStatus: 'paid', // 已付款
                             bookingDate: booking.booking_date,
                             bankInfo: null, // 線上刷卡不需要匯款資訊
                             addons: booking.addons ? (typeof booking.addons === 'string' ? JSON.parse(booking.addons) : booking.addons) : null,
@@ -3859,6 +3873,23 @@ const handlePaymentResult = async (req, res) => {
                         if (emailSent) {
                             await db.updateEmailStatus(bookingId, 'booking_confirmation');
                             console.log('✅ 郵件狀態已更新');
+                        }
+                        
+                        // 發送管理者通知郵件
+                        try {
+                            console.log('📧 發送管理者通知郵件...');
+                            const adminEmail = await db.getSetting('admin_email') || process.env.ADMIN_EMAIL || 'cheng701107@gmail.com';
+                            const adminMailOptions = {
+                                from: emailUser,
+                                to: adminEmail,
+                                subject: `【新訂房通知】${booking.guest_name} - ${booking.booking_id}`,
+                                html: generateAdminEmail(bookingData)
+                            };
+                            await sendEmail(adminMailOptions);
+                            console.log('✅ 管理者通知郵件已發送');
+                        } catch (adminEmailError) {
+                            console.error('❌ 管理者通知郵件發送失敗:', adminEmailError.message);
+                            // 郵件發送失敗不影響付款流程
                         }
                         
                         // 發送 LINE 訊息（如果有 LINE User ID）
@@ -7247,6 +7278,8 @@ ${htmlEnd}`;
         '{{guestEmail}}': guestEmail,
         '{{bookingDate}}': bookingDate,
         '{{bookingDateTime}}': bookingDateTime,
+        '{{paymentStatus}}': paymentStatus,
+        '{{isOnlineCardPaid}}': isOnlineCardPaid ? 'true' : 'false',
         ...additionalData // 合併額外的變數
     };
     
