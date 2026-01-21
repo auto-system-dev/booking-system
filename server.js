@@ -5109,11 +5109,11 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
     <style>
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #4caf50; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header { background: #2196f3; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
         .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
         .header p { font-size: 18px; margin: 0; opacity: 0.95; }
         .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #4caf50; }
+        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #2196f3; }
         .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
         .info-row:last-child { border-bottom: none; }
         .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
@@ -5128,8 +5128,8 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
         ul { margin: 15px 0; padding-left: 30px; }
         li { margin: 10px 0; font-size: 16px; line-height: 1.8; }
         .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .info-section { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .info-section-title { font-size: 20px; font-weight: bold; color: #2e7d32; margin: 0 0 15px 0; }
+        .info-section { background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-section-title { font-size: 20px; font-weight: bold; color: #1976d2; margin: 0 0 15px 0; }
     </style>
 </head>
 <body>
@@ -5864,7 +5864,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 // API: 強制更新入住提醒郵件模板為完整的圖卡格式（並重新初始化所有模板）
 app.post('/api/email-templates/checkin_reminder/force-update-card-format', requireAuth, adminLimiter, async (req, res) => {
     try {
-        // 完整的圖卡格式模板（與感謝入住格式一致）
+        // 完整的圖卡格式模板（與感謝入住格式一致，但使用藍色系）
         const cardFormatTemplate = `<!DOCTYPE html>
 <html>
 <head>
@@ -5872,11 +5872,11 @@ app.post('/api/email-templates/checkin_reminder/force-update-card-format', requi
     <style>
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #4caf50; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header { background: #2196f3; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
         .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
         .header p { font-size: 18px; margin: 0; opacity: 0.95; }
         .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #4caf50; }
+        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #2196f3; }
         .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
         .info-row:last-child { border-bottom: none; }
         .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
@@ -5891,8 +5891,8 @@ app.post('/api/email-templates/checkin_reminder/force-update-card-format', requi
         ul { margin: 15px 0; padding-left: 30px; }
         li { margin: 10px 0; font-size: 16px; line-height: 1.8; }
         .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .info-section { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .info-section-title { font-size: 20px; font-weight: bold; color: #2e7d32; margin: 0 0 15px 0; }
+        .info-section { background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-section-title { font-size: 20px; font-weight: bold; color: #1976d2; margin: 0 0 15px 0; }
     </style>
 </head>
 <body>
@@ -6078,7 +6078,7 @@ app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, admi
             };
         }
         
-        // 使用最新的預設模板內容（與感謝入住格式一致）
+        // 使用最新的預設模板內容（與感謝入住格式一致，但使用藍色系）
         const defaultTemplateContent = `<!DOCTYPE html>
 <html>
 <head>
@@ -6086,11 +6086,11 @@ app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, admi
     <style>
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #4caf50; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header { background: #2196f3; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
         .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
         .header p { font-size: 18px; margin: 0; opacity: 0.95; }
         .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #4caf50; }
+        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #2196f3; }
         .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
         .info-row:last-child { border-bottom: none; }
         .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
@@ -6105,8 +6105,8 @@ app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, admi
         ul { margin: 15px 0; padding-left: 30px; }
         li { margin: 10px 0; font-size: 16px; line-height: 1.8; }
         .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .info-section { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .info-section-title { font-size: 20px; font-weight: bold; color: #2e7d32; margin: 0 0 15px 0; }
+        .info-section { background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-section-title { font-size: 20px; font-weight: bold; color: #1976d2; margin: 0 0 15px 0; }
     </style>
 </head>
 <body>
@@ -6416,16 +6416,16 @@ ${htmlEnd}`;
 </html>`;
                 }
             } else {
-                // 如果原始模板也沒有完整結構，使用圖卡格式的完整模板（與感謝入住格式一致）
+                // 如果原始模板也沒有完整結構，使用圖卡格式的完整模板（與感謝入住格式一致，但使用藍色系）
                 console.log('⚠️ 資料庫原始模板也缺少完整結構，使用圖卡格式的完整模板');
                 const cardStyle = `
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #4caf50; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header { background: #2196f3; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
         .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
         .header p { font-size: 18px; margin: 0; opacity: 0.95; }
         .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #4caf50; }
+        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #2196f3; }
         .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
         .info-row:last-child { border-bottom: none; }
         .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
@@ -6440,8 +6440,8 @@ ${htmlEnd}`;
         ul { margin: 15px 0; padding-left: 30px; }
         li { margin: 10px 0; font-size: 16px; line-height: 1.8; }
         .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .info-section { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .info-section-title { font-size: 20px; font-weight: bold; color: #2e7d32; margin: 0 0 15px 0; }
+        .info-section { background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-section-title { font-size: 20px; font-weight: bold; color: #1976d2; margin: 0 0 15px 0; }
     `;
                 let bodyContent = content;
                 if (content.includes('<body>')) {
@@ -6463,15 +6463,15 @@ ${htmlEnd}`;
             }
         } catch (error) {
             console.warn('⚠️ 無法從資料庫讀取原始模板，使用圖卡格式的完整模板:', error.message);
-            // 使用圖卡格式的完整模板作為備用方案（與感謝入住格式一致）
+            // 使用圖卡格式的完整模板作為備用方案（與感謝入住格式一致，但使用藍色系）
             const cardStyle = `
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #4caf50; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header { background: #2196f3; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
         .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
         .header p { font-size: 18px; margin: 0; opacity: 0.95; }
         .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #4caf50; }
+        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #2196f3; }
         .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
         .info-row:last-child { border-bottom: none; }
         .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
@@ -6486,8 +6486,8 @@ ${htmlEnd}`;
         ul { margin: 15px 0; padding-left: 30px; }
         li { margin: 10px 0; font-size: 16px; line-height: 1.8; }
         .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .info-section { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .info-section-title { font-size: 20px; font-weight: bold; color: #2e7d32; margin: 0 0 15px 0; }
+        .info-section { background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-section-title { font-size: 20px; font-weight: bold; color: #1976d2; margin: 0 0 15px 0; }
     `;
             let bodyContent = content;
             if (content.includes('<body>')) {
@@ -6537,15 +6537,15 @@ ${htmlEnd}`;
                 }
             }
             
-            // 使用圖卡格式的完整模板（與感謝入住格式一致）
+            // 使用圖卡格式的完整模板（與感謝入住格式一致，但使用藍色系）
             const cardStyle = `
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #4caf50; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header { background: #2196f3; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
         .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
         .header p { font-size: 18px; margin: 0; opacity: 0.95; }
         .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #4caf50; }
+        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #2196f3; }
         .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
         .info-row:last-child { border-bottom: none; }
         .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
@@ -6560,8 +6560,8 @@ ${htmlEnd}`;
         ul { margin: 15px 0; padding-left: 30px; }
         li { margin: 10px 0; font-size: 16px; line-height: 1.8; }
         .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .info-section { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .info-section-title { font-size: 20px; font-weight: bold; color: #2e7d32; margin: 0 0 15px 0; }
+        .info-section { background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-section-title { font-size: 20px; font-weight: bold; color: #1976d2; margin: 0 0 15px 0; }
     `;
             
             content = `<!DOCTYPE html>
