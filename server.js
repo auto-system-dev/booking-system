@@ -5855,6 +5855,190 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
     }
 });
 
+// API: 強制重新生成入住提醒郵件模板（使用最新格式）
+app.post('/api/email-templates/checkin_reminder/regenerate', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        // 從 database.js 中獲取最新的模板定義
+        const defaultTemplates = [
+            {
+                key: 'checkin_reminder',
+                name: '入住提醒',
+                subject: '【入住提醒】歡迎您明天入住',
+                content: `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #2196f3; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
+        .header p { font-size: 18px; margin: 0; opacity: 0.95; }
+        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #2196f3; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
+        .info-value strong { color: #333; font-weight: 700; }
+        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
+        .section-title:first-of-type { margin-top: 0; }
+        p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
+        .greeting { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+        .intro-text { font-size: 16px; color: #555; margin-bottom: 25px; }
+        strong { color: #333; font-weight: 700; }
+        ul { margin: 15px 0; padding-left: 30px; }
+        li { margin: 10px 0; font-size: 16px; line-height: 1.8; }
+        .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-section { background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-section-title { font-size: 20px; font-weight: bold; color: #1976d2; margin: 0 0 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏨 入住提醒</h1>
+            <p>歡迎您明天的到來</p>
+        </div>
+        <div class="content">
+            <p class="greeting">親愛的 {{guestName}} 您好，</p>
+            <p class="intro-text">感謝您選擇我們的住宿服務，我們期待您明天的到來。</p>
+            
+            {{#if showBookingInfo}}
+            <div class="info-box">
+                <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">📅 訂房資訊</div>
+                {{bookingInfoContent}}
+            </div>
+            {{/if}}
+            
+            {{#if showTransport}}
+            <div class="info-section">
+                <div class="info-section-title">📍 交通路線</div>
+                <p style="margin: 0 0 15px 0; font-size: 16px;">{{checkinTransport}}</p>
+            </div>
+            {{/if}}
+            
+            {{#if showParking}}
+            <div class="info-section">
+                <div class="info-section-title">🅿️ 停車資訊</div>
+                <p style="margin: 0 0 15px 0; font-size: 16px;">{{checkinParking}}</p>
+            </div>
+            {{/if}}
+            
+            {{#if showNotes}}
+            <div class="highlight-box">
+                <div class="section-title" style="margin-top: 0; margin-bottom: 12px; color: #856404; justify-content: center;">⚠️ 入住注意事項</div>
+                <p style="margin: 0; font-size: 16px;">{{checkinNotes}}</p>
+            </div>
+            {{/if}}
+            
+            {{#if showContact}}
+            <div class="info-section">
+                <div class="info-section-title">📞 聯絡資訊</div>
+                <p style="margin: 0 0 15px 0; font-size: 16px;">如有任何問題，歡迎隨時聯繫我們：</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
+                <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>
+                <p style="margin: 0; font-size: 15px; color: #1976d2; font-weight: 600;">期待您的到來，祝您住宿愉快！</p>
+            </div>
+            {{/if}}
+            
+            <p style="margin-top: 35px; font-size: 17px; font-weight: 500; text-align: center;">期待您的到來，祝您住宿愉快！</p>
+            <p style="margin-top: 10px; font-size: 16px; text-align: center; color: #666;">祝您 身體健康，萬事如意</p>
+        </div>
+    </div>
+</body>
+</html>`,
+                days_before_checkin: 1,
+                send_hour_checkin: 9,
+                block_settings: JSON.stringify({
+                    booking_info: {
+                        enabled: true,
+                        content: `<div class="info-row">
+    <span class="info-label">訂房編號</span>
+    <span class="info-value"><strong>{{bookingId}}</strong></span>
+</div>
+<div class="info-row">
+    <span class="info-label">入住日期</span>
+    <span class="info-value">{{checkInDate}}</span>
+</div>
+<div class="info-row">
+    <span class="info-label">退房日期</span>
+    <span class="info-value">{{checkOutDate}}</span>
+</div>
+<div class="info-row" style="border-bottom: none;">
+    <span class="info-label">房型</span>
+    <span class="info-value">{{roomType}}</span>
+</div>`
+                    },
+                    transport: {
+                        enabled: true,
+                        content: `<p style="margin: 0 0 12px 0; font-size: 16px;">交通方式說明：</p>
+<ul style="margin: 0; padding-left: 25px;">
+    <li style="margin: 8px 0;">大眾運輸：可搭乘捷運至XX站，步行5分鐘</li>
+    <li style="margin: 8px 0;">自行開車：請參考以下地圖導航</li>
+</ul>`
+                    },
+                    parking: {
+                        enabled: true,
+                        content: `<p style="margin: 0 0 12px 0; font-size: 16px;">停車資訊：</p>
+<ul style="margin: 0; padding-left: 25px;">
+    <li style="margin: 8px 0;">提供免費停車位</li>
+    <li style="margin: 8px 0;">停車場位置：XX路XX號</li>
+</ul>`
+                    },
+                    notes: {
+                        enabled: true,
+                        content: `<p style="margin: 0 0 12px 0; font-size: 16px;">入住注意事項：</p>
+<ul style="margin: 0; padding-left: 25px;">
+    <li style="margin: 8px 0;">入住時間：下午3點後</li>
+    <li style="margin: 8px 0;">退房時間：上午11點前</li>
+    <li style="margin: 8px 0;">請攜帶身分證件辦理入住手續</li>
+</ul>`
+                    },
+                    contact: {
+                        enabled: true,
+                        content: `<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>電話：</strong>{{hotelPhone}}</p>
+<p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Email：</strong>{{hotelEmail}}</p>`
+                    }
+                })
+            }
+        ];
+        
+        const template = defaultTemplates[0];
+        
+        // 取得現有模板以保留設定
+        const existingTemplate = await db.getEmailTemplateByKey('checkin_reminder');
+        
+        // 強制更新模板，使用最新的格式和預設 block_settings
+        await db.updateEmailTemplate('checkin_reminder', {
+            template_name: template.name,
+            subject: template.subject,
+            content: template.content,
+            is_enabled: existingTemplate?.is_enabled !== undefined ? existingTemplate.is_enabled : 1,
+            days_before_checkin: existingTemplate?.days_before_checkin !== undefined ? existingTemplate.days_before_checkin : template.days_before_checkin,
+            send_hour_checkin: existingTemplate?.send_hour_checkin !== undefined ? existingTemplate.send_hour_checkin : template.send_hour_checkin,
+            days_after_checkout: existingTemplate?.days_after_checkout || null,
+            send_hour_feedback: existingTemplate?.send_hour_feedback || null,
+            days_reserved: existingTemplate?.days_reserved || null,
+            send_hour_payment_reminder: existingTemplate?.send_hour_payment_reminder || null,
+            block_settings: template.block_settings
+        });
+        
+        console.log('✅ 已重新生成入住提醒郵件模板（使用最新格式）');
+        
+        res.json({
+            success: true,
+            message: '入住提醒郵件模板已重新生成為最新格式'
+        });
+    } catch (error) {
+        console.error('❌ 重新生成入住提醒郵件模板失敗:', error);
+        res.status(500).json({
+            success: false,
+            message: '重新生成失敗：' + error.message
+        });
+    }
+});
+
 // API: 強制更新入住提醒郵件模板為完整的圖卡格式（並重新初始化所有模板）
 app.post('/api/email-templates/checkin_reminder/force-update-card-format', requireAuth, adminLimiter, async (req, res) => {
     try {
