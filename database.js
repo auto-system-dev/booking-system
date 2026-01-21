@@ -2064,29 +2064,50 @@ async function getStatistics(startDate, endDate) {
 
 // ==================== 客戶管理 ====================
 
-// 取得所有客戶（聚合訂房資料）
+// 取得所有客戶（聚合訂房資料，以 email 為唯一值，顯示最新的姓名和電話）
 async function getAllCustomers() {
     try {
         const sql = usePostgreSQL
-            ? `SELECT 
-                guest_email,
-                guest_name,
-                guest_phone,
-                COUNT(*) as booking_count,
-                SUM(final_amount) as total_spent,
-                MAX(created_at) as last_booking_date
-            FROM bookings
-            GROUP BY guest_email, guest_name, guest_phone
-            ORDER BY last_booking_date DESC`
+            ? `WITH latest_customer_info AS (
+                SELECT DISTINCT ON (guest_email)
+                    guest_email,
+                    guest_name,
+                    guest_phone
+                FROM bookings
+                ORDER BY guest_email, created_at DESC
+            ),
+            customer_stats AS (
+                SELECT 
+                    guest_email,
+                    COUNT(*) as booking_count,
+                    SUM(final_amount) as total_spent,
+                    MAX(created_at) as last_booking_date
+                FROM bookings
+                GROUP BY guest_email
+            )
+            SELECT 
+                lci.guest_email,
+                lci.guest_name,
+                lci.guest_phone,
+                cs.booking_count,
+                cs.total_spent,
+                cs.last_booking_date
+            FROM latest_customer_info lci
+            JOIN customer_stats cs ON lci.guest_email = cs.guest_email
+            ORDER BY cs.last_booking_date DESC`
             : `SELECT 
-                guest_email,
-                guest_name,
-                guest_phone,
+                b1.guest_email,
+                (SELECT b2.guest_name FROM bookings b2 
+                 WHERE b2.guest_email = b1.guest_email 
+                 ORDER BY b2.created_at DESC LIMIT 1) as guest_name,
+                (SELECT b2.guest_phone FROM bookings b2 
+                 WHERE b2.guest_email = b1.guest_email 
+                 ORDER BY b2.created_at DESC LIMIT 1) as guest_phone,
                 COUNT(*) as booking_count,
-                SUM(final_amount) as total_spent,
-                MAX(created_at) as last_booking_date
-            FROM bookings
-            GROUP BY guest_email, guest_name, guest_phone
+                SUM(b1.final_amount) as total_spent,
+                MAX(b1.created_at) as last_booking_date
+            FROM bookings b1
+            GROUP BY b1.guest_email
             ORDER BY last_booking_date DESC`;
         
         const result = await query(sql);
@@ -2106,33 +2127,39 @@ async function getAllCustomers() {
     }
 }
 
-// 根據 Email 取得客戶詳情（包含所有訂房記錄）
+// 根據 Email 取得客戶詳情（包含所有訂房記錄，顯示最新的姓名和電話）
 async function getCustomerByEmail(email) {
     try {
-        // 先取得客戶基本資訊
+        // 先取得客戶基本資訊（使用最新的姓名和電話）
         const customerSQL = usePostgreSQL
-            ? `SELECT 
+            ? `SELECT DISTINCT ON (guest_email)
                 guest_email,
                 guest_name,
                 guest_phone,
-                COUNT(*) as booking_count,
-                SUM(final_amount) as total_spent,
-                MAX(created_at) as last_booking_date
+                COUNT(*) OVER (PARTITION BY guest_email) as booking_count,
+                SUM(final_amount) OVER (PARTITION BY guest_email) as total_spent,
+                MAX(created_at) OVER (PARTITION BY guest_email) as last_booking_date
             FROM bookings
             WHERE guest_email = $1
-            GROUP BY guest_email, guest_name, guest_phone`
+            ORDER BY guest_email, created_at DESC
+            LIMIT 1`
             : `SELECT 
                 guest_email,
-                guest_name,
-                guest_phone,
+                (SELECT guest_name FROM bookings 
+                 WHERE guest_email = ? 
+                 ORDER BY created_at DESC LIMIT 1) as guest_name,
+                (SELECT guest_phone FROM bookings 
+                 WHERE guest_email = ? 
+                 ORDER BY created_at DESC LIMIT 1) as guest_phone,
                 COUNT(*) as booking_count,
                 SUM(final_amount) as total_spent,
                 MAX(created_at) as last_booking_date
             FROM bookings
-            WHERE guest_email = ?
-            GROUP BY guest_email, guest_name, guest_phone`;
+            WHERE guest_email = ?`;
         
-        const customerResult = await queryOne(customerSQL, [email]);
+        const customerResult = usePostgreSQL 
+            ? await queryOne(customerSQL, [email])
+            : await queryOne(customerSQL, [email, email, email]);
         
         if (!customerResult) {
             return null;
