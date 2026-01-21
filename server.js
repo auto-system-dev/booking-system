@@ -5894,6 +5894,152 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
     }
 });
 
+// API: 強制更新入住提醒郵件模板為完整的圖卡格式
+app.post('/api/email-templates/checkin_reminder/force-update-card-format', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        // 完整的圖卡格式模板
+        const cardFormatTemplate = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; background-color: #ffffff; }
+        .header { background: #262A33; color: white; padding: 35px 30px; text-align: center; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 8px 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .header p { font-size: 16px; margin: 0; opacity: 0.9; }
+        .content { background: #ffffff; padding: 30px; }
+        .greeting { font-size: 15px; margin: 0 0 6px 0; }
+        .intro-text { font-size: 14px; margin: 0 0 18px 0; color: #555; }
+        .card { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 8px; margin: 0 0 20px 0; overflow: hidden; }
+        .card-header-dark { background: #262A33; color: white; padding: 15px 20px; display: flex; align-items: center; gap: 10px; }
+        .card-header-dark .icon { font-size: 20px; }
+        .card-header-dark span:last-child { font-size: 18px; font-weight: 600; }
+        .card-body { padding: 20px; }
+        .booking-table { width: 100%; border-collapse: collapse; }
+        .booking-table td { padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .booking-table tr:last-child td { border-bottom: none; }
+        .booking-label { font-weight: 600; color: #666; font-size: 15px; width: 120px; }
+        .booking-value { color: #333; font-size: 15px; text-align: right; }
+        .booking-value-strong { font-weight: 700; color: #262A33; }
+        .section-card { border-radius: 8px; margin: 0 0 20px 0; overflow: hidden; border: 1px solid; }
+        .section-transport { background: #e3f2fd; border-color: #90caf9; }
+        .section-parking { background: #e3f2fd; border-color: #90caf9; }
+        .section-notes { background: #fff9c4; border-color: #ffd54f; }
+        .section-contact { background: #e3f2fd; border-color: #90caf9; }
+        .section-header { padding: 15px 20px; display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
+        .section-transport .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-parking .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-notes .section-header { color: #856404; background: rgba(255, 193, 7, 0.2); }
+        .section-contact .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-header .icon { font-size: 20px; }
+        .section-body { padding: 20px; }
+        .section-body p { margin: 0 0 12px 0; font-size: 16px; }
+        .section-body p:last-child { margin-bottom: 0; }
+        .section-body ul { margin: 12px 0; padding-left: 24px; }
+        .section-body li { margin: 8px 0; font-size: 16px; }
+        .mb-4 { margin-bottom: 16px !important; }
+        .mt-16 { margin-top: 16px !important; }
+        .footer-text { text-align: center; font-size: 16px; color: #333; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e8e8e8; }
+        strong { color: #333; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><span>🏨</span><span>入住提醒</span></h1>
+            <p>歡迎您明天的到來</p>
+        </div>
+        <div class="content">
+            <p class="greeting">親愛的 {{guestName}} 您好，</p>
+            <p class="intro-text">感謝您選擇我們的住宿服務，我們期待您明天的到來。</p>
+            
+            {{#if showBookingInfo}}
+            <div class="card">
+                <div class="card-header-dark">
+                    <span class="icon">📅</span>
+                    <span>訂房資訊</span>
+                </div>
+                <div class="card-body">
+                    {{bookingInfoContent}}
+                </div>
+            </div>
+            {{/if}}
+            
+            {{#if showTransport}}
+            <div class="section-card section-transport">
+                <div class="section-header">
+                    <span class="icon">📍</span>
+                    <span>交通路線</span>
+                </div>
+                <div class="section-body">
+                    {{checkinTransport}}
+                </div>
+            </div>
+            {{/if}}
+            
+            {{#if showParking}}
+            <div class="section-card section-parking">
+                <div class="section-header">
+                    <span class="icon">🅿️</span>
+                    <span>停車資訊</span>
+                </div>
+                <div class="section-body">
+                    {{checkinParking}}
+                </div>
+            </div>
+            {{/if}}
+            
+            {{#if showNotes}}
+            <div class="section-card section-notes">
+                <div class="section-header">
+                    <span class="icon">⚠️</span>
+                    <span>入住注意事項</span>
+                </div>
+                <div class="section-body">
+                    {{checkinNotes}}
+                </div>
+            </div>
+            {{/if}}
+            
+            {{#if showContact}}
+            <div class="section-card section-contact">
+                <div class="section-header">
+                    <span class="icon">📞</span>
+                    <span>聯絡資訊</span>
+                </div>
+                <div class="section-body">
+                    {{checkinContact}}
+                </div>
+            </div>
+            {{/if}}
+            
+            <p class="footer-text">期待您的到來，祝您住宿愉快！</p>
+        </div>
+    </div>
+</body>
+</html>`;
+        
+        // 更新資料庫中的模板
+        await db.updateEmailTemplate('checkin_reminder', {
+            content: cardFormatTemplate
+        });
+        
+        console.log('✅ 已強制更新入住提醒郵件模板為完整的圖卡格式');
+        
+        res.json({
+            success: true,
+            message: '入住提醒郵件模板已更新為完整的圖卡格式'
+        });
+    } catch (error) {
+        console.error('❌ 強制更新入住提醒郵件模板失敗:', error);
+        res.status(500).json({
+            success: false,
+            message: '更新失敗：' + error.message
+        });
+    }
+});
+
 // API: 清除入住提醒郵件的區塊內容（使用新的預設格式）
 app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, adminLimiter, async (req, res) => {
     try {
