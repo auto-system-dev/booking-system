@@ -3461,6 +3461,86 @@ async function checkResendStatus() {
 }
 
 // 儲存 Gmail 發信設定
+// 儲存 LINE 官方帳號設定
+async function saveLineSettings() {
+    const lineChannelAccessToken = document.getElementById('lineChannelAccessToken').value.trim();
+    const lineChannelSecret = document.getElementById('lineChannelSecret').value.trim();
+    const lineLiffId = document.getElementById('lineLiffId').value.trim();
+    const lineLiffUrl = document.getElementById('lineLiffUrl').value.trim();
+    
+    try {
+        const [
+            channelAccessTokenResponse,
+            channelSecretResponse,
+            liffIdResponse,
+            liffUrlResponse
+        ] = await Promise.all([
+            adminFetch('/api/admin/settings/line_channel_access_token', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: lineChannelAccessToken,
+                    description: 'LINE Channel Access Token'
+                })
+            }),
+            adminFetch('/api/admin/settings/line_channel_secret', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: lineChannelSecret,
+                    description: 'LINE Channel Secret'
+                })
+            }),
+            adminFetch('/api/admin/settings/line_liff_id', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: lineLiffId,
+                    description: 'LINE LIFF App ID'
+                })
+            }),
+            adminFetch('/api/admin/settings/line_liff_url', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: lineLiffUrl || (lineLiffId ? `https://liff.line.me/${lineLiffId}` : ''),
+                    description: 'LINE LIFF App URL'
+                })
+            })
+        ]);
+        
+        const results = await Promise.all([
+            channelAccessTokenResponse.json(),
+            channelSecretResponse.json(),
+            liffIdResponse.json(),
+            liffUrlResponse.json()
+        ]);
+        
+        const hasError = results.some(result => !result.success);
+        if (hasError) {
+            const errorMessages = results.filter(r => !r.success).map(r => r.message).join(', ');
+            showError('儲存 LINE 設定失敗：' + errorMessages);
+        } else {
+            showSuccess('LINE 設定已儲存');
+            // 重新載入設定以確保 UI 與資料庫同步
+            setTimeout(() => {
+                loadSettings();
+            }, 300);
+        }
+    } catch (error) {
+        console.error('儲存 LINE 設定錯誤:', error);
+        showError('儲存 LINE 設定時發生錯誤：' + error.message);
+    }
+}
+
 async function saveGmailSettings() {
     const emailUser = document.getElementById('emailUser').value.trim();
     const gmailClientID = document.getElementById('gmailClientID').value.trim();
@@ -3619,6 +3699,12 @@ async function loadSettings() {
             
             // Google 評價連結
             document.getElementById('googleReviewUrl').value = settings.google_review_url || '';
+            
+            // LINE 官方帳號設定
+            document.getElementById('lineChannelAccessToken').value = settings.line_channel_access_token || '';
+            document.getElementById('lineChannelSecret').value = settings.line_channel_secret || '';
+            document.getElementById('lineLiffId').value = settings.line_liff_id || '';
+            document.getElementById('lineLiffUrl').value = settings.line_liff_url || '';
             
             // Resend 發信設定
             const resendApiKeyInput = document.getElementById('resendApiKey');

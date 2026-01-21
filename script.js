@@ -8,6 +8,54 @@ let unavailableRooms = []; // 已滿房的房型列表
 let datePicker = null; // 日期區間選擇器
 let guestCounts = { adults: 1, children: 0 };
 let capacityModalData = { capacity: 0, totalGuests: 0 };
+let lineUserId = null; // LINE User ID（如果從 LIFF 開啟）
+
+// 初始化 LIFF（如果從 LINE 開啟）
+async function initLIFF() {
+    try {
+        // 檢查是否在 LINE 環境中
+        if (typeof liff !== 'undefined') {
+            console.log('📱 偵測到 LINE LIFF SDK，初始化 LIFF...');
+            
+            // 從後端取得 LIFF ID（或使用全域變數）
+            let liffId = window.LINE_LIFF_ID;
+            
+            // 如果沒有設定，嘗試從後端取得
+            if (!liffId) {
+                try {
+                    const response = await fetch('/api/settings');
+                    const result = await response.json();
+                    if (result.success && result.data && result.data.line_liff_id) {
+                        liffId = result.data.line_liff_id;
+                    }
+                } catch (e) {
+                    console.warn('⚠️ 無法從後端取得 LIFF ID:', e.message);
+                }
+            }
+            
+            if (!liffId) {
+                console.warn('⚠️ LINE_LIFF_ID 未設定，無法初始化 LIFF');
+                return;
+            }
+
+            await liff.init({ liffId: liffId });
+            console.log('✅ LIFF 初始化成功');
+
+            // 取得 LINE User Profile
+            const profile = await liff.getProfile();
+            lineUserId = profile.userId;
+            console.log('✅ 取得 LINE User ID:', lineUserId?.substring(0, 10) + '...');
+
+            // 設定 LIFF 視窗標題
+            liff.setTitle('線上訂房系統');
+        } else {
+            console.log('🌐 非 LINE 環境，跳過 LIFF 初始化');
+        }
+    } catch (error) {
+        console.warn('⚠️ LIFF 初始化失敗:', error.message);
+        // LIFF 初始化失敗不影響正常使用
+    }
+}
 
 // 載入房型資料和系統設定
 async function loadRoomTypesAndSettings() {
@@ -355,7 +403,10 @@ function changeGuestCount(type, delta) {
 loadRoomTypesAndSettings();
 
 // 頁面載入後，如果有日期，檢查房間可用性
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    // 先初始化 LIFF（如果從 LINE 開啟）
+    await initLIFF();
+    
     initDatePicker();
     
     // 日期選擇變更時清除錯誤訊息
@@ -846,6 +897,12 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     formData.finalAmount = finalAmount;
     formData.addons = enableAddons ? selectedAddons : []; // 加購商品陣列（只有在啟用時才包含，包含數量）
     formData.addonsTotal = addonsTotal; // 加購商品總金額
+    
+    // 如果有 LINE User ID，加入表單資料中
+    if (lineUserId) {
+        formData.lineUserId = lineUserId;
+        console.log('📱 加入 LINE User ID 到訂房資料');
+    }
     
     console.log('準備發送訂房資料:', formData);
     

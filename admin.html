@@ -631,6 +631,45 @@
                                 <button class="btn-save" onclick="saveHotelInfoSettings()">儲存設定</button>
                             </div>
                         </div>
+
+                        <!-- LINE 官方帳號設定區塊 -->
+                        <div style="margin-top: 30px;">
+                            <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #06C755;">
+                                <span class="material-symbols-outlined" style="font-size: 24px; color: #06C755; margin-right: 10px;">chat</span>
+                                <h3 style="margin: 0; color: #2c3e50;">LINE 官方帳號設定</h3>
+                            </div>
+                            
+                            <div class="settings-card" style="margin-top: 0;">
+                                <div style="background-color: #d1fae5; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                                    <p style="margin: 0; color: #059669; font-size: 14px;">
+                                        <strong>📌 設定說明：</strong><br>
+                                        設定 LINE 官方帳號後，用戶可以從 LINE 開啟訂房頁面，訂房成功後會自動發送 LINE 訊息通知。請到 <a href="https://developers.line.biz/console/" target="_blank" style="color: #059669; text-decoration: underline;">LINE Developers Console</a> 建立 Messaging API Channel 並取得相關設定值。
+                                    </p>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Channel Access Token</label>
+                                    <input type="password" id="lineChannelAccessToken" placeholder="例如：xxxxxxxxxxxxxxxxxxxx">
+                                    <small>從 LINE Developers Console 取得的 Channel Access Token</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>Channel Secret</label>
+                                    <input type="password" id="lineChannelSecret" placeholder="例如：xxxxxxxxxxxxxxxxxxxx">
+                                    <small>從 LINE Developers Console 取得的 Channel Secret</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>LIFF ID</label>
+                                    <input type="text" id="lineLiffId" placeholder="例如：1234567890-abcdefgh">
+                                    <small>從 LINE Developers Console 建立的 LIFF App ID</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>LIFF URL（選填）</label>
+                                    <input type="text" id="lineLiffUrl" placeholder="例如：https://liff.line.me/1234567890-abcdefgh">
+                                    <small>LIFF App 的完整 URL（系統會自動產生，此欄位為選填）</small>
+                                </div>
+                                <button class="btn-save" onclick="saveLineSettings()">儲存設定</button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- 付款設定分頁 -->

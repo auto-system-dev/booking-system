@@ -14,6 +14,7 @@ const payment = require('./payment');
 const cron = require('node-cron');
 const backup = require('./backup');
 const csrf = require('csrf');
+const lineBot = require('./line-bot');
 
 // 預先載入 Resend（如果可用）
 let Resend = null;
@@ -1294,6 +1295,34 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
             // 管理員郵件失敗不影響訂房流程
         }
 
+        // 發送 LINE 訊息（如果有提供 LINE User ID）
+        const lineUserId = req.body.lineUserId || req.query.lineUserId;
+        if (lineUserId) {
+            try {
+                // 確保 LINE Bot 設定是最新的（從資料庫重新載入）
+                await lineBot.loadSettings();
+                
+                console.log('📱 發送 LINE 訂房成功訊息...');
+                const lineResult = await lineBot.sendBookingSuccessMessage(lineUserId, {
+                    bookingId: bookingData.bookingId,
+                    guestName: bookingData.guestName,
+                    checkInDate: bookingData.checkInDate,
+                    checkOutDate: bookingData.checkOutDate,
+                    roomType: bookingData.roomType,
+                    finalAmount: bookingData.finalAmount
+                });
+                
+                if (lineResult.success) {
+                    console.log('✅ LINE 訊息發送成功');
+                } else {
+                    console.warn('⚠️ LINE 訊息發送失敗:', lineResult.error);
+                }
+            } catch (lineError) {
+                console.error('❌ LINE 訊息發送錯誤:', lineError.message);
+                // LINE 訊息失敗不影響訂房流程
+            }
+        }
+
         // 儲存訂房資料到資料庫
         try {
             // 判斷付款狀態和訂房狀態
@@ -1450,6 +1479,62 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
                 error: error.message
             });
         }
+    }
+});
+
+// LINE Webhook 端點（接收 LINE 官方帳號的事件）
+app.post('/api/line/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    try {
+        const signature = req.headers['x-line-signature'];
+        if (!signature) {
+            console.warn('⚠️ LINE Webhook 請求缺少簽章');
+            return res.status(401).json({ error: 'Missing signature' });
+        }
+
+        // 驗證簽章（req.body 是 Buffer）
+        const bodyBuffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body);
+        if (!lineBot.verifySignature(signature, bodyBuffer)) {
+            console.warn('⚠️ LINE Webhook 簽章驗證失敗');
+            return res.status(401).json({ error: 'Invalid signature' });
+        }
+
+        const events = JSON.parse(bodyBuffer.toString()).events || [];
+        
+        for (const event of events) {
+            // 處理文字訊息事件
+            if (event.type === 'message' && event.message.type === 'text') {
+                const userId = event.source.userId;
+                const messageText = event.message.text;
+                
+                console.log('📱 收到 LINE 訊息:', {
+                    userId: userId?.substring(0, 10) + '...',
+                    text: messageText
+                });
+
+                // 可以在此處加入自動回覆邏輯
+                // 例如：當用戶輸入「訂房」時，回覆訂房連結
+                if (messageText.includes('訂房') || messageText.includes('預訂')) {
+                    const liffUrl = process.env.LINE_LIFF_URL || 'https://your-domain.com';
+                    await lineBot.sendTextMessage(userId, `歡迎使用訂房系統！\n\n請點擊以下連結開始訂房：\n${liffUrl}`);
+                }
+            }
+
+            // 處理加入好友事件
+            if (event.type === 'follow') {
+                const userId = event.source.userId;
+                console.log('📱 新用戶加入:', userId?.substring(0, 10) + '...');
+                
+                // 確保 LINE Bot 設定是最新的（從資料庫重新載入）
+                await lineBot.loadSettings();
+                
+                await lineBot.sendTextMessage(userId, '歡迎加入！輸入「訂房」即可開始預訂房間。');
+            }
+        }
+
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error('❌ LINE Webhook 處理錯誤:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -3287,6 +3372,26 @@ app.get('/api/settings', publicLimiter, async (req, res) => {
         settings.forEach(setting => {
             settingsObj[setting.key] = setting.value;
         });
+        
+        // 加入 LINE 設定（優先使用資料庫設定，其次使用環境變數）
+        if (!settingsObj.line_channel_access_token && process.env.LINE_CHANNEL_ACCESS_TOKEN) {
+            settingsObj.line_channel_access_token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+        }
+        if (!settingsObj.line_channel_secret && process.env.LINE_CHANNEL_SECRET) {
+            settingsObj.line_channel_secret = process.env.LINE_CHANNEL_SECRET;
+        }
+        if (!settingsObj.line_liff_id && process.env.LINE_LIFF_ID) {
+            settingsObj.line_liff_id = process.env.LINE_LIFF_ID;
+        }
+        if (!settingsObj.line_liff_url && process.env.LINE_LIFF_URL) {
+            settingsObj.line_liff_url = process.env.LINE_LIFF_URL;
+        }
+        
+        // 確保所有 LINE 設定欄位都存在（即使為空）
+        settingsObj.line_channel_access_token = settingsObj.line_channel_access_token || '';
+        settingsObj.line_channel_secret = settingsObj.line_channel_secret || '';
+        settingsObj.line_liff_id = settingsObj.line_liff_id || '';
+        settingsObj.line_liff_url = settingsObj.line_liff_url || '';
         
         res.json({
             success: true,
