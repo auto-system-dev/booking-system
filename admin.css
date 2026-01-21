@@ -1005,6 +1005,35 @@ body {
     margin: 0;
 }
 
+/* 郵件模板卡片：右上角操作區（啟用/編輯） */
+.template-card-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.template-card-actions-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.template-enable-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #333;
+    user-select: none;
+}
+
+.template-enable-toggle input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
 #templateContent {
     font-family: 'Courier New', monospace;
     font-size: 13px;

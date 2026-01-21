@@ -4074,17 +4074,25 @@ function renderEmailTemplates(templates) {
     };
     
     container.innerHTML = templates.map(template => `
-        <div class="template-card" style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+        <div class="template-card" style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: default;" onclick="showEmailTemplateModal('${template.template_key}')">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px; gap: 12px;">
                 <div>
                     <h3 style="margin: 0 0 5px 0; color: #333;">${template.template_name || templateNames[template.template_key] || template.template_key}</h3>
                     <p style="margin: 0; color: #666; font-size: 14px;">模板代碼：${template.template_key}</p>
                 </div>
-                <div>
-                    <span class="status-badge ${template.is_enabled === 1 ? 'status-sent' : 'status-unsent'}" style="margin-right: 10px;">
-                        ${template.is_enabled === 1 ? '啟用' : '停用'}
-                    </span>
-                    <button class="btn-edit" onclick="showEmailTemplateModal('${template.template_key}')">編輯</button>
+                <div class="template-card-actions" onclick="event.stopPropagation()">
+                    <div class="template-card-actions-row">
+                        <label class="template-enable-toggle" title="啟用/停用此模板">
+                            <input type="checkbox"
+                                   ${template.is_enabled === 1 ? 'checked' : ''}
+                                   onchange="toggleEmailTemplateEnabledFromList(event, '${template.template_key}', this.checked)">
+                            <span>啟用</span>
+                        </label>
+                        <span class="status-badge ${template.is_enabled === 1 ? 'status-sent' : 'status-unsent'}">
+                            ${template.is_enabled === 1 ? '啟用中' : '已停用'}
+                        </span>
+                    </div>
+                    <button class="btn-edit" onclick="event.stopPropagation(); showEmailTemplateModal('${template.template_key}')">編輯</button>
                 </div>
             </div>
             <div style="border-top: 1px solid #eee; padding-top: 15px;">
@@ -4098,6 +4106,61 @@ function renderEmailTemplates(templates) {
             </div>
         </div>
     `).join('');
+}
+
+// 郵件模板列表：直接切換啟用/停用（避免 modal 才能切、也避免點擊冒泡造成「沒反應」）
+async function toggleEmailTemplateEnabledFromList(event, templateKey, enabled) {
+    try {
+        if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+
+        const checkbox = event?.target;
+        if (checkbox) checkbox.disabled = true;
+
+        // 取得完整模板，避免 PUT 時缺欄位導致後端拒絕
+        const getResp = await fetch(`/api/email-templates/${templateKey}`);
+        const getJson = await getResp.json();
+        if (!getJson.success || !getJson.data) {
+            throw new Error(getJson.message || '取得模板失敗');
+        }
+        const t = getJson.data;
+
+        const payload = {
+            template_name: t.template_name,
+            subject: t.subject,
+            content: t.content,
+            is_enabled: enabled ? 1 : 0,
+            days_before_checkin: t.days_before_checkin,
+            send_hour_checkin: t.send_hour_checkin,
+            days_after_checkout: t.days_after_checkout,
+            send_hour_feedback: t.send_hour_feedback,
+            days_reserved: t.days_reserved,
+            send_hour_payment_reminder: t.send_hour_payment_reminder,
+            // 重要：後端 PUT 只吃 blockSettings（不是 block_settings）
+            blockSettings: t.block_settings ?? undefined
+        };
+
+        const putResp = await fetch(`/api/email-templates/${templateKey}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const putJson = await putResp.json();
+        if (!putJson.success) {
+            throw new Error(putJson.message || '更新失敗');
+        }
+
+        // 重新載入列表，確保狀態徽章同步
+        await loadEmailTemplates();
+    } catch (err) {
+        console.error('❌ 切換模板啟用狀態失敗:', err);
+        // 還原 checkbox 狀態
+        const checkbox = event?.target;
+        if (checkbox) checkbox.checked = !enabled;
+        showError('切換啟用狀態失敗：' + (err?.message || '未知錯誤'));
+    } finally {
+        const checkbox = event?.target;
+        if (checkbox) checkbox.disabled = false;
+    }
 }
 
 // 重置郵件模板為預設圖卡樣式
