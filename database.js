@@ -1221,7 +1221,25 @@ async function initEmailTemplates() {
             const isContentTooShort = existing && existing.content && existing.content.trim() !== '' 
                 && existing.content.length < template.content.length * 0.5;
             
-            if (!existing || !existing.content || existing.content.trim() === '' || existing.template_name !== template.name || isContentTooShort) {
+            // 對於入住提醒模板，檢查是否缺少完整的 HTML 結構
+            let needsUpdateForHtmlStructure = false;
+            if (template.key === 'checkin_reminder' && existing && existing.content && existing.content.trim() !== '') {
+                const hasFullHtmlStructure = existing.content.includes('<!DOCTYPE html>') || 
+                                           (existing.content.includes('<html') && existing.content.includes('</html>'));
+                const hasStyleTag = existing.content.includes('<style>') || existing.content.includes('<style ');
+                const hasBodyTag = existing.content.includes('<body>') || existing.content.includes('<body ');
+                
+                // 如果缺少完整的 HTML 結構，需要更新
+                if (!hasFullHtmlStructure || !hasStyleTag || !hasBodyTag) {
+                    console.log(`⚠️ 入住提醒模板缺少完整 HTML 結構，將更新為完整圖卡格式`);
+                    console.log(`   缺少 DOCTYPE: ${!hasFullHtmlStructure}`);
+                    console.log(`   缺少 style 標籤: ${!hasStyleTag}`);
+                    console.log(`   缺少 body 標籤: ${!hasBodyTag}`);
+                    needsUpdateForHtmlStructure = true;
+                }
+            }
+            
+            if (!existing || !existing.content || existing.content.trim() === '' || existing.template_name !== template.name || isContentTooShort || needsUpdateForHtmlStructure) {
                 if (usePostgreSQL) {
                     await query(
                         `INSERT INTO email_templates (template_key, template_name, subject, content, is_enabled, days_before_checkin, send_hour_checkin, days_after_checkout, send_hour_feedback, days_reserved, send_hour_payment_reminder)
@@ -1269,6 +1287,8 @@ async function initEmailTemplates() {
                     console.log(`✅ 已更新郵件模板名稱 ${template.key}: ${existing.template_name} -> ${template.name}`);
                 } else if (isContentTooShort) {
                     console.log(`✅ 已還原郵件模板 ${template.key} 的完整內容（原內容長度: ${existing.content.length}, 新內容長度: ${template.content.length}）`);
+                } else if (needsUpdateForHtmlStructure) {
+                    console.log(`✅ 已更新入住提醒模板為完整的圖卡格式（包含完整的 HTML 和 CSS）`);
                 } else if (!existing) {
                     console.log(`✅ 已建立新的郵件模板 ${template.key}`);
                 }

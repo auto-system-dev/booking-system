@@ -5894,7 +5894,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
     }
 });
 
-// API: 強制更新入住提醒郵件模板為完整的圖卡格式
+// API: 強制更新入住提醒郵件模板為完整的圖卡格式（並重新初始化所有模板）
 app.post('/api/email-templates/checkin_reminder/force-update-card-format', requireAuth, adminLimiter, async (req, res) => {
     try {
         // 完整的圖卡格式模板
@@ -6025,11 +6025,14 @@ app.post('/api/email-templates/checkin_reminder/force-update-card-format', requi
             content: cardFormatTemplate
         });
         
-        console.log('✅ 已強制更新入住提醒郵件模板為完整的圖卡格式');
+        // 重新初始化所有郵件模板，確保所有模板都是完整的
+        await db.initEmailTemplates();
+        
+        console.log('✅ 已強制更新入住提醒郵件模板為完整的圖卡格式，並重新初始化所有模板');
         
         res.json({
             success: true,
-            message: '入住提醒郵件模板已更新為完整的圖卡格式'
+            message: '入住提醒郵件模板已更新為完整的圖卡格式，所有模板已重新初始化'
         });
     } catch (error) {
         console.error('❌ 強制更新入住提醒郵件模板失敗:', error);
