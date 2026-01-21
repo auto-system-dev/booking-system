@@ -1379,7 +1379,6 @@ function initSQLite() {
                                 console.log('✅ 資料表欄位已更新');
                             }
                             
-                            
                             // 建立房型設定表
                             db.run(`
                             CREATE TABLE IF NOT EXISTS room_types (
@@ -1536,6 +1535,7 @@ function initSQLite() {
                                     });
                                 });
                             }
+                            });
                             
                             // 建立系統設定表
                             db.run(`
@@ -1608,43 +1608,6 @@ function initSQLite() {
                                     
                                     function createEmailTemplatesTable() {
                                         // 建立郵件模板表
-                                        db.run(`
-                                        CREATE TABLE IF NOT EXISTS email_templates (
-                                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                            template_key TEXT UNIQUE NOT NULL,
-                                            template_name TEXT NOT NULL,
-                                            subject TEXT NOT NULL,
-                                            content TEXT NOT NULL,
-                                            is_enabled INTEGER DEFAULT 1,
-                                            days_before_checkin INTEGER,
-                                            send_hour_checkin INTEGER,
-                                            days_after_checkout INTEGER,
-                                            send_hour_feedback INTEGER,
-                                            days_reserved INTEGER,
-                                            send_hour_payment_reminder INTEGER,
-                                            block_settings TEXT,
-                                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                                            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                                        )
-                                    `, (err) => {
-                                        if (err) {
-                                            console.warn('⚠️  建立 email_templates 表時發生錯誤:', err.message);
-                                            // 即使建立失敗，也繼續初始化
-                                            initEmailTemplates().then(() => {
-                                                resolve();
-                                            }).catch(reject);
-                                        } else {
-                                            console.log('✅ 郵件模板表已準備就緒');
-                                            
-                                            // 添加 block_settings 欄位（如果不存在）
-                                            db.run(`ALTER TABLE email_templates ADD COLUMN block_settings TEXT`, (alterErr) => {
-                                                if (alterErr && !alterErr.message.includes('duplicate column')) {
-                                                    console.warn('⚠️  添加 block_settings 欄位時發生錯誤:', alterErr.message);
-                                                }
-                                                // 繼續建立管理員資料表
-                                                createAdminsTable();
-                                            });
-                                        }
                                         
                                         function createAdminsTable() {
                                             // 建立管理員資料表
@@ -1731,6 +1694,44 @@ function initSQLite() {
                                                 }
                                             });
                                         }
+                                        
+                                        db.run(`
+                                        CREATE TABLE IF NOT EXISTS email_templates (
+                                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                            template_key TEXT UNIQUE NOT NULL,
+                                            template_name TEXT NOT NULL,
+                                            subject TEXT NOT NULL,
+                                            content TEXT NOT NULL,
+                                            is_enabled INTEGER DEFAULT 1,
+                                            days_before_checkin INTEGER,
+                                            send_hour_checkin INTEGER,
+                                            days_after_checkout INTEGER,
+                                            send_hour_feedback INTEGER,
+                                            days_reserved INTEGER,
+                                            send_hour_payment_reminder INTEGER,
+                                            block_settings TEXT,
+                                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                                        )
+                                    `, (err) => {
+                                        if (err) {
+                                            console.warn('⚠️  建立 email_templates 表時發生錯誤:', err.message);
+                                            // 即使建立失敗，也繼續初始化
+                                            initEmailTemplates().then(() => {
+                                                resolve();
+                                            }).catch(reject);
+                                        } else {
+                                            console.log('✅ 郵件模板表已準備就緒');
+                                            
+                                            // 添加 block_settings 欄位（如果不存在）
+                                            db.run(`ALTER TABLE email_templates ADD COLUMN block_settings TEXT`, (alterErr) => {
+                                                if (alterErr && !alterErr.message.includes('duplicate column')) {
+                                                    console.warn('⚠️  添加 block_settings 欄位時發生錯誤:', alterErr.message);
+                                                }
+                                                // 繼續建立管理員資料表
+                                                createAdminsTable();
+                                            });
+                                        }
                                     });
                                     }
                                 }
@@ -1739,8 +1740,8 @@ function initSQLite() {
                     });
                 });
             });
-        });
-    });
+        });  // closes db.serialize
+    });  // closes Promise (arrow function + Promise call)
 }
 
 // 儲存訂房資料
