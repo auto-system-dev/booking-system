@@ -197,6 +197,19 @@ async function initPostgreSQL() {
             // 檢查並新增欄位（如果不存在）
             // payment_status 和 status 已在 CREATE TABLE 中定義，不需要再次添加
             
+            // 新增 line_user_id 欄位（如果不存在）
+            try {
+                await query(`
+                    ALTER TABLE bookings 
+                    ADD COLUMN IF NOT EXISTS line_user_id VARCHAR(255)
+                `);
+                console.log('✅ line_user_id 欄位已準備就緒');
+            } catch (err) {
+                if (!err.message.includes('duplicate column') && !err.message.includes('already exists')) {
+                    console.warn('⚠️  新增 line_user_id 欄位時發生錯誤:', err.message);
+                }
+            }
+            
             // 修改 email_sent 欄位類型（如果已經是 INTEGER，改為 VARCHAR）
             try {
                 // 檢查欄位類型
@@ -1356,12 +1369,19 @@ function initSQLite() {
                     db.run(`ALTER TABLE bookings ADD COLUMN status TEXT DEFAULT 'active'`, (err) => {
                         if (err && !err.message.includes('duplicate column')) {
                             console.warn('⚠️  新增 status 欄位時發生錯誤:', err.message);
-                        } else {
-                            console.log('✅ 資料表欄位已更新');
                         }
                         
-                        // 建立房型設定表
-                        db.run(`
+                        // 第三個 ALTER TABLE - 新增 line_user_id 欄位
+                        db.run(`ALTER TABLE bookings ADD COLUMN line_user_id TEXT`, (err) => {
+                            if (err && !err.message.includes('duplicate column')) {
+                                console.warn('⚠️  新增 line_user_id 欄位時發生錯誤:', err.message);
+                            } else {
+                                console.log('✅ 資料表欄位已更新');
+                            }
+                            
+                            
+                            // 建立房型設定表
+                            db.run(`
                             CREATE TABLE IF NOT EXISTS room_types (
                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                                 name TEXT UNIQUE NOT NULL,
@@ -1745,8 +1765,8 @@ async function saveBooking(bookingData) {
                 payment_amount, payment_method,
                 price_per_night, nights, total_amount, final_amount,
                 booking_date, email_sent, payment_status, status, addons, addons_total,
-                payment_deadline, days_reserved
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                payment_deadline, days_reserved, line_user_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         
         const addonsJson = bookingData.addons ? JSON.stringify(bookingData.addons) : null;
@@ -1775,7 +1795,8 @@ async function saveBooking(bookingData) {
             bookingData.addons ? JSON.stringify(bookingData.addons) : null,
             bookingData.addonsTotal || 0,
             bookingData.paymentDeadline || null,
-            bookingData.daysReserved || null
+            bookingData.daysReserved || null,
+            bookingData.lineUserId || null
         ];
         
         const result = await query(sql, values);

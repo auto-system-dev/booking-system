@@ -227,7 +227,7 @@ class LineBotService {
                                         contents: [
                                             {
                                                 type: 'text',
-                                                text: '應付金額',
+                                                text: bookingData.isPaid ? '已付金額' : '應付金額',
                                                 size: 'sm',
                                                 color: '#666666',
                                                 flex: 1
@@ -292,13 +292,14 @@ class LineBotService {
      * 格式化訂房成功文字訊息（備用方案）
      */
     formatBookingTextMessage(bookingData) {
+        const amountLabel = bookingData.isPaid ? '已付金額' : '應付金額';
         return `✅ 訂房成功！
 
 訂房編號：${bookingData.bookingId || 'N/A'}
 入住日期：${bookingData.checkInDate || 'N/A'}
 退房日期：${bookingData.checkOutDate || 'N/A'}
 房型：${bookingData.roomType || 'N/A'}
-應付金額：NT$ ${bookingData.finalAmount || 0}
+${amountLabel}：NT$ ${bookingData.finalAmount || 0}
 
 確認信已發送至您的 Email，請查收。`;
     }

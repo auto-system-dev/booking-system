@@ -1295,21 +1295,23 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
             // 管理員郵件失敗不影響訂房流程
         }
 
-        // 發送 LINE 訊息（如果有提供 LINE User ID）
+        // 發送 LINE 訊息（如果有提供 LINE User ID 且付款方式為匯款轉帳）
+        // 線上刷卡會在付款成功後才發送 LINE 訊息
         const lineUserId = req.body.lineUserId || req.query.lineUserId;
-        if (lineUserId) {
+        if (lineUserId && paymentMethod === 'transfer') {
             try {
                 // 確保 LINE Bot 設定是最新的（從資料庫重新載入）
                 await lineBot.loadSettings();
                 
-                console.log('📱 發送 LINE 訂房成功訊息...');
+                console.log('📱 發送 LINE 訂房成功訊息（匯款轉帳）...');
                 const lineResult = await lineBot.sendBookingSuccessMessage(lineUserId, {
                     bookingId: bookingData.bookingId,
                     guestName: bookingData.guestName,
                     checkInDate: bookingData.checkInDate,
                     checkOutDate: bookingData.checkOutDate,
                     roomType: bookingData.roomType,
-                    finalAmount: bookingData.finalAmount
+                    finalAmount: bookingData.finalAmount,
+                    isPaid: false // 匯款轉帳尚未付款
                 });
                 
                 if (lineResult.success) {
@@ -1365,7 +1367,8 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
                 paymentStatus: paymentStatus,
                 status: bookingStatus,
                 addons: bookingData.addons || null,
-                addonsTotal: bookingData.addonsTotal || 0
+                addonsTotal: bookingData.addonsTotal || 0,
+                lineUserId: lineUserId || null
             });
             
             console.log('✅ 訂房資料已成功儲存到資料庫 (ID:', savedId, ')');
@@ -3856,6 +3859,34 @@ const handlePaymentResult = async (req, res) => {
                         if (emailSent) {
                             await db.updateEmailStatus(bookingId, 'booking_confirmation');
                             console.log('✅ 郵件狀態已更新');
+                        }
+                        
+                        // 發送 LINE 訊息（如果有 LINE User ID）
+                        if (booking.line_user_id) {
+                            try {
+                                // 確保 LINE Bot 設定是最新的（從資料庫重新載入）
+                                await lineBot.loadSettings();
+                                
+                                console.log('📱 付款成功，發送 LINE 訂房成功訊息...');
+                                const lineResult = await lineBot.sendBookingSuccessMessage(booking.line_user_id, {
+                                    bookingId: booking.booking_id,
+                                    guestName: booking.guest_name,
+                                    checkInDate: booking.check_in_date,
+                                    checkOutDate: booking.check_out_date,
+                                    roomType: booking.room_type,
+                                    finalAmount: booking.final_amount,
+                                    isPaid: true // 已付款
+                                });
+                                
+                                if (lineResult.success) {
+                                    console.log('✅ LINE 訊息發送成功');
+                                } else {
+                                    console.warn('⚠️ LINE 訊息發送失敗:', lineResult.error);
+                                }
+                            } catch (lineError) {
+                                console.error('❌ LINE 訊息發送錯誤:', lineError.message);
+                                // LINE 訊息失敗不影響付款流程
+                            }
                         }
                     } catch (emailError) {
                         console.error('❌ 發送確認郵件失敗:', emailError.message);
