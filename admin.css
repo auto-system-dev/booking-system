@@ -1028,10 +1028,32 @@ body {
     user-select: none;
 }
 
-.template-enable-toggle input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
+.template-toggle-btn {
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: none;
+    font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.template-toggle-btn.on {
+    background: #dc3545;
+    color: #fff;
+}
+
+.template-toggle-btn.on:hover {
+    background: #c82333;
+}
+
+.template-toggle-btn.off {
+    background: #198754;
+    color: #fff;
+}
+
+.template-toggle-btn.off:hover {
+    background: #157347;
 }
 
 #templateContent {

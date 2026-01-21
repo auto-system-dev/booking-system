@@ -4082,17 +4082,18 @@ function renderEmailTemplates(templates) {
                 </div>
                 <div class="template-card-actions" onclick="event.stopPropagation()">
                     <div class="template-card-actions-row">
-                        <label class="template-enable-toggle" title="啟用/停用此模板">
-                            <input type="checkbox"
-                                   ${template.is_enabled === 1 ? 'checked' : ''}
-                                   onchange="toggleEmailTemplateEnabledFromList(event, '${template.template_key}', this.checked)">
-                            <span>啟用</span>
-                        </label>
+                        <button
+                            class="template-toggle-btn ${template.is_enabled === 1 ? 'on' : 'off'}"
+                            type="button"
+                            title="${template.is_enabled === 1 ? '點擊關閉此模板' : '點擊啟用此模板'}"
+                            onclick="toggleEmailTemplateEnabledFromList('${template.template_key}', ${template.is_enabled === 1 ? 'false' : 'true'}); event.stopPropagation();">
+                            ${template.is_enabled === 1 ? '關閉' : '啟用'}
+                        </button>
                         <span class="status-badge ${template.is_enabled === 1 ? 'status-sent' : 'status-unsent'}">
                             ${template.is_enabled === 1 ? '啟用中' : '已停用'}
                         </span>
                     </div>
-                    <button class="btn-edit" onclick="event.stopPropagation(); showEmailTemplateModal('${template.template_key}')">編輯</button>
+                    <button class="btn-edit" type="button" onclick="event.stopPropagation(); showEmailTemplateModal('${template.template_key}')">編輯</button>
                 </div>
             </div>
             <div style="border-top: 1px solid #eee; padding-top: 15px;">
@@ -4108,14 +4109,9 @@ function renderEmailTemplates(templates) {
     `).join('');
 }
 
-// 郵件模板列表：直接切換啟用/停用（避免 modal 才能切、也避免點擊冒泡造成「沒反應」）
-async function toggleEmailTemplateEnabledFromList(event, templateKey, enabled) {
+// 郵件模板列表：直接切換啟用/關閉（按鈕）
+async function toggleEmailTemplateEnabledFromList(templateKey, enabled) {
     try {
-        if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
-
-        const checkbox = event?.target;
-        if (checkbox) checkbox.disabled = true;
-
         // 取得完整模板，避免 PUT 時缺欄位導致後端拒絕
         const getResp = await fetch(`/api/email-templates/${templateKey}`);
         const getJson = await getResp.json();
@@ -4153,13 +4149,7 @@ async function toggleEmailTemplateEnabledFromList(event, templateKey, enabled) {
         await loadEmailTemplates();
     } catch (err) {
         console.error('❌ 切換模板啟用狀態失敗:', err);
-        // 還原 checkbox 狀態
-        const checkbox = event?.target;
-        if (checkbox) checkbox.checked = !enabled;
         showError('切換啟用狀態失敗：' + (err?.message || '未知錯誤'));
-    } finally {
-        const checkbox = event?.target;
-        if (checkbox) checkbox.disabled = false;
     }
 }
 
