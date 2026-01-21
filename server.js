@@ -6301,10 +6301,191 @@ ${htmlEnd}`;
                         
                         console.log('✅ 已使用資料庫原始模板的 HTML 結構和樣式');
                     }
+                } else {
+                    // 如果原始模板也沒有完整的 head，使用圖卡格式的完整模板
+                    console.log('⚠️ 資料庫原始模板也缺少 head 部分，使用圖卡格式的完整模板');
+                    const cardStyle = `
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; background-color: #ffffff; }
+        .header { background: #262A33; color: white; padding: 35px 30px; text-align: center; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 8px 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .header p { font-size: 16px; margin: 0; opacity: 0.9; }
+        .content { background: #ffffff; padding: 30px; }
+        .greeting { font-size: 15px; margin: 0 0 6px 0; }
+        .intro-text { font-size: 14px; margin: 0 0 18px 0; color: #555; }
+        .card { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 8px; margin: 0 0 20px 0; overflow: hidden; }
+        .card-header-dark { background: #262A33; color: white; padding: 15px 20px; display: flex; align-items: center; gap: 10px; }
+        .card-header-dark .icon { font-size: 20px; }
+        .card-header-dark span:last-child { font-size: 18px; font-weight: 600; }
+        .card-body { padding: 20px; }
+        .booking-table { width: 100%; border-collapse: collapse; }
+        .booking-table td { padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .booking-table tr:last-child td { border-bottom: none; }
+        .booking-label { font-weight: 600; color: #666; font-size: 15px; width: 120px; }
+        .booking-value { color: #333; font-size: 15px; text-align: right; }
+        .booking-value-strong { font-weight: 700; color: #262A33; }
+        .section-card { border-radius: 8px; margin: 0 0 20px 0; overflow: hidden; border: 1px solid; }
+        .section-transport { background: #e3f2fd; border-color: #90caf9; }
+        .section-parking { background: #e3f2fd; border-color: #90caf9; }
+        .section-notes { background: #fff9c4; border-color: #ffd54f; }
+        .section-contact { background: #e3f2fd; border-color: #90caf9; }
+        .section-header { padding: 15px 20px; display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
+        .section-transport .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-parking .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-notes .section-header { color: #856404; background: rgba(255, 193, 7, 0.2); }
+        .section-contact .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-header .icon { font-size: 20px; }
+        .section-body { padding: 20px; }
+        .section-body p { margin: 0 0 12px 0; font-size: 16px; }
+        .section-body p:last-child { margin-bottom: 0; }
+        .section-body ul { margin: 12px 0; padding-left: 24px; }
+        .section-body li { margin: 8px 0; font-size: 16px; }
+        .mb-4 { margin-bottom: 16px !important; }
+        .mt-16 { margin-top: 16px !important; }
+        .footer-text { text-align: center; font-size: 16px; color: #333; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e8e8e8; }
+        strong { color: #333; font-weight: 700; }
+    `;
+                    let bodyContent = content;
+                    if (content.includes('<body>')) {
+                        const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                        if (bodyMatch && bodyMatch[1]) {
+                            bodyContent = bodyMatch[1];
+                        }
+                    }
+                    content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${cardStyle}</style>
+</head>
+<body>
+    ${bodyContent}
+</body>
+</html>`;
                 }
+            } else {
+                // 如果原始模板也沒有完整結構，使用圖卡格式的完整模板
+                console.log('⚠️ 資料庫原始模板也缺少完整結構，使用圖卡格式的完整模板');
+                const cardStyle = `
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; background-color: #ffffff; }
+        .header { background: #262A33; color: white; padding: 35px 30px; text-align: center; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 8px 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .header p { font-size: 16px; margin: 0; opacity: 0.9; }
+        .content { background: #ffffff; padding: 30px; }
+        .greeting { font-size: 15px; margin: 0 0 6px 0; }
+        .intro-text { font-size: 14px; margin: 0 0 18px 0; color: #555; }
+        .card { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 8px; margin: 0 0 20px 0; overflow: hidden; }
+        .card-header-dark { background: #262A33; color: white; padding: 15px 20px; display: flex; align-items: center; gap: 10px; }
+        .card-header-dark .icon { font-size: 20px; }
+        .card-header-dark span:last-child { font-size: 18px; font-weight: 600; }
+        .card-body { padding: 20px; }
+        .booking-table { width: 100%; border-collapse: collapse; }
+        .booking-table td { padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .booking-table tr:last-child td { border-bottom: none; }
+        .booking-label { font-weight: 600; color: #666; font-size: 15px; width: 120px; }
+        .booking-value { color: #333; font-size: 15px; text-align: right; }
+        .booking-value-strong { font-weight: 700; color: #262A33; }
+        .section-card { border-radius: 8px; margin: 0 0 20px 0; overflow: hidden; border: 1px solid; }
+        .section-transport { background: #e3f2fd; border-color: #90caf9; }
+        .section-parking { background: #e3f2fd; border-color: #90caf9; }
+        .section-notes { background: #fff9c4; border-color: #ffd54f; }
+        .section-contact { background: #e3f2fd; border-color: #90caf9; }
+        .section-header { padding: 15px 20px; display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
+        .section-transport .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-parking .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-notes .section-header { color: #856404; background: rgba(255, 193, 7, 0.2); }
+        .section-contact .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-header .icon { font-size: 20px; }
+        .section-body { padding: 20px; }
+        .section-body p { margin: 0 0 12px 0; font-size: 16px; }
+        .section-body p:last-child { margin-bottom: 0; }
+        .section-body ul { margin: 12px 0; padding-left: 24px; }
+        .section-body li { margin: 8px 0; font-size: 16px; }
+        .mb-4 { margin-bottom: 16px !important; }
+        .mt-16 { margin-top: 16px !important; }
+        .footer-text { text-align: center; font-size: 16px; color: #333; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e8e8e8; }
+        strong { color: #333; font-weight: 700; }
+    `;
+                let bodyContent = content;
+                if (content.includes('<body>')) {
+                    const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                    if (bodyMatch && bodyMatch[1]) {
+                        bodyContent = bodyMatch[1];
+                    }
+                }
+                content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${cardStyle}</style>
+</head>
+<body>
+    ${bodyContent}
+</body>
+</html>`;
             }
         } catch (error) {
-            console.warn('⚠️ 無法從資料庫讀取原始模板，使用基本樣式:', error.message);
+            console.warn('⚠️ 無法從資料庫讀取原始模板，使用圖卡格式的完整模板:', error.message);
+            // 使用圖卡格式的完整模板作為備用方案
+            const cardStyle = `
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; background-color: #ffffff; }
+        .header { background: #262A33; color: white; padding: 35px 30px; text-align: center; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 8px 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .header p { font-size: 16px; margin: 0; opacity: 0.9; }
+        .content { background: #ffffff; padding: 30px; }
+        .greeting { font-size: 15px; margin: 0 0 6px 0; }
+        .intro-text { font-size: 14px; margin: 0 0 18px 0; color: #555; }
+        .card { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 8px; margin: 0 0 20px 0; overflow: hidden; }
+        .card-header-dark { background: #262A33; color: white; padding: 15px 20px; display: flex; align-items: center; gap: 10px; }
+        .card-header-dark .icon { font-size: 20px; }
+        .card-header-dark span:last-child { font-size: 18px; font-weight: 600; }
+        .card-body { padding: 20px; }
+        .booking-table { width: 100%; border-collapse: collapse; }
+        .booking-table td { padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .booking-table tr:last-child td { border-bottom: none; }
+        .booking-label { font-weight: 600; color: #666; font-size: 15px; width: 120px; }
+        .booking-value { color: #333; font-size: 15px; text-align: right; }
+        .booking-value-strong { font-weight: 700; color: #262A33; }
+        .section-card { border-radius: 8px; margin: 0 0 20px 0; overflow: hidden; border: 1px solid; }
+        .section-transport { background: #e3f2fd; border-color: #90caf9; }
+        .section-parking { background: #e3f2fd; border-color: #90caf9; }
+        .section-notes { background: #fff9c4; border-color: #ffd54f; }
+        .section-contact { background: #e3f2fd; border-color: #90caf9; }
+        .section-header { padding: 15px 20px; display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
+        .section-transport .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-parking .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-notes .section-header { color: #856404; background: rgba(255, 193, 7, 0.2); }
+        .section-contact .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-header .icon { font-size: 20px; }
+        .section-body { padding: 20px; }
+        .section-body p { margin: 0 0 12px 0; font-size: 16px; }
+        .section-body p:last-child { margin-bottom: 0; }
+        .section-body ul { margin: 12px 0; padding-left: 24px; }
+        .section-body li { margin: 8px 0; font-size: 16px; }
+        .mb-4 { margin-bottom: 16px !important; }
+        .mt-16 { margin-top: 16px !important; }
+        .footer-text { text-align: center; font-size: 16px; color: #333; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e8e8e8; }
+        strong { color: #333; font-weight: 700; }
+    `;
+            let bodyContent = content;
+            if (content.includes('<body>')) {
+                const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                if (bodyMatch && bodyMatch[1]) {
+                    bodyContent = bodyMatch[1];
+                }
+            }
+            content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${cardStyle}</style>
+</head>
+<body>
+    ${bodyContent}
+</body>
+</html>`;
         }
     }
     
@@ -6325,8 +6506,75 @@ ${htmlEnd}`;
             isCheckinReminder
         });
         
-        // 基本文字樣式（與資料庫模板保持一致）
-        const basicStyle = `
+        // 對於入住提醒郵件，使用圖卡格式的完整模板
+        if (isCheckinReminder) {
+            // 提取實際內容（body 部分）
+            let bodyContent = content;
+            if (content.includes('<body>')) {
+                const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                if (bodyMatch && bodyMatch[1]) {
+                    bodyContent = bodyMatch[1];
+                }
+            }
+            
+            // 使用圖卡格式的完整模板
+            const cardStyle = `
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; background-color: #ffffff; }
+        .header { background: #262A33; color: white; padding: 35px 30px; text-align: center; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 8px 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .header p { font-size: 16px; margin: 0; opacity: 0.9; }
+        .content { background: #ffffff; padding: 30px; }
+        .greeting { font-size: 15px; margin: 0 0 6px 0; }
+        .intro-text { font-size: 14px; margin: 0 0 18px 0; color: #555; }
+        .card { background: #ffffff; border: 1px solid #e8e8e8; border-radius: 8px; margin: 0 0 20px 0; overflow: hidden; }
+        .card-header-dark { background: #262A33; color: white; padding: 15px 20px; display: flex; align-items: center; gap: 10px; }
+        .card-header-dark .icon { font-size: 20px; }
+        .card-header-dark span:last-child { font-size: 18px; font-weight: 600; }
+        .card-body { padding: 20px; }
+        .booking-table { width: 100%; border-collapse: collapse; }
+        .booking-table td { padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .booking-table tr:last-child td { border-bottom: none; }
+        .booking-label { font-weight: 600; color: #666; font-size: 15px; width: 120px; }
+        .booking-value { color: #333; font-size: 15px; text-align: right; }
+        .booking-value-strong { font-weight: 700; color: #262A33; }
+        .section-card { border-radius: 8px; margin: 0 0 20px 0; overflow: hidden; border: 1px solid; }
+        .section-transport { background: #e3f2fd; border-color: #90caf9; }
+        .section-parking { background: #e3f2fd; border-color: #90caf9; }
+        .section-notes { background: #fff9c4; border-color: #ffd54f; }
+        .section-contact { background: #e3f2fd; border-color: #90caf9; }
+        .section-header { padding: 15px 20px; display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
+        .section-transport .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-parking .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-notes .section-header { color: #856404; background: rgba(255, 193, 7, 0.2); }
+        .section-contact .section-header { color: #1976d2; background: rgba(33, 150, 243, 0.1); }
+        .section-header .icon { font-size: 20px; }
+        .section-body { padding: 20px; }
+        .section-body p { margin: 0 0 12px 0; font-size: 16px; }
+        .section-body p:last-child { margin-bottom: 0; }
+        .section-body ul { margin: 12px 0; padding-left: 24px; }
+        .section-body li { margin: 8px 0; font-size: 16px; }
+        .mb-4 { margin-bottom: 16px !important; }
+        .mt-16 { margin-top: 16px !important; }
+        .footer-text { text-align: center; font-size: 16px; color: #333; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e8e8e8; }
+        strong { color: #333; font-weight: 700; }
+    `;
+            
+            content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>${cardStyle}</style>
+</head>
+<body>
+    ${bodyContent}
+</body>
+</html>`;
+            
+            console.log('✅ 入住提醒郵件模板已自動修復，使用圖卡格式的完整 HTML 結構和樣式');
+        } else {
+            // 其他郵件類型使用基本樣式
+            const basicStyle = `
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff; }
         h1 { color: #333; font-size: 28px; font-weight: bold; margin-bottom: 10px; margin-top: 0; }
         h2 { color: #333; font-size: 20px; font-weight: bold; margin-top: 30px; margin-bottom: 15px; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
@@ -6347,19 +6595,19 @@ ${htmlEnd}`;
         .section-title { font-size: 20px; font-weight: bold; margin-top: 30px; margin-bottom: 15px; }
         .footer-text { font-size: 14px; color: #666; margin-top: 30px; text-align: center; }
     `;
-        
-        // 如果沒有完整的 HTML 結構，包裝現有內容
-        if (stillMissingStructure) {
-            // 提取實際內容
-            let bodyContent = content;
-            if (content.includes('<body>')) {
-                const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-                if (bodyMatch && bodyMatch[1]) {
-                    bodyContent = bodyMatch[1];
-                }
-            }
             
-            content = `<!DOCTYPE html>
+            // 如果沒有完整的 HTML 結構，包裝現有內容
+            if (stillMissingStructure) {
+                // 提取實際內容
+                let bodyContent = content;
+                if (content.includes('<body>')) {
+                    const bodyMatch = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                    if (bodyMatch && bodyMatch[1]) {
+                        bodyContent = bodyMatch[1];
+                    }
+                }
+                
+                content = `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -6369,28 +6617,29 @@ ${htmlEnd}`;
     ${bodyContent}
 </body>
 </html>`;
-        } else if (stillMissingStyle) {
-            // 如果有 HTML 結構但缺少樣式標籤，添加基本樣式
-            if (content.includes('<head>')) {
-                content = content.replace(
-                    /<head[^>]*>/i,
-                    `<head>
+            } else if (stillMissingStyle) {
+                // 如果有 HTML 結構但缺少樣式標籤，添加基本樣式
+                if (content.includes('<head>')) {
+                    content = content.replace(
+                        /<head[^>]*>/i,
+                        `<head>
     <meta charset="UTF-8">
     <style>${basicStyle}</style>`
-                );
-            } else {
-                content = content.replace(
-                    /<html[^>]*>/i,
-                    `<html>
+                    );
+                } else {
+                    content = content.replace(
+                        /<html[^>]*>/i,
+                        `<html>
 <head>
     <meta charset="UTF-8">
     <style>${basicStyle}</style>
 </head>`
-                );
+                    );
+                }
             }
+            
+            console.log('✅ 郵件模板已自動修復，添加基本的 HTML 結構和樣式');
         }
-        
-        console.log('✅ 郵件模板已自動修復，添加基本的 HTML 結構和樣式');
     }
     
     // 支援多種日期欄位格式（駝峰和底線）
