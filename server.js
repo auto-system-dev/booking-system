@@ -5152,37 +5152,30 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             {{#if showTransport}}
             <div class="info-section">
                 <div class="info-section-title">📍 交通路線</div>
-                <div class="section-content">
-                    {{checkinTransport}}
-                </div>
+                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">{{checkinTransport}}</p>
             </div>
             {{/if}}
             
             {{#if showParking}}
             <div class="info-section">
                 <div class="info-section-title">🅿️ 停車資訊</div>
-                <div class="section-content">
-                    {{checkinParking}}
-                </div>
+                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">{{checkinParking}}</p>
             </div>
             {{/if}}
             
             {{#if showNotes}}
             <div class="highlight-box">
-                <div class="section-title" style="margin-top: 0; margin-bottom: 12px; color: #856404;">⚠️ 入住注意事項</div>
-                <div class="section-content">
-                    {{checkinNotes}}
-                </div>
+                <div class="section-title" style="margin-top: 0; margin-bottom: 12px; color: #856404; justify-content: center;">⚠️ 入住注意事項</div>
+                <p style="margin: 0; font-size: 16px; line-height: 1.8;">{{checkinNotes}}</p>
             </div>
             {{/if}}
             
             {{#if showContact}}
             <div class="info-section">
                 <div class="info-section-title">📞 聯絡資訊</div>
-                <div class="section-content">
-                    <div style="background: white; padding: 15px; border-radius: 6px; margin-top: 12px;">
-                        {{checkinContact}}
-                    </div>
+                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">如有任何問題，歡迎隨時聯繫我們：</p>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
+                    {{checkinContact}}
                 </div>
             </div>
             {{/if}}
@@ -5915,37 +5908,30 @@ app.post('/api/email-templates/checkin_reminder/force-update-card-format', requi
             {{#if showTransport}}
             <div class="info-section">
                 <div class="info-section-title">📍 交通路線</div>
-                <div class="section-content">
-                    {{checkinTransport}}
-                </div>
+                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">{{checkinTransport}}</p>
             </div>
             {{/if}}
             
             {{#if showParking}}
             <div class="info-section">
                 <div class="info-section-title">🅿️ 停車資訊</div>
-                <div class="section-content">
-                    {{checkinParking}}
-                </div>
+                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">{{checkinParking}}</p>
             </div>
             {{/if}}
             
             {{#if showNotes}}
             <div class="highlight-box">
-                <div class="section-title" style="margin-top: 0; margin-bottom: 12px; color: #856404;">⚠️ 入住注意事項</div>
-                <div class="section-content">
-                    {{checkinNotes}}
-                </div>
+                <div class="section-title" style="margin-top: 0; margin-bottom: 12px; color: #856404; justify-content: center;">⚠️ 入住注意事項</div>
+                <p style="margin: 0; font-size: 16px; line-height: 1.8;">{{checkinNotes}}</p>
             </div>
             {{/if}}
             
             {{#if showContact}}
             <div class="info-section">
                 <div class="info-section-title">📞 聯絡資訊</div>
-                <div class="section-content">
-                    <div style="background: white; padding: 15px; border-radius: 6px; margin-top: 12px;">
-                        {{checkinContact}}
-                    </div>
+                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">如有任何問題，歡迎隨時聯繫我們：</p>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
+                    {{checkinContact}}
                 </div>
             </div>
             {{/if}}
@@ -6129,37 +6115,30 @@ app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, admi
             {{#if showTransport}}
             <div class="info-section">
                 <div class="info-section-title">📍 交通路線</div>
-                <div class="section-content">
-                    {{checkinTransport}}
-                </div>
+                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">{{checkinTransport}}</p>
             </div>
             {{/if}}
             
             {{#if showParking}}
             <div class="info-section">
                 <div class="info-section-title">🅿️ 停車資訊</div>
-                <div class="section-content">
-                    {{checkinParking}}
-                </div>
+                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">{{checkinParking}}</p>
             </div>
             {{/if}}
             
             {{#if showNotes}}
             <div class="highlight-box">
-                <div class="section-title" style="margin-top: 0; margin-bottom: 12px; color: #856404;">⚠️ 入住注意事項</div>
-                <div class="section-content">
-                    {{checkinNotes}}
-                </div>
+                <div class="section-title" style="margin-top: 0; margin-bottom: 12px; color: #856404; justify-content: center;">⚠️ 入住注意事項</div>
+                <p style="margin: 0; font-size: 16px; line-height: 1.8;">{{checkinNotes}}</p>
             </div>
             {{/if}}
             
             {{#if showContact}}
             <div class="info-section">
                 <div class="info-section-title">📞 聯絡資訊</div>
-                <div class="section-content">
-                    <div style="background: white; padding: 15px; border-radius: 6px; margin-top: 12px;">
-                        {{checkinContact}}
-                    </div>
+                <p style="margin: 0 0 15px 0; font-size: 16px; line-height: 1.8;">如有任何問題，歡迎隨時聯繫我們：</p>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
+                    {{checkinContact}}
                 </div>
             </div>
             {{/if}}
