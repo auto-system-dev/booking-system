@@ -1185,7 +1185,7 @@ async function initEmailTemplates() {
             const isContentTooShort = existing && existing.content && existing.content.trim() !== '' 
                 && existing.content.length < template.content.length * 0.5;
             
-            // 對於入住提醒模板，檢查是否缺少完整的 HTML 結構
+            // 對於入住提醒模板，檢查是否缺少完整的 HTML 結構或格式不正確
             let needsUpdateForHtmlStructure = false;
             if (template.key === 'checkin_reminder' && existing && existing.content && existing.content.trim() !== '') {
                 const hasFullHtmlStructure = existing.content.includes('<!DOCTYPE html>') || 
@@ -1193,12 +1193,18 @@ async function initEmailTemplates() {
                 const hasStyleTag = existing.content.includes('<style>') || existing.content.includes('<style ');
                 const hasBodyTag = existing.content.includes('<body>') || existing.content.includes('<body ');
                 
-                // 如果缺少完整的 HTML 結構，需要更新
-                if (!hasFullHtmlStructure || !hasStyleTag || !hasBodyTag) {
-                    console.log(`⚠️ 入住提醒模板缺少完整 HTML 結構，將更新為完整圖卡格式`);
+                // 檢查是否使用正確的格式（檢查關鍵的 CSS 類別和結構）
+                const hasCorrectFormat = existing.content.includes('font-size: 17px; font-weight: 500') && 
+                                        existing.content.includes('祝您 身體健康，萬事如意') &&
+                                        existing.content.includes('font-size: 16px; text-align: center; color: #666');
+                
+                // 如果缺少完整的 HTML 結構或格式不正確，需要更新
+                if (!hasFullHtmlStructure || !hasStyleTag || !hasBodyTag || !hasCorrectFormat) {
+                    console.log(`⚠️ 入住提醒模板需要更新為最新格式`);
                     console.log(`   缺少 DOCTYPE: ${!hasFullHtmlStructure}`);
                     console.log(`   缺少 style 標籤: ${!hasStyleTag}`);
                     console.log(`   缺少 body 標籤: ${!hasBodyTag}`);
+                    console.log(`   格式不正確: ${!hasCorrectFormat}`);
                     needsUpdateForHtmlStructure = true;
                 }
             }
