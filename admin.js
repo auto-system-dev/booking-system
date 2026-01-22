@@ -5333,27 +5333,39 @@ async function saveEmailTemplate(event) {
     }
     
     // 根據當前模式獲取內容
-    // ✅ 完全手動版：對於 checkin_reminder，直接使用 textarea 的原始 HTML，不做任何處理
     let content = '';
     const textarea = document.getElementById('emailTemplateContent');
     
-    if (templateKey === 'checkin_reminder') {
-        // 對於入住提醒，完全手動模式：直接使用 textarea 的值（如果存在）
-        if (textarea && textarea.value) {
-            content = textarea.value;
-            console.log('✅ 入住提醒模板（完全手動模式）：直接使用 textarea 的原始 HTML，長度:', content.length);
-        } else if (isHtmlMode) {
-            content = '';
-            console.warn('⚠️ 入住提醒模板：textarea 為空，但處於 HTML 模式');
-        } else {
-            // 如果 textarea 為空，使用 Quill 的內容（但這不應該發生）
-            content = quillEditor ? quillEditor.root.innerHTML : '';
-            console.warn('⚠️ 入住提醒模板：textarea 為空，使用 Quill 內容（可能不完整）');
-        }
-    } else if (isHtmlMode) {
+    if (isHtmlMode) {
         // HTML 模式：直接從 textarea 獲取
         content = textarea ? textarea.value : '';
         console.log('📝 HTML 模式：從 textarea 獲取內容，長度:', content.length);
+        
+        // 如果 textarea 的內容不是完整 HTML，從資料庫讀取模板結構
+        if (content && !content.includes('<!DOCTYPE html>') && !content.includes('<html')) {
+            console.log('⚠️ HTML 模式：textarea 內容不是完整 HTML，從資料庫讀取模板結構');
+            try {
+                const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
+                const templateResult = await templateResponse.json();
+                if (templateResult.success && templateResult.data && templateResult.data.content) {
+                    const templateContent = templateResult.data.content;
+                    // 使用模板的結構，但替換 body 內容為 textarea 的內容
+                    if (templateContent.includes('<body>')) {
+                        content = templateContent.replace(
+                            /<body[^>]*>[\s\S]*?<\/body>/i,
+                            `<body>${content}</body>`
+                        );
+                        console.log('✅ HTML 模式：使用資料庫模板結構，替換 body 內容');
+                    } else {
+                        // 如果模板沒有 body，直接使用 textarea 的內容
+                        content = content;
+                    }
+                }
+            } catch (e) {
+                console.error('HTML 模式：獲取資料庫模板失敗:', e);
+                // 如果失敗，直接使用 textarea 的內容（不完整，但至少保存了用戶的修改）
+            }
+        }
     } else {
         // 可視化模式：從 Quill 獲取 HTML
         // 由於 text-change 事件已經同步更新了 textarea，直接使用 textarea 的值
