@@ -39,14 +39,26 @@
             <p class="greeting">親愛的 {{guestName}} 您好，</p>
             <p class="intro-text">感謝您選擇我們的住宿服務！我們期待您明天的到來。</p>
             
-            {{#if showBookingInfo}}
             <div class="info-box">
                 <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">📅 訂房資訊</div>
-                {{bookingInfoContent}}
+                <div class="info-row">
+                    <span class="info-label">訂房編號</span>
+                    <span class="info-value"><strong>{{bookingId}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">入住日期</span>
+                    <span class="info-value">{{checkInDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">退房日期</span>
+                    <span class="info-value">{{checkOutDate}}</span>
+                </div>
+                <div class="info-row" style="border-bottom: none;">
+                    <span class="info-label">房型</span>
+                    <span class="info-value">{{roomType}}</span>
+                </div>
             </div>
-            {{/if}}
             
-            {{#if showTransport}}
             <div class="card">
                 <div class="card-header">
                     <span>📍</span>
@@ -66,9 +78,7 @@
                     </ul>
                 </div>
             </div>
-            {{/if}}
             
-            {{#if showParking}}
             <div class="card">
                 <div class="card-header">
                     <span>🅿️</span>
@@ -85,9 +95,7 @@
                     <p style="margin: 12px 0 0 0; font-size: 16px; line-height: 1.8; color: #e65100; font-weight: 600;">⚠️ 停車位有限，建議提前預約</p>
                 </div>
             </div>
-            {{/if}}
             
-            {{#if showNotes}}
             <div class="card">
                 <div class="card-header" style="color: #e65100;">
                     <span>⚠️</span>
@@ -105,9 +113,7 @@
                     </ul>
                 </div>
             </div>
-            {{/if}}
             
-            {{#if showContact}}
             <div class="card">
                 <div class="card-header">
                     <span>📞</span>
@@ -120,7 +126,6 @@
                     <p style="margin: 0; font-size: 16px; line-height: 1.8;"><strong>服務時間：</strong>24 小時</p>
                 </div>
             </div>
-            {{/if}}
             
             <p style="margin-top: 35px; font-size: 18px; font-weight: 600; text-align: center; color: #333;">期待您的到來，祝您住宿愉快！</p>
         </div>
