@@ -5491,17 +5491,6 @@ async function saveEmailTemplate(event) {
             data.send_hour_checkin = parseInt(sendHourCheckinEl.value) || 9;
             console.log('✅ 已添加入住提醒設定:', { days_before_checkin: data.days_before_checkin, send_hour_checkin: data.send_hour_checkin });
         }
-        
-        // 不再使用區塊設定，所有內容都直接儲存在 content 中
-        // 保留空的 block_settings 結構以維持相容性
-        data.block_settings = JSON.stringify({
-            booking_info: { enabled: true, content: '' },
-            transport: { enabled: true, content: '' },
-            parking: { enabled: true, content: '' },
-            notes: { enabled: true, content: '' },
-            contact: { enabled: true, content: '' }
-        });
-        console.log('✅ 入住提醒模板：所有內容已合併到主郵件內容中');
     } else if (templateKey === 'feedback_request') {
         const daysAfterCheckoutEl = document.getElementById('daysAfterCheckout');
         const sendHourFeedbackEl = document.getElementById('sendHourFeedback');
