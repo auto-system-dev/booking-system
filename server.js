@@ -8035,6 +8035,11 @@ async function sendCheckinReminderEmails() {
         
         const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
         
+        // 取得 Google 評價連結和旅館資訊（如果有的話）
+        const googleReviewUrl = await db.getSetting('google_review_url') || '';
+        const hotelEmail = await db.getSetting('hotel_email') || '';
+        const hotelPhone = await db.getSetting('hotel_phone') || '';
+        
         for (const booking of bookings) {
             try {
                 // 檢查模板內容是否存在
@@ -8053,8 +8058,15 @@ async function sendCheckinReminderEmails() {
                 console.log(`📧 準備發送入住提醒郵件 (${booking.booking_id})，模板內容長度: ${templateContent.length} 字元`);
                 console.log(`📋 使用資料庫中保存的模板內容和區塊設定`);
                 
+                // 傳遞 Google 評價連結和旅館資訊作為額外資料
+                const additionalData = {
+                    ...(googleReviewUrl ? { '{{googleReviewUrl}}': googleReviewUrl } : {}),
+                    ...(hotelEmail ? { '{{hotelEmail}}': hotelEmail } : {}),
+                    ...(hotelPhone ? { '{{hotelPhone}}': hotelPhone } : {})
+                };
+                
                 // 使用資料庫中保存的模板（包括 block_settings）生成郵件
-                const { subject, content } = await replaceTemplateVariables(template, booking);
+                const { subject, content } = await replaceTemplateVariables(template, booking, null, additionalData);
                 
                 // 檢查生成的郵件內容
                 if (!content || content.trim() === '') {
