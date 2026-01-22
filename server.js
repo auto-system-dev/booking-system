@@ -4555,8 +4555,10 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             // 檢查是否包含 <style> 標籤
             const hasStyleTag = testContent.includes('<style>') || testContent.includes('<style ');
             
-            // 對於入住提醒郵件，特別檢查是否包含深灰色背景色 #262A33
-            const hasCorrectHeaderColor = !isCheckinReminder || testContent.includes('#262A33');
+            // 對於入住提醒郵件，檢查是否包含有效的標題背景色（#262A33 或 #616161）
+            const hasCorrectHeaderColor = !isCheckinReminder || 
+                                         testContent.includes('#262A33') || 
+                                         testContent.includes('#616161');
             
             // 如果缺少完整結構或樣式，使用資料庫中的完整模板
             const shouldUseDatabaseTemplate = !hasFullHtmlStructure || !hasHeaderStyle || !hasStyleTag || !hasCorrectHeaderColor;
@@ -4573,7 +4575,7 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
                 contentLength: testContent.length,
                 hasHtmlTag: testContent.includes('<html'),
                 hasStyleTag: testContent.includes('<style'),
-                hasHeaderColor: testContent.includes('#262A33')
+                hasHeaderColor: testContent.includes('#262A33') || testContent.includes('#616161')
             });
             
             // 嘗試從資料庫讀取原始模板
@@ -4647,7 +4649,7 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
                     hasFullHtmlStructure,
                     hasHeaderStyle,
                     hasStyleTag,
-                    hasCorrectHeaderColor: isCheckinReminder ? testContent.includes('#262A33') : 'N/A',
+                    hasCorrectHeaderColor: isCheckinReminder ? (testContent.includes('#262A33') || testContent.includes('#616161')) : 'N/A',
                     contentLength: testContent.length
                 });
             }
@@ -4733,7 +4735,7 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
                                        (testContent.includes('background') || testContent.includes('background-color')) &&
                                        testContent.includes('.content') &&
                                        testContent.includes('.container');
-        const finalCheckHasHeaderColor = isCheckinReminder ? testContent.includes('#262A33') : true;
+        const finalCheckHasHeaderColor = isCheckinReminder ? (testContent.includes('#262A33') || testContent.includes('#616161')) : true;
         const finalCheckHasContainer = testContent.includes('class="container') || testContent.includes("class='container");
         const finalCheckHasHeader = testContent.includes('class="header') || testContent.includes("class='header");
         const finalCheckHasContent = testContent.includes('class="content') || testContent.includes("class='content");
