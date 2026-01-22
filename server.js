@@ -4441,16 +4441,16 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             template.subject = subject;
             console.log(`✅ 已將編輯器內容設置到模板物件`);
             
-            // 如果提供了 block_settings，使用編輯器中的區塊設定（用於測試郵件）
-            if (req.body.blockSettings && key === 'checkin_reminder') {
-                // block_settings 可以是物件或字串，統一處理
-                template.block_settings = typeof req.body.blockSettings === 'string' 
-                    ? req.body.blockSettings 
-                    : JSON.stringify(req.body.blockSettings);
-                console.log('✅ 測試郵件使用編輯器中的區塊設定');
-                console.log('   區塊設定:', JSON.stringify(req.body.blockSettings, null, 2));
-            } else if (key === 'checkin_reminder') {
-                console.log('⚠️ 入住提醒郵件但未提供 blockSettings，將使用資料庫中的設定');
+            // 重要：即使使用編輯器內容，也優先使用資料庫中的 block_settings
+            // 確保測試郵件與實際發送郵件使用相同的區塊設定
+            if (key === 'checkin_reminder') {
+                if (template.block_settings) {
+                    console.log('✅ 測試郵件使用資料庫中的 block_settings（與實際發送郵件一致）');
+                } else {
+                    console.log('⚠️ 資料庫中沒有 block_settings，將使用預設值');
+                }
+                // 不使用 req.body.blockSettings，因為實際發送郵件不會使用它
+                // 這樣可以確保測試郵件和實際發送郵件完全一致
             }
         } else {
             // 使用資料庫中的最新內容（預設行為）
@@ -4465,13 +4465,15 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             
             // 確保使用資料庫中的完整內容，不使用前端發送的任何 content
             // template.content 和 template.subject 已經從資料庫讀取，不需要修改
-            
-            // 對於入住提醒郵件，如果提供了 blockSettings，使用它們（即使不使用編輯器內容）
-            if (req.body.blockSettings && key === 'checkin_reminder') {
-                template.block_settings = typeof req.body.blockSettings === 'string' 
-                    ? req.body.blockSettings 
-                    : JSON.stringify(req.body.blockSettings);
-                console.log('✅ 測試郵件使用提供的區塊設定');
+            // 重要：測試郵件必須使用資料庫中的 block_settings，確保與實際發送郵件完全一致
+            // 不使用 req.body.blockSettings，因為實際發送郵件不會使用它
+            if (key === 'checkin_reminder') {
+                console.log(`📋 測試郵件使用資料庫中的 block_settings（與實際發送郵件一致）`);
+                if (template.block_settings) {
+                    console.log(`   資料庫中的 block_settings 已存在`);
+                } else {
+                    console.log(`   ⚠️ 資料庫中沒有 block_settings，將使用預設值`);
+                }
             }
         }
         
