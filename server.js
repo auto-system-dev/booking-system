@@ -4409,23 +4409,6 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         console.log(`📧 測試郵件：從資料庫讀取模板 (${key})`);
         console.log(`   內容長度: ${content.length} 字元`);
         console.log(`   主旨: ${subject}`);
-        console.log(`   是否有 block_settings: ${!!template.block_settings}`);
-        if (key === 'checkin_reminder' && template.block_settings) {
-            try {
-                const blockSettings = typeof template.block_settings === 'string' 
-                    ? JSON.parse(template.block_settings) 
-                    : template.block_settings;
-                console.log(`   區塊設定:`, {
-                    booking_info: blockSettings.booking_info?.enabled !== false ? '啟用' : '停用',
-                    transport: blockSettings.transport?.enabled !== false ? '啟用' : '停用',
-                    parking: blockSettings.parking?.enabled !== false ? '啟用' : '停用',
-                    notes: blockSettings.notes?.enabled !== false ? '啟用' : '停用',
-                    contact: blockSettings.contact?.enabled !== false ? '啟用' : '停用'
-                });
-            } catch (e) {
-                console.warn('⚠️ 解析 block_settings 失敗:', e);
-            }
-        }
         
         // 如果前端明確要求使用編輯器中的內容，則覆蓋資料庫中的值
         if (useEditorContent && req.body.content && req.body.subject) {
@@ -4440,18 +4423,6 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             template.content = content;
             template.subject = subject;
             console.log(`✅ 已將編輯器內容設置到模板物件`);
-            
-            // 重要：即使使用編輯器內容，也優先使用資料庫中的 block_settings
-            // 確保測試郵件與實際發送郵件使用相同的區塊設定
-            if (key === 'checkin_reminder') {
-                if (template.block_settings) {
-                    console.log('✅ 測試郵件使用資料庫中的 block_settings（與實際發送郵件一致）');
-                } else {
-                    console.log('⚠️ 資料庫中沒有 block_settings，將使用預設值');
-                }
-                // 不使用 req.body.blockSettings，因為實際發送郵件不會使用它
-                // 這樣可以確保測試郵件和實際發送郵件完全一致
-            }
         } else {
             // 使用資料庫中的最新內容（預設行為）
             // 重要：即使前端發送了 content，也不使用它，確保使用資料庫中的完整內容
@@ -4465,16 +4436,7 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             
             // 確保使用資料庫中的完整內容，不使用前端發送的任何 content
             // template.content 和 template.subject 已經從資料庫讀取，不需要修改
-            // 重要：測試郵件必須使用資料庫中的 block_settings，確保與實際發送郵件完全一致
-            // 不使用 req.body.blockSettings，因為實際發送郵件不會使用它
-            if (key === 'checkin_reminder') {
-                console.log(`📋 測試郵件使用資料庫中的 block_settings（與實際發送郵件一致）`);
-                if (template.block_settings) {
-                    console.log(`   資料庫中的 block_settings 已存在`);
-                } else {
-                    console.log(`   ⚠️ 資料庫中沒有 block_settings，將使用預設值`);
-                }
-            }
+            // 入住提醒郵件直接使用完整的模板內容，不使用 block_settings
         }
         
         // Email 格式驗證
@@ -7880,7 +7842,7 @@ async function sendCheckinReminderEmails() {
                 }
                 
                 console.log(`📧 準備發送入住提醒郵件 (${booking.booking_id})，模板內容長度: ${templateContent.length} 字元`);
-                console.log(`📋 使用資料庫中保存的模板內容和區塊設定`);
+                console.log(`📋 使用資料庫中保存的完整模板內容`);
                 
                 // 傳遞 Google 評價連結和旅館資訊作為額外資料
                 const additionalData = {
@@ -7889,7 +7851,7 @@ async function sendCheckinReminderEmails() {
                     ...(hotelPhone ? { '{{hotelPhone}}': hotelPhone } : {})
                 };
                 
-                // 使用資料庫中保存的模板（包括 block_settings）生成郵件
+                // 使用資料庫中保存的完整模板內容生成郵件
                 const { subject, content } = await replaceTemplateVariables(template, booking, null, additionalData);
                 
                 // 檢查生成的郵件內容
