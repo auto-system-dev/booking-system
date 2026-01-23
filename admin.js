@@ -267,12 +267,14 @@ window.addEventListener('unhandledrejection', function(event) {
 
 // 確保函數在全局作用域可用
 // 預先聲明 closeEmailTemplateModal，確保在 HTML onclick 中可用
+// 這是一個臨時函數，真正的函數定義在後面，會被覆蓋
 window.closeEmailTemplateModal = function() {
-    console.error('closeEmailTemplateModal 函數尚未載入，請稍候再試');
     const modal = document.getElementById('emailTemplateModal');
     if (modal) {
         modal.classList.remove('active');
     }
+    // 如果真正的函數已經載入，不會執行到這裡
+    // 這個臨時函數只是為了確保在 HTML onclick 中可以使用
 };
 
 // toggleEditorMode 和 toggleEmailPreview 已在檔案前面定義為 window 函數，此處無需佔位符
