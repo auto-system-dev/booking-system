@@ -5929,21 +5929,36 @@ async function restoreEmailTemplate() {
                 contentTextarea.value = defaultTemplate.content;
                 
                 // 如果使用 Quill 編輯器，也需要更新
-                if (quillEditor && !isHtmlMode) {
-                    // 提取 body 內容
-                    let bodyContent = defaultTemplate.content;
-                    if (bodyContent.includes('<body>')) {
-                        const bodyMatch = bodyContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-                        if (bodyMatch && bodyMatch[1]) {
-                            bodyContent = bodyMatch[1];
+                // 安全檢查：確保 quillEditor 和 isHtmlMode 存在
+                try {
+                    const quillEditorExists = typeof quillEditor !== 'undefined' && quillEditor !== null;
+                    const isHtmlModeExists = typeof isHtmlMode !== 'undefined';
+                    const isHtmlModeValue = isHtmlModeExists ? isHtmlMode : true; // 預設為 HTML 模式
+                    
+                    if (quillEditorExists && !isHtmlModeValue) {
+                        // 提取 body 內容
+                        let bodyContent = defaultTemplate.content;
+                        if (bodyContent.includes('<body>')) {
+                            const bodyMatch = bodyContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                            if (bodyMatch && bodyMatch[1]) {
+                                bodyContent = bodyMatch[1];
+                            }
                         }
+                        quillEditor.root.innerHTML = bodyContent;
                     }
-                    quillEditor.root.innerHTML = bodyContent;
+                } catch (e) {
+                    console.warn('更新 Quill 編輯器時發生錯誤（可能未初始化）:', e);
+                    // 忽略錯誤，因為可能是在 HTML 模式下，不需要更新 Quill
                 }
                 
                 // 更新預覽
-                if (isPreviewVisible) {
-                    setTimeout(() => refreshEmailPreview(), 100);
+                try {
+                    const isPreviewVisibleExists = typeof isPreviewVisible !== 'undefined';
+                    if (isPreviewVisibleExists && isPreviewVisible && typeof refreshEmailPreview === 'function') {
+                        setTimeout(() => refreshEmailPreview(), 100);
+                    }
+                } catch (e) {
+                    console.warn('更新預覽時發生錯誤:', e);
                 }
             }
             
