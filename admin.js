@@ -2106,10 +2106,27 @@ let depositPercentage = 30;
 // 載入房型價格對應表
 async function loadRoomPrices() {
     try {
+        // 先檢查是否已登入，避免未登入時發送請求導致 401 錯誤
+        const authCheckResponse = await fetch('/api/admin/check-auth', {
+            credentials: 'include'
+        });
+        
+        if (!authCheckResponse.ok) {
+            // 未登入，不載入房型價格（這是正常的，因為用戶還沒登入）
+            console.log('用戶未登入，跳過載入房型價格');
+            return;
+        }
+        
         const [roomTypesResponse, settingsResponse] = await Promise.all([
             adminFetch('/api/admin/room-types'),
             adminFetch('/api/settings')
         ]);
+        
+        // 檢查響應狀態
+        if (!roomTypesResponse.ok && roomTypesResponse.status === 401) {
+            console.log('認證失敗，跳過載入房型價格');
+            return;
+        }
         
         const roomTypesResult = await roomTypesResponse.json();
         const settingsResult = await settingsResponse.json();
@@ -2126,7 +2143,11 @@ async function loadRoomPrices() {
             depositPercentage = parseInt(settingsResult.data.deposit_percentage) || 30;
         }
     } catch (error) {
-        console.error('載入房型價格錯誤:', error);
+        // 靜默處理錯誤，避免在控制台顯示不必要的錯誤訊息
+        // 只有在開發環境才顯示詳細錯誤
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            console.error('載入房型價格錯誤:', error);
+        }
     }
 }
 
