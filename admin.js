@@ -4635,18 +4635,21 @@ async function showEmailTemplateModal(templateKey) {
                     // ✅ 完全手動版：不再自動從 block_settings 合併或改寫 content
                     // 之後編輯器看到的內容 = 資料庫裡存的 content，儲存時也只更新 content
                 }
-                // 入住提醒不再顯示「還原範本」按鈕，使用與感謝入住相同的格式
+                // 顯示「還原郵件範本」按鈕
                 const restoreBtn = document.getElementById('restoreTemplateBtn');
                 if (restoreBtn) {
-                    restoreBtn.style.display = 'none';
+                    restoreBtn.style.display = 'flex';
                 }
             } else {
-                // 隱藏「還原範本」按鈕（非入住提醒模板）
+                // 顯示「還原郵件範本」按鈕（所有模板都可以還原）
                 const restoreBtn = document.getElementById('restoreTemplateBtn');
                 if (restoreBtn) {
-                    restoreBtn.style.display = 'none';
+                    restoreBtn.style.display = 'flex';
                 }
             }
+            
+            // 儲存當前模板 key 到全域變數，供還原功能使用
+            window.currentTemplateKey = templateKey;
             
             if (templateKey === 'feedback_request') {
                 if (feedbackSettings) {
@@ -5891,6 +5894,71 @@ ${quillHtml}
 
 // 明確綁定到 window，避免被早期佔位符覆蓋
 window.sendTestEmail = sendTestEmail;
+
+// 還原郵件模板為預設內容
+async function restoreEmailTemplate() {
+    const templateKey = window.currentTemplateKey;
+    if (!templateKey) {
+        showError('無法識別當前模板，請重新開啟編輯視窗');
+        return;
+    }
+    
+    if (!confirm('確定要還原為預設範本嗎？此操作將覆蓋目前的內容，且無法復原。')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/email-templates/${templateKey}/default`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            const defaultTemplate = result.data;
+            
+            // 更新表單中的內容
+            const nameInput = document.getElementById('emailTemplateName');
+            const subjectInput = document.getElementById('emailTemplateSubject');
+            const contentTextarea = document.getElementById('emailTemplateContent');
+            
+            if (nameInput) nameInput.value = defaultTemplate.name;
+            if (subjectInput) subjectInput.value = defaultTemplate.subject;
+            if (contentTextarea) {
+                contentTextarea.value = defaultTemplate.content;
+                
+                // 如果使用 Quill 編輯器，也需要更新
+                if (quillEditor && !isHtmlMode) {
+                    // 提取 body 內容
+                    let bodyContent = defaultTemplate.content;
+                    if (bodyContent.includes('<body>')) {
+                        const bodyMatch = bodyContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+                        if (bodyMatch && bodyMatch[1]) {
+                            bodyContent = bodyMatch[1];
+                        }
+                    }
+                    quillEditor.root.innerHTML = bodyContent;
+                }
+                
+                // 更新預覽
+                if (isPreviewVisible) {
+                    setTimeout(() => refreshEmailPreview(), 100);
+                }
+            }
+            
+            showSuccess('已還原為預設範本內容，請點擊「儲存」按鈕將變更儲存到資料庫');
+        } else {
+            showError('還原失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('還原郵件模板錯誤:', error);
+        showError('還原失敗：' + error.message);
+    }
+}
+
+// 明確綁定到 window
+window.restoreEmailTemplate = restoreEmailTemplate;
 
 // 立即暴露 sendTestEmail 到全局作用域（確保在函數定義後立即執行）
 // 強制覆蓋預先聲明的臨時函數
