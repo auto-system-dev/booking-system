@@ -4966,9 +4966,12 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             });
         }
         
+        // 確保測試郵件主旨前加上 [測試]（如果還沒有的話）
+        const finalTestSubject = testSubject.startsWith('[測試]') ? testSubject : `[測試] ${testSubject}`;
+        
         console.log('📧 準備發送測試郵件:', {
             to: email,
-            subject: `[測試] ${testSubject}`,
+            subject: finalTestSubject,
             contentLength: testContent.length,
             hasHtml: testContent.includes('<html'),
             hasStyle: testContent.includes('<style')
@@ -4978,7 +4981,7 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         const mailOptions = {
             from: emailUser,
             to: email,
-            subject: `[測試] ${testSubject}`,
+            subject: finalTestSubject,
             html: testContent
         };
         
@@ -5914,8 +5917,13 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
                 <p style="color: #856404;">此訂房因超過匯款保留期限（{{bookingDate}} 起算），且未在期限內完成付款，系統已自動取消。</p>
             </div>
 
-            <h2>💡 如需重新訂房</h2>
-            <p>如果您仍希望預訂，歡迎重新進行訂房。如有任何疑問，請隨時與我們聯繫。</p>
+            <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h2 style="color: #2e7d32; margin-top: 0;">💡 如需重新訂房</h2>
+                <p style="color: #2e7d32; margin: 10px 0;">如果您仍希望預訂，歡迎重新進行訂房。如有任何疑問，請隨時與我們聯繫。</p>
+                <p style="color: #2e7d32; margin: 10px 0;"><strong>線上訂房：</strong><a href="{{bookingUrl}}" style="color: #1976d2; text-decoration: underline;">{{bookingUrl}}</a></p>
+                <p style="color: #2e7d32; margin: 10px 0;"><strong>Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: underline;">{{hotelEmail}}</a></p>
+                <p style="color: #2e7d32; margin: 10px 0;"><strong>電話：</strong>{{hotelPhone}}</p>
+            </div>
 
             {{hotelInfoFooter}}
         </div>
@@ -7275,6 +7283,14 @@ ${htmlEnd}`;
         } else {
             variables['{{hotelAddress}}'] = ''; // 若未設定地址則留空，避免顯示 {{hotelAddress}}
         }
+    }
+    // 訂房網址變數：供模板中直接使用 {{bookingUrl}}
+    if (!variables['{{bookingUrl}}']) {
+        // 優先使用環境變數，其次使用系統設定，最後使用預設值
+        const bookingUrl = process.env.FRONTEND_URL || 
+                          await db.getSetting('frontend_url') || 
+                          (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'https://your-booking-site.com');
+        variables['{{bookingUrl}}'] = bookingUrl;
     }
     
     // 處理嵌套條件區塊的輔助函數（改進版，能正確處理嵌套結構）
