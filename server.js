@@ -4490,7 +4490,6 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             bookingDate: today.toLocaleDateString('zh-TW'),
             bookingDateTime: today.toLocaleString('zh-TW'),
             bookingIdLast5: (Date.now().toString().slice(-6) + randomInt(100, 999)).slice(-5),
-            googleReviewUrl: await db.getSetting('google_review_url') || 'https://search.google.com/local/writereview?placeid=ChIJN1t_tDeuEmsRUsoyG83frY4',
             hotelEmail: await db.getSetting('hotel_email') || 'feedback@hotel.com',
             hotelPhone: await db.getSetting('hotel_phone') || '02-1234-5678'
         };
@@ -4524,7 +4523,6 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         
         // 準備 additionalData（與實際發送時一致）
         const additionalData = {
-            ...(testData.googleReviewUrl ? { '{{googleReviewUrl}}': testData.googleReviewUrl } : {}),
             ...(testData.hotelEmail ? { '{{hotelEmail}}': testData.hotelEmail } : {}),
             ...(testData.hotelPhone ? { '{{hotelPhone}}': testData.hotelPhone } : {})
         };
@@ -4670,14 +4668,7 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             // 2. 處理 {{#if addonsList}}
             testContent = testContent.replace(/\{\{#if addonsList\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
             
-            // 3. 處理 {{#if googleReviewUrl}}
-            if (testData.googleReviewUrl) {
-                testContent = testContent.replace(/\{\{#if googleReviewUrl\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
-            } else {
-                testContent = testContent.replace(/\{\{#if googleReviewUrl\}\}[\s\S]*?\{\{\/if\}\}/g, '');
-            }
-            
-            // 4. 處理 {{#if isDeposit}}
+            // 3. 處理 {{#if isDeposit}}
             testContent = testContent.replace(/\{\{#if isDeposit\}\}([\s\S]*?)\{\{\/if\}\}/g, '$1');
             
             // 4. 處理 {{#if bankInfo}} ... {{else}} ... {{/if}}
@@ -7392,13 +7383,10 @@ ${htmlEnd}`;
         content = content.replace(/\{\{#if accountName\}\}[\s\S]*?\{\{\/if\}\}/g, '');
     }
     
-    // 2. 處理中間層條件（addonsList, googleReviewUrl）
+    // 2. 處理中間層條件（addonsList）
     const hasAddons = addonsList && addonsList.trim() !== '';
     content = processConditionalBlock(content, hasAddons, 'addonsList');
     
-    // 處理 Google 評價連結條件
-    const hasGoogleReviewUrl = additionalData['{{googleReviewUrl}}'] && additionalData['{{googleReviewUrl}}'].trim() !== '';
-    content = processConditionalBlock(content, hasGoogleReviewUrl, 'googleReviewUrl');
     
     // 判斷是否有匯款資訊（檢查至少有一個非空欄位）
     // 需要檢查欄位是否存在且不是空字串
@@ -7823,8 +7811,7 @@ async function sendCheckinReminderEmails() {
         
         const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
         
-        // 取得 Google 評價連結和旅館資訊（如果有的話）
-        const googleReviewUrl = await db.getSetting('google_review_url') || '';
+        // 取得旅館資訊（如果有的話）
         const hotelEmail = await db.getSetting('hotel_email') || '';
         const hotelPhone = await db.getSetting('hotel_phone') || '';
         
@@ -7846,9 +7833,8 @@ async function sendCheckinReminderEmails() {
                 console.log(`📧 準備發送入住提醒郵件 (${booking.booking_id})，模板內容長度: ${templateContent.length} 字元`);
                 console.log(`📋 使用資料庫中保存的完整模板內容`);
                 
-                // 傳遞 Google 評價連結和旅館資訊作為額外資料
+                // 傳遞旅館資訊作為額外資料
                 const additionalData = {
-                    ...(googleReviewUrl ? { '{{googleReviewUrl}}': googleReviewUrl } : {}),
                     ...(hotelEmail ? { '{{hotelEmail}}': hotelEmail } : {}),
                     ...(hotelPhone ? { '{{hotelPhone}}': hotelPhone } : {})
                 };
@@ -7932,16 +7918,14 @@ async function sendFeedbackRequestEmails() {
         
         const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
         
-        // 取得 Google 評價連結和旅館資訊（如果有的話）
-        const googleReviewUrl = await db.getSetting('google_review_url') || '';
+        // 取得旅館資訊（如果有的話）
         const hotelEmail = await db.getSetting('hotel_email') || '';
         const hotelPhone = await db.getSetting('hotel_phone') || '';
         
         for (const booking of bookings) {
             try {
-                // 傳遞 Google 評價連結和旅館資訊作為額外資料
+                // 傳遞旅館資訊作為額外資料
                 const additionalData = {
-                    ...(googleReviewUrl ? { '{{googleReviewUrl}}': googleReviewUrl } : {}),
                     ...(hotelEmail ? { '{{hotelEmail}}': hotelEmail } : {}),
                     ...(hotelPhone ? { '{{hotelPhone}}': hotelPhone } : {})
                 };

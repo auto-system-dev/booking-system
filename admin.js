@@ -3245,7 +3245,6 @@ async function saveHotelInfoSettings() {
     const hotelAddress = document.getElementById('hotelAddress').value;
     const hotelEmail = document.getElementById('hotelEmail').value;
     const adminEmail = document.getElementById('adminEmail').value;
-    const googleReviewUrl = document.getElementById('googleReviewUrl').value;
     
     // 驗證管理員信箱
     if (!adminEmail) {
@@ -3261,7 +3260,7 @@ async function saveHotelInfoSettings() {
     }
     
     try {
-        const [hotelNameResponse, hotelPhoneResponse, hotelAddressResponse, hotelEmailResponse, adminEmailResponse, googleReviewUrlResponse] = await Promise.all([
+        const [hotelNameResponse, hotelPhoneResponse, hotelAddressResponse, hotelEmailResponse, adminEmailResponse] = await Promise.all([
             adminFetch('/api/admin/settings/hotel_name', {
                 method: 'PUT',
                 headers: {
@@ -3311,16 +3310,6 @@ async function saveHotelInfoSettings() {
                     value: adminEmail,
                     description: '管理員通知信箱（新訂房通知郵件會寄到此信箱）'
                 })
-            }),
-            adminFetch('/api/admin/settings/google_review_url', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    value: googleReviewUrl,
-                    description: 'Google 評價連結（設定後會在感謝入住郵件中顯示評價按鈕）'
-                })
             })
         ]);
         
@@ -3329,8 +3318,7 @@ async function saveHotelInfoSettings() {
             hotelPhoneResponse.json(),
             hotelAddressResponse.json(),
             hotelEmailResponse.json(),
-            adminEmailResponse.json(),
-            googleReviewUrlResponse.json()
+            adminEmailResponse.json()
         ]);
         
         const allSuccess = results.every(r => r.success);
@@ -3696,9 +3684,6 @@ async function loadSettings() {
             
             // 管理員通知信箱
             document.getElementById('adminEmail').value = settings.admin_email || '';
-            
-            // Google 評價連結
-            document.getElementById('googleReviewUrl').value = settings.google_review_url || '';
             
             // LINE 官方帳號設定
             document.getElementById('lineChannelAccessToken').value = settings.line_channel_access_token || '';
