@@ -973,17 +973,19 @@ function reloadCurrentBookingView() {
     loadBookings();
 }
 
-// 切換日曆範圍（以週為單位）
+// 切換日曆月份
 function changeCalendarMonth(direction) {
     if (!calendarStartDate) {
         calendarStartDate = new Date();
     }
-    // 每次前進或後退 7 天
-    calendarStartDate.setDate(calendarStartDate.getDate() + direction * 7);
+    // 切換到上一個或下一個月
+    calendarStartDate.setMonth(calendarStartDate.getMonth() + direction);
+    // 確保回到該月的第一天，以便計算顯示範圍
+    calendarStartDate.setDate(1);
     loadBookingCalendar();
 }
 
-// 載入訂房日曆
+// 載入訂房日曆 (月檢視)
 async function loadBookingCalendar() {
     try {
         const container = document.getElementById('bookingCalendarContainer');
@@ -991,16 +993,36 @@ async function loadBookingCalendar() {
         
         container.innerHTML = '<div class="loading">載入日曆中...</div>';
         
-        // 計算週範圍（顯示 7 天）
+        // 取得當前顯示月份的第一天
         if (!calendarStartDate) {
             calendarStartDate = new Date();
+            calendarStartDate.setDate(1);
         }
-        const startDate = new Date(calendarStartDate.getFullYear(), calendarStartDate.getMonth(), calendarStartDate.getDate());
-        const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + 6); // 共 7 天
         
-        const year = startDate.getFullYear();
-        const month = startDate.getMonth();
+        const year = calendarStartDate.getFullYear();
+        const month = calendarStartDate.getMonth();
+        
+        // 更新月份標題
+        const monthTitle = document.getElementById('calendarMonthTitle');
+        if (monthTitle) {
+            monthTitle.textContent = `${year}年${month + 1}月`;
+        }
+        
+        // 計算當月範圍，為了顯示完整週次，我們需要從當月 1 號所在週的週日開始
+        const firstDayOfMonth = new Date(year, month, 1);
+        const lastDayOfMonth = new Date(year, month + 1, 0);
+        
+        // 找到當月 1 號是星期幾 (0=日, 1=一, ...)
+        const firstDayWeekday = firstDayOfMonth.getDay();
+        
+        // 日曆開始日期為 1 號之前的週日
+        const startDate = new Date(firstDayOfMonth);
+        startDate.setDate(startDate.getDate() - firstDayWeekday);
+        
+        // 日曆結束日期為下個月開始補滿最後一週
+        const endDate = new Date(lastDayOfMonth);
+        const lastDayWeekday = lastDayOfMonth.getDay();
+        endDate.setDate(endDate.getDate() + (6 - lastDayWeekday));
         
         const formatDateStr = (d) => {
             const y = d.getFullYear();
@@ -1012,18 +1034,12 @@ async function loadBookingCalendar() {
         const startDateStr = formatDateStr(startDate);
         const endDateStr = formatDateStr(endDate);
         
-        // 更新月份標題
-        const monthTitle = document.getElementById('calendarMonthTitle');
-        if (monthTitle) {
-            monthTitle.textContent = `${year}年${month + 1}月`;
-        }
-        
-        // 獲取所有房型
+        // 獲取房型資料 (渲染時需要顯示房型名稱)
         const roomTypesResponse = await fetch('/api/room-types');
         const roomTypesResult = await roomTypesResponse.json();
         const roomTypes = roomTypesResult.success ? roomTypesResult.data : [];
         
-        // 獲取訂房資料（改用 /api/bookings?startDate=&endDate=，與列表共用 API）
+        // 獲取訂房資料
         const calendarUrl = `${window.location.origin}/api/bookings?startDate=${encodeURIComponent(startDateStr)}&endDate=${encodeURIComponent(endDateStr)}`;
         const bookingsResponse = await fetch(calendarUrl);
         if (!bookingsResponse.ok) {
@@ -1035,8 +1051,8 @@ async function loadBookingCalendar() {
         }
         const bookings = bookingsResult.data || [];
         
-        // 渲染日曆
-        renderBookingCalendar(roomTypes, bookings, startDate);
+        // 渲染月曆
+        renderMonthlyCalendar(bookings, startDate, endDate, month);
     } catch (error) {
         console.error('載入訂房日曆錯誤:', error);
         showError('載入訂房日曆時發生錯誤：' + error.message);
@@ -1047,13 +1063,11 @@ async function loadBookingCalendar() {
     }
 }
 
-// 渲染訂房日曆（週視圖，一次顯示 7 天）
-function renderBookingCalendar(roomTypes, bookings, startDate) {
+// 渲染月曆
+function renderMonthlyCalendar(bookings, startDate, endDate, currentMonth) {
     const container = document.getElementById('bookingCalendarContainer');
     if (!container) return;
     
-    // 一次顯示 7 天
-    const daysInWeek = 7;
     const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
     
     // 按日期組織訂房資料
@@ -1063,7 +1077,6 @@ function renderBookingCalendar(roomTypes, bookings, startDate) {
             const checkIn = new Date(booking.check_in_date + 'T00:00:00');
             const checkOut = new Date(booking.check_out_date + 'T00:00:00');
             
-            // 遍歷訂房期間的每一天
             for (let d = new Date(checkIn); d < checkOut; d.setDate(d.getDate() + 1)) {
                 const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                 if (!bookingsByDate[dateKey]) {
@@ -1076,73 +1089,63 @@ function renderBookingCalendar(roomTypes, bookings, startDate) {
         }
     });
     
-    // 生成 HTML
-    let html = '<div class="calendar-table-wrapper"><table class="calendar-table">';
+    let html = '<div class="calendar-table-wrapper"><table class="calendar-table month-view">';
     
-    // 表頭：日期（7 天）
-    html += '<thead><tr><th class="room-type-header">房型</th>';
-    for (let i = 0; i < daysInWeek; i++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
-        const dayNum = date.getDate();
-        const weekday = weekdays[date.getDay()];
-        html += `<th class="date-header">${dayNum}<br><span style="font-size: 11px; font-weight: normal; color: #999;">${weekday}</span></th>`;
-    }
+    // 表頭：星期
+    html += '<thead><tr>';
+    weekdays.forEach(day => {
+        html += `<th class="date-header" style="width: 14.28%;">${day}</th>`;
+    });
     html += '</tr></thead>';
     
-    // 表格內容：每個房型一行
+    // 表格內容
     html += '<tbody>';
-    if (roomTypes.length === 0) {
-        html += `<tr><td colspan="${daysInWeek + 1}" style="text-align: center; padding: 40px;">沒有房型資料</td></tr>`;
-    } else {
-        roomTypes.forEach(roomType => {
-            html += `<tr><td class="room-type-header" style="background: #2C8EC4; color: white; font-weight: 600; min-width: 150px;">${escapeHtml(roomType.display_name)}</td>`;
-            
-            for (let i = 0; i < daysInWeek; i++) {
-                const dateObj = new Date(startDate);
-                dateObj.setDate(startDate.getDate() + i);
-                const dateKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-                const dayBookings = bookingsByDate[dateKey] || [];
-                const roomBookings = dayBookings.filter(b => b.room_type === roomType.display_name);
-                
-                // 空白格子可以點擊快速新增訂房
-                const dateLabel = dateKey; // YYYY-MM-DD
-                const hasBookings = roomBookings.length > 0;
-                const cellTitle = hasBookings ? '' : ' title="點擊新增訂房"';
-                html += `<td class="booking-cell" data-room-type="${escapeHtml(roomType.display_name)}" data-date="${dateLabel}" style="min-width: 120px; min-height: 80px;"${cellTitle}>`;
-                if (hasBookings) {
-                    roomBookings.forEach(booking => {
-                        const statusClass = booking.status === 'active' ? 'status-active' : 
-                                          booking.status === 'reserved' ? 'status-reserved' : 
-                                          'status-cancelled';
-                        const statusText = booking.status === 'active' ? '有效' : 
-                                         booking.status === 'reserved' ? '保留' : 
-                                         '已取消';
-                        html += `<div class="calendar-booking-item ${statusClass}" onclick="viewBookingDetail('${escapeHtml(booking.booking_id)}')" title="點擊查看詳情">
-                            <div class="calendar-booking-name">${escapeHtml(booking.guest_name || '未知')}</div>
-                            <div class="calendar-booking-status">${statusText}</div>
-                        </div>`;
-                    });
-                }
-                html += '</td>';
-            }
-            html += '</tr>';
-        });
-    }
-    html += '</tbody></table></div>';
     
+    let currDate = new Date(startDate);
+    while (currDate <= endDate) {
+        if (currDate.getDay() === 0) {
+            html += '<tr>';
+        }
+        
+        const dateKey = `${currDate.getFullYear()}-${String(currDate.getMonth() + 1).padStart(2, '0')}-${String(currDate.getDate()).padStart(2, '0')}`;
+        const dayBookings = bookingsByDate[dateKey] || [];
+        const isCurrentMonth = currDate.getMonth() === currentMonth;
+        
+        html += `<td class="booking-cell ${isCurrentMonth ? '' : 'other-month'}" data-date="${dateKey}" style="height: 120px; vertical-align: top; padding: 5px;">
+            <div class="calendar-day-num" style="text-align: right; font-size: 14px; color: ${isCurrentMonth ? '#333' : '#ccc'}; margin-bottom: 5px;">${currDate.getDate()}</div>
+            <div class="calendar-bookings-list" style="display: flex; flex-direction: column; gap: 2px;">`;
+        
+        dayBookings.forEach(booking => {
+            const statusClass = booking.status === 'active' ? 'status-active' : 
+                              booking.status === 'reserved' ? 'status-reserved' : 
+                              'status-cancelled';
+            
+            // 在卡片中顯示房型 + 客戶名
+            html += `<div class="calendar-booking-item ${statusClass}" onclick="event.stopPropagation(); viewBookingDetail('${escapeHtml(booking.booking_id)}')" title="${escapeHtml(booking.room_type)}: ${escapeHtml(booking.guest_name)}" style="padding: 2px 4px; font-size: 11px; margin-bottom: 1px;">
+                <div class="calendar-booking-room" style="font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(booking.room_type)}</div>
+                <div class="calendar-booking-name" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(booking.guest_name || '未知')}</div>
+            </div>`;
+        });
+        
+        html += `</div></td>`;
+        
+        if (currDate.getDay() === 6) {
+            html += '</tr>';
+        }
+        currDate.setDate(currDate.getDate() + 1);
+    }
+    
+    html += '</tbody></table></div>';
     container.innerHTML = html;
     
-    // 綁定每個格子的點擊事件（空白格 → 快速新增訂房）
-    const cells = container.querySelectorAll('.booking-cell');
-    cells.forEach(cell => {
+    // 綁定點擊事件 (快速新增訂房)
+    container.querySelectorAll('.booking-cell').forEach(cell => {
         cell.addEventListener('click', () => {
-            const roomTypeName = cell.getAttribute('data-room-type');
             const dateStr = cell.getAttribute('data-date');
-            if (!roomTypeName || !dateStr) {
-                return;
+            if (dateStr) {
+                // 月曆模式下點擊空白處，預設不指定房型，由 handleCalendarCellClick 處理
+                handleCalendarCellClick(cell, '', dateStr);
             }
-            handleCalendarCellClick(cell, roomTypeName, dateStr);
         });
     });
 }
@@ -1710,20 +1713,43 @@ function showBookingModal(booking) {
 }
 
 // 顯示「快速新增訂房」表單
-function openQuickBookingModal(roomTypeName, dateStr) {
+async function openQuickBookingModal(roomTypeName, dateStr) {
     const modal = document.getElementById('bookingModal');
     const modalBody = document.getElementById('modalBody');
     
-    // 預設入住日期 = 被點擊那天，退房日期 = 同一天（之後再自行調整）
+    // 預設入住日期 = 被點擊那天，退房日期 = 隔天
     const checkInDate = dateStr;
-    const checkOutDate = dateStr;
+    const checkOutDateObj = new Date(dateStr + 'T00:00:00');
+    checkOutDateObj.setDate(checkOutDateObj.getDate() + 1);
+    const checkOutDate = `${checkOutDateObj.getFullYear()}-${String(checkOutDateObj.getMonth() + 1).padStart(2, '0')}-${String(checkOutDateObj.getDate()).padStart(2, '0')}`;
+    
+    // 如果沒有傳入房型名稱，則獲取房型列表供選擇
+    let roomTypeHtml = '';
+    if (!roomTypeName) {
+        try {
+            const response = await fetch('/api/room-types');
+            const result = await response.json();
+            const roomTypes = result.success ? result.data : [];
+            roomTypeHtml = `
+                <select name="room_type" required>
+                    <option value="">請選擇房型</option>
+                    ${roomTypes.map(rt => `<option value="${rt.display_name}">${rt.display_name}</option>`).join('')}
+                </select>
+            `;
+        } catch (e) {
+            console.error('獲取房型失敗:', e);
+            roomTypeHtml = `<input type="text" name="room_type" placeholder="請手動輸入房型" required>`;
+        }
+    } else {
+        roomTypeHtml = `<input type="text" name="room_type" value="${escapeHtml(roomTypeName)}" readonly>`;
+    }
     
     modalBody.innerHTML = `
         <form id="quickBookingForm" onsubmit="saveQuickBooking(event)">
             <h3 style="margin-bottom: 15px;">快速新增訂房</h3>
             <div class="form-group">
                 <label>房型</label>
-                <input type="text" name="room_type" value="${escapeHtml(roomTypeName)}" readonly>
+                ${roomTypeHtml}
             </div>
             <div class="form-group">
                 <label>入住日期</label>

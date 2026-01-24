@@ -1242,17 +1242,82 @@ label:has(input[type="checkbox"]:hover) {
     background: #fafafa;
 }
 
-.calendar-table td.booking-cell {
+.calendar-table.month-view {
+    table-layout: fixed;
+    min-width: 800px;
+}
+
+.calendar-table.month-view th {
+    background: #262A33;
+    color: white;
+    padding: 10px;
+}
+
+.calendar-table.month-view td {
+    height: 120px;
     background: white;
 }
 
-.calendar-booking-item {
-    padding: 6px 8px;
-    margin: 2px 0;
-    border-radius: 4px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.2s ease;
+.calendar-table.month-view td.other-month {
+    background: #f9f9f9;
+}
+
+.calendar-day-num {
+    font-weight: bold;
+    color: #666;
+}
+
+.calendar-bookings-list {
+    max-height: 90px;
+    overflow-y: auto;
+}
+
+.calendar-booking-room {
+    font-size: 10px;
+    line-height: 1.2;
+}
+
+.calendar-booking-name {
+    font-size: 11px;
+    line-height: 1.2;
+}
+
+/* 響應式調整 */
+@media (max-width: 768px) {
+    .calendar-table.month-view {
+        min-width: 100%;
+        display: block;
+    }
+    
+    .calendar-table.month-view thead {
+        display: none;
+    }
+    
+    .calendar-table.month-view tbody,
+    .calendar-table.month-view tr {
+        display: block;
+        width: 100%;
+    }
+    
+    .calendar-table.month-view td {
+        display: inline-block;
+        width: 14.28%;
+        height: 80px;
+        padding: 2px;
+        font-size: 10px;
+    }
+    
+    .calendar-day-num {
+        font-size: 11px;
+    }
+    
+    .calendar-booking-room {
+        display: none; /* 手機版隱藏房型字樣以節省空間 */
+    }
+    
+    .calendar-booking-name {
+        font-size: 9px;
+    }
 }
 
 .calendar-booking-item:hover {
