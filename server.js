@@ -7350,12 +7350,12 @@ function calculateDynamicPaymentDeadline(createdAt, checkInDate, configDaysReser
         // 情況 1: 預訂日期-訂房日期大於保留天數 -> 正常邏輯
         deadline.setDate(deadline.getDate() + configDaysReserved);
         actualDaysReserved = configDaysReserved;
-    } else if (diffDays === 2) {
+    } else if (diffDays === 1) {
         // 情況 2: 預訂日期為明天 -> 保留天數為今天（1天）
         deadline.setDate(deadline.getDate() + 1);
         actualDaysReserved = 1;
     } else if (diffDays <= configDaysReserved && diffDays > 1) {
-        // 情況 3: 預訂日期-訂房日期等於或小於保留天數（但大於1天）
+        // 情況 3: 預訂日期-訂房日期等於或小於保留天數（但大於1天，即2天以上）
         // 保留天數 = 預訂日期-訂房日期-1
         actualDaysReserved = diffDays - 1;
         deadline.setDate(deadline.getDate() + actualDaysReserved);
@@ -8293,12 +8293,12 @@ async function sendPaymentReminderEmails() {
             tomorrow.setHours(0, 0, 0, 0);
             
             // 如果預訂日期為明天，不發送匯款提醒
-            if (diffDays === 2) {
+            if (diffDays === 1) {
                 return false;
             }
             
-            // 如果預訂日期-訂房日期等於或小於保留天數，在預訂日期前一天發送
-            if (diffDays <= daysReserved && diffDays > 2) {
+            // 如果預訂日期-訂房日期等於或小於保留天數（但大於1天），在預訂日期前一天發送
+            if (diffDays <= daysReserved && diffDays > 1) {
                 // 預訂日期前一天
                 const reminderDate = new Date(checkIn);
                 reminderDate.setDate(reminderDate.getDate() - 1);
