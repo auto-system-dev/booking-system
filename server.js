@@ -1113,7 +1113,7 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
             const deadlineDate = calculateDynamicPaymentDeadline(bookingData.bookingDate, checkInDate, daysReserved);
             bookingData.daysReserved = daysReserved;
             bookingData.paymentDeadline = deadlineDate.toISOString(); // 儲存 ISO 格式
-            console.log('📅 匯款保留天數:', daysReserved, '動態到期日期:', formatPaymentDeadline(deadlineDate));
+            console.log('📅 匯款保留天數:', daysReserved, '到期日期:', formatPaymentDeadline(deadlineDate));
             console.log('💰 匯款資訊:', JSON.stringify(bankInfo, null, 2));
         }
         
@@ -7300,48 +7300,24 @@ async function generateEmailFromTemplate(templateKey, booking, bankInfo = null, 
 }
 
 // ----------------------------------------------------------------------------
-// 匯款期限相關邏輯 (已於 2026-01-25 更新為動態期限)
+// 匯款期限相關邏輯
 // ----------------------------------------------------------------------------
 
 /**
- * 計算動態匯款期限
+ * 計算匯款期限（固定天數）
  * @param {Date|string} createdAt 訂房時間
- * @param {Date|string} checkInDate 入住日期
+ * @param {Date|string} checkInDate 入住日期（此參數保留以維持向後兼容，但不再使用）
  * @param {number} configDaysReserved 設定的保留天數 (預設 3)
- * @returns {Date} 截止日期物件
+ * @returns {Date} 截止日期物件（訂房日期 + 保留天數，當天 23:59:59）
  */
 function calculateDynamicPaymentDeadline(createdAt, checkInDate, configDaysReserved = 3) {
     const created = new Date(createdAt);
-    // 處理 checkInDate 可能為 YYYY-MM-DD 的情況
-    const checkIn = new Date(typeof checkInDate === 'string' && !checkInDate.includes('T') ? checkInDate + 'T00:00:00' : checkInDate);
+    const deadline = new Date(created);
     
-    // 計算訂房日到入住日的天數差距
-    const diffTime = checkIn.getTime() - created.getTime();
-    const diffDays = diffTime / (1000 * 60 * 60 * 24);
-    
-    let deadline = new Date(created);
-    
-    if (diffDays > configDaysReserved + 1) {
-        // 情況 A: 提前超過保留天數 + 1 天訂房 -> 照原定計畫保留 X 天
-        deadline.setDate(deadline.getDate() + configDaysReserved);
-        // 設定為當天 23:59:59 結束，方便統一判斷
-        deadline.setHours(23, 59, 59, 999);
-    } else if (diffDays >= 2) {
-        // 情況 B: 訂房日離入住日較近 (2 ~ N天) -> 保留至入住前一天中午 12:00
-        const prevDay = new Date(checkIn);
-        prevDay.setDate(prevDay.getDate() - 1);
-        prevDay.setHours(12, 0, 0, 0);
-        
-        // 如果入住前一天的中午已經過去了 (極罕見)，則給予訂房後 6 小時
-        if (prevDay.getTime() <= created.getTime()) {
-            deadline.setHours(deadline.getHours() + 6);
-        } else {
-            deadline = prevDay;
-        }
-    } else {
-        // 情況 C: 極端急單 (入住前 1 天或當天) -> 僅保留 6 小時
-        deadline.setHours(deadline.getHours() + 6);
-    }
+    // 簡單的固定天數計算：訂房日期 + 保留天數
+    deadline.setDate(deadline.getDate() + configDaysReserved);
+    // 設定為當天 23:59:59 結束，方便統一判斷
+    deadline.setHours(23, 59, 59, 999);
     
     return deadline;
 }
@@ -7820,14 +7796,14 @@ ${htmlEnd}`;
             paymentDeadline = rawDeadline; // 保持原樣（可能已經是格式化好的字串）
         }
         console.log('✅ 使用 booking 中的 paymentDeadline:', paymentDeadline);
-    } else if (booking.created_at && booking.check_in_date) {
-        // 如果沒有，則根據 created_at, check_in_date 和 daysReserved 動態計算
+    } else if (booking.created_at) {
+        // 如果沒有，則根據 created_at 和 daysReserved 計算
         try {
-            const deadlineDate = calculateDynamicPaymentDeadline(booking.created_at, booking.check_in_date, daysReserved);
+            const deadlineDate = calculateDynamicPaymentDeadline(booking.created_at, null, daysReserved);
             paymentDeadline = formatPaymentDeadline(deadlineDate);
-            console.log('✅ 動態計算 paymentDeadline:', paymentDeadline, '(訂房日期:', new Date(booking.created_at).toLocaleDateString('zh-TW'), ', 入住日期:', booking.check_in_date, ')');
+            console.log('✅ 計算 paymentDeadline:', paymentDeadline, '(訂房日期:', new Date(booking.created_at).toLocaleDateString('zh-TW'), ')');
         } catch (e) {
-            console.error('❌ 動態計算 paymentDeadline 失敗:', e);
+            console.error('❌ 計算 paymentDeadline 失敗:', e);
         }
     }
     
@@ -8240,23 +8216,10 @@ async function sendPaymentReminderEmails() {
         const bookings = allBookings.filter(booking => {
             const deadline = calculateDynamicPaymentDeadline(booking.created_at, booking.check_in_date, daysReserved);
             
-            // 提醒邏輯：
-            // 1. 如果保留期 >= 3天，在截止當天提醒 (原本邏輯)
-            // 2. 如果保留期 < 3天 (急單)，在訂房後 1 小時且尚未發送過提醒時發送
-            
-            const diffTime = deadline.getTime() - new Date(booking.created_at).getTime();
-            const totalReservedDays = diffTime / (1000 * 60 * 60 * 24);
-            
-            if (totalReservedDays >= 2.5) {
-                // 一般訂單：在截止當天且符合 sendHour 時提醒
-                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                const deadlineDay = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate());
-                return deadlineDay.getTime() === today.getTime() && currentHourNum === sendHour;
-            } else {
-                // 急單：只要還沒發過提醒，且已經訂房超過 1 小時就發送 (每小時檢查)
-                const hoursSinceCreated = (now.getTime() - new Date(booking.created_at).getTime()) / (1000 * 60 * 60);
-                return hoursSinceCreated >= 1 && !booking.email_sent?.includes('payment_reminder');
-            }
+            // 提醒邏輯：在截止當天且符合 sendHour 時提醒
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const deadlineDay = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate());
+            return deadlineDay.getTime() === today.getTime() && currentHourNum === sendHour;
         });
         
         console.log(`找到 ${bookings.length} 筆需要發送匯款提醒的訂房（匯款期限最後一天）`);
@@ -8748,11 +8711,11 @@ async function startServer() {
             });
             console.log('✅ 回訪信定時任務已啟動（每小時檢查，根據模板設定時間發送）');
             
-            // 每天凌晨 1:00 執行自動取消過期保留訂房（改為每小時的 30 分檢查，以支援急單動態取消）
+            // 每小時的 30 分執行自動取消過期保留訂房
             cron.schedule('30 * * * *', cancelExpiredReservations, {
                 timezone: timezone
             });
-            console.log('✅ 自動取消過期保留訂房定時任務已啟動（每小時 30 分檢查，支援急單動態取消）');
+            console.log('✅ 自動取消過期保留訂房定時任務已啟動（每小時 30 分檢查）');
             
             // 每天凌晨 2:00 執行資料庫備份（台灣時間）
             cron.schedule('0 2 * * *', async () => {
