@@ -366,8 +366,62 @@ function initDatePicker() {
             calculatePrice();
             checkRoomAvailability();
             renderRoomTypes();
+            // 檢查入住日期，如果為今天則禁用匯款選項
+            checkPaymentMethodForCheckInDate();
         }
     });
+}
+
+// 根據入住日期檢查並更新付款方式選項
+function checkPaymentMethodForCheckInDate() {
+    const checkInInput = document.getElementById('checkInDate');
+    const transferOption = document.querySelector('input[name="paymentMethod"][value="transfer"]');
+    const cardOption = document.querySelector('input[name="paymentMethod"][value="card"]');
+    const transferLabel = transferOption ? transferOption.closest('label') : null;
+    
+    if (!checkInInput || !checkInInput.value || !transferOption || !cardOption) {
+        return;
+    }
+    
+    // 取得入住日期
+    const checkInDate = new Date(checkInInput.value);
+    checkInDate.setHours(0, 0, 0, 0);
+    
+    // 取得今天日期
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // 如果入住日期是今天，禁用匯款選項
+    if (checkInDate.getTime() === today.getTime()) {
+        // 禁用匯款選項
+        transferOption.disabled = true;
+        if (transferLabel) {
+            transferLabel.style.opacity = '0.5';
+            transferLabel.style.cursor = 'not-allowed';
+            // 添加提示文字
+            const transferSpan = transferLabel.querySelector('span');
+            if (transferSpan && !transferSpan.textContent.includes('（今天無法使用）')) {
+                transferSpan.textContent = '匯款轉帳（今天無法使用）';
+            }
+        }
+        
+        // 如果目前選中匯款，自動切換到線上刷卡
+        if (transferOption.checked && cardOption) {
+            cardOption.checked = true;
+        }
+    } else {
+        // 啟用匯款選項
+        transferOption.disabled = false;
+        if (transferLabel) {
+            transferLabel.style.opacity = '1';
+            transferLabel.style.cursor = 'pointer';
+            // 移除提示文字
+            const transferSpan = transferLabel.querySelector('span');
+            if (transferSpan) {
+                transferSpan.textContent = '匯款轉帳';
+            }
+        }
+    }
 }
 
 function showCapacityModal(capacity, totalGuests) {
@@ -404,6 +458,10 @@ loadRoomTypesAndSettings();
 
 // 頁面載入後，如果有日期，檢查房間可用性
 document.addEventListener('DOMContentLoaded', async function() {
+    // 初始化時檢查入住日期，如果為今天則禁用匯款選項
+    setTimeout(() => {
+        checkPaymentMethodForCheckInDate();
+    }, 500); // 延遲一點確保 DOM 已完全載入
     // 先初始化 LIFF（如果從 LINE 開啟）
     await initLIFF();
     
@@ -599,6 +657,9 @@ function updatePaymentMethods(settings) {
             paymentMethodGroup.innerHTML = '<p style="color: #e74c3c; padding: 10px;">目前沒有可用的付款方式，請聯繫客服</p>';
         }
     }
+    
+    // 更新後，檢查入住日期是否為今天
+    checkPaymentMethodForCheckInDate();
 }
 
 // 更新價格顯示
@@ -843,6 +904,24 @@ document.getElementById('bookingForm').addEventListener('submit', async function
         return;
     }
     clearFieldError('guestEmail');
+    
+    // 6. 付款方式驗證：如果入住日期為今天，不允許選擇匯款
+    const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked');
+    if (paymentMethod && paymentMethod.value === 'transfer') {
+        const checkInDate = new Date(checkIn);
+        checkInDate.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (checkInDate.getTime() === today.getTime()) {
+            alert('入住日期為今天時，無法選擇匯款轉帳，請選擇線上刷卡');
+            const cardOption = document.querySelector('input[name="paymentMethod"][value="card"]');
+            if (cardOption) {
+                cardOption.checked = true;
+            }
+            return;
+        }
+    }
     
     // 所有驗證通過，開始提交
     submitBtn.disabled = true;
