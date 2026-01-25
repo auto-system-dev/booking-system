@@ -7338,30 +7338,29 @@ function calculateDynamicPaymentDeadline(createdAt, checkInDate, configDaysReser
     const diffTime = checkIn.getTime() - created.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
+    // 保留期限從訂房日當天開始起算（訂房日當天算第1天）
     let deadline = new Date(created);
     let actualDaysReserved = configDaysReserved;
     
-    // 計算明天（訂房日期的下一天）
-    const tomorrow = new Date(created);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
-    
     if (diffDays > configDaysReserved) {
         // 情況 1: 預訂日期-訂房日期大於保留天數 -> 正常邏輯
-        deadline.setDate(deadline.getDate() + configDaysReserved);
+        // 訂房日當天算第1天，所以截止日期 = 訂房日期 + (保留天數 - 1)
+        deadline.setDate(deadline.getDate() + (configDaysReserved - 1));
         actualDaysReserved = configDaysReserved;
     } else if (diffDays === 1) {
         // 情況 2: 預訂日期為明天 -> 保留天數為今天（1天）
-        deadline.setDate(deadline.getDate() + 1);
+        // 訂房日當天算第1天，所以截止日期 = 訂房日期（當天）
+        deadline.setDate(deadline.getDate() + 0); // 當天
         actualDaysReserved = 1;
     } else if (diffDays <= configDaysReserved && diffDays > 1) {
         // 情況 3: 預訂日期-訂房日期等於或小於保留天數（但大於1天，即2天以上）
-        // 保留天數 = 預訂日期-訂房日期-1
-        actualDaysReserved = diffDays - 1;
-        deadline.setDate(deadline.getDate() + actualDaysReserved);
+        // 保留天數 = 入住日期 - 訂房日期
+        // 訂房日當天算第1天，所以截止日期 = 訂房日期 + (實際保留天數 - 1)
+        actualDaysReserved = diffDays;
+        deadline.setDate(deadline.getDate() + (actualDaysReserved - 1));
     } else {
         // 其他情況（理論上不會發生，因為已經驗證入住日期不能是今天）
-        deadline.setDate(deadline.getDate() + configDaysReserved);
+        deadline.setDate(deadline.getDate() + (configDaysReserved - 1));
         actualDaysReserved = configDaysReserved;
     }
     
