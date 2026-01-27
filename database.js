@@ -2312,7 +2312,7 @@ async function getMonthlyComparison() {
                     SUM(total_amount) as total_revenue,
                     COUNT(DISTINCT check_in_date) as unique_dates
                 FROM bookings
-                WHERE check_in_date::date BETWEEN $1::text::date AND $2::text::date
+                WHERE check_in_date::date BETWEEN to_date($1, 'YYYY-MM-DD') AND to_date($2, 'YYYY-MM-DD')
                 AND status != 'cancelled'
             `;
             
@@ -2323,7 +2323,7 @@ async function getMonthlyComparison() {
                     SUM(total_amount) as total_revenue,
                     COUNT(DISTINCT check_in_date) as unique_dates
                 FROM bookings
-                WHERE check_in_date::date BETWEEN $3::text::date AND $4::text::date
+                WHERE check_in_date::date BETWEEN to_date($3, 'YYYY-MM-DD') AND to_date($4, 'YYYY-MM-DD')
                 AND status != 'cancelled'
             `;
             
@@ -2336,7 +2336,7 @@ async function getMonthlyComparison() {
             const thisMonthBookingsSql = `
                 SELECT check_in_date, check_out_date, nights
                 FROM bookings
-                WHERE (check_in_date::date <= $2::text::date AND check_out_date::date > $1::text::date)
+                WHERE (check_in_date::date <= to_date($2, 'YYYY-MM-DD') AND check_out_date::date > to_date($1, 'YYYY-MM-DD'))
                 AND status != 'cancelled'
             `;
             
@@ -2344,7 +2344,7 @@ async function getMonthlyComparison() {
             const lastMonthBookingsSql = `
                 SELECT check_in_date, check_out_date, nights
                 FROM bookings
-                WHERE (check_in_date::date <= $4::text::date AND check_out_date::date > $3::text::date)
+                WHERE (check_in_date::date <= to_date($4, 'YYYY-MM-DD') AND check_out_date::date > to_date($3, 'YYYY-MM-DD'))
                 AND status != 'cancelled'
             `;
             
