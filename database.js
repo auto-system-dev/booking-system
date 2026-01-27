@@ -2271,10 +2271,12 @@ async function getMonthlyComparison() {
         const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
         const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
         const lastMonthStart = `${lastMonthYear}-${String(lastMonth).padStart(2, '0')}-01`;
-        // lastMonth 是 1-12，要獲取 lastMonth 月的最後一天，需要使用 lastMonth + 1
-        // 例如：lastMonth = 12（十二月），Date(2023, 12, 0) = 2023年11月30日（錯誤！）
-        // 正確：Date(2023, 13, 0) = 2023年12月31日，所以應該使用 lastMonth + 1
-        const lastMonthEndDate = new Date(lastMonthYear, lastMonth + 1, 0);
+        // lastMonth 是 1-12，要獲取 lastMonth 月的最後一天
+        // 如果 lastMonth = 12，需要處理年份溢出問題
+        // 正確做法：使用 lastMonth + 1，但如果 lastMonth = 12，則年份需要 +1
+        const lastMonthEndDate = lastMonth === 12 
+            ? new Date(lastMonthYear + 1, 0, 0)  // 下一年的0月0日 = 當年的12月31日
+            : new Date(lastMonthYear, lastMonth + 1, 0);
         // 使用本地時區格式化日期，避免 toISOString() 造成的時區偏移
         const lastMonthEndYear = lastMonthEndDate.getFullYear();
         const lastMonthEndMonth = String(lastMonthEndDate.getMonth() + 1).padStart(2, '0');
