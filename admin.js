@@ -1912,13 +1912,19 @@ async function loadStatistics() {
         if (result.success) {
             const stats = result.data;
             
-            // 總訂房數
+            // 總訂房數（細分：已入住/未入住）
             document.getElementById('totalBookings').textContent = stats.totalBookings || 0;
+            const checkedIn = stats.totalBookingsDetail?.checkedIn || 0;
+            const notCheckedIn = stats.totalBookingsDetail?.notCheckedIn || 0;
+            document.getElementById('totalBookingsDetail').textContent = `已入住: ${checkedIn} / 未入住: ${notCheckedIn}`;
             
-            // 總營收（訂單總金額加總）
+            // 總營收（細分：已付款/未付款）
             document.getElementById('totalRevenue').textContent = `NT$ ${(stats.totalRevenue || 0).toLocaleString()}`;
+            const revenuePaid = stats.totalRevenueDetail?.paid || 0;
+            const revenueUnpaid = stats.totalRevenueDetail?.unpaid || 0;
+            document.getElementById('totalRevenueDetail').textContent = `已付款: NT$ ${revenuePaid.toLocaleString()} / 未付款: NT$ ${revenueUnpaid.toLocaleString()}`;
             
-            // 匯款轉帳（筆數、總金額）
+            // 匯款轉帳（細分：已付款/未付款）
             const transferCount = stats.transferBookings?.count || 0;
             const transferTotal = stats.transferBookings?.total || 0;
             const transferLabel = document.getElementById('transferBookingsLabel');
@@ -1926,11 +1932,21 @@ async function loadStatistics() {
                 transferLabel.textContent = '匯款轉帳';
             }
             document.getElementById('transferBookings').textContent = `${transferCount} 筆 / NT$ ${transferTotal.toLocaleString()}`;
+            const transferPaidCount = stats.transferBookings?.paid?.count || 0;
+            const transferPaidTotal = stats.transferBookings?.paid?.total || 0;
+            const transferUnpaidCount = stats.transferBookings?.unpaid?.count || 0;
+            const transferUnpaidTotal = stats.transferBookings?.unpaid?.total || 0;
+            document.getElementById('transferBookingsDetail').textContent = `已付款: ${transferPaidCount} 筆 / NT$ ${transferPaidTotal.toLocaleString()} | 未付款: ${transferUnpaidCount} 筆 / NT$ ${transferUnpaidTotal.toLocaleString()}`;
             
-            // 線上刷卡（筆數、總金額）
+            // 線上刷卡（細分：已付款/未付款）
             const cardCount = stats.cardBookings?.count || 0;
             const cardTotal = stats.cardBookings?.total || 0;
             document.getElementById('cardBookings').textContent = `${cardCount} 筆 / NT$ ${cardTotal.toLocaleString()}`;
+            const cardPaidCount = stats.cardBookings?.paid?.count || 0;
+            const cardPaidTotal = stats.cardBookings?.paid?.total || 0;
+            const cardUnpaidCount = stats.cardBookings?.unpaid?.count || 0;
+            const cardUnpaidTotal = stats.cardBookings?.unpaid?.total || 0;
+            document.getElementById('cardBookingsDetail').textContent = `已付款: ${cardPaidCount} 筆 / NT$ ${cardPaidTotal.toLocaleString()} | 未付款: ${cardUnpaidCount} 筆 / NT$ ${cardUnpaidTotal.toLocaleString()}`;
             
             // 渲染房型統計
             renderRoomStats(stats.byRoomType || []);

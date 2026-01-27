@@ -2014,84 +2014,227 @@ async function getStatistics(startDate, endDate) {
     try {
         const hasRange = !!(startDate && endDate);
 
-        let totalSql, revenueSql, byRoomTypeSql, transferSql, cardSql;
+        let totalSql, totalCheckedInSql, totalNotCheckedInSql;
+        let revenueSql, revenuePaidSql, revenueUnpaidSql;
+        let byRoomTypeSql;
+        let transferSql, transferPaidSql, transferUnpaidSql;
+        let cardSql, cardPaidSql, cardUnpaidSql;
         let params = [];
 
         if (usePostgreSQL) {
             // 使用入住日期（check_in_date）作為篩選條件
-            const whereClause = hasRange ? ' WHERE check_in_date::date BETWEEN $1::date AND $2::date' : '';
-            totalSql = `SELECT COUNT(*) as count FROM bookings${whereClause}`;
-            // 總營收改為訂單總金額加總
-            revenueSql = `SELECT SUM(total_amount) as total FROM bookings${whereClause}`;
-            byRoomTypeSql = `SELECT room_type, COUNT(*) as count FROM bookings${whereClause} GROUP BY room_type`;
+            const baseWhereClause = hasRange ? ' WHERE check_in_date::date BETWEEN $1::date AND $2::date' : '';
             
-            // 匯款轉帳統計（筆數、總金額）
-            const transferWhereClause = hasRange 
+            // 總訂房數
+            totalSql = `SELECT COUNT(*) as count FROM bookings${baseWhereClause}`;
+            
+            // 總訂房數 - 已入住（check_in_date <= 今天）
+            const checkedInWhereClause = hasRange 
+                ? ` WHERE check_in_date::date BETWEEN $1::date AND $2::date AND check_in_date::date <= CURRENT_DATE`
+                : ` WHERE check_in_date::date <= CURRENT_DATE`;
+            totalCheckedInSql = `SELECT COUNT(*) as count FROM bookings${checkedInWhereClause}`;
+            
+            // 總訂房數 - 未入住（check_in_date > 今天）
+            const notCheckedInWhereClause = hasRange
+                ? ` WHERE check_in_date::date BETWEEN $1::date AND $2::date AND check_in_date::date > CURRENT_DATE`
+                : ` WHERE check_in_date::date > CURRENT_DATE`;
+            totalNotCheckedInSql = `SELECT COUNT(*) as count FROM bookings${notCheckedInWhereClause}`;
+            
+            // 總營收
+            revenueSql = `SELECT SUM(total_amount) as total FROM bookings${baseWhereClause}`;
+            
+            // 總營收 - 已付款
+            const revenuePaidWhereClause = hasRange
+                ? ` WHERE check_in_date::date BETWEEN $1::date AND $2::date AND payment_status = 'paid'`
+                : ` WHERE payment_status = 'paid'`;
+            revenuePaidSql = `SELECT SUM(total_amount) as total FROM bookings${revenuePaidWhereClause}`;
+            
+            // 總營收 - 未付款
+            const revenueUnpaidWhereClause = hasRange
+                ? ` WHERE check_in_date::date BETWEEN $1::date AND $2::date AND payment_status = 'pending'`
+                : ` WHERE payment_status = 'pending'`;
+            revenueUnpaidSql = `SELECT SUM(total_amount) as total FROM bookings${revenueUnpaidWhereClause}`;
+            
+            byRoomTypeSql = `SELECT room_type, COUNT(*) as count FROM bookings${baseWhereClause} GROUP BY room_type`;
+            
+            // 匯款轉帳統計
+            const transferBaseWhereClause = hasRange 
                 ? ` WHERE check_in_date::date BETWEEN $1::date AND $2::date AND payment_method LIKE '%匯款%'`
                 : ` WHERE payment_method LIKE '%匯款%'`;
-            transferSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${transferWhereClause}`;
+            transferSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${transferBaseWhereClause}`;
             
-            // 線上刷卡統計（筆數、總金額）
-            const cardWhereClause = hasRange
+            // 匯款轉帳 - 已付款
+            const transferPaidWhereClause = hasRange
+                ? ` WHERE check_in_date::date BETWEEN $1::date AND $2::date AND payment_method LIKE '%匯款%' AND payment_status = 'paid'`
+                : ` WHERE payment_method LIKE '%匯款%' AND payment_status = 'paid'`;
+            transferPaidSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${transferPaidWhereClause}`;
+            
+            // 匯款轉帳 - 未付款
+            const transferUnpaidWhereClause = hasRange
+                ? ` WHERE check_in_date::date BETWEEN $1::date AND $2::date AND payment_method LIKE '%匯款%' AND payment_status = 'pending'`
+                : ` WHERE payment_method LIKE '%匯款%' AND payment_status = 'pending'`;
+            transferUnpaidSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${transferUnpaidWhereClause}`;
+            
+            // 線上刷卡統計
+            const cardBaseWhereClause = hasRange
                 ? ` WHERE check_in_date::date BETWEEN $1::date AND $2::date AND (payment_method LIKE '%線上%' OR payment_method LIKE '%卡%')`
                 : ` WHERE payment_method LIKE '%線上%' OR payment_method LIKE '%卡%'`;
-            cardSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${cardWhereClause}`;
+            cardSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${cardBaseWhereClause}`;
+            
+            // 線上刷卡 - 已付款
+            const cardPaidWhereClause = hasRange
+                ? ` WHERE check_in_date::date BETWEEN $1::date AND $2::date AND (payment_method LIKE '%線上%' OR payment_method LIKE '%卡%') AND payment_status = 'paid'`
+                : ` WHERE (payment_method LIKE '%線上%' OR payment_method LIKE '%卡%') AND payment_status = 'paid'`;
+            cardPaidSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${cardPaidWhereClause}`;
+            
+            // 線上刷卡 - 未付款
+            const cardUnpaidWhereClause = hasRange
+                ? ` WHERE check_in_date::date BETWEEN $1::date AND $2::date AND (payment_method LIKE '%線上%' OR payment_method LIKE '%卡%') AND payment_status = 'pending'`
+                : ` WHERE (payment_method LIKE '%線上%' OR payment_method LIKE '%卡%') AND payment_status = 'pending'`;
+            cardUnpaidSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${cardUnpaidWhereClause}`;
 
             if (hasRange) {
                 params = [startDate, endDate];
             }
         } else {
             // 使用入住日期（check_in_date）作為篩選條件
-            const whereClause = hasRange ? ' WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?)' : '';
-            totalSql = `SELECT COUNT(*) as count FROM bookings${whereClause}`;
-            // 總營收改為訂單總金額加總
-            revenueSql = `SELECT SUM(total_amount) as total FROM bookings${whereClause}`;
-            byRoomTypeSql = `SELECT room_type, COUNT(*) as count FROM bookings${whereClause} GROUP BY room_type`;
+            const baseWhereClause = hasRange ? ' WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?)' : '';
             
-            // 匯款轉帳統計（筆數、總金額）
-            const transferWhereClause = hasRange
+            // 總訂房數
+            totalSql = `SELECT COUNT(*) as count FROM bookings${baseWhereClause}`;
+            
+            // 總訂房數 - 已入住（check_in_date <= 今天）
+            const checkedInWhereClause = hasRange
+                ? ` WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?) AND DATE(check_in_date) <= DATE('now')`
+                : ` WHERE DATE(check_in_date) <= DATE('now')`;
+            totalCheckedInSql = `SELECT COUNT(*) as count FROM bookings${checkedInWhereClause}`;
+            
+            // 總訂房數 - 未入住（check_in_date > 今天）
+            const notCheckedInWhereClause = hasRange
+                ? ` WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?) AND DATE(check_in_date) > DATE('now')`
+                : ` WHERE DATE(check_in_date) > DATE('now')`;
+            totalNotCheckedInSql = `SELECT COUNT(*) as count FROM bookings${notCheckedInWhereClause}`;
+            
+            // 總營收
+            revenueSql = `SELECT SUM(total_amount) as total FROM bookings${baseWhereClause}`;
+            
+            // 總營收 - 已付款
+            const revenuePaidWhereClause = hasRange
+                ? ` WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?) AND payment_status = 'paid'`
+                : ` WHERE payment_status = 'paid'`;
+            revenuePaidSql = `SELECT SUM(total_amount) as total FROM bookings${revenuePaidWhereClause}`;
+            
+            // 總營收 - 未付款
+            const revenueUnpaidWhereClause = hasRange
+                ? ` WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?) AND payment_status = 'pending'`
+                : ` WHERE payment_status = 'pending'`;
+            revenueUnpaidSql = `SELECT SUM(total_amount) as total FROM bookings${revenueUnpaidWhereClause}`;
+            
+            byRoomTypeSql = `SELECT room_type, COUNT(*) as count FROM bookings${baseWhereClause} GROUP BY room_type`;
+            
+            // 匯款轉帳統計
+            const transferBaseWhereClause = hasRange
                 ? ` WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?) AND payment_method LIKE '%匯款%'`
                 : ` WHERE payment_method LIKE '%匯款%'`;
-            transferSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${transferWhereClause}`;
+            transferSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${transferBaseWhereClause}`;
             
-            // 線上刷卡統計（筆數、總金額）
-            const cardWhereClause = hasRange
+            // 匯款轉帳 - 已付款
+            const transferPaidWhereClause = hasRange
+                ? ` WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?) AND payment_method LIKE '%匯款%' AND payment_status = 'paid'`
+                : ` WHERE payment_method LIKE '%匯款%' AND payment_status = 'paid'`;
+            transferPaidSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${transferPaidWhereClause}`;
+            
+            // 匯款轉帳 - 未付款
+            const transferUnpaidWhereClause = hasRange
+                ? ` WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?) AND payment_method LIKE '%匯款%' AND payment_status = 'pending'`
+                : ` WHERE payment_method LIKE '%匯款%' AND payment_status = 'pending'`;
+            transferUnpaidSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${transferUnpaidWhereClause}`;
+            
+            // 線上刷卡統計
+            const cardBaseWhereClause = hasRange
                 ? ` WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?) AND (payment_method LIKE '%線上%' OR payment_method LIKE '%卡%')`
                 : ` WHERE payment_method LIKE '%線上%' OR payment_method LIKE '%卡%'`;
-            cardSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${cardWhereClause}`;
+            cardSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${cardBaseWhereClause}`;
+            
+            // 線上刷卡 - 已付款
+            const cardPaidWhereClause = hasRange
+                ? ` WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?) AND (payment_method LIKE '%線上%' OR payment_method LIKE '%卡%') AND payment_status = 'paid'`
+                : ` WHERE (payment_method LIKE '%線上%' OR payment_method LIKE '%卡%') AND payment_status = 'paid'`;
+            cardPaidSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${cardPaidWhereClause}`;
+            
+            // 線上刷卡 - 未付款
+            const cardUnpaidWhereClause = hasRange
+                ? ` WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?) AND (payment_method LIKE '%線上%' OR payment_method LIKE '%卡%') AND payment_status = 'pending'`
+                : ` WHERE (payment_method LIKE '%線上%' OR payment_method LIKE '%卡%') AND payment_status = 'pending'`;
+            cardUnpaidSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${cardUnpaidWhereClause}`;
 
             if (hasRange) {
                 params = [startDate, endDate];
             }
         }
 
-        const totalPromise = hasRange ? queryOne(totalSql, params) : queryOne(totalSql);
-        const revenuePromise = hasRange ? queryOne(revenueSql, params) : queryOne(revenueSql);
-        const byRoomTypePromise = hasRange ? query(byRoomTypeSql, params) : query(byRoomTypeSql);
-        const transferPromise = hasRange ? queryOne(transferSql, params) : queryOne(transferSql);
-        const cardPromise = hasRange ? queryOne(cardSql, params) : queryOne(cardSql);
+        // 執行所有查詢
+        const promises = [
+            hasRange ? queryOne(totalSql, params) : queryOne(totalSql),
+            hasRange ? queryOne(totalCheckedInSql, params) : queryOne(totalCheckedInSql),
+            hasRange ? queryOne(totalNotCheckedInSql, params) : queryOne(totalNotCheckedInSql),
+            hasRange ? queryOne(revenueSql, params) : queryOne(revenueSql),
+            hasRange ? queryOne(revenuePaidSql, params) : queryOne(revenuePaidSql),
+            hasRange ? queryOne(revenueUnpaidSql, params) : queryOne(revenueUnpaidSql),
+            hasRange ? query(byRoomTypeSql, params) : query(byRoomTypeSql),
+            hasRange ? queryOne(transferSql, params) : queryOne(transferSql),
+            hasRange ? queryOne(transferPaidSql, params) : queryOne(transferPaidSql),
+            hasRange ? queryOne(transferUnpaidSql, params) : queryOne(transferUnpaidSql),
+            hasRange ? queryOne(cardSql, params) : queryOne(cardSql),
+            hasRange ? queryOne(cardPaidSql, params) : queryOne(cardPaidSql),
+            hasRange ? queryOne(cardUnpaidSql, params) : queryOne(cardUnpaidSql)
+        ];
 
-        const [totalResult, revenueResult, byRoomTypeResult, transferResult, cardResult] = await Promise.all([
-            totalPromise,
-            revenuePromise,
-            byRoomTypePromise,
-            transferPromise,
-            cardPromise
-        ]);
+        const [
+            totalResult, totalCheckedInResult, totalNotCheckedInResult,
+            revenueResult, revenuePaidResult, revenueUnpaidResult,
+            byRoomTypeResult,
+            transferResult, transferPaidResult, transferUnpaidResult,
+            cardResult, cardPaidResult, cardUnpaidResult
+        ] = await Promise.all(promises);
         
         return {
             totalBookings: parseInt(totalResult?.count || 0),
+            totalBookingsDetail: {
+                checkedIn: parseInt(totalCheckedInResult?.count || 0),
+                notCheckedIn: parseInt(totalNotCheckedInResult?.count || 0)
+            },
             totalRevenue: parseInt(revenueResult?.total || 0),
+            totalRevenueDetail: {
+                paid: parseInt(revenuePaidResult?.total || 0),
+                unpaid: parseInt(revenueUnpaidResult?.total || 0)
+            },
             byRoomType: byRoomTypeResult.rows || [],
             // 匯款轉帳統計
             transferBookings: {
                 count: parseInt(transferResult?.count || 0),
-                total: parseInt(transferResult?.total || 0)
+                total: parseInt(transferResult?.total || 0),
+                paid: {
+                    count: parseInt(transferPaidResult?.count || 0),
+                    total: parseInt(transferPaidResult?.total || 0)
+                },
+                unpaid: {
+                    count: parseInt(transferUnpaidResult?.count || 0),
+                    total: parseInt(transferUnpaidResult?.total || 0)
+                }
             },
             // 線上刷卡統計
             cardBookings: {
                 count: parseInt(cardResult?.count || 0),
-                total: parseInt(cardResult?.total || 0)
+                total: parseInt(cardResult?.total || 0),
+                paid: {
+                    count: parseInt(cardPaidResult?.count || 0),
+                    total: parseInt(cardPaidResult?.total || 0)
+                },
+                unpaid: {
+                    count: parseInt(cardUnpaidResult?.count || 0),
+                    total: parseInt(cardUnpaidResult?.total || 0)
+                }
             }
         };
     } catch (error) {
