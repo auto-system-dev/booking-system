@@ -2254,23 +2254,32 @@ async function getMonthlyComparison() {
         const currentYear = today.getFullYear();
         const currentMonth = today.getMonth() + 1; // 1-12
         
-        // 計算本月第一天和最後一天
+        // 計算本月第一天和最後一天（使用本地時區避免時區偏移）
         const thisMonthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
         // currentMonth 是 1-12，Date 構造函數的月份參數是 0-11
         // Date(年, 月, 0) 會返回該月前一個月的最後一天
-        // 要獲取 currentMonth 月的最後一天，需要使用 currentMonth + 1
-        // 例如：currentMonth = 1（一月），Date(2024, 2, 0) = 2024年1月31日
-        const thisMonthEndDate = new Date(currentYear, currentMonth + 1, 0);
-        const thisMonthEnd = thisMonthEndDate.toISOString().split('T')[0];
+        // 要獲取 currentMonth 月的最後一天，需要使用 currentMonth（因為 currentMonth 是 1-12）
+        // 例如：currentMonth = 1（一月），Date(2024, 1, 0) = 2024年1月31日 ✓
+        const thisMonthEndDate = new Date(currentYear, currentMonth, 0);
+        // 使用本地時區格式化日期，避免 toISOString() 造成的時區偏移
+        const thisMonthEndYear = thisMonthEndDate.getFullYear();
+        const thisMonthEndMonth = String(thisMonthEndDate.getMonth() + 1).padStart(2, '0');
+        const thisMonthEndDay = String(thisMonthEndDate.getDate()).padStart(2, '0');
+        const thisMonthEnd = `${thisMonthEndYear}-${thisMonthEndMonth}-${thisMonthEndDay}`;
         
-        // 計算上月第一天和最後一天
+        // 計算上月第一天和最後一天（使用本地時區避免時區偏移）
         const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
         const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
         const lastMonthStart = `${lastMonthYear}-${String(lastMonth).padStart(2, '0')}-01`;
         // lastMonth 是 1-12，要獲取 lastMonth 月的最後一天，需要使用 lastMonth + 1
-        // 例如：lastMonth = 12（十二月），Date(2023, 13, 0) = 2023年12月31日
+        // 例如：lastMonth = 12（十二月），Date(2023, 12, 0) = 2023年11月30日（錯誤！）
+        // 正確：Date(2023, 13, 0) = 2023年12月31日，所以應該使用 lastMonth + 1
         const lastMonthEndDate = new Date(lastMonthYear, lastMonth + 1, 0);
-        const lastMonthEnd = lastMonthEndDate.toISOString().split('T')[0];
+        // 使用本地時區格式化日期，避免 toISOString() 造成的時區偏移
+        const lastMonthEndYear = lastMonthEndDate.getFullYear();
+        const lastMonthEndMonth = String(lastMonthEndDate.getMonth() + 1).padStart(2, '0');
+        const lastMonthEndDay = String(lastMonthEndDate.getDate()).padStart(2, '0');
+        const lastMonthEnd = `${lastMonthEndYear}-${lastMonthEndMonth}-${lastMonthEndDay}`;
         
         console.log(`📅 本月範圍: ${thisMonthStart} ~ ${thisMonthEnd}`);
         console.log(`📅 上月範圍: ${lastMonthStart} ~ ${lastMonthEnd}`);
