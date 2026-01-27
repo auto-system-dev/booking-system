@@ -1912,23 +1912,29 @@ async function loadStatistics() {
         if (result.success) {
             const stats = result.data;
             
+            // 總訂房數
             document.getElementById('totalBookings').textContent = stats.totalBookings || 0;
+            
+            // 總營收（訂單總金額加總）
             document.getElementById('totalRevenue').textContent = `NT$ ${(stats.totalRevenue || 0).toLocaleString()}`;
-            document.getElementById('recentBookings').textContent = stats.recentBookings || 0;
-
-            // 更新「期間內訂房數」標籤（顯示目前篩選範圍）
-            const recentLabel = document.getElementById('recentBookingsLabel');
-            if (recentLabel) {
+            
+            // 匯款轉帳（筆數、總金額）
+            const transferCount = stats.transferBookings?.count || 0;
+            const transferTotal = stats.transferBookings?.total || 0;
+            const transferLabel = document.getElementById('transferBookingsLabel');
+            if (transferLabel) {
                 if (stats.period && stats.period.startDate && stats.period.endDate) {
-                    recentLabel.textContent = `期間內訂房數（${stats.period.startDate} ~ ${stats.period.endDate}）`;
+                    transferLabel.textContent = `匯款轉帳（${stats.period.startDate} ~ ${stats.period.endDate}）`;
                 } else {
-                    recentLabel.textContent = '期間內訂房數（全部期間）';
+                    transferLabel.textContent = '匯款轉帳（全部期間）';
                 }
             }
+            document.getElementById('transferBookings').textContent = `${transferCount} 筆 / NT$ ${transferTotal.toLocaleString()}`;
             
-            // 計算郵件已發送數量
-            const emailSentCount = allBookings.filter(b => b.email_sent).length;
-            document.getElementById('emailSent').textContent = `${emailSentCount}/${allBookings.length}`;
+            // 線上刷卡（筆數、總金額）
+            const cardCount = stats.cardBookings?.count || 0;
+            const cardTotal = stats.cardBookings?.total || 0;
+            document.getElementById('cardBookings').textContent = `${cardCount} 筆 / NT$ ${cardTotal.toLocaleString()}`;
             
             // 渲染房型統計
             renderRoomStats(stats.byRoomType || []);

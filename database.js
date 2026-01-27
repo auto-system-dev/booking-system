@@ -2014,52 +2014,83 @@ async function getStatistics(startDate, endDate) {
     try {
         const hasRange = !!(startDate && endDate);
 
-        let totalSql, revenueSql, byRoomTypeSql, recentSql;
+        let totalSql, revenueSql, byRoomTypeSql, transferSql, cardSql;
         let params = [];
 
         if (usePostgreSQL) {
             const whereClause = hasRange ? ' WHERE created_at::date BETWEEN $1::date AND $2::date' : '';
             totalSql = `SELECT COUNT(*) as count FROM bookings${whereClause}`;
-            revenueSql = `SELECT SUM(final_amount) as total FROM bookings${whereClause}`;
+            // 總營收改為訂單總金額加總
+            revenueSql = `SELECT SUM(total_amount) as total FROM bookings${whereClause}`;
             byRoomTypeSql = `SELECT room_type, COUNT(*) as count FROM bookings${whereClause} GROUP BY room_type`;
+            
+            // 匯款轉帳統計（筆數、總金額）
+            const transferWhereClause = hasRange 
+                ? ` WHERE created_at::date BETWEEN $1::date AND $2::date AND payment_method LIKE '%匯款%'`
+                : ` WHERE payment_method LIKE '%匯款%'`;
+            transferSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${transferWhereClause}`;
+            
+            // 線上刷卡統計（筆數、總金額）
+            const cardWhereClause = hasRange
+                ? ` WHERE created_at::date BETWEEN $1::date AND $2::date AND (payment_method LIKE '%線上%' OR payment_method LIKE '%卡%')`
+                : ` WHERE payment_method LIKE '%線上%' OR payment_method LIKE '%卡%'`;
+            cardSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${cardWhereClause}`;
 
             if (hasRange) {
-                recentSql = `SELECT COUNT(*) as count FROM bookings WHERE created_at::date BETWEEN $1::date AND $2::date`;
                 params = [startDate, endDate];
-            } else {
-                recentSql = `SELECT COUNT(*) as count FROM bookings WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '7 days'`;
             }
         } else {
             const whereClause = hasRange ? ' WHERE DATE(created_at) BETWEEN DATE(?) AND DATE(?)' : '';
             totalSql = `SELECT COUNT(*) as count FROM bookings${whereClause}`;
-            revenueSql = `SELECT SUM(final_amount) as total FROM bookings${whereClause}`;
+            // 總營收改為訂單總金額加總
+            revenueSql = `SELECT SUM(total_amount) as total FROM bookings${whereClause}`;
             byRoomTypeSql = `SELECT room_type, COUNT(*) as count FROM bookings${whereClause} GROUP BY room_type`;
+            
+            // 匯款轉帳統計（筆數、總金額）
+            const transferWhereClause = hasRange
+                ? ` WHERE DATE(created_at) BETWEEN DATE(?) AND DATE(?) AND payment_method LIKE '%匯款%'`
+                : ` WHERE payment_method LIKE '%匯款%'`;
+            transferSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${transferWhereClause}`;
+            
+            // 線上刷卡統計（筆數、總金額）
+            const cardWhereClause = hasRange
+                ? ` WHERE DATE(created_at) BETWEEN DATE(?) AND DATE(?) AND (payment_method LIKE '%線上%' OR payment_method LIKE '%卡%')`
+                : ` WHERE payment_method LIKE '%線上%' OR payment_method LIKE '%卡%'`;
+            cardSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${cardWhereClause}`;
 
             if (hasRange) {
-                recentSql = `SELECT COUNT(*) as count FROM bookings WHERE DATE(created_at) BETWEEN DATE(?) AND DATE(?)`;
                 params = [startDate, endDate];
-            } else {
-                recentSql = `SELECT COUNT(*) as count FROM bookings WHERE created_at >= datetime('now', '-7 days')`;
             }
         }
 
         const totalPromise = hasRange ? queryOne(totalSql, params) : queryOne(totalSql);
         const revenuePromise = hasRange ? queryOne(revenueSql, params) : queryOne(revenueSql);
         const byRoomTypePromise = hasRange ? query(byRoomTypeSql, params) : query(byRoomTypeSql);
-        const recentPromise = hasRange ? queryOne(recentSql, params) : queryOne(recentSql);
+        const transferPromise = hasRange ? queryOne(transferSql, params) : queryOne(transferSql);
+        const cardPromise = hasRange ? queryOne(cardSql, params) : queryOne(cardSql);
 
-        const [totalResult, revenueResult, byRoomTypeResult, recentResult] = await Promise.all([
+        const [totalResult, revenueResult, byRoomTypeResult, transferResult, cardResult] = await Promise.all([
             totalPromise,
             revenuePromise,
             byRoomTypePromise,
-            recentPromise
+            transferPromise,
+            cardPromise
         ]);
         
         return {
             totalBookings: parseInt(totalResult?.count || 0),
             totalRevenue: parseInt(revenueResult?.total || 0),
             byRoomType: byRoomTypeResult.rows || [],
-            recentBookings: parseInt(recentResult?.count || 0)
+            // 匯款轉帳統計
+            transferBookings: {
+                count: parseInt(transferResult?.count || 0),
+                total: parseInt(transferResult?.total || 0)
+            },
+            // 線上刷卡統計
+            cardBookings: {
+                count: parseInt(cardResult?.count || 0),
+                total: parseInt(cardResult?.total || 0)
+            }
         };
     } catch (error) {
         console.error('❌ 查詢統計資料失敗:', error.message);
