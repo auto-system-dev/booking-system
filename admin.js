@@ -1950,6 +1950,9 @@ async function loadStatistics() {
             
             // 渲染房型統計
             renderRoomStats(stats.byRoomType || []);
+            
+            // 載入月度比較資料
+            loadMonthlyComparison();
         } else {
             console.error('統計資料 API 返回失敗:', result);
             showError(result.message || '載入統計資料失敗');
@@ -1957,6 +1960,184 @@ async function loadStatistics() {
     } catch (error) {
         console.error('載入統計資料錯誤:', error);
         showError('載入統計資料時發生錯誤: ' + (error.message || '未知錯誤'));
+    }
+}
+
+// 載入上月與本月的營收比較
+async function loadMonthlyComparison() {
+    try {
+        const response = await adminFetch('/api/statistics/monthly-comparison');
+        
+        if (response.status === 401) {
+            console.warn('月度比較 API 返回 401，Session 可能已過期');
+            await checkAuthStatus();
+            return;
+        }
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('月度比較 API 錯誤:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const comparison = result.data;
+            renderMonthlyComparison(comparison);
+        } else {
+            console.error('月度比較 API 返回失敗:', result);
+            document.getElementById('monthlyComparisonGrid').innerHTML = '<div class="error">載入月度比較資料失敗</div>';
+        }
+    } catch (error) {
+        console.error('載入月度比較資料錯誤:', error);
+        document.getElementById('monthlyComparisonGrid').innerHTML = '<div class="error">載入月度比較資料時發生錯誤</div>';
+    }
+}
+
+// 渲染月度比較資料
+function renderMonthlyComparison(comparison) {
+    const grid = document.getElementById('monthlyComparisonGrid');
+    if (!grid) return;
+    
+    const thisMonth = comparison.thisMonth || {};
+    const lastMonth = comparison.lastMonth || {};
+    
+    // 計算成長率
+    const bookingGrowth = lastMonth.bookingCount > 0 
+        ? ((thisMonth.bookingCount - lastMonth.bookingCount) / lastMonth.bookingCount * 100).toFixed(1)
+        : (thisMonth.bookingCount > 0 ? '100.0' : '0.0');
+    
+    const revenueGrowth = lastMonth.totalRevenue > 0
+        ? ((thisMonth.totalRevenue - lastMonth.totalRevenue) / lastMonth.totalRevenue * 100).toFixed(1)
+        : (thisMonth.totalRevenue > 0 ? '100.0' : '0.0');
+    
+    const weekdayOccupancyGrowth = lastMonth.weekdayOccupancy > 0
+        ? ((thisMonth.weekdayOccupancy - lastMonth.weekdayOccupancy) / lastMonth.weekdayOccupancy * 100).toFixed(1)
+        : (thisMonth.weekdayOccupancy > 0 ? '100.0' : '0.0');
+    
+    const weekendOccupancyGrowth = lastMonth.weekendOccupancy > 0
+        ? ((thisMonth.weekendOccupancy - lastMonth.weekendOccupancy) / lastMonth.weekendOccupancy * 100).toFixed(1)
+        : (thisMonth.weekendOccupancy > 0 ? '100.0' : '0.0');
+    
+    const getGrowthClass = (growth) => {
+        const num = parseFloat(growth);
+        if (num > 0) return 'positive';
+        if (num < 0) return 'negative';
+        return 'neutral';
+    };
+    
+    const getGrowthIcon = (growth) => {
+        const num = parseFloat(growth);
+        if (num > 0) return 'trending_up';
+        if (num < 0) return 'trending_down';
+        return 'remove';
+    };
+    
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1;
+    const lastMonthNum = currentMonth === 1 ? 12 : currentMonth - 1;
+    const monthNames = ['', '一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+    
+    grid.innerHTML = `
+        <div class="comparison-card" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h4 style="margin-top: 0; margin-bottom: 15px; color: #333; font-size: 18px;">本月（${monthNames[currentMonth]}）</h4>
+            <div class="comparison-item" style="margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #666;">訂房數：</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-weight: bold; font-size: 16px;">${thisMonth.bookingCount || 0}</span>
+                        ${lastMonth.bookingCount > 0 ? `
+                            <span class="growth-indicator ${getGrowthClass(bookingGrowth)}" style="font-size: 12px; display: flex; align-items: center; gap: 4px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">${getGrowthIcon(bookingGrowth)}</span>
+                                ${parseFloat(bookingGrowth) > 0 ? '+' : ''}${parseFloat(bookingGrowth).toFixed(1)}%
+                            </span>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+            <div class="comparison-item" style="margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #666;">總營收：</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-weight: bold; font-size: 16px; color: #2196F3;">NT$ ${(thisMonth.totalRevenue || 0).toLocaleString()}</span>
+                        ${lastMonth.totalRevenue > 0 ? `
+                            <span class="growth-indicator ${getGrowthClass(revenueGrowth)}" style="font-size: 12px; display: flex; align-items: center; gap: 4px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">${getGrowthIcon(revenueGrowth)}</span>
+                                ${parseFloat(revenueGrowth) > 0 ? '+' : ''}${parseFloat(revenueGrowth).toFixed(1)}%
+                            </span>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+            <div class="comparison-item" style="margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #666;">平日住房率：</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-weight: bold; font-size: 16px;">${(thisMonth.weekdayOccupancy || 0).toFixed(2)}%</span>
+                        ${lastMonth.weekdayOccupancy > 0 ? `
+                            <span class="growth-indicator ${getGrowthClass(weekdayOccupancyGrowth)}" style="font-size: 12px; display: flex; align-items: center; gap: 4px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">${getGrowthIcon(weekdayOccupancyGrowth)}</span>
+                                ${parseFloat(weekdayOccupancyGrowth) > 0 ? '+' : ''}${parseFloat(weekdayOccupancyGrowth).toFixed(1)}%
+                            </span>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+            <div class="comparison-item">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #666;">假日住房率：</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-weight: bold; font-size: 16px;">${(thisMonth.weekendOccupancy || 0).toFixed(2)}%</span>
+                        ${lastMonth.weekendOccupancy > 0 ? `
+                            <span class="growth-indicator ${getGrowthClass(weekendOccupancyGrowth)}" style="font-size: 12px; display: flex; align-items: center; gap: 4px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">${getGrowthIcon(weekendOccupancyGrowth)}</span>
+                                ${parseFloat(weekendOccupancyGrowth) > 0 ? '+' : ''}${parseFloat(weekendOccupancyGrowth).toFixed(1)}%
+                            </span>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="comparison-card" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h4 style="margin-top: 0; margin-bottom: 15px; color: #333; font-size: 18px;">上月（${monthNames[lastMonthNum]}）</h4>
+            <div class="comparison-item" style="margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #666;">訂房數：</span>
+                    <span style="font-weight: bold; font-size: 16px;">${lastMonth.bookingCount || 0}</span>
+                </div>
+            </div>
+            <div class="comparison-item" style="margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #666;">總營收：</span>
+                    <span style="font-weight: bold; font-size: 16px; color: #2196F3;">NT$ ${(lastMonth.totalRevenue || 0).toLocaleString()}</span>
+                </div>
+            </div>
+            <div class="comparison-item" style="margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #666;">平日住房率：</span>
+                    <span style="font-weight: bold; font-size: 16px;">${(lastMonth.weekdayOccupancy || 0).toFixed(2)}%</span>
+                </div>
+            </div>
+            <div class="comparison-item">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #666;">假日住房率：</span>
+                    <span style="font-weight: bold; font-size: 16px;">${(lastMonth.weekendOccupancy || 0).toFixed(2)}%</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 添加成長率樣式
+    const style = document.createElement('style');
+    style.textContent = `
+        .growth-indicator.positive { color: #4CAF50; }
+        .growth-indicator.negative { color: #F44336; }
+        .growth-indicator.neutral { color: #9E9E9E; }
+    `;
+    if (!document.getElementById('monthlyComparisonStyle')) {
+        style.id = 'monthlyComparisonStyle';
+        document.head.appendChild(style);
     }
 }
 
