@@ -2256,14 +2256,20 @@ async function getMonthlyComparison() {
         
         // 計算本月第一天和最後一天
         const thisMonthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
-        const thisMonthEndDate = new Date(currentYear, currentMonth, 0); // 上個月的最後一天
+        // currentMonth 是 1-12，Date 構造函數的月份參數是 0-11
+        // Date(年, 月, 0) 會返回該月前一個月的最後一天
+        // 要獲取 currentMonth 月的最後一天，需要使用 currentMonth + 1
+        // 例如：currentMonth = 1（一月），Date(2024, 2, 0) = 2024年1月31日
+        const thisMonthEndDate = new Date(currentYear, currentMonth + 1, 0);
         const thisMonthEnd = thisMonthEndDate.toISOString().split('T')[0];
         
         // 計算上月第一天和最後一天
         const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
         const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
         const lastMonthStart = `${lastMonthYear}-${String(lastMonth).padStart(2, '0')}-01`;
-        const lastMonthEndDate = new Date(lastMonthYear, lastMonth, 0); // 上上個月的最後一天
+        // lastMonth 是 1-12，要獲取 lastMonth 月的最後一天，需要使用 lastMonth + 1
+        // 例如：lastMonth = 12（十二月），Date(2023, 13, 0) = 2023年12月31日
+        const lastMonthEndDate = new Date(lastMonthYear, lastMonth + 1, 0);
         const lastMonthEnd = lastMonthEndDate.toISOString().split('T')[0];
         
         console.log(`📅 本月範圍: ${thisMonthStart} ~ ${thisMonthEnd}`);
@@ -2477,6 +2483,8 @@ async function getMonthlyComparison() {
                 AND status != 'cancelled'
             `;
             
+            // 參數順序：第一個 ? 是月份結束日期，第二個 ? 是月份開始日期
+            // 查詢邏輯：找出所有在該月份期間有房間夜數的訂房（包括跨月份的訂房）
             const [thisMonthBookings, lastMonthBookings] = await Promise.all([
                 query(thisMonthBookingsSql, [thisMonthEnd, thisMonthStart]),
                 query(lastMonthBookingsSql, [lastMonthEnd, lastMonthStart])
@@ -2596,6 +2604,7 @@ async function getMonthlyComparison() {
         }
     } catch (error) {
         console.error('❌ 查詢月度比較統計失敗:', error.message);
+        console.error('錯誤堆疊:', error.stack);
         throw error;
     }
 }
