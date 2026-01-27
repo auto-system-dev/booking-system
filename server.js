@@ -2714,26 +2714,6 @@ app.get('/api/statistics', requireAuth, adminLimiter, async (req, res) => {
     }
 });
 
-// API: 取得上月和本月的營收比較
-app.get('/api/statistics/monthly-comparison', requireAuth, adminLimiter, async (req, res) => {
-    try {
-        const comparison = await db.getMonthlyComparison();
-        res.json({
-            success: true,
-            data: comparison
-        });
-    } catch (error) {
-        console.error('查詢月度比較統計錯誤:', error);
-        console.error('錯誤詳情:', error.message);
-        console.error('錯誤堆疊:', error.stack);
-        res.status(500).json({ 
-            success: false, 
-            message: '查詢月度比較統計失敗',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-    }
-});
-
 // API: 儀表板數據
 app.get('/api/dashboard', adminLimiter, async (req, res) => {
     try {
