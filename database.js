@@ -2018,7 +2018,8 @@ async function getStatistics(startDate, endDate) {
         let params = [];
 
         if (usePostgreSQL) {
-            const whereClause = hasRange ? ' WHERE created_at::date BETWEEN $1::date AND $2::date' : '';
+            // 使用入住日期（check_in_date）作為篩選條件
+            const whereClause = hasRange ? ' WHERE check_in_date::date BETWEEN $1::date AND $2::date' : '';
             totalSql = `SELECT COUNT(*) as count FROM bookings${whereClause}`;
             // 總營收改為訂單總金額加總
             revenueSql = `SELECT SUM(total_amount) as total FROM bookings${whereClause}`;
@@ -2026,13 +2027,13 @@ async function getStatistics(startDate, endDate) {
             
             // 匯款轉帳統計（筆數、總金額）
             const transferWhereClause = hasRange 
-                ? ` WHERE created_at::date BETWEEN $1::date AND $2::date AND payment_method LIKE '%匯款%'`
+                ? ` WHERE check_in_date::date BETWEEN $1::date AND $2::date AND payment_method LIKE '%匯款%'`
                 : ` WHERE payment_method LIKE '%匯款%'`;
             transferSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${transferWhereClause}`;
             
             // 線上刷卡統計（筆數、總金額）
             const cardWhereClause = hasRange
-                ? ` WHERE created_at::date BETWEEN $1::date AND $2::date AND (payment_method LIKE '%線上%' OR payment_method LIKE '%卡%')`
+                ? ` WHERE check_in_date::date BETWEEN $1::date AND $2::date AND (payment_method LIKE '%線上%' OR payment_method LIKE '%卡%')`
                 : ` WHERE payment_method LIKE '%線上%' OR payment_method LIKE '%卡%'`;
             cardSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${cardWhereClause}`;
 
@@ -2040,7 +2041,8 @@ async function getStatistics(startDate, endDate) {
                 params = [startDate, endDate];
             }
         } else {
-            const whereClause = hasRange ? ' WHERE DATE(created_at) BETWEEN DATE(?) AND DATE(?)' : '';
+            // 使用入住日期（check_in_date）作為篩選條件
+            const whereClause = hasRange ? ' WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?)' : '';
             totalSql = `SELECT COUNT(*) as count FROM bookings${whereClause}`;
             // 總營收改為訂單總金額加總
             revenueSql = `SELECT SUM(total_amount) as total FROM bookings${whereClause}`;
@@ -2048,13 +2050,13 @@ async function getStatistics(startDate, endDate) {
             
             // 匯款轉帳統計（筆數、總金額）
             const transferWhereClause = hasRange
-                ? ` WHERE DATE(created_at) BETWEEN DATE(?) AND DATE(?) AND payment_method LIKE '%匯款%'`
+                ? ` WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?) AND payment_method LIKE '%匯款%'`
                 : ` WHERE payment_method LIKE '%匯款%'`;
             transferSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${transferWhereClause}`;
             
             // 線上刷卡統計（筆數、總金額）
             const cardWhereClause = hasRange
-                ? ` WHERE DATE(created_at) BETWEEN DATE(?) AND DATE(?) AND (payment_method LIKE '%線上%' OR payment_method LIKE '%卡%')`
+                ? ` WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?) AND (payment_method LIKE '%線上%' OR payment_method LIKE '%卡%')`
                 : ` WHERE payment_method LIKE '%線上%' OR payment_method LIKE '%卡%'`;
             cardSql = `SELECT COUNT(*) as count, SUM(total_amount) as total FROM bookings${cardWhereClause}`;
 

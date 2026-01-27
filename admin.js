@@ -1923,11 +1923,7 @@ async function loadStatistics() {
             const transferTotal = stats.transferBookings?.total || 0;
             const transferLabel = document.getElementById('transferBookingsLabel');
             if (transferLabel) {
-                if (stats.period && stats.period.startDate && stats.period.endDate) {
-                    transferLabel.textContent = `匯款轉帳（${stats.period.startDate} ~ ${stats.period.endDate}）`;
-                } else {
-                    transferLabel.textContent = '匯款轉帳（全部期間）';
-                }
+                transferLabel.textContent = '匯款轉帳';
             }
             document.getElementById('transferBookings').textContent = `${transferCount} 筆 / NT$ ${transferTotal.toLocaleString()}`;
             
