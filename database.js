@@ -2332,6 +2332,9 @@ async function getMonthlyComparison() {
                 query(lastMonthSql, [lastMonthStart, lastMonthEnd]).then(r => r.rows[0] || null)
             ]);
             
+            console.log(`📊 本月統計結果:`, thisMonthResult);
+            console.log(`📊 上月統計結果:`, lastMonthResult);
+            
             // 計算本月平日和假日的房間夜數（包含跨月份的訂房）
             const thisMonthBookingsSql = `
                 SELECT check_in_date, check_out_date, nights
@@ -2349,11 +2352,20 @@ async function getMonthlyComparison() {
             `;
             
             console.log('📊 查詢本月和上月的訂房記錄...');
+            console.log(`   本月查詢範圍: ${thisMonthStart} ~ ${thisMonthEnd}`);
+            console.log(`   上月查詢範圍: ${lastMonthStart} ~ ${lastMonthEnd}`);
             const [thisMonthBookings, lastMonthBookings] = await Promise.all([
                 query(thisMonthBookingsSql, [thisMonthStart, thisMonthEnd]),
                 query(lastMonthBookingsSql, [lastMonthStart, lastMonthEnd])
             ]);
             console.log(`✅ 訂房記錄查詢完成: 本月 ${thisMonthBookings?.rows?.length || 0} 筆, 上月 ${lastMonthBookings?.rows?.length || 0} 筆`);
+            if (lastMonthBookings?.rows?.length > 0) {
+                console.log(`   上月訂房詳情:`, lastMonthBookings.rows.map(b => ({
+                    check_in: b.check_in_date,
+                    check_out: b.check_out_date,
+                    nights: b.nights
+                })));
+            }
             
             // 計算住房率
             console.log('📊 計算住房率...');
