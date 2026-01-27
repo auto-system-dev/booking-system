@@ -2312,7 +2312,7 @@ async function getMonthlyComparison() {
                     SUM(total_amount) as total_revenue,
                     COUNT(DISTINCT check_in_date) as unique_dates
                 FROM bookings
-                WHERE check_in_date::date BETWEEN to_date($1, 'YYYY-MM-DD') AND to_date($2, 'YYYY-MM-DD')
+                WHERE check_in_date::date BETWEEN $1::date AND $2::date
                 AND status != 'cancelled'
             `;
             
@@ -2323,20 +2323,20 @@ async function getMonthlyComparison() {
                     SUM(total_amount) as total_revenue,
                     COUNT(DISTINCT check_in_date) as unique_dates
                 FROM bookings
-                WHERE check_in_date::date BETWEEN to_date($3, 'YYYY-MM-DD') AND to_date($4, 'YYYY-MM-DD')
+                WHERE check_in_date::date BETWEEN $3::date AND $4::date
                 AND status != 'cancelled'
             `;
             
             const [thisMonthResult, lastMonthResult] = await Promise.all([
-                queryOne(thisMonthSql, [thisMonthStart, thisMonthEnd]),
-                queryOne(lastMonthSql, [lastMonthStart, lastMonthEnd])
+                query(thisMonthSql, [thisMonthStart, thisMonthEnd]).then(r => r.rows[0] || null),
+                query(lastMonthSql, [lastMonthStart, lastMonthEnd]).then(r => r.rows[0] || null)
             ]);
             
             // 計算本月平日和假日的房間夜數（包含跨月份的訂房）
             const thisMonthBookingsSql = `
                 SELECT check_in_date, check_out_date, nights
                 FROM bookings
-                WHERE (check_in_date::date <= to_date($2, 'YYYY-MM-DD') AND check_out_date::date > to_date($1, 'YYYY-MM-DD'))
+                WHERE (check_in_date::date <= $2::date AND check_out_date::date > $1::date)
                 AND status != 'cancelled'
             `;
             
@@ -2344,7 +2344,7 @@ async function getMonthlyComparison() {
             const lastMonthBookingsSql = `
                 SELECT check_in_date, check_out_date, nights
                 FROM bookings
-                WHERE (check_in_date::date <= to_date($4, 'YYYY-MM-DD') AND check_out_date::date > to_date($3, 'YYYY-MM-DD'))
+                WHERE (check_in_date::date <= $4::date AND check_out_date::date > $3::date)
                 AND status != 'cancelled'
             `;
             
