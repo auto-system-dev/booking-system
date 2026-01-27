@@ -3965,6 +3965,7 @@ module.exports = {
     cancelBooking,
     deleteBooking,
     getStatistics,
+    getMonthlyComparison,
     // 房型管理
     getAllRoomTypes,
     getAllRoomTypesAdmin,
