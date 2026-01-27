@@ -1931,7 +1931,7 @@ async function loadStatistics() {
             if (transferLabel) {
                 transferLabel.textContent = '匯款轉帳';
             }
-            document.getElementById('transferBookings').textContent = `${transferCount} 筆 / NT$ ${transferTotal.toLocaleString()}`;
+            document.getElementById('transferBookings').textContent = `NT$ ${transferTotal.toLocaleString()}`;
             const transferPaidCount = stats.transferBookings?.paid?.count || 0;
             const transferPaidTotal = stats.transferBookings?.paid?.total || 0;
             const transferUnpaidCount = stats.transferBookings?.unpaid?.count || 0;
@@ -1941,7 +1941,7 @@ async function loadStatistics() {
             // 線上刷卡（細分：已付款/未付款）
             const cardCount = stats.cardBookings?.count || 0;
             const cardTotal = stats.cardBookings?.total || 0;
-            document.getElementById('cardBookings').textContent = `${cardCount} 筆 / NT$ ${cardTotal.toLocaleString()}`;
+            document.getElementById('cardBookings').textContent = `NT$ ${cardTotal.toLocaleString()}`;
             const cardPaidCount = stats.cardBookings?.paid?.count || 0;
             const cardPaidTotal = stats.cardBookings?.paid?.total || 0;
             const cardUnpaidCount = stats.cardBookings?.unpaid?.count || 0;
