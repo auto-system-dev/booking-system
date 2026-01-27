@@ -2256,13 +2256,18 @@ async function getMonthlyComparison() {
         
         // 計算本月第一天和最後一天
         const thisMonthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
-        const thisMonthEnd = new Date(currentYear, currentMonth, 0).toISOString().split('T')[0];
+        const thisMonthEndDate = new Date(currentYear, currentMonth, 0); // 上個月的最後一天
+        const thisMonthEnd = thisMonthEndDate.toISOString().split('T')[0];
         
         // 計算上月第一天和最後一天
         const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
         const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
         const lastMonthStart = `${lastMonthYear}-${String(lastMonth).padStart(2, '0')}-01`;
-        const lastMonthEnd = new Date(lastMonthYear, lastMonth, 0).toISOString().split('T')[0];
+        const lastMonthEndDate = new Date(lastMonthYear, lastMonth, 0); // 上上個月的最後一天
+        const lastMonthEnd = lastMonthEndDate.toISOString().split('T')[0];
+        
+        console.log(`📅 本月範圍: ${thisMonthStart} ~ ${thisMonthEnd}`);
+        console.log(`📅 上月範圍: ${lastMonthStart} ~ ${lastMonthEnd}`);
         
         // 取得總房間數（從系統設定或預設值）
         const totalRoomsSetting = await getSetting('total_rooms');
@@ -2319,61 +2324,95 @@ async function getMonthlyComparison() {
             
             // 計算住房率
             const calculateOccupancyRate = async (bookings, monthStart, monthEnd) => {
-                let weekdayRoomNights = 0;
-                let weekendRoomNights = 0;
-                let weekdayDays = 0;
-                let weekendDays = 0;
-                
-                // 計算該月的所有日期
-                const start = new Date(monthStart);
-                const end = new Date(monthEnd);
-                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                    const dateStr = d.toISOString().split('T')[0];
-                    const isHoliday = await isHolidayOrWeekend(dateStr, true);
-                    if (isHoliday) {
-                        weekendDays++;
-                    } else {
-                        weekdayDays++;
-                    }
-                }
-                
-                // 計算已訂房的房間夜數（只計算該月份內的日期）
-                const monthStartDate = new Date(monthStart);
-                const monthEndDate = new Date(monthEnd);
-                
-                for (const booking of bookings.rows || bookings) {
-                    const checkIn = new Date(booking.check_in_date);
-                    const checkOut = new Date(booking.check_out_date);
+                try {
+                    let weekdayRoomNights = 0;
+                    let weekendRoomNights = 0;
+                    let weekdayDays = 0;
+                    let weekendDays = 0;
                     
-                    // 確定計算的開始和結束日期（限制在該月份內）
-                    const calcStart = checkIn < monthStartDate ? monthStartDate : checkIn;
-                    const calcEnd = checkOut > monthEndDate ? new Date(monthEndDate.getTime() + 24 * 60 * 60 * 1000) : checkOut; // 加一天因為 check_out_date 是退房日期
+                    // 計算該月的所有日期
+                    const start = new Date(monthStart + 'T00:00:00');
+                    const end = new Date(monthEnd + 'T00:00:00');
                     
-                    for (let d = new Date(calcStart); d < calcEnd; d.setDate(d.getDate() + 1)) {
+                    // 預先計算所有日期的假日狀態
+                    const holidayMap = new Map();
+                    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                         const dateStr = d.toISOString().split('T')[0];
-                        // 確保日期在該月份內
-                        if (dateStr >= monthStart && dateStr <= monthEnd) {
+                        try {
                             const isHoliday = await isHolidayOrWeekend(dateStr, true);
+                            holidayMap.set(dateStr, isHoliday);
                             if (isHoliday) {
-                                weekendRoomNights += 1;
+                                weekendDays++;
                             } else {
-                                weekdayRoomNights += 1;
+                                weekdayDays++;
                             }
+                        } catch (err) {
+                            console.warn(`⚠️ 檢查日期 ${dateStr} 是否為假日時發生錯誤:`, err.message);
+                            // 預設為平日
+                            holidayMap.set(dateStr, false);
+                            weekdayDays++;
                         }
                     }
+                    
+                    // 計算已訂房的房間夜數（只計算該月份內的日期）
+                    const monthStartDate = new Date(monthStart + 'T00:00:00');
+                    const monthEndDate = new Date(monthEnd + 'T23:59:59');
+                    
+                    const bookingRows = bookings.rows || bookings || [];
+                    for (const booking of bookingRows) {
+                        if (!booking || !booking.check_in_date || !booking.check_out_date) {
+                            continue;
+                        }
+                        
+                        try {
+                            const checkIn = new Date(booking.check_in_date + 'T00:00:00');
+                            const checkOut = new Date(booking.check_out_date + 'T00:00:00');
+                            
+                            // 確定計算的開始和結束日期（限制在該月份內）
+                            const calcStart = checkIn < monthStartDate ? monthStartDate : checkIn;
+                            const calcEnd = checkOut > monthEndDate ? monthEndDate : checkOut;
+                            
+                            for (let d = new Date(calcStart); d < calcEnd; d.setDate(d.getDate() + 1)) {
+                                const dateStr = d.toISOString().split('T')[0];
+                                // 確保日期在該月份內
+                                if (dateStr >= monthStart && dateStr <= monthEnd) {
+                                    const isHoliday = holidayMap.get(dateStr) || false;
+                                    if (isHoliday) {
+                                        weekendRoomNights += 1;
+                                    } else {
+                                        weekdayRoomNights += 1;
+                                    }
+                                }
+                            }
+                        } catch (err) {
+                            console.warn(`⚠️ 處理訂房記錄時發生錯誤:`, err.message, booking);
+                            continue;
+                        }
+                    }
+                    
+                    const weekdayOccupancy = weekdayDays > 0 ? (weekdayRoomNights / (weekdayDays * totalRooms) * 100).toFixed(2) : 0;
+                    const weekendOccupancy = weekendDays > 0 ? (weekendRoomNights / (weekendDays * totalRooms) * 100).toFixed(2) : 0;
+                    
+                    return {
+                        weekdayOccupancy: parseFloat(weekdayOccupancy),
+                        weekendOccupancy: parseFloat(weekendOccupancy),
+                        weekdayRoomNights,
+                        weekendRoomNights,
+                        weekdayDays,
+                        weekendDays
+                    };
+                } catch (error) {
+                    console.error('❌ 計算住房率時發生錯誤:', error.message);
+                    // 返回預設值
+                    return {
+                        weekdayOccupancy: 0,
+                        weekendOccupancy: 0,
+                        weekdayRoomNights: 0,
+                        weekendRoomNights: 0,
+                        weekdayDays: 0,
+                        weekendDays: 0
+                    };
                 }
-                
-                const weekdayOccupancy = weekdayDays > 0 ? (weekdayRoomNights / (weekdayDays * totalRooms) * 100).toFixed(2) : 0;
-                const weekendOccupancy = weekendDays > 0 ? (weekendRoomNights / (weekendDays * totalRooms) * 100).toFixed(2) : 0;
-                
-                return {
-                    weekdayOccupancy: parseFloat(weekdayOccupancy),
-                    weekendOccupancy: parseFloat(weekendOccupancy),
-                    weekdayRoomNights,
-                    weekendRoomNights,
-                    weekdayDays,
-                    weekendDays
-                };
             };
             
             const [thisMonthOccupancy, lastMonthOccupancy] = await Promise.all([
@@ -2444,60 +2483,95 @@ async function getMonthlyComparison() {
             ]);
             
             const calculateOccupancyRate = async (bookings, monthStart, monthEnd) => {
-                let weekdayRoomNights = 0;
-                let weekendRoomNights = 0;
-                let weekdayDays = 0;
-                let weekendDays = 0;
-                
-                const start = new Date(monthStart);
-                const end = new Date(monthEnd);
-                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                    const dateStr = d.toISOString().split('T')[0];
-                    const isHoliday = await isHolidayOrWeekend(dateStr, true);
-                    if (isHoliday) {
-                        weekendDays++;
-                    } else {
-                        weekdayDays++;
-                    }
-                }
-                
-                // 計算已訂房的房間夜數（只計算該月份內的日期）
-                const monthStartDate = new Date(monthStart);
-                const monthEndDate = new Date(monthEnd);
-                
-                for (const booking of bookings.rows || bookings) {
-                    const checkIn = new Date(booking.check_in_date);
-                    const checkOut = new Date(booking.check_out_date);
+                try {
+                    let weekdayRoomNights = 0;
+                    let weekendRoomNights = 0;
+                    let weekdayDays = 0;
+                    let weekendDays = 0;
                     
-                    // 確定計算的開始和結束日期（限制在該月份內）
-                    const calcStart = checkIn < monthStartDate ? monthStartDate : checkIn;
-                    const calcEnd = checkOut > monthEndDate ? new Date(monthEndDate.getTime() + 24 * 60 * 60 * 1000) : checkOut; // 加一天因為 check_out_date 是退房日期
+                    // 計算該月的所有日期
+                    const start = new Date(monthStart + 'T00:00:00');
+                    const end = new Date(monthEnd + 'T00:00:00');
                     
-                    for (let d = new Date(calcStart); d < calcEnd; d.setDate(d.getDate() + 1)) {
+                    // 預先計算所有日期的假日狀態
+                    const holidayMap = new Map();
+                    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                         const dateStr = d.toISOString().split('T')[0];
-                        // 確保日期在該月份內
-                        if (dateStr >= monthStart && dateStr <= monthEnd) {
+                        try {
                             const isHoliday = await isHolidayOrWeekend(dateStr, true);
+                            holidayMap.set(dateStr, isHoliday);
                             if (isHoliday) {
-                                weekendRoomNights += 1;
+                                weekendDays++;
                             } else {
-                                weekdayRoomNights += 1;
+                                weekdayDays++;
                             }
+                        } catch (err) {
+                            console.warn(`⚠️ 檢查日期 ${dateStr} 是否為假日時發生錯誤:`, err.message);
+                            // 預設為平日
+                            holidayMap.set(dateStr, false);
+                            weekdayDays++;
                         }
                     }
+                    
+                    // 計算已訂房的房間夜數（只計算該月份內的日期）
+                    const monthStartDate = new Date(monthStart + 'T00:00:00');
+                    const monthEndDate = new Date(monthEnd + 'T23:59:59');
+                    
+                    const bookingRows = bookings.rows || bookings || [];
+                    for (const booking of bookingRows) {
+                        if (!booking || !booking.check_in_date || !booking.check_out_date) {
+                            continue;
+                        }
+                        
+                        try {
+                            const checkIn = new Date(booking.check_in_date + 'T00:00:00');
+                            const checkOut = new Date(booking.check_out_date + 'T00:00:00');
+                            
+                            // 確定計算的開始和結束日期（限制在該月份內）
+                            const calcStart = checkIn < monthStartDate ? monthStartDate : checkIn;
+                            const calcEnd = checkOut > monthEndDate ? monthEndDate : checkOut;
+                            
+                            for (let d = new Date(calcStart); d < calcEnd; d.setDate(d.getDate() + 1)) {
+                                const dateStr = d.toISOString().split('T')[0];
+                                // 確保日期在該月份內
+                                if (dateStr >= monthStart && dateStr <= monthEnd) {
+                                    const isHoliday = holidayMap.get(dateStr) || false;
+                                    if (isHoliday) {
+                                        weekendRoomNights += 1;
+                                    } else {
+                                        weekdayRoomNights += 1;
+                                    }
+                                }
+                            }
+                        } catch (err) {
+                            console.warn(`⚠️ 處理訂房記錄時發生錯誤:`, err.message, booking);
+                            continue;
+                        }
+                    }
+                    
+                    const weekdayOccupancy = weekdayDays > 0 ? (weekdayRoomNights / (weekdayDays * totalRooms) * 100).toFixed(2) : 0;
+                    const weekendOccupancy = weekendDays > 0 ? (weekendRoomNights / (weekendDays * totalRooms) * 100).toFixed(2) : 0;
+                    
+                    return {
+                        weekdayOccupancy: parseFloat(weekdayOccupancy),
+                        weekendOccupancy: parseFloat(weekendOccupancy),
+                        weekdayRoomNights,
+                        weekendRoomNights,
+                        weekdayDays,
+                        weekendDays
+                    };
+                } catch (error) {
+                    console.error('❌ 計算住房率時發生錯誤:', error.message);
+                    // 返回預設值
+                    return {
+                        weekdayOccupancy: 0,
+                        weekendOccupancy: 0,
+                        weekdayRoomNights: 0,
+                        weekendRoomNights: 0,
+                        weekdayDays: 0,
+                        weekendDays: 0
+                    };
                 }
-                
-                const weekdayOccupancy = weekdayDays > 0 ? (weekdayRoomNights / (weekdayDays * totalRooms) * 100).toFixed(2) : 0;
-                const weekendOccupancy = weekendDays > 0 ? (weekendRoomNights / (weekendDays * totalRooms) * 100).toFixed(2) : 0;
-                
-                return {
-                    weekdayOccupancy: parseFloat(weekdayOccupancy),
-                    weekendOccupancy: parseFloat(weekendOccupancy),
-                    weekdayRoomNights,
-                    weekendRoomNights,
-                    weekdayDays,
-                    weekendDays
-                };
             };
             
             const [thisMonthOccupancy, lastMonthOccupancy] = await Promise.all([
