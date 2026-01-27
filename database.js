@@ -2285,8 +2285,18 @@ async function getMonthlyComparison() {
         console.log(`📅 上月範圍: ${lastMonthStart} ~ ${lastMonthEnd}`);
         
         // 取得總房間數（從系統設定或預設值）
-        const totalRoomsSetting = await getSetting('total_rooms');
-        const totalRooms = totalRoomsSetting ? parseInt(totalRoomsSetting) : 10; // 預設10間房
+        let totalRooms = 10; // 預設10間房
+        try {
+            const totalRoomsSetting = await getSetting('total_rooms');
+            if (totalRoomsSetting) {
+                totalRooms = parseInt(totalRoomsSetting) || 10;
+            }
+            console.log(`🏠 總房間數: ${totalRooms}`);
+        } catch (error) {
+            console.warn('⚠️ 取得總房間數設定失敗，使用預設值 10:', error.message);
+        }
+        
+        console.log(`📊 開始查詢月度比較統計 (資料庫類型: ${usePostgreSQL ? 'PostgreSQL' : 'SQLite'})`);
         
         if (usePostgreSQL) {
             // 本月統計
@@ -2332,12 +2342,15 @@ async function getMonthlyComparison() {
                 AND status != 'cancelled'
             `;
             
+            console.log('📊 查詢本月和上月的訂房記錄...');
             const [thisMonthBookings, lastMonthBookings] = await Promise.all([
                 query(thisMonthBookingsSql, [thisMonthStart, thisMonthEnd]),
                 query(lastMonthBookingsSql, [lastMonthStart, lastMonthEnd])
             ]);
+            console.log(`✅ 訂房記錄查詢完成: 本月 ${thisMonthBookings?.rows?.length || 0} 筆, 上月 ${lastMonthBookings?.rows?.length || 0} 筆`);
             
             // 計算住房率
+            console.log('📊 計算住房率...');
             const calculateOccupancyRate = async (bookings, monthStart, monthEnd) => {
                 try {
                     let weekdayRoomNights = 0;
@@ -2430,12 +2443,14 @@ async function getMonthlyComparison() {
                 }
             };
             
+            console.log('📊 計算住房率...');
             const [thisMonthOccupancy, lastMonthOccupancy] = await Promise.all([
                 calculateOccupancyRate(thisMonthBookings, thisMonthStart, thisMonthEnd),
                 calculateOccupancyRate(lastMonthBookings, lastMonthStart, lastMonthEnd)
             ]);
+            console.log('✅ 住房率計算完成:', { thisMonthOccupancy, lastMonthOccupancy });
             
-            return {
+            const result = {
                 thisMonth: {
                     bookingCount: parseInt(thisMonthResult?.booking_count || 0),
                     totalRevenue: parseInt(thisMonthResult?.total_revenue || 0),
@@ -2449,6 +2464,8 @@ async function getMonthlyComparison() {
                     weekendOccupancy: lastMonthOccupancy.weekendOccupancy
                 }
             };
+            console.log('✅ 月度比較統計查詢完成:', result);
+            return result;
         } else {
             // SQLite 版本
             const thisMonthSql = `
@@ -2614,6 +2631,11 @@ async function getMonthlyComparison() {
     } catch (error) {
         console.error('❌ 查詢月度比較統計失敗:', error.message);
         console.error('錯誤堆疊:', error.stack);
+        console.error('錯誤詳情:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
         throw error;
     }
 }
