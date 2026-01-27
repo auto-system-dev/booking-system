@@ -2724,9 +2724,12 @@ app.get('/api/statistics/monthly-stats', requireAuth, adminLimiter, async (req, 
         });
     } catch (error) {
         console.error('查詢月度統計錯誤:', error);
+        console.error('錯誤詳情:', error.message);
+        console.error('錯誤堆疊:', error.stack);
         res.status(500).json({ 
             success: false, 
-            message: '查詢月度統計失敗'
+            message: '查詢月度統計失敗',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 });
