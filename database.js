@@ -2284,6 +2284,12 @@ async function getMonthlyComparison() {
         console.log(`📅 本月範圍: ${thisMonthStart} ~ ${thisMonthEnd}`);
         console.log(`📅 上月範圍: ${lastMonthStart} ~ ${lastMonthEnd}`);
         
+        // 驗證日期參數
+        if (!thisMonthStart || !thisMonthEnd || !lastMonthStart || !lastMonthEnd) {
+            throw new Error('日期參數計算錯誤：部分日期為空');
+        }
+        console.log('✅ 日期參數驗證通過');
+        
         // 取得總房間數（從系統設定或預設值）
         let totalRooms = 10; // 預設10間房
         try {
@@ -2306,7 +2312,7 @@ async function getMonthlyComparison() {
                     SUM(total_amount) as total_revenue,
                     COUNT(DISTINCT check_in_date) as unique_dates
                 FROM bookings
-                WHERE check_in_date::date BETWEEN $1::date AND $2::date
+                WHERE check_in_date::date BETWEEN CAST($1 AS date) AND CAST($2 AS date)
                 AND status != 'cancelled'
             `;
             
@@ -2317,7 +2323,7 @@ async function getMonthlyComparison() {
                     SUM(total_amount) as total_revenue,
                     COUNT(DISTINCT check_in_date) as unique_dates
                 FROM bookings
-                WHERE check_in_date::date BETWEEN $3::date AND $4::date
+                WHERE check_in_date::date BETWEEN CAST($3 AS date) AND CAST($4 AS date)
                 AND status != 'cancelled'
             `;
             
@@ -2330,7 +2336,7 @@ async function getMonthlyComparison() {
             const thisMonthBookingsSql = `
                 SELECT check_in_date, check_out_date, nights
                 FROM bookings
-                WHERE (check_in_date::date <= $2::date AND check_out_date::date > $1::date)
+                WHERE (check_in_date::date <= CAST($2 AS date) AND check_out_date::date > CAST($1 AS date))
                 AND status != 'cancelled'
             `;
             
@@ -2338,7 +2344,7 @@ async function getMonthlyComparison() {
             const lastMonthBookingsSql = `
                 SELECT check_in_date, check_out_date, nights
                 FROM bookings
-                WHERE (check_in_date::date <= $4::date AND check_out_date::date > $3::date)
+                WHERE (check_in_date::date <= CAST($4 AS date) AND check_out_date::date > CAST($3 AS date))
                 AND status != 'cancelled'
             `;
             
