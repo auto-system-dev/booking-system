@@ -592,6 +592,12 @@ async function adminFetch(url, options = {}) {
     try {
         const response = await fetch(url, mergedOptions);
         
+        // 如果收到 401 未授權錯誤，靜默處理（不拋出錯誤）
+        if (response.status === 401) {
+            // 返回 response，讓調用者自行處理
+            return response;
+        }
+        
         // 如果收到 403 或 CSRF 錯誤，清除 Token 快取並重試一次
         if (response.status === 403 || response.status === 400) {
             // Clone response 以便讀取 body，同時保留原始 response
@@ -610,7 +616,10 @@ async function adminFetch(url, options = {}) {
         
         return response;
     } catch (error) {
-        console.error('API 請求錯誤:', error);
+        // 只有在開發環境才顯示錯誤
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            console.error('API 請求錯誤:', error);
+        }
         throw error;
     }
 }
@@ -2501,23 +2510,45 @@ async function loadRoomPrices() {
         
         if (!authCheckResponse.ok) {
             // 未登入，不載入房型價格（這是正常的，因為用戶還沒登入）
-            console.log('用戶未登入，跳過載入房型價格');
+            // 靜默處理，不顯示錯誤訊息
+            return;
+        }
+        
+        const authResult = await authCheckResponse.json().catch(() => ({}));
+        if (!authResult.success) {
+            // 認證失敗，靜默返回
             return;
         }
         
         const [roomTypesResponse, settingsResponse] = await Promise.all([
-            adminFetch('/api/admin/room-types'),
-            adminFetch('/api/settings')
+            adminFetch('/api/admin/room-types').catch(err => {
+                // 如果請求失敗（可能是 401），返回一個模擬的 response
+                if (err.message && err.message.includes('401')) {
+                    return { ok: false, status: 401, json: async () => ({ success: false }) };
+                }
+                throw err;
+            }),
+            adminFetch('/api/settings').catch(err => {
+                // 如果請求失敗，返回一個模擬的 response
+                return { ok: false, status: 500, json: async () => ({ success: false }) };
+            })
         ]);
         
         // 檢查響應狀態
-        if (!roomTypesResponse.ok && roomTypesResponse.status === 401) {
-            console.log('認證失敗，跳過載入房型價格');
+        if (!roomTypesResponse.ok) {
+            if (roomTypesResponse.status === 401) {
+                // 認證失敗，靜默處理（不顯示錯誤）
+                return;
+            }
+            // 其他錯誤，只在開發環境顯示
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                console.warn('載入房型價格失敗:', roomTypesResponse.status);
+            }
             return;
         }
         
-        const roomTypesResult = await roomTypesResponse.json();
-        const settingsResult = await settingsResponse.json();
+        const roomTypesResult = await roomTypesResponse.json().catch(() => ({ success: false }));
+        const settingsResult = await settingsResponse.json().catch(() => ({ success: false }));
         
         if (roomTypesResult.success) {
             roomPrices = {};
@@ -2557,8 +2588,19 @@ function generateRoomTypeOptions(selectedRoomType) {
     }).join('');
 }
 
-// 初始化時載入
-loadRoomPrices();
+// 初始化時載入（延遲執行，確保頁面完全載入後再檢查認證）
+// 只在管理後台頁面載入時才執行
+if (document.getElementById('adminPage')) {
+    // 延遲執行，避免在登入頁面時觸發
+    setTimeout(() => {
+        // 檢查是否在登入頁面
+        const loginPage = document.getElementById('loginPage');
+        const adminPage = document.getElementById('adminPage');
+        if (adminPage && window.getComputedStyle(adminPage).display !== 'none') {
+            loadRoomPrices();
+        }
+    }, 500);
+}
 
 // 顯示編輯模態框
 function showEditModal(booking) {
