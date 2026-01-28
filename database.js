@@ -526,6 +526,45 @@ async function initPostgreSQL() {
             `);
             console.log('✅ 操作日誌資料表已準備就緒');
             
+            // 建立會員等級表
+            await query(`
+                CREATE TABLE IF NOT EXISTS member_levels (
+                    id SERIAL PRIMARY KEY,
+                    level_name VARCHAR(255) NOT NULL,
+                    min_spent INTEGER DEFAULT 0,
+                    min_bookings INTEGER DEFAULT 0,
+                    discount_percent DECIMAL(5,2) DEFAULT 0,
+                    display_order INTEGER DEFAULT 0,
+                    is_active INTEGER DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ 會員等級表已準備就緒');
+            
+            // 初始化預設會員等級
+            const defaultLevels = [
+                ['新會員', 0, 0, 0, 1],
+                ['銀卡會員', 10000, 3, 5, 2],
+                ['金卡會員', 30000, 10, 10, 3],
+                ['鑽石會員', 80000, 25, 15, 4]
+            ];
+            
+            for (const [levelName, minSpent, minBookings, discountPercent, displayOrder] of defaultLevels) {
+                try {
+                    const existing = await queryOne('SELECT id FROM member_levels WHERE level_name = $1', [levelName]);
+                    if (!existing) {
+                        await query(
+                            'INSERT INTO member_levels (level_name, min_spent, min_bookings, discount_percent, display_order) VALUES ($1, $2, $3, $4, $5)',
+                            [levelName, minSpent, minBookings, discountPercent, displayOrder]
+                        );
+                    }
+                } catch (err) {
+                    console.warn(`⚠️  初始化會員等級 ${levelName} 失敗:`, err.message);
+                }
+            }
+            console.log('✅ 預設會員等級已初始化');
+            
             // 初始化預設管理員（如果不存在）
             const defaultAdmin = await queryOne('SELECT id FROM admins WHERE username = $1', ['admin']);
             if (!defaultAdmin) {
@@ -1637,6 +1676,55 @@ function initSQLite() {
                                                 } else {
                                                     console.log('✅ 管理員資料表已準備就緒');
                                                     
+                                                    // 建立會員等級表
+                                                    db.run(`
+                                                        CREATE TABLE IF NOT EXISTS member_levels (
+                                                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                            level_name TEXT NOT NULL,
+                                                            min_spent INTEGER DEFAULT 0,
+                                                            min_bookings INTEGER DEFAULT 0,
+                                                            discount_percent REAL DEFAULT 0,
+                                                            display_order INTEGER DEFAULT 0,
+                                                            is_active INTEGER DEFAULT 1,
+                                                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                                            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                                                        )
+                                                    `, (err) => {
+                                                        if (err) {
+                                                            console.warn('⚠️  建立 member_levels 表時發生錯誤:', err.message);
+                                                        } else {
+                                                            console.log('✅ 會員等級表已準備就緒');
+                                                            
+                                                            // 初始化預設會員等級
+                                                            const defaultLevels = [
+                                                                ['新會員', 0, 0, 0, 1],
+                                                                ['銀卡會員', 10000, 3, 5, 2],
+                                                                ['金卡會員', 30000, 10, 10, 3],
+                                                                ['鑽石會員', 80000, 25, 15, 4]
+                                                            ];
+                                                            
+                                                            let levelCount = 0;
+                                                            defaultLevels.forEach(([levelName, minSpent, minBookings, discountPercent, displayOrder]) => {
+                                                                db.get('SELECT id FROM member_levels WHERE level_name = ?', [levelName], (err, row) => {
+                                                                    if (!err && !row) {
+                                                                        db.run(
+                                                                            'INSERT INTO member_levels (level_name, min_spent, min_bookings, discount_percent, display_order) VALUES (?, ?, ?, ?, ?)',
+                                                                            [levelName, minSpent, minBookings, discountPercent, displayOrder],
+                                                                            (err) => {
+                                                                                if (!err) {
+                                                                                    levelCount++;
+                                                                                    if (levelCount === defaultLevels.length) {
+                                                                                        console.log('✅ 預設會員等級已初始化');
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        );
+                                                                    }
+                                                                });
+                                                            });
+                                                        }
+                                                    });
+                                                    
                                                     // 建立操作日誌資料表
                                                     db.run(`
                                                         CREATE TABLE IF NOT EXISTS admin_logs (
@@ -2660,6 +2748,174 @@ async function getMonthlyComparison() {
     }
 }
 
+// ==================== 會員等級管理 ====================
+
+// 取得所有會員等級
+async function getAllMemberLevels() {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT * FROM member_levels ORDER BY display_order ASC, id ASC`
+            : `SELECT * FROM member_levels ORDER BY display_order ASC, id ASC`;
+        
+        const result = await query(sql);
+        return result.rows.map(level => ({
+            id: level.id,
+            level_name: level.level_name,
+            min_spent: parseInt(level.min_spent || 0),
+            min_bookings: parseInt(level.min_bookings || 0),
+            discount_percent: parseFloat(level.discount_percent || 0),
+            display_order: parseInt(level.display_order || 0),
+            is_active: parseInt(level.is_active || 1)
+        }));
+    } catch (error) {
+        console.error('❌ 查詢會員等級列表失敗:', error.message);
+        throw error;
+    }
+}
+
+// 取得單一會員等級
+async function getMemberLevelById(id) {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT * FROM member_levels WHERE id = $1`
+            : `SELECT * FROM member_levels WHERE id = ?`;
+        
+        const result = await queryOne(sql, [id]);
+        if (!result) return null;
+        
+        return {
+            id: result.id,
+            level_name: result.level_name,
+            min_spent: parseInt(result.min_spent || 0),
+            min_bookings: parseInt(result.min_bookings || 0),
+            discount_percent: parseFloat(result.discount_percent || 0),
+            display_order: parseInt(result.display_order || 0),
+            is_active: parseInt(result.is_active || 1)
+        };
+    } catch (error) {
+        console.error('❌ 查詢會員等級失敗:', error.message);
+        throw error;
+    }
+}
+
+// 新增會員等級
+async function createMemberLevel(levelData) {
+    try {
+        const { level_name, min_spent, min_bookings, discount_percent, display_order, is_active } = levelData;
+        
+        const sql = usePostgreSQL
+            ? `INSERT INTO member_levels (level_name, min_spent, min_bookings, discount_percent, display_order, is_active) 
+               VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`
+            : `INSERT INTO member_levels (level_name, min_spent, min_bookings, discount_percent, display_order, is_active) 
+               VALUES (?, ?, ?, ?, ?, ?)`;
+        
+        const params = [level_name, min_spent || 0, min_bookings || 0, discount_percent || 0, display_order || 0, is_active !== undefined ? is_active : 1];
+        
+        if (usePostgreSQL) {
+            const result = await query(sql, params);
+            return result.rows[0];
+        } else {
+            const result = await query(sql, params);
+            const newId = result.lastID;
+            return await getMemberLevelById(newId);
+        }
+    } catch (error) {
+        console.error('❌ 新增會員等級失敗:', error.message);
+        throw error;
+    }
+}
+
+// 更新會員等級
+async function updateMemberLevel(id, levelData) {
+    try {
+        const { level_name, min_spent, min_bookings, discount_percent, display_order, is_active } = levelData;
+        
+        const sql = usePostgreSQL
+            ? `UPDATE member_levels 
+               SET level_name = $1, min_spent = $2, min_bookings = $3, discount_percent = $4, 
+                   display_order = $5, is_active = $6, updated_at = CURRENT_TIMESTAMP 
+               WHERE id = $7 RETURNING *`
+            : `UPDATE member_levels 
+               SET level_name = ?, min_spent = ?, min_bookings = ?, discount_percent = ?, 
+                   display_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP 
+               WHERE id = ?`;
+        
+        const params = [level_name, min_spent || 0, min_bookings || 0, discount_percent || 0, display_order || 0, is_active !== undefined ? is_active : 1, id];
+        
+        if (usePostgreSQL) {
+            const result = await query(sql, params);
+            return result.rows[0];
+        } else {
+            await query(sql, params);
+            return await getMemberLevelById(id);
+        }
+    } catch (error) {
+        console.error('❌ 更新會員等級失敗:', error.message);
+        throw error;
+    }
+}
+
+// 刪除會員等級
+async function deleteMemberLevel(id) {
+    try {
+        const sql = usePostgreSQL
+            ? `DELETE FROM member_levels WHERE id = $1`
+            : `DELETE FROM member_levels WHERE id = ?`;
+        
+        await query(sql, [id]);
+        return true;
+    } catch (error) {
+        console.error('❌ 刪除會員等級失敗:', error.message);
+        throw error;
+    }
+}
+
+// 計算客戶等級（根據消費金額和訂房次數）
+async function calculateCustomerLevel(totalSpent, bookingCount) {
+    try {
+        // 取得所有啟用的等級，按 display_order 降序排列（最高等級優先）
+        const sql = usePostgreSQL
+            ? `SELECT * FROM member_levels 
+               WHERE is_active = 1 
+               ORDER BY display_order DESC, min_spent DESC, min_bookings DESC`
+            : `SELECT * FROM member_levels 
+               WHERE is_active = 1 
+               ORDER BY display_order DESC, min_spent DESC, min_bookings DESC`;
+        
+        const result = await query(sql);
+        const levels = result.rows;
+        
+        // 從最高等級開始檢查，找到第一個符合條件的等級
+        for (const level of levels) {
+            const minSpent = parseInt(level.min_spent || 0);
+            const minBookings = parseInt(level.min_bookings || 0);
+            
+            if (totalSpent >= minSpent && bookingCount >= minBookings) {
+                return {
+                    id: level.id,
+                    level_name: level.level_name,
+                    discount_percent: parseFloat(level.discount_percent || 0)
+                };
+            }
+        }
+        
+        // 如果沒有符合的等級，返回最低等級（通常是新會員）
+        const lowestLevel = levels[levels.length - 1] || null;
+        if (lowestLevel) {
+            return {
+                id: lowestLevel.id,
+                level_name: lowestLevel.level_name,
+                discount_percent: parseFloat(lowestLevel.discount_percent || 0)
+            };
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('❌ 計算客戶等級失敗:', error.message);
+        throw error;
+    }
+}
+
 // ==================== 客戶管理 ====================
 
 // 取得所有客戶（聚合訂房資料，以 email 為唯一值，顯示最新的姓名和電話）
@@ -2710,15 +2966,28 @@ async function getAllCustomers() {
         
         const result = await query(sql);
         
-        // 格式化日期
-        return result.rows.map(customer => ({
-            ...customer,
-            last_booking_date: customer.last_booking_date 
-                ? new Date(customer.last_booking_date).toLocaleDateString('zh-TW')
-                : null,
-            total_spent: parseInt(customer.total_spent || 0),
-            booking_count: parseInt(customer.booking_count || 0)
+        // 格式化日期並計算等級
+        const customers = await Promise.all(result.rows.map(async (customer) => {
+            const totalSpent = parseInt(customer.total_spent || 0);
+            const bookingCount = parseInt(customer.booking_count || 0);
+            
+            // 計算客戶等級
+            const level = await calculateCustomerLevel(totalSpent, bookingCount);
+            
+            return {
+                ...customer,
+                last_booking_date: customer.last_booking_date 
+                    ? new Date(customer.last_booking_date).toLocaleDateString('zh-TW')
+                    : null,
+                total_spent: totalSpent,
+                booking_count: bookingCount,
+                member_level: level ? level.level_name : '新會員',
+                member_level_id: level ? level.id : null,
+                discount_percent: level ? level.discount_percent : 0
+            };
         }));
+        
+        return customers;
     } catch (error) {
         console.error('❌ 查詢客戶列表失敗:', error.message);
         throw error;
@@ -4024,6 +4293,13 @@ module.exports = {
     getCustomerByEmail,
     updateCustomer,
     deleteCustomer,
+    // 會員等級管理
+    getAllMemberLevels,
+    getMemberLevelById,
+    createMemberLevel,
+    updateMemberLevel,
+    deleteMemberLevel,
+    calculateCustomerLevel,
     // 加購商品管理
     getAllAddons,
     getAllAddonsAdmin,

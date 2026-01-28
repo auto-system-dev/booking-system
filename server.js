@@ -2492,6 +2492,144 @@ app.delete('/api/customers/:email', requireAuth, adminLimiter, async (req, res) 
     }
 });
 
+// ==================== 會員等級管理 API ====================
+
+// API: 取得所有會員等級
+app.get('/api/member-levels', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        const levels = await db.getAllMemberLevels();
+        
+        res.json({
+            success: true,
+            count: levels.length,
+            data: levels
+        });
+    } catch (error) {
+        console.error('查詢會員等級列表錯誤:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: '查詢會員等級列表失敗：' + error.message 
+        });
+    }
+});
+
+// API: 取得單一會員等級
+app.get('/api/member-levels/:id', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const level = await db.getMemberLevelById(parseInt(id));
+        
+        if (level) {
+            res.json({
+                success: true,
+                data: level
+            });
+        } else {
+            res.status(404).json({
+                success: false,
+                message: '找不到該會員等級'
+            });
+        }
+    } catch (error) {
+        console.error('查詢會員等級錯誤:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: '查詢會員等級失敗：' + error.message 
+        });
+    }
+});
+
+// API: 新增會員等級
+app.post('/api/member-levels', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        const { level_name, min_spent, min_bookings, discount_percent, display_order, is_active } = req.body;
+        
+        if (!level_name) {
+            return res.status(400).json({
+                success: false,
+                message: '等級名稱為必填'
+            });
+        }
+        
+        const level = await db.createMemberLevel({
+            level_name,
+            min_spent: parseInt(min_spent || 0),
+            min_bookings: parseInt(min_bookings || 0),
+            discount_percent: parseFloat(discount_percent || 0),
+            display_order: parseInt(display_order || 0),
+            is_active: is_active !== undefined ? is_active : 1
+        });
+        
+        res.json({
+            success: true,
+            message: '會員等級已新增',
+            data: level
+        });
+    } catch (error) {
+        console.error('新增會員等級錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '新增會員等級失敗：' + error.message
+        });
+    }
+});
+
+// API: 更新會員等級
+app.put('/api/member-levels/:id', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { level_name, min_spent, min_bookings, discount_percent, display_order, is_active } = req.body;
+        
+        if (!level_name) {
+            return res.status(400).json({
+                success: false,
+                message: '等級名稱為必填'
+            });
+        }
+        
+        const level = await db.updateMemberLevel(parseInt(id), {
+            level_name,
+            min_spent: parseInt(min_spent || 0),
+            min_bookings: parseInt(min_bookings || 0),
+            discount_percent: parseFloat(discount_percent || 0),
+            display_order: parseInt(display_order || 0),
+            is_active: is_active !== undefined ? is_active : 1
+        });
+        
+        res.json({
+            success: true,
+            message: '會員等級已更新',
+            data: level
+        });
+    } catch (error) {
+        console.error('更新會員等級錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '更新會員等級失敗：' + error.message
+        });
+    }
+});
+
+// API: 刪除會員等級
+app.delete('/api/member-levels/:id', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        await db.deleteMemberLevel(parseInt(id));
+        
+        res.json({
+            success: true,
+            message: '會員等級已刪除'
+        });
+    } catch (error) {
+        console.error('刪除會員等級錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '刪除會員等級失敗：' + error.message
+        });
+    }
+});
+
 // API: 取得單一客戶詳情（包含所有訂房記錄）
 app.get('/api/customers/:email', publicLimiter, async (req, res) => {
     try {

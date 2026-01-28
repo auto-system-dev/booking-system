@@ -276,40 +276,93 @@
                 <div class="section-header">
                     <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">people</span> 客戶管理</h2>
                     <div class="header-actions">
-                        <button class="btn-refresh" onclick="loadCustomers()">
+                        <button class="btn-refresh" id="customerRefreshBtn" onclick="loadCustomers()" style="display: none;">
+                            <span class="material-symbols-outlined">refresh</span> 重新整理
+                        </button>
+                        <button class="btn-refresh" id="memberLevelRefreshBtn" onclick="loadMemberLevels()" style="display: none;">
                             <span class="material-symbols-outlined">refresh</span> 重新整理
                         </button>
                     </div>
                 </div>
 
-                <!-- 搜尋和篩選 -->
-                <div class="filter-bar">
-                    <div class="search-box">
-                        <input type="text" id="customerSearchInput" placeholder="搜尋客戶姓名、電話、Email..." onkeyup="filterCustomers()">
-                        <span class="search-icon"><span class="material-symbols-outlined" style="font-size: 20px; vertical-align: middle;">search</span></span>
+                <!-- 分頁切換 -->
+                <div class="tab-container" style="margin-bottom: 20px; border-bottom: 2px solid #e0e0e0;">
+                    <button class="tab-button active" onclick="switchCustomerTab('customers')" id="customersTab">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">people</span>
+                        客戶列表
+                    </button>
+                    <button class="tab-button" onclick="switchCustomerTab('member-levels')" id="memberLevelsTab">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">workspace_premium</span>
+                        客戶等級設定
+                    </button>
+                </div>
+
+                <!-- 客戶列表內容 -->
+                <div id="customersTabContent" class="tab-content">
+                    <!-- 搜尋和篩選 -->
+                    <div class="filter-bar">
+                        <div class="search-box">
+                            <input type="text" id="customerSearchInput" placeholder="搜尋客戶姓名、電話、Email..." onkeyup="filterCustomers()">
+                            <span class="search-icon"><span class="material-symbols-outlined" style="font-size: 20px; vertical-align: middle;">search</span></span>
+                        </div>
+                    </div>
+
+                    <!-- 客戶列表表格 -->
+                    <div class="table-container">
+                        <table class="bookings-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;">客戶姓名</th>
+                                    <th style="text-align: left;">電話</th>
+                                    <th style="text-align: left;">Email</th>
+                                    <th style="text-align: center;">會員等級</th>
+                                    <th style="text-align: center;">訂房次數</th>
+                                    <th style="text-align: right;">總消費金額</th>
+                                    <th style="text-align: left;">最後訂房日期</th>
+                                    <th style="text-align: center;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customersTableBody">
+                                <tr>
+                                    <td colspan="8" class="loading">載入中...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
-                <!-- 客戶列表表格 -->
-                <div class="table-container">
-                    <table class="bookings-table">
-                        <thead>
-                            <tr>
-                                <th style="text-align: left;">客戶姓名</th>
-                                <th style="text-align: left;">電話</th>
-                                <th style="text-align: left;">Email</th>
-                                <th style="text-align: center;">訂房次數</th>
-                                <th style="text-align: right;">總消費金額</th>
-                                <th style="text-align: left;">最後訂房日期</th>
-                                <th style="text-align: center;">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="customersTableBody">
-                            <tr>
-                                <td colspan="7" class="loading">載入中...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <!-- 客戶等級設定內容 -->
+                <div id="memberLevelsTabContent" class="tab-content" style="display: none;">
+                    <div class="settings-container">
+                        <div class="settings-card">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <h3>會員等級設定</h3>
+                                <button class="btn-primary" onclick="showAddMemberLevelModal()">
+                                    <span class="material-symbols-outlined">add</span> 新增等級
+                                </button>
+                            </div>
+                            <div class="table-container">
+                                <table class="bookings-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="text-align: center;">排序</th>
+                                            <th style="text-align: left;">等級名稱</th>
+                                            <th style="text-align: right;">消費金額門檻</th>
+                                            <th style="text-align: center;">訂房次數門檻</th>
+                                            <th style="text-align: center;">折扣百分比</th>
+                                            <th style="text-align: center;">狀態</th>
+                                            <th style="text-align: center;">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="memberLevelsTableBody">
+                                        <tr>
+                                            <td colspan="7" class="loading">載入中...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -925,6 +978,62 @@
             </div>
             <div class="modal-body" id="modalBody">
                 <!-- 詳情內容將動態載入 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增/編輯會員等級模態框 -->
+    <div id="memberLevelModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="memberLevelModalTitle">新增會員等級</h3>
+                <span class="modal-close" onclick="closeMemberLevelModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="memberLevelForm" onsubmit="saveMemberLevel(event)">
+                    <input type="hidden" id="memberLevelId" value="">
+                    <div class="form-group">
+                        <label>等級名稱 <span style="color: red;">*</span></label>
+                        <input type="text" id="memberLevelName" required placeholder="例如：新會員">
+                        <small>會員等級的名稱</small>
+                    </div>
+                    <div class="form-group">
+                        <label>消費金額門檻</label>
+                        <div class="input-group">
+                            <input type="number" id="memberLevelMinSpent" min="0" step="1000" value="0" placeholder="0">
+                            <span class="input-suffix">NT$</span>
+                        </div>
+                        <small>達到此消費金額才能升級到此等級</small>
+                    </div>
+                    <div class="form-group">
+                        <label>訂房次數門檻</label>
+                        <input type="number" id="memberLevelMinBookings" min="0" step="1" value="0" placeholder="0">
+                        <small>達到此訂房次數才能升級到此等級</small>
+                    </div>
+                    <div class="form-group">
+                        <label>折扣百分比</label>
+                        <div class="input-group">
+                            <input type="number" id="memberLevelDiscount" min="0" max="100" step="0.1" value="0" placeholder="0">
+                            <span class="input-suffix">%</span>
+                        </div>
+                        <small>此等級會員可享受的折扣百分比（例如：5 表示 5% 折扣）</small>
+                    </div>
+                    <div class="form-group">
+                        <label>排序順序</label>
+                        <input type="number" id="memberLevelDisplayOrder" min="1" step="1" value="1" placeholder="1">
+                        <small>數字越小越優先顯示（等級從低到高）</small>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="memberLevelIsActive" checked style="width: 20px; height: 20px;">
+                            <span>啟用此等級</span>
+                        </label>
+                    </div>
+                    <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                        <button type="button" class="btn-primary btn-danger" onclick="closeMemberLevelModal()">取消</button>
+                        <button type="submit" class="btn-save">儲存</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

@@ -800,7 +800,9 @@ function switchSection(section) {
             loadBookings();
         }
     } else if (section === 'customers') {
-        loadCustomers();
+        // 檢查是否有保存的分頁
+        const savedTab = localStorage.getItem('customerTab') || 'customers';
+        switchCustomerTab(savedTab);
     }
 }
 
@@ -1191,7 +1193,7 @@ function renderCustomers() {
     const tbody = document.getElementById('customersTableBody');
     
     if (filteredCustomers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="loading">沒有找到客戶資料</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="loading">沒有找到客戶資料</td></tr>';
         return;
     }
     
@@ -1200,6 +1202,11 @@ function renderCustomers() {
             <td style="text-align: left;">${escapeHtml(customer.guest_name || '-')}</td>
             <td style="text-align: left;">${escapeHtml(customer.guest_phone || '-')}</td>
             <td style="text-align: left;">${escapeHtml(customer.guest_email || '-')}</td>
+            <td style="text-align: center;">
+                <span class="member-badge" style="display: inline-block; padding: 4px 12px; background: #667eea; color: white; border-radius: 12px; font-size: 13px; font-weight: 500;">
+                    ${escapeHtml(customer.member_level || '新會員')}
+                </span>
+            </td>
             <td style="text-align: center;">${customer.booking_count || 0}</td>
             <td style="text-align: right;">NT$ ${(customer.total_spent || 0).toLocaleString()}</td>
             <td style="text-align: left;">${customer.last_booking_date || '-'}</td>
@@ -1212,6 +1219,42 @@ function renderCustomers() {
             </td>
         </tr>
     `).join('');
+}
+
+// 切換客戶管理分頁
+function switchCustomerTab(tab) {
+    // 保存當前分頁到 localStorage
+    localStorage.setItem('customerTab', tab);
+    
+    // 更新分頁按鈕狀態
+    document.querySelectorAll('#customers-section .tab-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // 顯示/隱藏對應的內容
+    if (tab === 'customers') {
+        document.getElementById('customersTab').classList.add('active');
+        document.getElementById('customersTabContent').style.display = 'block';
+        document.getElementById('memberLevelsTabContent').style.display = 'none';
+        
+        // 顯示/隱藏對應的按鈕
+        document.getElementById('customerRefreshBtn').style.display = 'inline-flex';
+        document.getElementById('memberLevelRefreshBtn').style.display = 'none';
+        
+        // 載入客戶列表
+        loadCustomers();
+    } else if (tab === 'member-levels') {
+        document.getElementById('memberLevelsTab').classList.add('active');
+        document.getElementById('customersTabContent').style.display = 'none';
+        document.getElementById('memberLevelsTabContent').style.display = 'block';
+        
+        // 顯示/隱藏對應的按鈕
+        document.getElementById('customerRefreshBtn').style.display = 'none';
+        document.getElementById('memberLevelRefreshBtn').style.display = 'inline-flex';
+        
+        // 載入等級列表
+        loadMemberLevels();
+    }
 }
 
 // 開啟修改客戶資料模態框
@@ -1296,6 +1339,200 @@ async function deleteCustomer(email, bookingCount) {
         console.error('刪除客戶錯誤:', error);
         showError('刪除時發生錯誤：' + error.message);
     }
+}
+
+// ==================== 會員等級管理 ====================
+
+// 載入會員等級列表
+async function loadMemberLevels() {
+    try {
+        const response = await adminFetch('/api/member-levels');
+        
+        if (response.status === 401) {
+            console.warn('會員等級 API 返回 401，Session 可能已過期');
+            await checkAuthStatus();
+            return;
+        }
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            renderMemberLevels(result.data || []);
+        } else {
+            showError('載入會員等級列表失敗：' + (result.message || '未知錯誤'));
+            document.getElementById('memberLevelsTableBody').innerHTML = '<tr><td colspan="7" class="loading">載入失敗</td></tr>';
+        }
+    } catch (error) {
+        console.error('載入會員等級列表錯誤:', error);
+        showError('載入會員等級列表時發生錯誤：' + error.message);
+        document.getElementById('memberLevelsTableBody').innerHTML = '<tr><td colspan="7" class="loading">載入失敗</td></tr>';
+    }
+}
+
+// 渲染會員等級列表
+function renderMemberLevels(levels) {
+    const tbody = document.getElementById('memberLevelsTableBody');
+    
+    if (levels.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="loading">沒有會員等級資料</td></tr>';
+        return;
+    }
+    
+    // 按 display_order 排序
+    const sortedLevels = [...levels].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    
+    tbody.innerHTML = sortedLevels.map(level => `
+        <tr>
+            <td style="text-align: center;">${level.display_order || 0}</td>
+            <td style="text-align: left;">
+                <strong>${escapeHtml(level.level_name)}</strong>
+            </td>
+            <td style="text-align: right;">NT$ ${(level.min_spent || 0).toLocaleString()}</td>
+            <td style="text-align: center;">${level.min_bookings || 0} 次</td>
+            <td style="text-align: center;">
+                ${level.discount_percent > 0 ? `<span style="color: #10b981; font-weight: 600;">${level.discount_percent}%</span>` : '<span style="color: #999;">無折扣</span>'}
+            </td>
+            <td style="text-align: center;">
+                <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; ${level.is_active ? 'background: #d1fae5; color: #059669;' : 'background: #fee2e2; color: #dc2626;'}">
+                    ${level.is_active ? '啟用' : '停用'}
+                </span>
+            </td>
+            <td style="text-align: center;">
+                <div class="action-buttons">
+                    <button class="btn-edit" onclick="editMemberLevel(${level.id})">編輯</button>
+                    <button class="btn-delete" onclick="deleteMemberLevel(${level.id}, '${escapeHtml(level.level_name)}')">刪除</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// 顯示新增會員等級模態框
+function showAddMemberLevelModal() {
+    document.getElementById('memberLevelModalTitle').textContent = '新增會員等級';
+    document.getElementById('memberLevelId').value = '';
+    document.getElementById('memberLevelForm').reset();
+    document.getElementById('memberLevelIsActive').checked = true;
+    document.getElementById('memberLevelDisplayOrder').value = '';
+    document.getElementById('memberLevelModal').style.display = 'block';
+}
+
+// 編輯會員等級
+async function editMemberLevel(id) {
+    try {
+        const response = await adminFetch(`/api/member-levels/${id}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const level = result.data;
+            document.getElementById('memberLevelModalTitle').textContent = '編輯會員等級';
+            document.getElementById('memberLevelId').value = level.id;
+            document.getElementById('memberLevelName').value = level.level_name;
+            document.getElementById('memberLevelMinSpent').value = level.min_spent || 0;
+            document.getElementById('memberLevelMinBookings').value = level.min_bookings || 0;
+            document.getElementById('memberLevelDiscount').value = level.discount_percent || 0;
+            document.getElementById('memberLevelDisplayOrder').value = level.display_order || 0;
+            document.getElementById('memberLevelIsActive').checked = level.is_active !== undefined ? level.is_active : 1;
+            document.getElementById('memberLevelModal').style.display = 'block';
+        } else {
+            showError('載入會員等級失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('載入會員等級錯誤:', error);
+        showError('載入會員等級時發生錯誤：' + error.message);
+    }
+}
+
+// 儲存會員等級
+async function saveMemberLevel(event) {
+    event.preventDefault();
+    
+    const id = document.getElementById('memberLevelId').value;
+    const level_name = document.getElementById('memberLevelName').value.trim();
+    const min_spent = parseInt(document.getElementById('memberLevelMinSpent').value || 0);
+    const min_bookings = parseInt(document.getElementById('memberLevelMinBookings').value || 0);
+    const discount_percent = parseFloat(document.getElementById('memberLevelDiscount').value || 0);
+    const display_order = parseInt(document.getElementById('memberLevelDisplayOrder').value || 0);
+    const is_active = document.getElementById('memberLevelIsActive').checked ? 1 : 0;
+    
+    if (!level_name) {
+        showError('請填寫等級名稱');
+        return;
+    }
+    
+    try {
+        const url = id ? `/api/member-levels/${id}` : '/api/member-levels';
+        const method = id ? 'PUT' : 'POST';
+        
+        const response = await adminFetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                level_name,
+                min_spent,
+                min_bookings,
+                discount_percent,
+                display_order,
+                is_active
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess(id ? '會員等級已更新' : '會員等級已新增');
+            closeMemberLevelModal();
+            loadMemberLevels(); // 重新載入等級列表
+        } else {
+            showError((id ? '更新' : '新增') + '失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('儲存會員等級錯誤:', error);
+        showError('儲存時發生錯誤：' + error.message);
+    }
+}
+
+// 刪除會員等級
+async function deleteMemberLevel(id, levelName) {
+    if (!confirm(`確定要刪除等級「${levelName}」嗎？此操作無法復原。`)) {
+        return;
+    }
+    
+    try {
+        const response = await adminFetch(`/api/member-levels/${id}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('會員等級已刪除');
+            loadMemberLevels(); // 重新載入等級列表
+        } else {
+            showError('刪除失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('刪除會員等級錯誤:', error);
+        showError('刪除時發生錯誤：' + error.message);
+    }
+}
+
+// 關閉會員等級模態框
+function closeMemberLevelModal() {
+    document.getElementById('memberLevelModal').style.display = 'none';
+    document.getElementById('memberLevelForm').reset();
+    document.getElementById('memberLevelId').value = '';
 }
 
 // 篩選客戶
