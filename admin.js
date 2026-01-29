@@ -2643,7 +2643,18 @@ function showEditModal(booking) {
     const isDeposit = paymentAmountStr.includes('訂金') || paymentAmountStr.includes('deposit');
     
     // 計算應付金額（使用折後總額）
+    // 重要：必須使用折後總額計算訂金，而不是原始總金額
     const finalAmount = isDeposit ? Math.round(discountedTotal * depositPercentage / 100) : discountedTotal;
+    
+    // 調試信息（可在瀏覽器控制台查看）
+    console.log('編輯訂房 - 價格計算:', {
+        originalAmount,
+        discountAmount,
+        discountedTotal,
+        isDeposit,
+        depositPercentage,
+        finalAmount
+    });
     
     // 將優惠折扣資訊存儲在表單的 data 屬性中，供 calculateEditPrice 使用
     
@@ -2767,7 +2778,8 @@ function calculateEditPrice() {
         // 檢查是否有優惠折扣（從表單的 data 屬性讀取）
         const discountAmount = editForm ? parseFloat(editForm.dataset.discountAmount || 0) : 0;
         const originalAmount = editForm ? parseFloat(editForm.dataset.originalAmount || totalAmount) : totalAmount;
-        const discountedTotal = discountAmount > 0 ? (originalAmount - discountAmount) : totalAmount;
+        // 如果有折扣，使用折後總額；否則使用當前總金額
+        const discountedTotal = discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : totalAmount;
         
         const isDeposit = paymentAmountType.value === 'deposit';
         const finalAmount = isDeposit ? Math.round(discountedTotal * depositPercentage / 100) : discountedTotal;
@@ -2814,7 +2826,8 @@ async function saveBookingEdit(event, bookingId) {
     // 檢查是否有優惠折扣（從表單的 data 屬性讀取）
     const discountAmount = editForm ? parseFloat(editForm.dataset.discountAmount || 0) : 0;
     const originalAmount = editForm ? parseFloat(editForm.dataset.originalAmount || totalAmount) : totalAmount;
-    const discountedTotal = discountAmount > 0 ? (originalAmount - discountAmount) : totalAmount;
+    // 如果有折扣，使用折後總額；否則使用當前總金額
+    const discountedTotal = discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : totalAmount;
     
     const isDeposit = paymentAmountType.value === 'deposit';
     const finalAmount = isDeposit ? Math.round(discountedTotal * depositPercentage / 100) : discountedTotal;
