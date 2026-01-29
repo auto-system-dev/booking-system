@@ -7634,8 +7634,10 @@ async function loadPromoCodes() {
             // 確保資料格式正確，包含使用統計
             allPromoCodes = (result.data || []).map(code => ({
                 ...code,
+                is_active: parseInt(code.is_active) || 0, // 確保 is_active 是整數
                 usage_stats: code.usage_stats || { total_usage: 0, total_discount: 0, unique_users: 0 }
             }));
+            console.log('載入優惠代碼列表:', allPromoCodes.map(c => ({ code: c.code, is_active: c.is_active })));
             renderPromoCodes();
         } else {
             showError('載入優惠代碼列表失敗：' + (result.message || '未知錯誤'));
@@ -7787,6 +7789,7 @@ async function savePromoCode(event) {
     const start_date = document.getElementById('promoCodeStartDate').value || null;
     const end_date = document.getElementById('promoCodeEndDate').value || null;
     const is_active = document.getElementById('promoCodeIsActive').checked ? 1 : 0;
+    console.log('儲存優惠代碼 - is_active:', is_active, 'checked:', document.getElementById('promoCodeIsActive').checked);
     
     if (!code || !name || !discount_type || discount_value <= 0) {
         showError('請填寫完整的優惠代碼資料');
@@ -7821,6 +7824,9 @@ async function savePromoCode(event) {
         });
         
         const result = await response.json();
+        
+        console.log('儲存優惠代碼回應:', result);
+        console.log('返回的 is_active:', result.data?.is_active);
         
         if (result.success) {
             showSuccess(id ? '優惠代碼已更新' : '優惠代碼已新增');

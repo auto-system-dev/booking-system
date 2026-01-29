@@ -3257,7 +3257,7 @@ async function createPromoCode(codeData) {
             per_user_limit || 1,
             start_date || null,
             end_date || null,
-            is_active !== undefined ? is_active : 1,
+            is_active !== undefined ? parseInt(is_active) : 1,
             can_combine_with_early_bird || 0,
             can_combine_with_late_bird || 0
         ];
@@ -3337,7 +3337,7 @@ async function updatePromoCode(id, codeData) {
             per_user_limit || 1,
             start_date || null,
             end_date || null,
-            is_active !== undefined ? is_active : 1,
+            is_active !== undefined ? parseInt(is_active) : 1,
             can_combine_with_early_bird || 0,
             can_combine_with_late_bird || 0,
             id

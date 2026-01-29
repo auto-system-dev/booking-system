@@ -2868,10 +2868,12 @@ app.put('/api/admin/promo-codes/:id', requireAuth, adminLimiter, async (req, res
             per_user_limit: parseInt(per_user_limit || 1),
             start_date: start_date || null,
             end_date: end_date || null,
-            is_active: is_active !== undefined ? is_active : 1,
+            is_active: is_active !== undefined ? parseInt(is_active) : 1,
             can_combine_with_early_bird: can_combine_with_early_bird || 0,
             can_combine_with_late_bird: can_combine_with_late_bird || 0
         });
+        
+        console.log('更新優惠代碼 - is_active:', parseInt(is_active), '原始值:', is_active);
         
         res.json({
             success: true,
