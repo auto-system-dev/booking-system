@@ -2623,18 +2623,20 @@ function showEditModal(booking) {
     const modal = document.getElementById('bookingModal');
     const modalBody = document.getElementById('modalBody');
     
-    // 計算初始價格
+    // 計算初始價格（僅用於顯示，實際計算使用資料庫中的值）
     const pricePerNight = roomPrices[booking.room_type] || 2000;
     const checkIn = new Date(booking.check_in_date);
     const checkOut = new Date(booking.check_out_date);
     const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
-    const totalAmount = pricePerNight * nights;
+    const calculatedTotalAmount = pricePerNight * nights;
     
     // 計算折後總額（如果有優惠折扣）
     const discountAmount = booking.discount_amount || 0;
-    // 使用資料庫中的 original_amount（如果有），否則使用 booking.total_amount（這是實際的總金額）
-    const originalAmount = booking.original_amount || booking.total_amount || totalAmount;
-    const discountedTotal = originalAmount - discountAmount;
+    // 優先使用 promo_code_usages 表中的 original_amount（這是訂房時的原始總金額）
+    // 如果沒有，使用 booking.total_amount（資料庫中儲存的總金額，不含折扣）
+    // 最後才使用重新計算的值
+    const originalAmount = booking.original_amount || booking.total_amount || calculatedTotalAmount;
+    const discountedTotal = Math.max(0, originalAmount - discountAmount);
     
     // 根據原始付款方式判斷是否為訂金（檢查 payment_amount 欄位）
     const paymentAmountStr = booking.payment_amount || '';
@@ -2709,7 +2711,7 @@ function showEditModal(booking) {
                 </div>
                 <div style="display: flex; justify-content: space-between; margin: 5px 0; padding-top: 10px; border-top: 1px solid #ddd;">
                     <span>總金額：</span>
-                    <strong id="editTotalAmount">NT$ ${(booking.original_amount || totalAmount).toLocaleString()}</strong>
+                    <strong id="editTotalAmount">NT$ ${originalAmount.toLocaleString()}</strong>
                 </div>
                 ${booking.promo_code ? `
                 <div style="display: flex; justify-content: space-between; margin: 5px 0;">
@@ -2722,7 +2724,7 @@ function showEditModal(booking) {
                 </div>
                 <div style="display: flex; justify-content: space-between; margin: 5px 0; padding-top: 5px; border-top: 1px solid #ddd;">
                     <span>折後總額：</span>
-                    <strong style="font-weight: 600;">NT$ ${((booking.original_amount || totalAmount) - (booking.discount_amount || 0)).toLocaleString()}</strong>
+                    <strong style="font-weight: 600;">NT$ ${discountedTotal.toLocaleString()}</strong>
                 </div>
                 ` : ''}
                 <div style="display: flex; justify-content: space-between; margin: 5px 0; color: #e74c3c; font-size: 18px;">
