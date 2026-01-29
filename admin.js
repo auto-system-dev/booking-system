@@ -1930,6 +1930,10 @@ function showBookingModal(booking) {
             <span class="detail-label">優惠折扣</span>
             <span class="detail-value" style="color: #10b981; font-weight: 600;">-NT$ ${(booking.discount_amount || 0).toLocaleString()}</span>
         </div>
+        <div class="detail-row">
+            <span class="detail-label">折後總額</span>
+            <span class="detail-value" style="font-weight: 600;">NT$ ${((booking.original_amount || booking.total_amount) - (booking.discount_amount || 0)).toLocaleString()}</span>
+        </div>
         ` : ''}
         <div class="detail-row">
             <span class="detail-label">應付金額</span>
@@ -2704,6 +2708,10 @@ function showEditModal(booking) {
                 <div style="display: flex; justify-content: space-between; margin: 5px 0;">
                     <span>優惠折扣：</span>
                     <strong style="color: #10b981;">-NT$ ${(booking.discount_amount || 0).toLocaleString()}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin: 5px 0; padding-top: 5px; border-top: 1px solid #ddd;">
+                    <span>折後總額：</span>
+                    <strong style="font-weight: 600;">NT$ ${((booking.original_amount || totalAmount) - (booking.discount_amount || 0)).toLocaleString()}</strong>
                 </div>
                 ` : ''}
                 <div style="display: flex; justify-content: space-between; margin: 5px 0; color: #e74c3c; font-size: 18px;">
