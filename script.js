@@ -830,6 +830,7 @@ function updatePriceDisplay(pricePerNight, nights, totalAmount, discountAmount =
         html += `<div style="margin-bottom: 5px; color: #666;">加購商品（${addonsDetail}）：NT$ ${addonsTotal.toLocaleString()}</div>`;
     }
     
+    // 顯示總金額（原始總金額，折扣前）
     html += `<div style="margin-bottom: 5px; color: #333;">總金額：NT$ ${totalAmount.toLocaleString()}</div>`;
     
     // 顯示折扣
@@ -837,10 +838,8 @@ function updatePriceDisplay(pricePerNight, nights, totalAmount, discountAmount =
         html += `<div style="margin-bottom: 5px; color: #10b981; font-weight: 600;">優惠折扣（${appliedPromoCode.name}）：-NT$ ${discountAmount.toLocaleString()}</div>`;
         const finalTotal = totalAmount - discountAmount;
         html += `<div style="font-weight: 700; font-size: 18px; color: #2C8EC4; border-top: 2px solid #ddd; padding-top: 5px; margin-top: 5px;">折抵後金額：NT$ ${finalTotal.toLocaleString()}</div>`;
-    } else {
-        // 沒有折扣時，顯示總金額
-        html += `<div style="font-weight: 700; font-size: 18px; color: #2C8EC4; border-top: 2px solid #ddd; padding-top: 5px; margin-top: 5px;">總金額：NT$ ${totalAmount.toLocaleString()}</div>`;
     }
+    // 沒有折扣時，不需要再顯示一次總金額（因為上面已經顯示了）
     
     totalAmountElement.innerHTML = html || `NT$ ${totalAmount.toLocaleString()}`;
     
