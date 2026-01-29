@@ -1919,8 +1919,18 @@ function showBookingModal(booking) {
         </div>
         <div class="detail-row">
             <span class="detail-label">總金額</span>
-            <span class="detail-value">NT$ ${booking.total_amount.toLocaleString()}</span>
+            <span class="detail-value">NT$ ${(booking.original_amount || booking.total_amount).toLocaleString()}</span>
         </div>
+        ${booking.promo_code ? `
+        <div class="detail-row">
+            <span class="detail-label">優惠代碼</span>
+            <span class="detail-value">${escapeHtml(booking.promo_code)} - ${escapeHtml(booking.promo_code_name || '')}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">優惠折扣</span>
+            <span class="detail-value" style="color: #10b981; font-weight: 600;">-NT$ ${(booking.discount_amount || 0).toLocaleString()}</span>
+        </div>
+        ` : ''}
         <div class="detail-row">
             <span class="detail-label">應付金額</span>
             <span class="detail-value" style="color: #667eea; font-weight: 700; font-size: 18px;">NT$ ${booking.final_amount.toLocaleString()}</span>
@@ -2684,8 +2694,18 @@ function showEditModal(booking) {
                 </div>
                 <div style="display: flex; justify-content: space-between; margin: 5px 0; padding-top: 10px; border-top: 1px solid #ddd;">
                     <span>總金額：</span>
-                    <strong id="editTotalAmount">NT$ ${totalAmount.toLocaleString()}</strong>
+                    <strong id="editTotalAmount">NT$ ${(booking.original_amount || totalAmount).toLocaleString()}</strong>
                 </div>
+                ${booking.promo_code ? `
+                <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                    <span>優惠代碼：</span>
+                    <strong style="color: #667eea;">${escapeHtml(booking.promo_code)} - ${escapeHtml(booking.promo_code_name || '')}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                    <span>優惠折扣：</span>
+                    <strong style="color: #10b981;">-NT$ ${(booking.discount_amount || 0).toLocaleString()}</strong>
+                </div>
+                ` : ''}
                 <div style="display: flex; justify-content: space-between; margin: 5px 0; color: #e74c3c; font-size: 18px;">
                     <span id="editPaymentTypeLabel">${isDeposit ? `應付訂金 (${depositPercentage}%)` : '應付全額'}：</span>
                     <strong id="editFinalAmount">NT$ ${finalAmount.toLocaleString()}</strong>

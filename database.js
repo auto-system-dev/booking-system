@@ -2074,7 +2074,46 @@ async function getBookingById(bookingId) {
         const sql = usePostgreSQL 
             ? `SELECT * FROM bookings WHERE booking_id = $1`
             : `SELECT * FROM bookings WHERE booking_id = ?`;
-        return await queryOne(sql, [bookingId]);
+        const booking = await queryOne(sql, [bookingId]);
+        
+        if (!booking) {
+            return null;
+        }
+        
+        // 查詢優惠代碼使用記錄
+        const promoUsageSQL = usePostgreSQL
+            ? `SELECT 
+                pcu.discount_amount,
+                pcu.original_amount,
+                pcu.final_amount,
+                pc.code as promo_code,
+                pc.name as promo_code_name
+               FROM promo_code_usages pcu
+               JOIN promo_codes pc ON pcu.promo_code_id = pc.id
+               WHERE pcu.booking_id = $1
+               LIMIT 1`
+            : `SELECT 
+                pcu.discount_amount,
+                pcu.original_amount,
+                pcu.final_amount,
+                pc.code as promo_code,
+                pc.name as promo_code_name
+               FROM promo_code_usages pcu
+               JOIN promo_codes pc ON pcu.promo_code_id = pc.id
+               WHERE pcu.booking_id = ?
+               LIMIT 1`;
+        
+        const promoUsage = await queryOne(promoUsageSQL, [bookingId]);
+        
+        // 如果有使用優惠代碼，將資訊加入訂房資料
+        if (promoUsage) {
+            booking.promo_code = promoUsage.promo_code;
+            booking.promo_code_name = promoUsage.promo_code_name;
+            booking.discount_amount = parseFloat(promoUsage.discount_amount || 0);
+            booking.original_amount = parseFloat(promoUsage.original_amount || booking.total_amount);
+        }
+        
+        return booking;
     } catch (error) {
         console.error('❌ 查詢訂房記錄失敗:', error.message);
         throw error;
