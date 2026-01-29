@@ -2694,6 +2694,7 @@ app.post('/api/promo-codes/validate', publicLimiter, async (req, res) => {
                     name: validation.promo_code.name,
                     discount_type: validation.promo_code.discount_type,
                     discount_value: validation.promo_code.discount_value,
+                    max_discount: validation.promo_code.max_discount || null,
                     discount_amount: validation.discount_amount,
                     original_amount: validation.original_amount,
                     final_amount: validation.final_amount,

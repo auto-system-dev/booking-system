@@ -559,10 +559,10 @@ async function calculatePrice() {
         const roomTotal = pricePerNight * nights;
             let totalAmount = roomTotal + addonsTotal;
             
-            // 計算優惠代碼折扣
+            // 計算優惠代碼折扣（根據當前總金額重新計算）
             let discountAmount = 0;
             if (appliedPromoCode) {
-                discountAmount = appliedPromoCode.discount_amount || 0;
+                discountAmount = calculatePromoCodeDiscount(appliedPromoCode, totalAmount);
                 totalAmount = Math.max(0, totalAmount - discountAmount);
             }
             
@@ -585,10 +585,10 @@ async function calculatePrice() {
             const { totalAmount: roomTotal, averagePricePerNight, nights } = result.data;
             let totalAmount = roomTotal + addonsTotal;
             
-            // 計算優惠代碼折扣
+            // 計算優惠代碼折扣（根據當前總金額重新計算）
             let discountAmount = 0;
             if (appliedPromoCode) {
-                discountAmount = appliedPromoCode.discount_amount || 0;
+                discountAmount = calculatePromoCodeDiscount(appliedPromoCode, totalAmount);
                 totalAmount = Math.max(0, totalAmount - discountAmount);
             }
             
@@ -607,10 +607,10 @@ async function calculatePrice() {
             const roomTotal = pricePerNight * nights;
             let totalAmount = roomTotal + addonsTotal;
             
-            // 計算優惠代碼折扣
+            // 計算優惠代碼折扣（根據當前總金額重新計算）
             let discountAmount = 0;
             if (appliedPromoCode) {
-                discountAmount = appliedPromoCode.discount_amount || 0;
+                discountAmount = calculatePromoCodeDiscount(appliedPromoCode, totalAmount);
                 totalAmount = Math.max(0, totalAmount - discountAmount);
             }
             
@@ -630,10 +630,10 @@ async function calculatePrice() {
         const roomTotal = pricePerNight * nights;
             let totalAmount = roomTotal + addonsTotal;
             
-            // 計算優惠代碼折扣
+            // 計算優惠代碼折扣（根據當前總金額重新計算）
             let discountAmount = 0;
             if (appliedPromoCode) {
-                discountAmount = appliedPromoCode.discount_amount || 0;
+                discountAmount = calculatePromoCodeDiscount(appliedPromoCode, totalAmount);
                 totalAmount = Math.max(0, totalAmount - discountAmount);
             }
             
@@ -784,6 +784,26 @@ async function applyPromoCode() {
     }
 }
 
+// 計算優惠代碼折扣金額（根據當前總金額重新計算）
+function calculatePromoCodeDiscount(promoCode, totalAmount) {
+    if (!promoCode || !totalAmount) return 0;
+    
+    let discountAmount = 0;
+    if (promoCode.discount_type === 'fixed') {
+        // 固定金額折扣
+        discountAmount = promoCode.discount_value || 0;
+    } else if (promoCode.discount_type === 'percent') {
+        // 百分比折扣
+        discountAmount = totalAmount * (promoCode.discount_value / 100);
+        // 檢查是否有最高折扣限制
+        if (promoCode.max_discount && discountAmount > promoCode.max_discount) {
+            discountAmount = promoCode.max_discount;
+        }
+    }
+    
+    return Math.round(discountAmount);
+}
+
 // 更新價格顯示
 function updatePriceDisplay(pricePerNight, nights, totalAmount, discountAmount = 0, paymentType, finalAmount = 0, addonsTotal = 0, depositPercent = null) {
     // 如果沒有提供 depositPercent，使用全域變數
@@ -817,8 +837,9 @@ function updatePriceDisplay(pricePerNight, nights, totalAmount, discountAmount =
         html += `<div style="margin-bottom: 5px; color: #10b981; font-weight: 600;">優惠折扣（${appliedPromoCode.name}）：-NT$ ${discountAmount.toLocaleString()}</div>`;
         const finalTotal = totalAmount - discountAmount;
         html += `<div style="font-weight: 700; font-size: 18px; color: #2C8EC4; border-top: 2px solid #ddd; padding-top: 5px; margin-top: 5px;">折抵後金額：NT$ ${finalTotal.toLocaleString()}</div>`;
-    } else if (addonsTotal > 0) {
-        html = `<div style="font-weight: 700; font-size: 18px; color: #2C8EC4; border-top: 2px solid #ddd; padding-top: 5px; margin-top: 5px;">總金額：NT$ ${totalAmount.toLocaleString()}</div>`;
+    } else {
+        // 沒有折扣時，顯示總金額
+        html += `<div style="font-weight: 700; font-size: 18px; color: #2C8EC4; border-top: 2px solid #ddd; padding-top: 5px; margin-top: 5px;">總金額：NT$ ${totalAmount.toLocaleString()}</div>`;
     }
     
     totalAmountElement.innerHTML = html || `NT$ ${totalAmount.toLocaleString()}`;
