@@ -565,6 +565,47 @@ async function initPostgreSQL() {
             }
             console.log('✅ 預設會員等級已初始化');
             
+            // 建立優惠代碼表
+            await query(`
+                CREATE TABLE IF NOT EXISTS promo_codes (
+                    id SERIAL PRIMARY KEY,
+                    code VARCHAR(50) UNIQUE NOT NULL,
+                    name VARCHAR(255) NOT NULL,
+                    description TEXT,
+                    discount_type VARCHAR(20) NOT NULL,
+                    discount_value DECIMAL(10,2) NOT NULL,
+                    min_spend INTEGER DEFAULT 0,
+                    max_discount INTEGER DEFAULT NULL,
+                    applicable_room_types TEXT,
+                    total_usage_limit INTEGER DEFAULT NULL,
+                    per_user_limit INTEGER DEFAULT 1,
+                    start_date DATE,
+                    end_date DATE,
+                    is_active INTEGER DEFAULT 1,
+                    can_combine_with_early_bird INTEGER DEFAULT 0,
+                    can_combine_with_late_bird INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ 優惠代碼表已準備就緒');
+            
+            // 建立優惠代碼使用記錄表
+            await query(`
+                CREATE TABLE IF NOT EXISTS promo_code_usages (
+                    id SERIAL PRIMARY KEY,
+                    promo_code_id INTEGER NOT NULL,
+                    booking_id VARCHAR(255) NOT NULL,
+                    guest_email VARCHAR(255) NOT NULL,
+                    discount_amount DECIMAL(10,2) NOT NULL,
+                    original_amount DECIMAL(10,2) NOT NULL,
+                    final_amount DECIMAL(10,2) NOT NULL,
+                    used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (promo_code_id) REFERENCES promo_codes(id) ON DELETE CASCADE
+                )
+            `);
+            console.log('✅ 優惠代碼使用記錄表已準備就緒');
+            
             // 初始化預設管理員（如果不存在）
             const defaultAdmin = await queryOne('SELECT id FROM admins WHERE username = $1', ['admin']);
             if (!defaultAdmin) {
@@ -1721,6 +1762,57 @@ function initSQLite() {
                                                                         );
                                                                     }
                                                                 });
+                                                            });
+                                                        }
+                                                    });
+                                                    
+                                                    // 建立優惠代碼表
+                                                    db.run(`
+                                                        CREATE TABLE IF NOT EXISTS promo_codes (
+                                                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                            code TEXT UNIQUE NOT NULL,
+                                                            name TEXT NOT NULL,
+                                                            description TEXT,
+                                                            discount_type TEXT NOT NULL,
+                                                            discount_value REAL NOT NULL,
+                                                            min_spend INTEGER DEFAULT 0,
+                                                            max_discount INTEGER DEFAULT NULL,
+                                                            applicable_room_types TEXT,
+                                                            total_usage_limit INTEGER DEFAULT NULL,
+                                                            per_user_limit INTEGER DEFAULT 1,
+                                                            start_date DATE,
+                                                            end_date DATE,
+                                                            is_active INTEGER DEFAULT 1,
+                                                            can_combine_with_early_bird INTEGER DEFAULT 0,
+                                                            can_combine_with_late_bird INTEGER DEFAULT 0,
+                                                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                                            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                                                        )
+                                                    `, (err) => {
+                                                        if (err) {
+                                                            console.warn('⚠️  建立 promo_codes 表時發生錯誤:', err.message);
+                                                        } else {
+                                                            console.log('✅ 優惠代碼表已準備就緒');
+                                                            
+                                                            // 建立優惠代碼使用記錄表
+                                                            db.run(`
+                                                                CREATE TABLE IF NOT EXISTS promo_code_usages (
+                                                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                                    promo_code_id INTEGER NOT NULL,
+                                                                    booking_id TEXT NOT NULL,
+                                                                    guest_email TEXT NOT NULL,
+                                                                    discount_amount REAL NOT NULL,
+                                                                    original_amount REAL NOT NULL,
+                                                                    final_amount REAL NOT NULL,
+                                                                    used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                                                    FOREIGN KEY (promo_code_id) REFERENCES promo_codes(id) ON DELETE CASCADE
+                                                                )
+                                                            `, (err) => {
+                                                                if (err) {
+                                                                    console.warn('⚠️  建立 promo_code_usages 表時發生錯誤:', err.message);
+                                                                } else {
+                                                                    console.log('✅ 優惠代碼使用記錄表已準備就緒');
+                                                                }
                                                             });
                                                         }
                                                     });
@@ -2912,6 +3004,403 @@ async function calculateCustomerLevel(totalSpent, bookingCount) {
         return null;
     } catch (error) {
         console.error('❌ 計算客戶等級失敗:', error.message);
+        throw error;
+    }
+}
+
+// ==================== 優惠代碼管理 ====================
+
+// 取得所有優惠代碼
+async function getAllPromoCodes() {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT * FROM promo_codes ORDER BY created_at DESC`
+            : `SELECT * FROM promo_codes ORDER BY created_at DESC`;
+        
+        const result = await query(sql);
+        return result.rows.map(code => ({
+            id: code.id,
+            code: code.code,
+            name: code.name,
+            description: code.description || '',
+            discount_type: code.discount_type,
+            discount_value: parseFloat(code.discount_value || 0),
+            min_spend: parseInt(code.min_spend || 0),
+            max_discount: code.max_discount ? parseInt(code.max_discount) : null,
+            applicable_room_types: code.applicable_room_types ? JSON.parse(code.applicable_room_types) : null,
+            total_usage_limit: code.total_usage_limit ? parseInt(code.total_usage_limit) : null,
+            per_user_limit: parseInt(code.per_user_limit || 1),
+            start_date: code.start_date,
+            end_date: code.end_date,
+            is_active: parseInt(code.is_active || 1),
+            can_combine_with_early_bird: parseInt(code.can_combine_with_early_bird || 0),
+            can_combine_with_late_bird: parseInt(code.can_combine_with_late_bird || 0),
+            created_at: code.created_at,
+            updated_at: code.updated_at
+        }));
+    } catch (error) {
+        console.error('❌ 查詢優惠代碼列表失敗:', error.message);
+        throw error;
+    }
+}
+
+// 取得單一優惠代碼
+async function getPromoCodeById(id) {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT * FROM promo_codes WHERE id = $1`
+            : `SELECT * FROM promo_codes WHERE id = ?`;
+        
+        const result = await queryOne(sql, [id]);
+        if (!result) return null;
+        
+        return {
+            id: result.id,
+            code: result.code,
+            name: result.name,
+            description: result.description || '',
+            discount_type: result.discount_type,
+            discount_value: parseFloat(result.discount_value || 0),
+            min_spend: parseInt(result.min_spend || 0),
+            max_discount: result.max_discount ? parseInt(result.max_discount) : null,
+            applicable_room_types: result.applicable_room_types ? JSON.parse(result.applicable_room_types) : null,
+            total_usage_limit: result.total_usage_limit ? parseInt(result.total_usage_limit) : null,
+            per_user_limit: parseInt(result.per_user_limit || 1),
+            start_date: result.start_date,
+            end_date: result.end_date,
+            is_active: parseInt(result.is_active || 1),
+            can_combine_with_early_bird: parseInt(result.can_combine_with_early_bird || 0),
+            can_combine_with_late_bird: parseInt(result.can_combine_with_late_bird || 0)
+        };
+    } catch (error) {
+        console.error('❌ 查詢優惠代碼失敗:', error.message);
+        throw error;
+    }
+}
+
+// 根據代碼取得優惠代碼
+async function getPromoCodeByCode(code) {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT * FROM promo_codes WHERE code = $1`
+            : `SELECT * FROM promo_codes WHERE code = ?`;
+        
+        const result = await queryOne(sql, [code.toUpperCase()]);
+        if (!result) return null;
+        
+        return {
+            id: result.id,
+            code: result.code,
+            name: result.name,
+            description: result.description || '',
+            discount_type: result.discount_type,
+            discount_value: parseFloat(result.discount_value || 0),
+            min_spend: parseInt(result.min_spend || 0),
+            max_discount: result.max_discount ? parseInt(result.max_discount) : null,
+            applicable_room_types: result.applicable_room_types ? JSON.parse(result.applicable_room_types) : null,
+            total_usage_limit: result.total_usage_limit ? parseInt(result.total_usage_limit) : null,
+            per_user_limit: parseInt(result.per_user_limit || 1),
+            start_date: result.start_date,
+            end_date: result.end_date,
+            is_active: parseInt(result.is_active || 1),
+            can_combine_with_early_bird: parseInt(result.can_combine_with_early_bird || 0),
+            can_combine_with_late_bird: parseInt(result.can_combine_with_late_bird || 0)
+        };
+    } catch (error) {
+        console.error('❌ 查詢優惠代碼失敗:', error.message);
+        throw error;
+    }
+}
+
+// 驗證優惠代碼
+async function validatePromoCode(code, totalAmount, roomType, guestEmail = null) {
+    try {
+        const promoCode = await getPromoCodeByCode(code);
+        
+        if (!promoCode) {
+            return {
+                valid: false,
+                message: '優惠代碼不存在'
+            };
+        }
+        
+        // 檢查是否啟用
+        if (!promoCode.is_active) {
+            return {
+                valid: false,
+                message: '優惠代碼已停用'
+            };
+        }
+        
+        // 檢查有效期
+        const today = new Date().toISOString().split('T')[0];
+        if (promoCode.start_date && today < promoCode.start_date) {
+            return {
+                valid: false,
+                message: '優惠代碼尚未生效'
+            };
+        }
+        if (promoCode.end_date && today > promoCode.end_date) {
+            return {
+                valid: false,
+                message: '優惠代碼已過期'
+            };
+        }
+        
+        // 檢查最低消費金額
+        if (promoCode.min_spend > 0 && totalAmount < promoCode.min_spend) {
+            return {
+                valid: false,
+                message: `最低消費金額需達 NT$ ${promoCode.min_spend.toLocaleString()}`
+            };
+        }
+        
+        // 檢查適用房型
+        if (promoCode.applicable_room_types && promoCode.applicable_room_types.length > 0) {
+            if (!promoCode.applicable_room_types.includes(roomType)) {
+                return {
+                    valid: false,
+                    message: '此優惠代碼不適用於選擇的房型'
+                };
+            }
+        }
+        
+        // 檢查總使用次數限制
+        if (promoCode.total_usage_limit !== null) {
+            const usageCountSQL = usePostgreSQL
+                ? `SELECT COUNT(*) as count FROM promo_code_usages WHERE promo_code_id = $1`
+                : `SELECT COUNT(*) as count FROM promo_code_usages WHERE promo_code_id = ?`;
+            const usageCount = await queryOne(usageCountSQL, [promoCode.id]);
+            if (parseInt(usageCount.count) >= promoCode.total_usage_limit) {
+                return {
+                    valid: false,
+                    message: '優惠代碼使用次數已達上限'
+                };
+            }
+        }
+        
+        // 檢查每人使用次數限制
+        if (guestEmail && promoCode.per_user_limit > 0) {
+            const userUsageCountSQL = usePostgreSQL
+                ? `SELECT COUNT(*) as count FROM promo_code_usages WHERE promo_code_id = $1 AND guest_email = $2`
+                : `SELECT COUNT(*) as count FROM promo_code_usages WHERE promo_code_id = ? AND guest_email = ?`;
+            const userUsageCount = await queryOne(userUsageCountSQL, [promoCode.id, guestEmail]);
+            if (parseInt(userUsageCount.count) >= promoCode.per_user_limit) {
+                return {
+                    valid: false,
+                    message: '您已達到此優惠代碼的使用次數上限'
+                };
+            }
+        }
+        
+        // 計算折扣金額
+        let discountAmount = 0;
+        if (promoCode.discount_type === 'fixed') {
+            discountAmount = promoCode.discount_value;
+        } else if (promoCode.discount_type === 'percent') {
+            discountAmount = totalAmount * (promoCode.discount_value / 100);
+            if (promoCode.max_discount && discountAmount > promoCode.max_discount) {
+                discountAmount = promoCode.max_discount;
+            }
+        }
+        
+        const finalAmount = Math.max(0, totalAmount - discountAmount);
+        
+        return {
+            valid: true,
+            promo_code: promoCode,
+            discount_amount: Math.round(discountAmount),
+            original_amount: totalAmount,
+            final_amount: finalAmount,
+            message: `優惠代碼可用，可折抵 NT$ ${Math.round(discountAmount).toLocaleString()}`
+        };
+    } catch (error) {
+        console.error('❌ 驗證優惠代碼失敗:', error.message);
+        throw error;
+    }
+}
+
+// 新增優惠代碼
+async function createPromoCode(codeData) {
+    try {
+        const {
+            code, name, description, discount_type, discount_value,
+            min_spend, max_discount, applicable_room_types,
+            total_usage_limit, per_user_limit, start_date, end_date,
+            is_active, can_combine_with_early_bird, can_combine_with_late_bird
+        } = codeData;
+        
+        const sql = usePostgreSQL
+            ? `INSERT INTO promo_codes (
+                code, name, description, discount_type, discount_value,
+                min_spend, max_discount, applicable_room_types,
+                total_usage_limit, per_user_limit, start_date, end_date,
+                is_active, can_combine_with_early_bird, can_combine_with_late_bird
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`
+            : `INSERT INTO promo_codes (
+                code, name, description, discount_type, discount_value,
+                min_spend, max_discount, applicable_room_types,
+                total_usage_limit, per_user_limit, start_date, end_date,
+                is_active, can_combine_with_early_bird, can_combine_with_late_bird
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        
+        const params = [
+            code.toUpperCase(),
+            name,
+            description || null,
+            discount_type,
+            discount_value,
+            min_spend || 0,
+            max_discount || null,
+            applicable_room_types ? JSON.stringify(applicable_room_types) : null,
+            total_usage_limit || null,
+            per_user_limit || 1,
+            start_date || null,
+            end_date || null,
+            is_active !== undefined ? is_active : 1,
+            can_combine_with_early_bird || 0,
+            can_combine_with_late_bird || 0
+        ];
+        
+        if (usePostgreSQL) {
+            const result = await query(sql, params);
+            return result.rows[0];
+        } else {
+            const result = await query(sql, params);
+            const newId = result.lastID;
+            return await getPromoCodeById(newId);
+        }
+    } catch (error) {
+        console.error('❌ 新增優惠代碼失敗:', error.message);
+        throw error;
+    }
+}
+
+// 更新優惠代碼
+async function updatePromoCode(id, codeData) {
+    try {
+        const {
+            code, name, description, discount_type, discount_value,
+            min_spend, max_discount, applicable_room_types,
+            total_usage_limit, per_user_limit, start_date, end_date,
+            is_active, can_combine_with_early_bird, can_combine_with_late_bird
+        } = codeData;
+        
+        const sql = usePostgreSQL
+            ? `UPDATE promo_codes 
+               SET code = $1, name = $2, description = $3, discount_type = $4, discount_value = $5,
+                   min_spend = $6, max_discount = $7, applicable_room_types = $8,
+                   total_usage_limit = $9, per_user_limit = $10, start_date = $11, end_date = $12,
+                   is_active = $13, can_combine_with_early_bird = $14, can_combine_with_late_bird = $15,
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE id = $16 RETURNING *`
+            : `UPDATE promo_codes 
+               SET code = ?, name = ?, description = ?, discount_type = ?, discount_value = ?,
+                   min_spend = ?, max_discount = ?, applicable_room_types = ?,
+                   total_usage_limit = ?, per_user_limit = ?, start_date = ?, end_date = ?,
+                   is_active = ?, can_combine_with_early_bird = ?, can_combine_with_late_bird = ?,
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE id = ?`;
+        
+        const params = [
+            code.toUpperCase(),
+            name,
+            description || null,
+            discount_type,
+            discount_value,
+            min_spend || 0,
+            max_discount || null,
+            applicable_room_types ? JSON.stringify(applicable_room_types) : null,
+            total_usage_limit || null,
+            per_user_limit || 1,
+            start_date || null,
+            end_date || null,
+            is_active !== undefined ? is_active : 1,
+            can_combine_with_early_bird || 0,
+            can_combine_with_late_bird || 0,
+            id
+        ];
+        
+        if (usePostgreSQL) {
+            const result = await query(sql, params);
+            return result.rows[0];
+        } else {
+            await query(sql, params);
+            return await getPromoCodeById(id);
+        }
+    } catch (error) {
+        console.error('❌ 更新優惠代碼失敗:', error.message);
+        throw error;
+    }
+}
+
+// 刪除優惠代碼
+async function deletePromoCode(id) {
+    try {
+        const sql = usePostgreSQL
+            ? `DELETE FROM promo_codes WHERE id = $1`
+            : `DELETE FROM promo_codes WHERE id = ?`;
+        
+        await query(sql, [id]);
+        return true;
+    } catch (error) {
+        console.error('❌ 刪除優惠代碼失敗:', error.message);
+        throw error;
+    }
+}
+
+// 記錄優惠代碼使用
+async function recordPromoCodeUsage(promoCodeId, bookingId, guestEmail, discountAmount, originalAmount, finalAmount) {
+    try {
+        const sql = usePostgreSQL
+            ? `INSERT INTO promo_code_usages (
+                promo_code_id, booking_id, guest_email, discount_amount, original_amount, final_amount
+            ) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`
+            : `INSERT INTO promo_code_usages (
+                promo_code_id, booking_id, guest_email, discount_amount, original_amount, final_amount
+            ) VALUES (?, ?, ?, ?, ?, ?)`;
+        
+        await query(sql, [
+            promoCodeId,
+            bookingId,
+            guestEmail,
+            discountAmount,
+            originalAmount,
+            finalAmount
+        ]);
+        
+        return true;
+    } catch (error) {
+        console.error('❌ 記錄優惠代碼使用失敗:', error.message);
+        throw error;
+    }
+}
+
+// 取得優惠代碼使用統計
+async function getPromoCodeUsageStats(promoCodeId) {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT 
+                COUNT(*) as total_usage,
+                SUM(discount_amount) as total_discount,
+                COUNT(DISTINCT guest_email) as unique_users
+            FROM promo_code_usages
+            WHERE promo_code_id = $1`
+            : `SELECT 
+                COUNT(*) as total_usage,
+                SUM(discount_amount) as total_discount,
+                COUNT(DISTINCT guest_email) as unique_users
+            FROM promo_code_usages
+            WHERE promo_code_id = ?`;
+        
+        const result = await queryOne(sql, [promoCodeId]);
+        return {
+            total_usage: parseInt(result.total_usage || 0),
+            total_discount: parseFloat(result.total_discount || 0),
+            unique_users: parseInt(result.unique_users || 0)
+        };
+    } catch (error) {
+        console.error('❌ 查詢優惠代碼使用統計失敗:', error.message);
         throw error;
     }
 }
@@ -4300,6 +4789,16 @@ module.exports = {
     updateMemberLevel,
     deleteMemberLevel,
     calculateCustomerLevel,
+    // 優惠代碼管理
+    getAllPromoCodes,
+    getPromoCodeById,
+    getPromoCodeByCode,
+    validatePromoCode,
+    createPromoCode,
+    updatePromoCode,
+    deletePromoCode,
+    recordPromoCodeUsage,
+    getPromoCodeUsageStats,
     // 加購商品管理
     getAllAddons,
     getAllAddonsAdmin,

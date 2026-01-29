@@ -793,6 +793,8 @@ function switchSection(section) {
         }
     } else if (section === 'addons') {
         loadAddons();
+    } else if (section === 'promo-codes') {
+        loadPromoCodes();
     } else if (section === 'settings') {
         loadSettings();
         // 恢復上次選擇的分頁
@@ -7606,3 +7608,252 @@ async function deleteHoliday(holidayDate) {
         sendTestEmail: typeof window.sendTestEmail
     });
 })();
+
+// ==================== 優惠代碼管理 ====================
+
+let allPromoCodes = [];
+
+// 載入優惠代碼列表
+async function loadPromoCodes() {
+    try {
+        const response = await adminFetch('/api/admin/promo-codes');
+        
+        if (response.status === 401) {
+            console.warn('優惠代碼 API 返回 401，Session 可能已過期');
+            await checkAuthStatus();
+            return;
+        }
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            allPromoCodes = result.data || [];
+            renderPromoCodes();
+        } else {
+            showError('載入優惠代碼列表失敗：' + (result.message || '未知錯誤'));
+            document.getElementById('promoCodesTableBody').innerHTML = '<tr><td colspan="9" class="loading">載入失敗</td></tr>';
+        }
+    } catch (error) {
+        console.error('載入優惠代碼列表錯誤:', error);
+        showError('載入優惠代碼列表時發生錯誤：' + error.message);
+        document.getElementById('promoCodesTableBody').innerHTML = '<tr><td colspan="9" class="loading">載入失敗</td></tr>';
+    }
+}
+
+// 渲染優惠代碼列表
+function renderPromoCodes() {
+    const tbody = document.getElementById('promoCodesTableBody');
+    
+    if (allPromoCodes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="loading">沒有優惠代碼資料</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = allPromoCodes.map(code => {
+        const discountDisplay = code.discount_type === 'fixed' 
+            ? `NT$ ${code.discount_value.toLocaleString()}`
+            : `${code.discount_value}%${code.max_discount ? ` (最高 NT$ ${code.max_discount.toLocaleString()})` : ''}`;
+        
+        const usageInfo = code.usage_stats 
+            ? `${code.usage_stats.total_usage} 次 / ${code.total_usage_limit || '∞'}`
+            : '0 次';
+        
+        const dateRange = code.start_date || code.end_date
+            ? `${code.start_date || '立即'} ~ ${code.end_date || '永久'}`
+            : '永久有效';
+        
+        return `
+        <tr ${code.is_active === 0 ? 'style="opacity: 0.6; background: #f8f8f8;"' : ''}>
+            <td style="text-align: left;"><strong>${escapeHtml(code.code)}</strong></td>
+            <td style="text-align: left;">${escapeHtml(code.name)}</td>
+            <td style="text-align: center;">${code.discount_type === 'fixed' ? '固定金額' : '百分比'}</td>
+            <td style="text-align: right;">${discountDisplay}</td>
+            <td style="text-align: right;">${code.min_spend > 0 ? `NT$ ${code.min_spend.toLocaleString()}` : '無限制'}</td>
+            <td style="text-align: center;">${usageInfo}</td>
+            <td style="text-align: left;">${dateRange}</td>
+            <td style="text-align: center;">
+                <span class="status-badge ${code.is_active === 1 ? 'status-sent' : 'status-unsent'}">
+                    ${code.is_active === 1 ? '啟用' : '停用'}
+                </span>
+            </td>
+            <td style="text-align: center;">
+                <div class="action-buttons">
+                    <button class="btn-edit" onclick="editPromoCode(${code.id})">編輯</button>
+                    <button class="btn-delete" onclick="deletePromoCode(${code.id}, '${escapeHtml(code.code)}')">刪除</button>
+                </div>
+            </td>
+        </tr>
+    `;
+    }).join('');
+}
+
+// 顯示新增優惠代碼模態框
+function showAddPromoCodeModal() {
+    document.getElementById('promoCodeModalTitle').textContent = '新增優惠代碼';
+    document.getElementById('promoCodeId').value = '';
+    document.getElementById('promoCodeForm').reset();
+    document.getElementById('promoCodeIsActive').checked = true;
+    document.getElementById('promoCodeDiscountType').value = 'fixed';
+    updatePromoCodeDiscountType();
+    document.getElementById('promoCodeModal').style.display = 'block';
+}
+
+// 更新折扣類型顯示
+function updatePromoCodeDiscountType() {
+    const discountType = document.getElementById('promoCodeDiscountType').value;
+    const suffix = document.getElementById('promoCodeDiscountSuffix');
+    const maxDiscountGroup = document.getElementById('promoCodeMaxDiscountGroup');
+    const discountValue = document.getElementById('promoCodeDiscountValue');
+    
+    if (discountType === 'fixed') {
+        suffix.textContent = 'NT$';
+        maxDiscountGroup.style.display = 'none';
+        discountValue.step = '1';
+        discountValue.placeholder = '0';
+    } else {
+        suffix.textContent = '%';
+        maxDiscountGroup.style.display = 'block';
+        discountValue.step = '0.1';
+        discountValue.placeholder = '0.0';
+    }
+}
+
+// 編輯優惠代碼
+async function editPromoCode(id) {
+    try {
+        const response = await adminFetch(`/api/admin/promo-codes/${id}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const code = result.data;
+            document.getElementById('promoCodeModalTitle').textContent = '編輯優惠代碼';
+            document.getElementById('promoCodeId').value = code.id;
+            document.getElementById('promoCodeCode').value = code.code;
+            document.getElementById('promoCodeName').value = code.name;
+            document.getElementById('promoCodeDescription').value = code.description || '';
+            document.getElementById('promoCodeDiscountType').value = code.discount_type;
+            document.getElementById('promoCodeDiscountValue').value = code.discount_value;
+            document.getElementById('promoCodeMaxDiscount').value = code.max_discount || '';
+            document.getElementById('promoCodeMinSpend').value = code.min_spend || 0;
+            document.getElementById('promoCodeTotalUsageLimit').value = code.total_usage_limit || '';
+            document.getElementById('promoCodePerUserLimit').value = code.per_user_limit || 1;
+            document.getElementById('promoCodeStartDate').value = code.start_date || '';
+            document.getElementById('promoCodeEndDate').value = code.end_date || '';
+            document.getElementById('promoCodeIsActive').checked = code.is_active !== undefined ? code.is_active : 1;
+            
+            updatePromoCodeDiscountType();
+            document.getElementById('promoCodeModal').style.display = 'block';
+        } else {
+            showError('載入優惠代碼失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('載入優惠代碼錯誤:', error);
+        showError('載入優惠代碼時發生錯誤：' + error.message);
+    }
+}
+
+// 儲存優惠代碼
+async function savePromoCode(event) {
+    event.preventDefault();
+    
+    const id = document.getElementById('promoCodeId').value;
+    const code = document.getElementById('promoCodeCode').value.trim().toUpperCase();
+    const name = document.getElementById('promoCodeName').value.trim();
+    const description = document.getElementById('promoCodeDescription').value.trim();
+    const discount_type = document.getElementById('promoCodeDiscountType').value;
+    const discount_value = parseFloat(document.getElementById('promoCodeDiscountValue').value || 0);
+    const max_discount = document.getElementById('promoCodeMaxDiscount').value ? parseInt(document.getElementById('promoCodeMaxDiscount').value) : null;
+    const min_spend = parseInt(document.getElementById('promoCodeMinSpend').value || 0);
+    const total_usage_limit = document.getElementById('promoCodeTotalUsageLimit').value ? parseInt(document.getElementById('promoCodeTotalUsageLimit').value) : null;
+    const per_user_limit = parseInt(document.getElementById('promoCodePerUserLimit').value || 1);
+    const start_date = document.getElementById('promoCodeStartDate').value || null;
+    const end_date = document.getElementById('promoCodeEndDate').value || null;
+    const is_active = document.getElementById('promoCodeIsActive').checked ? 1 : 0;
+    
+    if (!code || !name || !discount_type || discount_value <= 0) {
+        showError('請填寫完整的優惠代碼資料');
+        return;
+    }
+    
+    try {
+        const url = id ? `/api/admin/promo-codes/${id}` : '/api/admin/promo-codes';
+        const method = id ? 'PUT' : 'POST';
+        
+        const response = await adminFetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                code,
+                name,
+                description,
+                discount_type,
+                discount_value,
+                max_discount,
+                min_spend,
+                total_usage_limit,
+                per_user_limit,
+                start_date,
+                end_date,
+                is_active,
+                can_combine_with_early_bird: 0,
+                can_combine_with_late_bird: 0
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess(id ? '優惠代碼已更新' : '優惠代碼已新增');
+            closePromoCodeModal();
+            loadPromoCodes();
+        } else {
+            showError((id ? '更新' : '新增') + '失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('儲存優惠代碼錯誤:', error);
+        showError('儲存時發生錯誤：' + error.message);
+    }
+}
+
+// 刪除優惠代碼
+async function deletePromoCode(id, code) {
+    if (!confirm(`確定要刪除優惠代碼「${code}」嗎？此操作無法復原。`)) {
+        return;
+    }
+    
+    try {
+        const response = await adminFetch(`/api/admin/promo-codes/${id}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('優惠代碼已刪除');
+            loadPromoCodes();
+        } else {
+            showError('刪除失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('刪除優惠代碼錯誤:', error);
+        showError('刪除時發生錯誤：' + error.message);
+    }
+}
+
+// 關閉優惠代碼模態框
+function closePromoCodeModal() {
+    document.getElementById('promoCodeModal').style.display = 'none';
+    document.getElementById('promoCodeForm').reset();
+    document.getElementById('promoCodeId').value = '';
+}

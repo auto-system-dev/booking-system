@@ -978,7 +978,8 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
             addons,
             addonsTotal,
             adults,
-            children
+            children,
+            promoCode // 優惠代碼（選填）
         } = req.body;
 
         // 驗證必填欄位
@@ -1398,6 +1399,38 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
             // 如果郵件發送狀態改變，更新資料庫（匯款轉帳發送確認信）
             if (emailSent && paymentMethod === 'transfer') {
                 await db.updateEmailStatus(bookingData.bookingId, 'booking_confirmation');
+            }
+            
+            // 記錄優惠代碼使用（如果有使用）
+            if (promoCode) {
+                try {
+                    const promoCodeData = await db.getPromoCodeByCode(promoCode);
+                    if (promoCodeData) {
+                        // 計算折扣金額（應該與前端計算的一致）
+                        let discountAmount = 0;
+                        if (promoCodeData.discount_type === 'fixed') {
+                            discountAmount = promoCodeData.discount_value;
+                        } else if (promoCodeData.discount_type === 'percent') {
+                            discountAmount = totalAmount * (promoCodeData.discount_value / 100);
+                            if (promoCodeData.max_discount && discountAmount > promoCodeData.max_discount) {
+                                discountAmount = promoCodeData.max_discount;
+                            }
+                        }
+                        
+                        await db.recordPromoCodeUsage(
+                            promoCodeData.id,
+                            bookingData.bookingId,
+                            guestEmail,
+                            Math.round(discountAmount),
+                            totalAmount,
+                            finalAmount
+                        );
+                        console.log('✅ 優惠代碼使用記錄已儲存:', promoCode);
+                    }
+                } catch (promoError) {
+                    console.warn('⚠️  記錄優惠代碼使用失敗:', promoError.message);
+                    // 不影響訂房流程，只記錄警告
+                }
             }
         } catch (dbError) {
             console.error('❌ 資料庫儲存錯誤:', dbError.message);
@@ -2626,6 +2659,250 @@ app.delete('/api/member-levels/:id', requireAuth, adminLimiter, async (req, res)
         res.status(500).json({
             success: false,
             message: '刪除會員等級失敗：' + error.message
+        });
+    }
+});
+
+// ==================== 優惠代碼管理 API ====================
+
+// API: 驗證優惠代碼（公開 API，用於前台）
+app.post('/api/promo-codes/validate', publicLimiter, async (req, res) => {
+    try {
+        const { code, totalAmount, roomType, checkInDate, guestEmail } = req.body;
+        
+        if (!code) {
+            return res.status(400).json({
+                success: false,
+                message: '請輸入優惠代碼'
+            });
+        }
+        
+        if (!totalAmount || totalAmount <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: '請先選擇房型和日期'
+            });
+        }
+        
+        const validation = await db.validatePromoCode(code, totalAmount, roomType || '', guestEmail || null);
+        
+        if (validation.valid) {
+            res.json({
+                success: true,
+                data: {
+                    code: validation.promo_code.code,
+                    name: validation.promo_code.name,
+                    discount_type: validation.promo_code.discount_type,
+                    discount_value: validation.promo_code.discount_value,
+                    discount_amount: validation.discount_amount,
+                    original_amount: validation.original_amount,
+                    final_amount: validation.final_amount,
+                    message: validation.message
+                }
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                message: validation.message
+            });
+        }
+    } catch (error) {
+        console.error('驗證優惠代碼錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '驗證優惠代碼失敗：' + error.message
+        });
+    }
+});
+
+// API: 取得所有優惠代碼（管理後台）
+app.get('/api/admin/promo-codes', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        const codes = await db.getAllPromoCodes();
+        
+        // 取得每個優惠代碼的使用統計
+        const codesWithStats = await Promise.all(codes.map(async (code) => {
+            const stats = await db.getPromoCodeUsageStats(code.id);
+            return {
+                ...code,
+                usage_stats: stats
+            };
+        }));
+        
+        res.json({
+            success: true,
+            count: codesWithStats.length,
+            data: codesWithStats
+        });
+    } catch (error) {
+        console.error('查詢優惠代碼列表錯誤:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: '查詢優惠代碼列表失敗：' + error.message 
+        });
+    }
+});
+
+// API: 取得單一優惠代碼
+app.get('/api/admin/promo-codes/:id', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const code = await db.getPromoCodeById(parseInt(id));
+        
+        if (code) {
+            const stats = await db.getPromoCodeUsageStats(code.id);
+            res.json({
+                success: true,
+                data: {
+                    ...code,
+                    usage_stats: stats
+                }
+            });
+        } else {
+            res.status(404).json({
+                success: false,
+                message: '找不到該優惠代碼'
+            });
+        }
+    } catch (error) {
+        console.error('查詢優惠代碼錯誤:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: '查詢優惠代碼失敗：' + error.message 
+        });
+    }
+});
+
+// API: 新增優惠代碼
+app.post('/api/admin/promo-codes', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        const {
+            code, name, description, discount_type, discount_value,
+            min_spend, max_discount, applicable_room_types,
+            total_usage_limit, per_user_limit, start_date, end_date,
+            is_active, can_combine_with_early_bird, can_combine_with_late_bird
+        } = req.body;
+        
+        if (!code || !name || !discount_type || discount_value === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: '請填寫完整的優惠代碼資料（代碼、名稱、折扣類型、折扣值）'
+            });
+        }
+        
+        if (discount_type !== 'fixed' && discount_type !== 'percent') {
+            return res.status(400).json({
+                success: false,
+                message: '折扣類型必須是 fixed（固定金額）或 percent（百分比）'
+            });
+        }
+        
+        const promoCode = await db.createPromoCode({
+            code,
+            name,
+            description,
+            discount_type,
+            discount_value: parseFloat(discount_value),
+            min_spend: parseInt(min_spend || 0),
+            max_discount: max_discount ? parseInt(max_discount) : null,
+            applicable_room_types: applicable_room_types || null,
+            total_usage_limit: total_usage_limit ? parseInt(total_usage_limit) : null,
+            per_user_limit: parseInt(per_user_limit || 1),
+            start_date: start_date || null,
+            end_date: end_date || null,
+            is_active: is_active !== undefined ? is_active : 1,
+            can_combine_with_early_bird: can_combine_with_early_bird || 0,
+            can_combine_with_late_bird: can_combine_with_late_bird || 0
+        });
+        
+        res.json({
+            success: true,
+            message: '優惠代碼已新增',
+            data: promoCode
+        });
+    } catch (error) {
+        console.error('新增優惠代碼錯誤:', error);
+        const statusCode = error.message.includes('UNIQUE') || error.message.includes('duplicate') ? 400 : 500;
+        res.status(statusCode).json({
+            success: false,
+            message: '新增優惠代碼失敗：' + (error.message.includes('UNIQUE') || error.message.includes('duplicate') ? '優惠代碼已存在' : error.message)
+        });
+    }
+});
+
+// API: 更新優惠代碼
+app.put('/api/admin/promo-codes/:id', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            code, name, description, discount_type, discount_value,
+            min_spend, max_discount, applicable_room_types,
+            total_usage_limit, per_user_limit, start_date, end_date,
+            is_active, can_combine_with_early_bird, can_combine_with_late_bird
+        } = req.body;
+        
+        if (!code || !name || !discount_type || discount_value === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: '請填寫完整的優惠代碼資料'
+            });
+        }
+        
+        if (discount_type !== 'fixed' && discount_type !== 'percent') {
+            return res.status(400).json({
+                success: false,
+                message: '折扣類型必須是 fixed 或 percent'
+            });
+        }
+        
+        const promoCode = await db.updatePromoCode(parseInt(id), {
+            code,
+            name,
+            description,
+            discount_type,
+            discount_value: parseFloat(discount_value),
+            min_spend: parseInt(min_spend || 0),
+            max_discount: max_discount ? parseInt(max_discount) : null,
+            applicable_room_types: applicable_room_types || null,
+            total_usage_limit: total_usage_limit ? parseInt(total_usage_limit) : null,
+            per_user_limit: parseInt(per_user_limit || 1),
+            start_date: start_date || null,
+            end_date: end_date || null,
+            is_active: is_active !== undefined ? is_active : 1,
+            can_combine_with_early_bird: can_combine_with_early_bird || 0,
+            can_combine_with_late_bird: can_combine_with_late_bird || 0
+        });
+        
+        res.json({
+            success: true,
+            message: '優惠代碼已更新',
+            data: promoCode
+        });
+    } catch (error) {
+        console.error('更新優惠代碼錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '更新優惠代碼失敗：' + error.message
+        });
+    }
+});
+
+// API: 刪除優惠代碼
+app.delete('/api/admin/promo-codes/:id', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        await db.deletePromoCode(parseInt(id));
+        
+        res.json({
+            success: true,
+            message: '優惠代碼已刪除'
+        });
+    } catch (error) {
+        console.error('刪除優惠代碼錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '刪除優惠代碼失敗：' + error.message
         });
     }
 });
