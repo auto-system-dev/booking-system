@@ -3032,7 +3032,7 @@ async function getAllPromoCodes() {
             per_user_limit: parseInt(code.per_user_limit || 1),
             start_date: code.start_date,
             end_date: code.end_date,
-            is_active: parseInt(code.is_active || 1),
+            is_active: code.is_active !== undefined && code.is_active !== null ? parseInt(code.is_active) : 1,
             can_combine_with_early_bird: parseInt(code.can_combine_with_early_bird || 0),
             can_combine_with_late_bird: parseInt(code.can_combine_with_late_bird || 0),
             created_at: code.created_at,
@@ -3068,7 +3068,7 @@ async function getPromoCodeById(id) {
             per_user_limit: parseInt(result.per_user_limit || 1),
             start_date: result.start_date,
             end_date: result.end_date,
-            is_active: parseInt(result.is_active || 1),
+            is_active: result.is_active !== undefined && result.is_active !== null ? parseInt(result.is_active) : 1,
             can_combine_with_early_bird: parseInt(result.can_combine_with_early_bird || 0),
             can_combine_with_late_bird: parseInt(result.can_combine_with_late_bird || 0)
         };
@@ -3102,7 +3102,7 @@ async function getPromoCodeByCode(code) {
             per_user_limit: parseInt(result.per_user_limit || 1),
             start_date: result.start_date,
             end_date: result.end_date,
-            is_active: parseInt(result.is_active || 1),
+            is_active: result.is_active !== undefined && result.is_active !== null ? parseInt(result.is_active) : 1,
             can_combine_with_early_bird: parseInt(result.can_combine_with_early_bird || 0),
             can_combine_with_late_bird: parseInt(result.can_combine_with_late_bird || 0)
         };
@@ -3281,7 +3281,7 @@ async function createPromoCode(codeData) {
                     per_user_limit: parseInt(newCode.per_user_limit || 1),
                     start_date: newCode.start_date,
                     end_date: newCode.end_date,
-                    is_active: parseInt(newCode.is_active || 1),
+                    is_active: newCode.is_active !== undefined && newCode.is_active !== null ? parseInt(newCode.is_active) : 1,
                     can_combine_with_early_bird: parseInt(newCode.can_combine_with_early_bird || 0),
                     can_combine_with_late_bird: parseInt(newCode.can_combine_with_late_bird || 0)
                 };
@@ -3362,7 +3362,7 @@ async function updatePromoCode(id, codeData) {
                     per_user_limit: parseInt(updatedCode.per_user_limit || 1),
                     start_date: updatedCode.start_date,
                     end_date: updatedCode.end_date,
-                    is_active: parseInt(updatedCode.is_active || 1),
+                    is_active: updatedCode.is_active !== undefined && updatedCode.is_active !== null ? parseInt(updatedCode.is_active) : 1,
                     can_combine_with_early_bird: parseInt(updatedCode.can_combine_with_early_bird || 0),
                     can_combine_with_late_bird: parseInt(updatedCode.can_combine_with_late_bird || 0)
                 };
