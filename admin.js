@@ -2632,16 +2632,18 @@ function showEditModal(booking) {
     
     // 計算折後總額（如果有優惠折扣）
     const discountAmount = booking.discount_amount || 0;
-    const discountedTotal = (booking.original_amount || totalAmount) - discountAmount;
+    // 使用資料庫中的 original_amount（如果有），否則使用 booking.total_amount（這是實際的總金額）
+    const originalAmount = booking.original_amount || booking.total_amount || totalAmount;
+    const discountedTotal = originalAmount - discountAmount;
     
-    // 根據原始付款方式計算應付金額（使用折後總額）
-    const originalFinalAmount = booking.final_amount || booking.total_amount;
-    const isDeposit = originalFinalAmount < discountedTotal * 0.5;
+    // 根據原始付款方式判斷是否為訂金（檢查 payment_amount 欄位）
+    const paymentAmountStr = booking.payment_amount || '';
+    const isDeposit = paymentAmountStr.includes('訂金') || paymentAmountStr.includes('deposit');
+    
+    // 計算應付金額（使用折後總額）
     const finalAmount = isDeposit ? Math.round(discountedTotal * depositPercentage / 100) : discountedTotal;
     
     // 將優惠折扣資訊存儲在表單的 data 屬性中，供 calculateEditPrice 使用
-    const discountAmount = booking.discount_amount || 0;
-    const originalAmount = booking.original_amount || totalAmount;
     
     modalBody.innerHTML = `
         <form id="editBookingForm" onsubmit="saveBookingEdit(event, '${booking.booking_id}')" data-discount-amount="${discountAmount}" data-original-amount="${originalAmount}">
@@ -2771,7 +2773,9 @@ function calculateEditPrice() {
         // 更新顯示
         document.getElementById('editPricePerNight').textContent = `NT$ ${pricePerNight.toLocaleString()}`;
         document.getElementById('editNights').textContent = `${nights} 晚`;
-        document.getElementById('editTotalAmount').textContent = `NT$ ${(discountAmount > 0 ? originalAmount : totalAmount).toLocaleString()}`;
+        // 如果有優惠折扣，顯示原始總金額；否則顯示當前總金額
+        const displayTotalAmount = discountAmount > 0 ? originalAmount : totalAmount;
+        document.getElementById('editTotalAmount').textContent = `NT$ ${displayTotalAmount.toLocaleString()}`;
         document.getElementById('editPaymentTypeLabel').textContent = `${isDeposit ? `應付訂金 (${depositPercentage}%)` : '應付全額'}：`;
         document.getElementById('editFinalAmount').textContent = `NT$ ${finalAmount.toLocaleString()}`;
     } else {
