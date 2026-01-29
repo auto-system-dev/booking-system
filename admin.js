@@ -7631,7 +7631,11 @@ async function loadPromoCodes() {
         const result = await response.json();
         
         if (result.success) {
-            allPromoCodes = result.data || [];
+            // 確保資料格式正確，包含使用統計
+            allPromoCodes = (result.data || []).map(code => ({
+                ...code,
+                usage_stats: code.usage_stats || { total_usage: 0, total_discount: 0, unique_users: 0 }
+            }));
             renderPromoCodes();
         } else {
             showError('載入優惠代碼列表失敗：' + (result.message || '未知錯誤'));
@@ -7658,16 +7662,19 @@ function renderPromoCodes() {
             ? `NT$ ${code.discount_value.toLocaleString()}`
             : `${code.discount_value}%${code.max_discount ? ` (最高 NT$ ${code.max_discount.toLocaleString()})` : ''}`;
         
-        const usageInfo = code.usage_stats 
-            ? `${code.usage_stats.total_usage} 次 / ${code.total_usage_limit || '∞'}`
-            : '0 次';
+        const totalUsage = code.usage_stats && code.usage_stats.total_usage !== undefined ? code.usage_stats.total_usage : 0;
+        const usageLimit = code.total_usage_limit !== null && code.total_usage_limit !== undefined ? code.total_usage_limit : '∞';
+        const usageInfo = `${totalUsage} 次 / ${usageLimit}`;
         
         const dateRange = code.start_date || code.end_date
             ? `${code.start_date || '立即'} ~ ${code.end_date || '永久'}`
             : '永久有效';
         
+        // 確保 is_active 是數字類型
+        const isActive = parseInt(code.is_active) === 1;
+        
         return `
-        <tr ${code.is_active === 0 ? 'style="opacity: 0.6; background: #f8f8f8;"' : ''}>
+        <tr ${!isActive ? 'style="opacity: 0.6; background: #f8f8f8;"' : ''}>
             <td style="text-align: left;"><strong>${escapeHtml(code.code)}</strong></td>
             <td style="text-align: left;">${escapeHtml(code.name)}</td>
             <td style="text-align: center;">${code.discount_type === 'fixed' ? '固定金額' : '百分比'}</td>
@@ -7676,8 +7683,8 @@ function renderPromoCodes() {
             <td style="text-align: center;">${usageInfo}</td>
             <td style="text-align: left;">${dateRange}</td>
             <td style="text-align: center;">
-                <span class="status-badge ${code.is_active === 1 ? 'status-sent' : 'status-unsent'}">
-                    ${code.is_active === 1 ? '啟用' : '停用'}
+                <span class="status-badge ${isActive ? 'status-sent' : 'status-unsent'}">
+                    ${isActive ? '啟用' : '停用'}
                 </span>
             </td>
             <td style="text-align: center;">
@@ -7748,7 +7755,9 @@ async function editPromoCode(id) {
             document.getElementById('promoCodePerUserLimit').value = code.per_user_limit || 1;
             document.getElementById('promoCodeStartDate').value = code.start_date || '';
             document.getElementById('promoCodeEndDate').value = code.end_date || '';
-            document.getElementById('promoCodeIsActive').checked = code.is_active !== undefined ? code.is_active : 1;
+            // 確保 is_active 正確處理（可能是 0/1 或 true/false）
+            const isActive = code.is_active !== undefined ? (parseInt(code.is_active) === 1 || code.is_active === true) : true;
+            document.getElementById('promoCodeIsActive').checked = isActive;
             
             updatePromoCodeDiscountType();
             document.getElementById('promoCodeModal').style.display = 'block';
@@ -7816,7 +7825,8 @@ async function savePromoCode(event) {
         if (result.success) {
             showSuccess(id ? '優惠代碼已更新' : '優惠代碼已新增');
             closePromoCodeModal();
-            loadPromoCodes();
+            // 強制重新載入列表，確保資料更新
+            await loadPromoCodes();
         } else {
             showError((id ? '更新' : '新增') + '失敗：' + (result.message || '未知錯誤'));
         }

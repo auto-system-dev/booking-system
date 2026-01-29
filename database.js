@@ -3264,7 +3264,29 @@ async function createPromoCode(codeData) {
         
         if (usePostgreSQL) {
             const result = await query(sql, params);
-            return result.rows[0];
+            // 格式化返回的資料，確保與 getPromoCodeById 格式一致
+            const newCode = result.rows[0];
+            if (newCode) {
+                return {
+                    id: newCode.id,
+                    code: newCode.code,
+                    name: newCode.name,
+                    description: newCode.description || '',
+                    discount_type: newCode.discount_type,
+                    discount_value: parseFloat(newCode.discount_value || 0),
+                    min_spend: parseInt(newCode.min_spend || 0),
+                    max_discount: newCode.max_discount ? parseInt(newCode.max_discount) : null,
+                    applicable_room_types: newCode.applicable_room_types ? JSON.parse(newCode.applicable_room_types) : null,
+                    total_usage_limit: newCode.total_usage_limit ? parseInt(newCode.total_usage_limit) : null,
+                    per_user_limit: parseInt(newCode.per_user_limit || 1),
+                    start_date: newCode.start_date,
+                    end_date: newCode.end_date,
+                    is_active: parseInt(newCode.is_active || 1),
+                    can_combine_with_early_bird: parseInt(newCode.can_combine_with_early_bird || 0),
+                    can_combine_with_late_bird: parseInt(newCode.can_combine_with_late_bird || 0)
+                };
+            }
+            return null;
         } else {
             const result = await query(sql, params);
             const newId = result.lastID;
@@ -3323,7 +3345,29 @@ async function updatePromoCode(id, codeData) {
         
         if (usePostgreSQL) {
             const result = await query(sql, params);
-            return result.rows[0];
+            // 格式化返回的資料，確保與 getPromoCodeById 格式一致
+            const updatedCode = result.rows[0];
+            if (updatedCode) {
+                return {
+                    id: updatedCode.id,
+                    code: updatedCode.code,
+                    name: updatedCode.name,
+                    description: updatedCode.description || '',
+                    discount_type: updatedCode.discount_type,
+                    discount_value: parseFloat(updatedCode.discount_value || 0),
+                    min_spend: parseInt(updatedCode.min_spend || 0),
+                    max_discount: updatedCode.max_discount ? parseInt(updatedCode.max_discount) : null,
+                    applicable_room_types: updatedCode.applicable_room_types ? JSON.parse(updatedCode.applicable_room_types) : null,
+                    total_usage_limit: updatedCode.total_usage_limit ? parseInt(updatedCode.total_usage_limit) : null,
+                    per_user_limit: parseInt(updatedCode.per_user_limit || 1),
+                    start_date: updatedCode.start_date,
+                    end_date: updatedCode.end_date,
+                    is_active: parseInt(updatedCode.is_active || 1),
+                    can_combine_with_early_bird: parseInt(updatedCode.can_combine_with_early_bird || 0),
+                    can_combine_with_late_bird: parseInt(updatedCode.can_combine_with_late_bird || 0)
+                };
+            }
+            return await getPromoCodeById(id);
         } else {
             await query(sql, params);
             return await getPromoCodeById(id);
