@@ -2623,8 +2623,8 @@ function showEditModal(booking) {
     const modal = document.getElementById('bookingModal');
     const modalBody = document.getElementById('modalBody');
     
-    // 計算初始價格（僅用於顯示，實際計算使用資料庫中的值）
-    const pricePerNight = roomPrices[booking.room_type] || 2000;
+    // 計算初始價格（優先使用資料庫中儲存的實際每晚價格）
+    const pricePerNight = booking.price_per_night || roomPrices[booking.room_type] || 2000;
     const checkIn = new Date(booking.check_in_date);
     const checkOut = new Date(booking.check_out_date);
     const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
@@ -2659,7 +2659,7 @@ function showEditModal(booking) {
     // 將優惠折扣資訊存儲在表單的 data 屬性中，供 calculateEditPrice 使用
     
     modalBody.innerHTML = `
-        <form id="editBookingForm" onsubmit="saveBookingEdit(event, '${booking.booking_id}')" data-discount-amount="${discountAmount}" data-original-amount="${originalAmount}">
+        <form id="editBookingForm" onsubmit="saveBookingEdit(event, '${booking.booking_id}')" data-discount-amount="${discountAmount}" data-original-amount="${originalAmount}" data-price-per-night="${pricePerNight}">
             <div class="form-group">
                 <label>客戶姓名</label>
                 <input type="text" name="guest_name" value="${escapeHtml(booking.guest_name)}" required>
@@ -2751,6 +2751,38 @@ function showEditModal(booking) {
     `;
     
     modal.classList.add('active');
+    
+    // 確保初始顯示的值正確（防止表單元素設置值時觸發 onchange 事件導致計算錯誤）
+    // 延遲執行，確保表單完全渲染後再設置正確的值
+    setTimeout(() => {
+        const editFinalAmountEl = document.getElementById('editFinalAmount');
+        if (editFinalAmountEl && discountAmount > 0) {
+            // 重新計算並設置正確的應付金額
+            const editForm = document.getElementById('editBookingForm');
+            if (editForm) {
+                const discountAmountStr = editForm.dataset.discountAmount || '0';
+                const originalAmountStr = editForm.dataset.originalAmount || originalAmount.toString();
+                const discountAmountValue = parseFloat(discountAmountStr) || 0;
+                const originalAmountValue = parseFloat(originalAmountStr) || originalAmount;
+                const discountedTotalValue = Math.max(0, originalAmountValue - discountAmountValue);
+                const isDepositCheck = document.getElementById('editPaymentAmountType');
+                const isDepositValue = isDepositCheck ? isDepositCheck.value === 'deposit' : isDeposit;
+                const correctFinalAmount = isDepositValue ? Math.round(discountedTotalValue * depositPercentage / 100) : discountedTotalValue;
+                
+                // 設置正確的值
+                editFinalAmountEl.textContent = `NT$ ${correctFinalAmount.toLocaleString()}`;
+                
+                console.log('修正應付金額:', {
+                    discountAmountValue,
+                    originalAmountValue,
+                    discountedTotalValue,
+                    isDepositValue,
+                    correctFinalAmount,
+                    '原本顯示的值': finalAmount
+                });
+            }
+        }
+    }, 200);
 }
 
 // 計算編輯表單的價格
@@ -2761,28 +2793,49 @@ function calculateEditPrice() {
     const paymentAmountType = document.getElementById('editPaymentAmountType');
     const editForm = document.getElementById('editBookingForm');
     
-    if (!roomTypeSelect || !checkInDate || !checkOutDate || !paymentAmountType) {
+    if (!roomTypeSelect || !checkInDate || !checkOutDate || !paymentAmountType || !editForm) {
         return;
     }
     
-    const selectedOption = roomTypeSelect.options[roomTypeSelect.selectedIndex];
-    const pricePerNight = parseInt(selectedOption.dataset.price) || 2000;
-    
-    const checkIn = new Date(checkInDate.value);
-    const checkOut = new Date(checkOutDate.value);
-    
-    if (checkIn && checkOut && checkOut > checkIn) {
-        const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
-        const totalAmount = pricePerNight * nights;
+        const selectedOption = roomTypeSelect.options[roomTypeSelect.selectedIndex];
+        // 優先使用選項中的價格，如果沒有則使用資料庫中儲存的價格
+        const storedPricePerNight = editForm ? parseFloat(editForm.dataset.pricePerNight || 0) : 0;
+        const pricePerNight = parseInt(selectedOption.dataset.price) || storedPricePerNight || 2000;
+        
+        const checkIn = new Date(checkInDate.value);
+        const checkOut = new Date(checkOutDate.value);
+        
+        if (checkIn && checkOut && checkOut > checkIn) {
+            const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+            const totalAmount = pricePerNight * nights;
         
         // 檢查是否有優惠折扣（從表單的 data 屬性讀取）
-        const discountAmount = editForm ? parseFloat(editForm.dataset.discountAmount || 0) : 0;
-        const originalAmount = editForm ? parseFloat(editForm.dataset.originalAmount || totalAmount) : totalAmount;
+        const discountAmountStr = editForm ? (editForm.dataset.discountAmount || '0') : '0';
+        const originalAmountStr = editForm ? (editForm.dataset.originalAmount || totalAmount.toString()) : totalAmount.toString();
+        const discountAmount = parseFloat(discountAmountStr) || 0;
+        const originalAmount = parseFloat(originalAmountStr) || totalAmount;
+        
         // 如果有折扣，使用折後總額；否則使用當前總金額
+        // 重要：必須使用 originalAmount 和 discountAmount 來計算折後總額
+        // 如果 discountAmount > 0，表示有優惠代碼，使用折後總額；否則使用當前總金額
         const discountedTotal = discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : totalAmount;
         
         const isDeposit = paymentAmountType.value === 'deposit';
+        // 重要：必須使用折後總額計算訂金，而不是原始總金額或當前總金額
         const finalAmount = isDeposit ? Math.round(discountedTotal * depositPercentage / 100) : discountedTotal;
+        
+        // 調試信息
+        console.log('calculateEditPrice - 價格計算:', {
+            totalAmount: totalAmount, // 重新計算的總金額
+            discountAmount: discountAmount, // 從 data 屬性讀取的折扣金額
+            originalAmount: originalAmount, // 從 data 屬性讀取的原始總金額
+            discountedTotal: discountedTotal, // 折後總額
+            isDeposit: isDeposit,
+            depositPercentage: depositPercentage,
+            finalAmount: finalAmount,
+            'data-discount-amount': editForm ? editForm.dataset.discountAmount : 'N/A',
+            'data-original-amount': editForm ? editForm.dataset.originalAmount : 'N/A'
+        });
         
         // 更新顯示
         document.getElementById('editPricePerNight').textContent = `NT$ ${pricePerNight.toLocaleString()}`;
@@ -2816,7 +2869,9 @@ async function saveBookingEdit(event, bookingId) {
     const editForm = document.getElementById('editBookingForm');
     
     const selectedOption = roomTypeSelect.options[roomTypeSelect.selectedIndex];
-    const pricePerNight = parseInt(selectedOption.dataset.price) || 2000;
+    // 優先使用選項中的價格，如果沒有則使用資料庫中儲存的價格
+    const storedPricePerNight = editForm ? parseFloat(editForm.dataset.pricePerNight || 0) : 0;
+    const pricePerNight = parseInt(selectedOption.dataset.price) || storedPricePerNight || 2000;
     
     const checkIn = new Date(checkInDate.value);
     const checkOut = new Date(checkOutDate.value);
@@ -2824,9 +2879,13 @@ async function saveBookingEdit(event, bookingId) {
     const totalAmount = pricePerNight * nights;
     
     // 檢查是否有優惠折扣（從表單的 data 屬性讀取）
-    const discountAmount = editForm ? parseFloat(editForm.dataset.discountAmount || 0) : 0;
-    const originalAmount = editForm ? parseFloat(editForm.dataset.originalAmount || totalAmount) : totalAmount;
+    const discountAmountStr = editForm ? (editForm.dataset.discountAmount || '0') : '0';
+    const originalAmountStr = editForm ? (editForm.dataset.originalAmount || totalAmount.toString()) : totalAmount.toString();
+    const discountAmount = parseFloat(discountAmountStr) || 0;
+    const originalAmount = parseFloat(originalAmountStr) || totalAmount;
+    
     // 如果有折扣，使用折後總額；否則使用當前總金額
+    // 重要：必須使用 originalAmount 和 discountAmount 來計算折後總額
     const discountedTotal = discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : totalAmount;
     
     const isDeposit = paymentAmountType.value === 'deposit';
