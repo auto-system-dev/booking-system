@@ -5039,19 +5039,20 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         
         // 使用與實際發送相同的 replaceTemplateVariables 函數
         // 這確保測試郵件與實際發送的郵件完全一致
+        // 直接使用資料庫中的完整 HTML 模板內容
         let testContent, testSubject;
         try {
+            // 確保使用資料庫中的完整 HTML 模板內容
             const testResult = await replaceTemplateVariables(template, mockBooking, null, additionalData);
             testContent = testResult.content;
             testSubject = testResult.subject;
-            console.log('✅ 使用 replaceTemplateVariables 函數生成測試郵件（與實際發送一致）');
+            console.log('✅ 使用 replaceTemplateVariables 函數生成測試郵件（使用資料庫中的完整 HTML 模板）');
+            console.log(`   模板內容長度: ${template.content.length} 字元`);
+            console.log(`   處理後內容長度: ${testContent.length} 字元`);
         } catch (error) {
-            console.error('❌ 使用 replaceTemplateVariables 失敗，回退到手動替換:', error);
-            // 如果 replaceTemplateVariables 失敗，回退到原來的邏輯
-            testContent = template.content;
-            testSubject = template.subject;
-            
-            // 檢查是否包含完整的 HTML 結構
+            console.error('❌ 使用 replaceTemplateVariables 失敗:', error);
+            throw error; // 不再回退，直接拋出錯誤，確保使用完整的模板
+        }
             const hasFullHtmlStructure = testContent.includes('<!DOCTYPE html>') || 
                                          (testContent.includes('<html') && testContent.includes('</html>'));
             
@@ -7912,9 +7913,20 @@ function formatPaymentDeadline(deadline) {
 // 替換郵件模板中的變數
 async function replaceTemplateVariables(template, booking, bankInfo = null, additionalData = {}) {
     // 確保模板內容存在（支援多種欄位名稱）
+    // 直接使用資料庫中的完整 HTML 模板內容，不做任何簡化或修改
     let content = template.content || template.template_content || '';
     
     const templateKey = template.key || template.template_key;
+    
+    // 確保使用資料庫中的完整 HTML 內容
+    if (!content || content.trim() === '') {
+        // 如果模板內容為空，嘗試從資料庫重新讀取
+        const dbTemplate = await db.getEmailTemplateByKey(templateKey);
+        if (dbTemplate && dbTemplate.content) {
+            content = dbTemplate.content;
+            console.log(`⚠️ 模板內容為空，已從資料庫重新讀取完整 HTML 模板 (${templateKey})`);
+        }
+    }
     
     // 添加日誌以確認接收到的模板內容
     console.log(`🔍 replaceTemplateVariables - 接收到的模板內容 (${templateKey}):`, {
