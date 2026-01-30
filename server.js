@@ -1427,12 +1427,13 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
             }
             
             // 記錄優惠代碼使用（如果有使用）
+            let discountAmount = 0;
+            let discountedTotal = totalAmount;
             if (promoCode) {
                 try {
                     const promoCodeData = await db.getPromoCodeByCode(promoCode);
                     if (promoCodeData) {
                         // 計算折扣金額（應該與前端計算的一致）
-                        let discountAmount = 0;
                         if (promoCodeData.discount_type === 'fixed') {
                             discountAmount = promoCodeData.discount_value;
                         } else if (promoCodeData.discount_type === 'percent') {
@@ -1441,6 +1442,7 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
                                 discountAmount = promoCodeData.max_discount;
                             }
                         }
+                        discountedTotal = Math.max(0, totalAmount - discountAmount);
                         
                         await db.recordPromoCodeUsage(
                             promoCodeData.id,
@@ -1457,6 +1459,10 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
                     // 不影響訂房流程，只記錄警告
                 }
             }
+            
+            // 將折扣資訊加入到 bookingData（用於管理員郵件）
+            bookingData.discountAmount = discountAmount;
+            bookingData.discountedTotal = discountedTotal;
         } catch (dbError) {
             console.error('❌ 資料庫儲存錯誤:', dbError.message);
             console.error('   錯誤堆疊:', dbError.stack);
@@ -2046,6 +2052,16 @@ function generateAdminEmail(data) {
                         <span class="info-label">總金額</span>
                         <span class="info-value" style="color: #333; font-weight: 600;">NT$ ${(data.totalAmount || 0).toLocaleString()}</span>
                     </div>
+                    ${(data.discountAmount && data.discountAmount > 0) ? `
+                    <div class="info-row">
+                        <span class="info-label">優惠折扣</span>
+                        <span class="info-value" style="color: #10b981; font-weight: 600;">-NT$ ${Math.round(data.discountAmount).toLocaleString()}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">折後總額</span>
+                        <span class="info-value" style="color: #333; font-weight: 700;">NT$ ${Math.round(data.discountedTotal || (data.totalAmount - data.discountAmount) || data.totalAmount).toLocaleString()}</span>
+                    </div>
+                    ` : ''}
                     <div class="info-row">
                         <span class="info-label">${data.paymentStatus === 'paid' ? '已付金額' : '應付金額'}</span>
                         <span class="info-value" style="color: ${data.paymentStatus === 'paid' ? '#4caf50' : '#e74c3c'}; font-weight: 700;">NT$ ${data.finalAmount.toLocaleString()}</span>
@@ -4116,6 +4132,11 @@ const handlePaymentResult = async (req, res) => {
                                         }
                                     }
                                     
+                                    // 計算折扣金額和折後總額（從資料庫讀取的 booking 可能已包含這些資訊）
+                                    const originalAmount = booking.original_amount || booking.total_amount || 0;
+                                    const discountAmount = booking.discount_amount || 0;
+                                    const discountedTotal = discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : originalAmount;
+                                    
                                     const bookingData = {
                                         bookingId: booking.booking_id,
                                         guestName: booking.guest_name,
@@ -4126,7 +4147,9 @@ const handlePaymentResult = async (req, res) => {
                                         roomType: booking.room_type,
                                         pricePerNight: booking.price_per_night,
                                         nights: booking.nights,
-                                        totalAmount: booking.total_amount,
+                                        totalAmount: originalAmount,
+                                        discountAmount: discountAmount,
+                                        discountedTotal: discountedTotal,
                                         finalAmount: booking.final_amount,
                                         paymentAmount: booking.payment_amount,
                                         paymentMethod: booking.payment_method,
@@ -4305,6 +4328,11 @@ const handlePaymentResult = async (req, res) => {
                             }
                         }
                         
+                        // 計算折扣金額和折後總額（從資料庫讀取的 booking 可能已包含這些資訊）
+                        const originalAmount = booking.original_amount || booking.total_amount || 0;
+                        const discountAmount = booking.discount_amount || 0;
+                        const discountedTotal = discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : originalAmount;
+                        
                         const bookingData = {
                             bookingId: booking.booking_id,
                             guestName: booking.guest_name,
@@ -4315,7 +4343,9 @@ const handlePaymentResult = async (req, res) => {
                             roomType: booking.room_type,
                             pricePerNight: booking.price_per_night,
                             nights: booking.nights,
-                            totalAmount: booking.total_amount,
+                            totalAmount: originalAmount,
+                            discountAmount: discountAmount,
+                            discountedTotal: discountedTotal,
                             finalAmount: booking.final_amount,
                             paymentAmount: booking.payment_amount,
                             paymentMethod: booking.payment_method,
