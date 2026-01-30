@@ -6546,6 +6546,27 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
     }
 });
 
+// API: 強制更新所有郵件模板為最新版本（用於更新折扣欄位等功能）
+app.post('/api/email-templates/force-update', requireAuth, adminLimiter, async (req, res) => {
+    try {
+        console.log('🔄 強制更新所有郵件模板為最新版本...');
+        
+        // 重新初始化郵件模板（這會檢查並更新缺少新功能的模板）
+        await db.initEmailTemplates();
+        
+        res.json({
+            success: true,
+            message: '所有郵件模板已更新為最新版本'
+        });
+    } catch (error) {
+        console.error('❌ 強制更新郵件模板錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '強制更新郵件模板失敗：' + error.message
+        });
+    }
+});
+
 // API: 獲取預設郵件模板內容（用於還原功能）
 app.get('/api/email-templates/:key/default', requireAuth, adminLimiter, async (req, res) => {
     try {

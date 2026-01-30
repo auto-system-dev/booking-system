@@ -1352,7 +1352,18 @@ async function initEmailTemplates() {
             // 對於入住提醒模板，強制更新以確保使用最新格式
             const forceUpdateCheckinReminder = template.key === 'checkin_reminder';
             
-            if (!existing || !existing.content || existing.content.trim() === '' || existing.template_name !== template.name || isContentTooShort || needsUpdateForHtmlStructure || forceUpdateCheckinReminder) {
+            // 檢查是否需要更新折扣相關欄位（適用於訂房確認、付款完成、匯款提醒模板）
+            const needsDiscountUpdate = (template.key === 'booking_confirmation' || 
+                                        template.key === 'booking_confirmation_admin' || 
+                                        template.key === 'payment_completed' || 
+                                        template.key === 'payment_reminder') &&
+                                       existing && 
+                                       existing.content && 
+                                       !existing.content.includes('{{hasDiscount}}') &&
+                                       !existing.content.includes('{{discountAmount}}') &&
+                                       !existing.content.includes('{{discountedTotal}}');
+            
+            if (!existing || !existing.content || existing.content.trim() === '' || existing.template_name !== template.name || isContentTooShort || needsUpdateForHtmlStructure || forceUpdateCheckinReminder || needsDiscountUpdate) {
                 if (usePostgreSQL) {
                     await query(
                         `INSERT INTO email_templates (template_key, template_name, subject, content, is_enabled, days_before_checkin, send_hour_checkin, days_after_checkout, send_hour_feedback, days_reserved, send_hour_payment_reminder)
@@ -1396,6 +1407,8 @@ async function initEmailTemplates() {
                 
                 if (forceUpdateCheckinReminder) {
                     console.log(`✅ 已重新生成入住提醒模板為最新的圖卡格式`);
+                } else if (needsDiscountUpdate) {
+                    console.log(`✅ 已更新郵件模板 ${template.key}，加入優惠折扣和折後總額欄位`);
                 } else if (existing && (!existing.content || existing.content.trim() === '')) {
                     console.log(`✅ 已更新空的郵件模板 ${template.key}`);
                 } else if (existing && existing.template_name !== template.name) {
