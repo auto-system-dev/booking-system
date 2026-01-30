@@ -6378,13 +6378,17 @@ app.get('/api/email-templates/:key/default', requireAuth, adminLimiter, async (r
     <p><strong>加購商品總額：</strong>NT$ {{addonsTotal}}</p>
     {{/if}}
     <p><strong>總金額：</strong>NT$ {{totalAmount}}</p>
+    {{#if hasDiscount}}
+    <p><strong style="color: #10b981;">優惠折扣：</strong><span style="color: #10b981;">-NT$ {{discountAmount}}</span></p>
+    <p><strong>折後總額：</strong>NT$ {{discountedTotal}}</p>
+    {{/if}}
     <p><strong>應付金額：</strong>NT$ {{finalAmount}}</p>
     
     <h2>💰 匯款資訊</h2>
     <p><strong>銀行：</strong>{{bankName}}{{bankBranchDisplay}}</p>
     <p><strong>帳號：</strong>{{bankAccount}}</p>
     <p><strong>戶名：</strong>{{accountName}}</p>
-    <p>請在匯款時備註訂房編號後5碼：<strong>{{bookingId}}</strong></p>
+    <p>請在匯款時備註訂房編號後5碼：<strong>{{bookingIdLast5}}</strong></p>
     
     {{#if isDeposit}}
     <h2>💡 剩餘尾款</h2>
