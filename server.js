@@ -4992,6 +4992,11 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         // 這裡不需要再次設置，因為已經在 useEditorContent 分支中處理過了
         
         // 創建模擬的 booking 對象，用於 replaceTemplateVariables 函數
+        // 計算折扣相關資料（模擬有折扣的情況）
+        const originalAmount = parseInt(testData.totalAmount.replace(/,/g, ''));
+        const discountAmount = randomInt(100, 1000); // 隨機折扣金額
+        const discountedTotal = Math.max(0, originalAmount - discountAmount);
+        
         const mockBooking = {
             guest_name: testData.guestName,
             booking_id: testData.bookingId,
@@ -4999,7 +5004,9 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             check_out_date: checkOutDate.toISOString().split('T')[0],
             room_type: testData.roomType,
             price_per_night: parseInt(testData.pricePerNight.replace(/,/g, '')),
-            total_amount: parseInt(testData.totalAmount.replace(/,/g, '')),
+            total_amount: originalAmount,
+            original_amount: originalAmount,
+            discount_amount: discountAmount,
             final_amount: parseInt(testData.finalAmount.replace(/,/g, '')),
             remaining_amount: parseInt(testData.remainingAmount.replace(/,/g, '')),
             payment_method: testData.paymentMethod,
