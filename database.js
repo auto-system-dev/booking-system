@@ -672,6 +672,10 @@ async function initEmailTemplates() {
     <p><strong>加購商品總額：</strong>NT$ {{addonsTotal}}</p>
     {{/if}}
     <p><strong>總金額：</strong>NT$ {{totalAmount}}</p>
+    {{#if hasDiscount}}
+    <p><strong>優惠折扣：</strong>-NT$ {{discountAmount}}</p>
+    <p><strong>折後總額：</strong>NT$ {{discountedTotal}}</p>
+    {{/if}}
     <p><strong>應付金額：</strong>NT$ {{finalAmount}}</p>
     
     <h2>💰 匯款資訊</h2>
@@ -1010,6 +1014,16 @@ async function initEmailTemplates() {
                     <span class="info-label" style="font-size: 18px; color: #333;">總金額</span>
                     <span class="info-value" style="font-size: 20px; font-weight: 700;">NT$ {{totalAmount}}</span>
                 </div>
+                {{#if hasDiscount}}
+                <div class="info-row">
+                    <span class="info-label">優惠折扣</span>
+                    <span class="info-value" style="color: #10b981; font-weight: 600;">-NT$ {{discountAmount}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label" style="font-weight: 700;">折後總額</span>
+                    <span class="info-value" style="font-size: 18px; font-weight: 700;">NT$ {{discountedTotal}}</span>
+                </div>
+                {{/if}}
                 <div class="info-row">
                     <span class="info-label">支付方式</span>
                     <span class="info-value">{{paymentAmount}} - {{paymentMethod}}</span>

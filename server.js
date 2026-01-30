@@ -1849,7 +1849,12 @@ async function generateCustomerEmail(data) {
                 ` : ''}
 
                 ${data.paymentAmount && data.paymentAmount.includes('訂金') && data.paymentStatus !== 'paid' ? (() => {
-                    const remainingAmount = data.totalAmount - data.finalAmount;
+                    // 計算折扣金額和折後總額
+                    const originalAmount = data.originalAmount || data.totalAmount || 0;
+                    const discountAmount = data.discountAmount || 0;
+                    const discountedTotal = discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : originalAmount;
+                    // 剩餘尾款 = 折後總額 - 已付金額
+                    const remainingAmount = discountedTotal - data.finalAmount;
                     return `
                 <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 15px; margin: 20px 0;">
                     <p style="color: #2e7d32; font-weight: 600; margin: 0; font-size: 16px;">💡 剩餘尾款於現場付清！</p>
@@ -5679,6 +5684,16 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
                     <span class="info-label">總金額</span>
                     <span class="info-value"><strong>NT$ {{totalAmount}}</strong></span>
                 </div>
+                {{#if hasDiscount}}
+                <div class="info-row">
+                    <span class="info-label">優惠折扣</span>
+                    <span class="info-value" style="color: #10b981; font-weight: 600;"><strong>-NT$ {{discountAmount}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">折後總額</span>
+                    <span class="info-value"><strong>NT$ {{discountedTotal}}</strong></span>
+                </div>
+                {{/if}}
                 <div class="info-row" style="border-bottom: none;">
                     <span class="info-label">應付金額</span>
                     <span class="info-value"><strong>NT$ {{finalAmount}}</strong></span>
@@ -6224,6 +6239,16 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
                     <span class="info-label" style="font-size: 18px; color: #333;">總金額</span>
                     <span class="info-value" style="font-size: 20px; font-weight: 700;">NT$ {{totalAmount}}</span>
                 </div>
+                {{#if hasDiscount}}
+                <div class="info-row">
+                    <span class="info-label">優惠折扣</span>
+                    <span class="info-value" style="color: #10b981; font-weight: 600;">-NT$ {{discountAmount}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label" style="font-weight: 700;">折後總額</span>
+                    <span class="info-value" style="font-size: 18px; font-weight: 700;">NT$ {{discountedTotal}}</span>
+                </div>
+                {{/if}}
                 <div class="info-row">
                     <span class="info-label">支付方式</span>
                     <span class="info-value">{{paymentAmount}} - {{paymentMethod}}</span>
@@ -6313,6 +6338,16 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
                     <span class="info-label">總金額</span>
                     <span class="info-value"><strong>NT$ {{totalAmount}}</strong></span>
                 </div>
+                {{#if hasDiscount}}
+                <div class="info-row">
+                    <span class="info-label">優惠折扣</span>
+                    <span class="info-value" style="color: #10b981; font-weight: 600;"><strong>-NT$ {{discountAmount}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">折後總額</span>
+                    <span class="info-value"><strong>NT$ {{discountedTotal}}</strong></span>
+                </div>
+                {{/if}}
                 <div class="info-row">
                     <span class="info-label">本次已收金額</span>
                     <span class="info-value"><strong>NT$ {{finalAmount}}</strong></span>
@@ -6771,6 +6806,16 @@ app.get('/api/email-templates/:key/default', requireAuth, adminLimiter, async (r
                     <span class="info-label" style="font-size: 18px; color: #333;">總金額</span>
                     <span class="info-value" style="font-size: 20px; font-weight: 700;">NT$ {{totalAmount}}</span>
                 </div>
+                {{#if hasDiscount}}
+                <div class="info-row">
+                    <span class="info-label">優惠折扣</span>
+                    <span class="info-value" style="color: #10b981; font-weight: 600;">-NT$ {{discountAmount}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label" style="font-weight: 700;">折後總額</span>
+                    <span class="info-value" style="font-size: 18px; font-weight: 700;">NT$ {{discountedTotal}}</span>
+                </div>
+                {{/if}}
                 <div class="info-row">
                     <span class="info-label">支付方式</span>
                     <span class="info-value">{{paymentAmount}} - {{paymentMethod}}</span>
@@ -8349,10 +8394,16 @@ ${htmlEnd}`;
     const paymentAmount = booking.payment_amount || booking.paymentAmount || '';
     const isDeposit = paymentAmount && paymentAmount.includes('訂金');
     
-    // 計算剩餘尾款金額（支援多種格式）
+    // 計算總金額、折扣金額和折後總額（支援多種格式）
+    const originalAmount = booking.original_amount || booking.total_amount || booking.totalAmount || 0;
     const totalAmount = booking.total_amount || booking.totalAmount || 0;
+    const discountAmount = booking.discount_amount || 0;
+    const discountedTotal = discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : originalAmount;
     const finalAmount = booking.final_amount || booking.finalAmount || 0;
-    const remainingAmount = totalAmount - finalAmount;
+    
+    // 計算剩餘尾款金額（基於折後總額，而不是原始總金額）
+    // 剩餘尾款 = 折後總額 - 已付金額（finalAmount）
+    const remainingAmount = discountedTotal - finalAmount;
     
     // 處理加購商品顯示
     let addonsList = '';
@@ -8443,6 +8494,9 @@ ${htmlEnd}`;
         '{{nights}}': nights.toString(),
         '{{pricePerNight}}': pricePerNight.toLocaleString(),
         '{{totalAmount}}': totalAmount.toLocaleString(),
+        '{{originalAmount}}': originalAmount.toLocaleString(),
+        '{{discountAmount}}': discountAmount.toLocaleString(),
+        '{{discountedTotal}}': discountedTotal.toLocaleString(),
         '{{finalAmount}}': finalAmount.toLocaleString(),
         '{{remainingAmount}}': remainingAmount.toLocaleString(),
         '{{bankName}}': bankInfo ? bankInfo.bankName : 'XXX銀行',
@@ -8607,9 +8661,13 @@ ${htmlEnd}`;
         content = content.replace(/\{\{#if accountName\}\}[\s\S]*?\{\{\/if\}\}/g, '');
     }
     
-    // 2. 處理中間層條件（addonsList）
+    // 2. 處理中間層條件（addonsList, hasDiscount）
     const hasAddons = addonsList && addonsList.trim() !== '';
     content = processConditionalBlock(content, hasAddons, 'addonsList');
+    
+    // 處理折扣條件（discountAmount > 0）
+    const hasDiscount = discountAmount > 0;
+    content = processConditionalBlock(content, hasDiscount, 'hasDiscount');
     
     
     // 判斷是否有匯款資訊（檢查至少有一個非空欄位）
