@@ -1855,12 +1855,8 @@ async function generateCustomerEmail(data) {
                 ` : ''}
 
                 ${data.paymentAmount && data.paymentAmount.includes('訂金') && data.paymentStatus !== 'paid' ? (() => {
-                    // 計算折扣金額和折後總額
-                    const originalAmount = data.originalAmount || data.totalAmount || 0;
-                    const discountAmount = data.discountAmount || 0;
-                    const discountedTotal = discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : originalAmount;
-                    // 剩餘尾款 = 折後總額 - 已付金額
-                    const remainingAmount = discountedTotal - data.finalAmount;
+                    // 剩餘尾款 = 總金額 - 已付金額
+                    const remainingAmount = (data.totalAmount || 0) - (data.finalAmount || 0);
                     return `
                 <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 15px; margin: 20px 0;">
                     <p style="color: #2e7d32; font-weight: 600; margin: 0; font-size: 16px;">💡 剩餘尾款於現場付清！</p>
@@ -2052,16 +2048,6 @@ function generateAdminEmail(data) {
                         <span class="info-label">總金額</span>
                         <span class="info-value" style="color: #333; font-weight: 600;">NT$ ${(data.totalAmount || 0).toLocaleString()}</span>
                     </div>
-                    ${(data.discountAmount && data.discountAmount > 0) ? `
-                    <div class="info-row">
-                        <span class="info-label">優惠折扣</span>
-                        <span class="info-value" style="color: #10b981; font-weight: 600;">-NT$ ${Math.round(data.discountAmount).toLocaleString()}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">折後總額</span>
-                        <span class="info-value" style="color: #333; font-weight: 700;">NT$ ${Math.round(data.discountedTotal || (data.totalAmount - data.discountAmount) || data.totalAmount).toLocaleString()}</span>
-                    </div>
-                    ` : ''}
                     <div class="info-row">
                         <span class="info-label">${data.paymentStatus === 'paid' ? '已付金額' : '應付金額'}</span>
                         <span class="info-value" style="color: ${data.paymentStatus === 'paid' ? '#4caf50' : '#e74c3c'}; font-weight: 700;">NT$ ${data.finalAmount.toLocaleString()}</span>
@@ -8459,9 +8445,9 @@ ${htmlEnd}`;
     const discountedTotal = discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : originalAmount;
     const finalAmount = booking.final_amount || booking.finalAmount || 0;
     
-    // 計算剩餘尾款金額（基於折後總額，而不是原始總金額）
-    // 剩餘尾款 = 折後總額 - 已付金額（finalAmount）
-    const remainingAmount = discountedTotal - finalAmount;
+    // 計算剩餘尾款金額
+    // 剩餘尾款 = 總金額 - 已付金額（finalAmount）
+    const remainingAmount = totalAmount - finalAmount;
     
     // 處理加購商品顯示
     let addonsList = '';
