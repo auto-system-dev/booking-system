@@ -672,6 +672,10 @@ async function initEmailTemplates() {
     <p><strong>加購商品總額：</strong>NT$ {{addonsTotal}}</p>
     {{/if}}
     <p><strong>總金額：</strong>NT$ {{totalAmount}}</p>
+    {{#if hasDiscount}}
+    <p><strong style="color: #10b981;">優惠折扣：</strong><span style="color: #10b981;">-NT$ {{discountAmount}}</span></p>
+    <p><strong>折後總額：</strong>NT$ {{discountedTotal}}</p>
+    {{/if}}
     <p><strong>應付金額：</strong>NT$ {{finalAmount}}</p>
     
     <h2>💰 匯款資訊</h2>
@@ -1010,6 +1014,16 @@ async function initEmailTemplates() {
                     <span class="info-label" style="font-size: 18px; color: #333;">總金額</span>
                     <span class="info-value" style="font-size: 20px; font-weight: 700;">NT$ {{totalAmount}}</span>
                 </div>
+                {{#if hasDiscount}}
+                <div class="info-row">
+                    <span class="info-label" style="color: #10b981;">優惠折扣</span>
+                    <span class="info-value" style="color: #10b981; font-weight: 600;">-NT$ {{discountAmount}}</span>
+                </div>
+                <div class="info-row" style="padding-top: 10px; border-top: 1px solid #e0e0e0;">
+                    <span class="info-label" style="font-size: 18px; color: #333; font-weight: 700;">折後總額</span>
+                    <span class="info-value" style="font-size: 20px; font-weight: 700; color: #1976d2;">NT$ {{discountedTotal}}</span>
+                </div>
+                {{/if}}
                 <div class="info-row">
                     <span class="info-label">支付方式</span>
                     <span class="info-value">{{paymentAmount}} - {{paymentMethod}}</span>
@@ -1163,6 +1177,16 @@ async function initEmailTemplates() {
                     <span class="info-label" style="font-size: 18px; color: #333;">總金額</span>
                     <span class="info-value" style="font-size: 20px; font-weight: 700;">NT$ {{totalAmount}}</span>
                 </div>
+                {{#if hasDiscount}}
+                <div class="info-row">
+                    <span class="info-label" style="color: #10b981;">優惠折扣</span>
+                    <span class="info-value" style="color: #10b981; font-weight: 600;">-NT$ {{discountAmount}}</span>
+                </div>
+                <div class="info-row" style="padding-top: 10px; border-top: 1px solid #e0e0e0;">
+                    <span class="info-label" style="font-size: 18px; color: #333; font-weight: 700;">折後總額</span>
+                    <span class="info-value" style="font-size: 20px; font-weight: 700; color: #c62828;">NT$ {{discountedTotal}}</span>
+                </div>
+                {{/if}}
                 <div class="info-row">
                     <span class="info-label">支付方式</span>
                     <span class="info-value">{{paymentAmount}} - {{paymentMethod}}</span>
@@ -1231,6 +1255,10 @@ async function initEmailTemplates() {
     <p><strong>退房日期：</strong>{{checkOutDate}}</p>
     <p><strong>房型：</strong>{{roomType}}</p>
     <p><strong>總金額：</strong>NT$ {{totalAmount}}</p>
+    {{#if hasDiscount}}
+    <p><strong style="color: #10b981;">優惠折扣：</strong><span style="color: #10b981;">-NT$ {{discountAmount}}</span></p>
+    <p><strong>折後總額：</strong>NT$ {{discountedTotal}}</p>
+    {{/if}}
     <p><strong>本次已收金額：</strong>NT$ {{finalAmount}}</p>
     <p><strong>付款方式：</strong>{{paymentMethod}}</p>
     
