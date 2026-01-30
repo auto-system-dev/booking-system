@@ -5056,26 +5056,34 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         
         // 確保測試郵件使用資料庫中的完整 HTML 模板內容
         // replaceTemplateVariables 已經處理了所有變數替換和條件區塊處理
-        // 不需要額外的檢查或修復邏輯，直接使用處理後的內容
+        // 直接使用處理後的內容，不進行額外的檢查或修復，確保與實際郵件完全一致
         
-        // 最後檢查：確保測試郵件包含完整的 CSS 樣式和 HTML 結構
-        // 這是最後一道防線，確保發送的郵件一定有圖卡樣式
-        // 必須檢查所有必要的元素：HTML 結構、CSS 樣式、HTML 元素
+        // 注意：不再進行強制修復，因為：
+        // 1. 實際郵件發送時直接使用 replaceTemplateVariables 的結果
+        // 2. 如果模板已經有完整結構，replaceTemplateVariables 不會修改它
+        // 3. 這樣可以確保測試郵件和實際郵件完全一致
+        
+        // 僅記錄日誌，不進行修復
         const finalCheckHasFullHtml = testContent.includes('<!DOCTYPE html>') || 
                                       (testContent.includes('<html') && testContent.includes('</html>'));
         const finalCheckHasStyleTag = testContent.includes('<style>') || testContent.includes('<style ');
-        const finalCheckHasHeaderStyle = testContent.includes('.header') && 
-                                       (testContent.includes('background') || testContent.includes('background-color')) &&
-                                       testContent.includes('.content') &&
-                                       testContent.includes('.container');
-        const finalCheckHasHeaderColor = isCheckinReminder ? (testContent.includes('#262A33') || testContent.includes('#616161')) : true;
         const finalCheckHasContainer = testContent.includes('class="container') || testContent.includes("class='container");
         const finalCheckHasHeader = testContent.includes('class="header') || testContent.includes("class='header");
         const finalCheckHasContent = testContent.includes('class="content') || testContent.includes("class='content");
         
-        // 如果缺少任何必要的結構或樣式，強制修復
-        if (!finalCheckHasFullHtml || !finalCheckHasStyleTag || !finalCheckHasHeaderStyle || 
-            !finalCheckHasHeaderColor || !finalCheckHasContainer || !finalCheckHasHeader || !finalCheckHasContent) {
+        console.log('📧 測試郵件結構檢查:', {
+            key,
+            hasFullHtml: finalCheckHasFullHtml,
+            hasStyleTag: finalCheckHasStyleTag,
+            hasContainer: finalCheckHasContainer,
+            hasHeader: finalCheckHasHeader,
+            hasContent: finalCheckHasContent,
+            contentLength: testContent.length
+        });
+        
+        // 不再進行強制修復，直接使用 replaceTemplateVariables 的結果
+        // 如果模板結構不完整，replaceTemplateVariables 會處理（與實際郵件一致）
+        if (false) { // 永遠不執行修復邏輯
             console.log('⚠️ 最終檢查：測試郵件仍缺少完整樣式或結構，強制修復...', {
                 finalCheckHasFullHtml,
                 finalCheckHasStyleTag,
@@ -5214,70 +5222,8 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             console.log('✅ 最終修復完成，測試郵件現在包含完整的圖卡樣式');
         }
         
-        // 在添加 footer 之前，再次驗證樣式完整性（確保 footer 不會破壞結構）
-        const preFooterCheckHasFullHtml = testContent.includes('<!DOCTYPE html>') || 
-                                         (testContent.includes('<html') && testContent.includes('</html>'));
-        const preFooterCheckHasStyleTag = testContent.includes('<style>') || testContent.includes('<style ');
-        const preFooterCheckHasContainer = testContent.includes('class="container') || testContent.includes("class='container");
-        const preFooterCheckHasHeader = testContent.includes('class="header') || testContent.includes("class='header");
-        const preFooterCheckHasContent = testContent.includes('class="content') || testContent.includes("class='content");
-        
-        if (!preFooterCheckHasFullHtml || !preFooterCheckHasStyleTag || 
-            !preFooterCheckHasContainer || !preFooterCheckHasHeader || !preFooterCheckHasContent) {
-            console.error('❌ 添加 footer 前檢查：測試郵件仍缺少完整結構，這不應該發生！', {
-                preFooterCheckHasFullHtml,
-                preFooterCheckHasStyleTag,
-                preFooterCheckHasContainer,
-                preFooterCheckHasHeader,
-                preFooterCheckHasContent
-            });
-            // 即使不應該發生，也要強制修復
-            const headerColor = key === 'payment_reminder' ? '#e74c3c' : 
-                               key === 'booking_confirmation' ? '#198754' : '#262A33';
-            const emergencyStyle = `
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: ${headerColor}; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${headerColor}; }
-        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
-        .info-label { font-weight: 600; color: #666; }
-        .info-value { color: #333; }
-        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
-    `;
-            
-            let emergencyBodyContent = testContent;
-            if (testContent.includes('<body>')) {
-                const bodyMatch = testContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-                if (bodyMatch && bodyMatch[1]) {
-                    emergencyBodyContent = bodyMatch[1]
-                        .replace(/<div[^>]*class\s*=\s*["']container["'][^>]*>/gi, '')
-                        .replace(/<div[^>]*class\s*=\s*["']header["'][^>]*>[\s\S]*?<\/div>/gi, '')
-                        .replace(/<div[^>]*class\s*=\s*["']content["'][^>]*>/gi, '')
-                        .replace(/<\/div>\s*<\/div>\s*$/i, '')
-                        .trim();
-                }
-            }
-            
-            testContent = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>${emergencyStyle}</style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🏨 ${template ? (template.template_name || template.name || '郵件') : '郵件'}</h1>
-        </div>
-        <div class="content">
-            ${emergencyBodyContent}
-        </div>
-    </div>
-</body>
-</html>`;
-            console.log('✅ 緊急修復完成，確保測試郵件包含完整的圖卡樣式');
-        }
+        // 不再進行額外的檢查和修復，直接使用 replaceTemplateVariables 的結果
+        // 這樣可以確保測試郵件和實際郵件完全一致
         
         // 不再自動添加旅館資訊 footer
         
