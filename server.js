@@ -6349,56 +6349,64 @@ app.get('/api/email-templates/:key/default', requireAuth, adminLimiter, async (r
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #e74c3c; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0; }
+        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
         h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
         h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
         h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
+        p { margin: 10px 0; font-size: 16px; line-height: 1.8; }
         strong { color: #333; }
         ul, ol { margin: 10px 0; padding-left: 30px; }
         li { margin: 5px 0; }
     </style>
 </head>
 <body>
-    <h1>⏰ 匯款期限提醒</h1>
-    
-    <p>親愛的 {{guestName}} 您好，</p>
-    <p>感謝您選擇我們的住宿服務！</p>
-    
-    <h2>⚠️ 重要提醒</h2>
-    <p>此訂房將為您保留 {{daysReserved}} 天，請於 <strong>{{paymentDeadline}}前</strong>完成匯款，逾期將自動取消訂房。</p>
-    
-    <h2>訂房資訊</h2>
-    <p><strong>訂房編號：</strong>{{bookingId}}</p>
-    <p><strong>入住日期：</strong>{{checkInDate}}</p>
-    <p><strong>退房日期：</strong>{{checkOutDate}}</p>
-    <p><strong>房型：</strong>{{roomType}}</p>
-    {{#if addonsList}}
-    <p><strong>加購商品：</strong>{{addonsList}}</p>
-    <p><strong>加購商品總額：</strong>NT$ {{addonsTotal}}</p>
-    {{/if}}
-    <p><strong>總金額：</strong>NT$ {{totalAmount}}</p>
-    {{#if hasDiscount}}
-    <p><strong style="color: #10b981;">優惠折扣：</strong><span style="color: #10b981;">-NT$ {{discountAmount}}</span></p>
-    <p><strong>折後總額：</strong>NT$ {{discountedTotal}}</p>
-    {{/if}}
-    <p><strong>應付金額：</strong>NT$ {{finalAmount}}</p>
-    
-    <h2>💰 匯款資訊</h2>
-    <p><strong>銀行：</strong>{{bankName}}{{bankBranchDisplay}}</p>
-    <p><strong>帳號：</strong>{{bankAccount}}</p>
-    <p><strong>戶名：</strong>{{accountName}}</p>
-    <p>請在匯款時備註訂房編號後5碼：<strong>{{bookingIdLast5}}</strong></p>
-    
-    {{#if isDeposit}}
-    <h2>💡 剩餘尾款</h2>
-    <p>剩餘尾款於現場付清！</p>
-    <p><strong>剩餘尾款：</strong>NT$ {{remainingAmount}}</p>
-    {{/if}}
-    
-    <p>如有任何問題，請隨時與我們聯繫。</p>
-    <p>感謝您的配合！</p>
-    
+    <div class="container">
+        <div class="header">
+            <h1>⏰ 匯款期限提醒</h1>
+        </div>
+        <div class="content">
+            <p>親愛的 {{guestName}} 您好，</p>
+            <p>感謝您選擇我們的住宿服務！</p>
+            
+            <h2>⚠️ 重要提醒</h2>
+            <p>此訂房將為您保留 {{daysReserved}} 天，請於 <strong>{{paymentDeadline}}前</strong>完成匯款，逾期將自動取消訂房。</p>
+            
+            <h2>訂房資訊</h2>
+            <p><strong>訂房編號：</strong>{{bookingId}}</p>
+            <p><strong>入住日期：</strong>{{checkInDate}}</p>
+            <p><strong>退房日期：</strong>{{checkOutDate}}</p>
+            <p><strong>房型：</strong>{{roomType}}</p>
+            {{#if addonsList}}
+            <p><strong>加購商品：</strong>{{addonsList}}</p>
+            <p><strong>加購商品總額：</strong>NT$ {{addonsTotal}}</p>
+            {{/if}}
+            <p><strong>總金額：</strong>NT$ {{totalAmount}}</p>
+            {{#if hasDiscount}}
+            <p><strong style="color: #10b981;">優惠折扣：</strong><span style="color: #10b981;">-NT$ {{discountAmount}}</span></p>
+            <p><strong>折後總額：</strong>NT$ {{discountedTotal}}</p>
+            {{/if}}
+            <p><strong>應付金額：</strong>NT$ {{finalAmount}}</p>
+            
+            <h2>💰 匯款資訊</h2>
+            <p><strong>銀行：</strong>{{bankName}}{{bankBranchDisplay}}</p>
+            <p><strong>帳號：</strong>{{bankAccount}}</p>
+            <p><strong>戶名：</strong>{{accountName}}</p>
+            <p>請在匯款時備註訂房編號後5碼：<strong>{{bookingIdLast5}}</strong></p>
+            
+            {{#if isDeposit}}
+            <h2>💡 剩餘尾款</h2>
+            <p>剩餘尾款於現場付清！</p>
+            <p><strong>剩餘尾款：</strong>NT$ {{remainingAmount}}</p>
+            {{/if}}
+            
+            <p>如有任何問題，請隨時與我們聯繫。</p>
+            <p>感謝您的配合！</p>
+        </div>
+    </div>
     {{hotelInfoFooter}}
 </body>
 </html>`
