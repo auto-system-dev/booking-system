@@ -646,7 +646,7 @@ async function initEmailTemplates() {
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
         .header { background: #e74c3c; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .header h1 { font-size: 28px; font-weight: bold; margin: 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0; text-align: center; }
         .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
         .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
         .info-box { background: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin: 25px 0; }

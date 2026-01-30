@@ -4992,7 +4992,7 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             addonsList: ['加床 x1 (NT$ 500)', '早餐券 x2 (NT$ 300)', '停車券 x1 (NT$ 200)', '加床 x2 (NT$ 1,000)'][randomInt(0, 3)],
             addonsTotal: randomAmount(200, 1500),
             paymentMethod: ['匯款轉帳', '線上刷卡', '現金'][randomInt(0, 2)],
-            paymentAmount: ['全額', '訂金 30%', '訂金 50%'][randomInt(0, 2)],
+            paymentAmount: ['全額 NT$ ' + randomAmount(2000, 8000), '訂金 NT$ ' + randomAmount(2000, 8000), '訂金 NT$ ' + randomAmount(2000, 8000)][randomInt(0, 2)],
             guestPhone: '09' + Array.from({length: 8}, () => randomInt(0, 9)).join(''),
             guestEmail: 'test' + randomInt(1000, 9999) + '@example.com',
             bookingDate: today.toLocaleDateString('zh-TW'),
@@ -5010,6 +5010,10 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         // 創建模擬的 booking 對象，用於 replaceTemplateVariables 函數
         const totalAmount = parseInt(testData.totalAmount.replace(/,/g, ''));
         
+        // 計算測試資料的剩餘尾款（如果是訂金，則計算剩餘尾款）
+        const testFinalAmount = parseInt(testData.finalAmount.replace(/,/g, ''));
+        const testRemainingAmount = testData.paymentAmount.includes('訂金') ? (totalAmount - testFinalAmount) : 0;
+        
         const mockBooking = {
             guest_name: testData.guestName,
             booking_id: testData.bookingId,
@@ -5018,9 +5022,10 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             room_type: testData.roomType,
             price_per_night: parseInt(testData.pricePerNight.replace(/,/g, '')),
             total_amount: totalAmount,
-            final_amount: parseInt(testData.finalAmount.replace(/,/g, '')),
-            remaining_amount: parseInt(testData.remainingAmount.replace(/,/g, '')),
+            final_amount: testFinalAmount,
+            remaining_amount: testRemainingAmount,
             payment_method: testData.paymentMethod,
+            payment_amount: testData.paymentAmount,
             payment_status: 'pending',
             guest_phone: testData.guestPhone,
             guest_email: testData.guestEmail,
