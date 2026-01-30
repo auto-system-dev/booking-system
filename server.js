@@ -1984,6 +1984,7 @@ async function generatePaymentReceivedEmail(booking) {
     </body>
     </html>
     `;
+    }
 }
 
 // 生成管理員通知郵件
