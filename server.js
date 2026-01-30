@@ -1326,6 +1326,28 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
                 // 確保 LINE Bot 設定是最新的（從資料庫重新載入）
                 await lineBot.loadSettings();
                 
+                // 計算折扣金額和折後總額
+                let discountAmount = 0;
+                let discountedTotal = totalAmount;
+                if (promoCode) {
+                    try {
+                        const promoCodeData = await db.getPromoCodeByCode(promoCode);
+                        if (promoCodeData) {
+                            if (promoCodeData.discount_type === 'fixed') {
+                                discountAmount = promoCodeData.discount_value;
+                            } else if (promoCodeData.discount_type === 'percent') {
+                                discountAmount = totalAmount * (promoCodeData.discount_value / 100);
+                                if (promoCodeData.max_discount && discountAmount > promoCodeData.max_discount) {
+                                    discountAmount = promoCodeData.max_discount;
+                                }
+                            }
+                            discountedTotal = Math.max(0, totalAmount - discountAmount);
+                        }
+                    } catch (promoError) {
+                        console.warn('⚠️  計算折扣金額失敗:', promoError.message);
+                    }
+                }
+                
                 console.log('📱 發送 LINE 訂房成功訊息（匯款轉帳）...');
                 const lineResult = await lineBot.sendBookingSuccessMessage(lineUserId, {
                     bookingId: bookingData.bookingId,
@@ -1333,6 +1355,9 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
                     checkInDate: bookingData.checkInDate,
                     checkOutDate: bookingData.checkOutDate,
                     roomType: bookingData.roomType,
+                    totalAmount: totalAmount,
+                    discountAmount: discountAmount,
+                    discountedTotal: discountedTotal,
                     finalAmount: bookingData.finalAmount,
                     isPaid: false // 匯款轉帳尚未付款
                 });
@@ -4358,6 +4383,11 @@ const handlePaymentResult = async (req, res) => {
                                 // 確保 LINE Bot 設定是最新的（從資料庫重新載入）
                                 await lineBot.loadSettings();
                                 
+                                // 計算折扣金額和折後總額（從資料庫讀取的 booking 可能已包含這些資訊）
+                                const originalAmount = booking.original_amount || booking.total_amount || 0;
+                                const discountAmount = booking.discount_amount || 0;
+                                const discountedTotal = discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : originalAmount;
+                                
                                 console.log('📱 付款成功，發送 LINE 訂房成功訊息...');
                                 const lineResult = await lineBot.sendBookingSuccessMessage(booking.line_user_id, {
                                     bookingId: booking.booking_id,
@@ -4365,6 +4395,9 @@ const handlePaymentResult = async (req, res) => {
                                     checkInDate: booking.check_in_date,
                                     checkOutDate: booking.check_out_date,
                                     roomType: booking.room_type,
+                                    totalAmount: originalAmount,
+                                    discountAmount: discountAmount,
+                                    discountedTotal: discountedTotal,
                                     finalAmount: booking.final_amount,
                                     isPaid: true // 已付款
                                 });

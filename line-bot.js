@@ -227,6 +227,67 @@ class LineBotService {
                                         contents: [
                                             {
                                                 type: 'text',
+                                                text: '總金額',
+                                                size: 'sm',
+                                                color: '#666666',
+                                                flex: 1
+                                            },
+                                            {
+                                                type: 'text',
+                                                text: `NT$ ${(bookingData.totalAmount || 0).toLocaleString()}`,
+                                                size: 'sm',
+                                                color: '#333333',
+                                                align: 'end'
+                                            }
+                                        ]
+                                    },
+                                    ...(bookingData.discountAmount && bookingData.discountAmount > 0 ? [{
+                                        type: 'box',
+                                        layout: 'horizontal',
+                                        contents: [
+                                            {
+                                                type: 'text',
+                                                text: '優惠折扣',
+                                                size: 'sm',
+                                                color: '#666666',
+                                                flex: 1
+                                            },
+                                            {
+                                                type: 'text',
+                                                text: `-NT$ ${Math.round(bookingData.discountAmount).toLocaleString()}`,
+                                                size: 'sm',
+                                                color: '#10b981',
+                                                align: 'end',
+                                                weight: 'bold'
+                                            }
+                                        ]
+                                    }, {
+                                        type: 'box',
+                                        layout: 'horizontal',
+                                        contents: [
+                                            {
+                                                type: 'text',
+                                                text: '折後總額',
+                                                size: 'sm',
+                                                color: '#666666',
+                                                flex: 1
+                                            },
+                                            {
+                                                type: 'text',
+                                                text: `NT$ ${Math.round(bookingData.discountedTotal || bookingData.totalAmount || 0).toLocaleString()}`,
+                                                size: 'sm',
+                                                color: '#333333',
+                                                align: 'end',
+                                                weight: 'bold'
+                                            }
+                                        ]
+                                    }] : []),
+                                    {
+                                        type: 'box',
+                                        layout: 'horizontal',
+                                        contents: [
+                                            {
+                                                type: 'text',
                                                 text: bookingData.isPaid ? '已付金額' : '應付金額',
                                                 size: 'sm',
                                                 color: '#666666',
@@ -234,7 +295,7 @@ class LineBotService {
                                             },
                                             {
                                                 type: 'text',
-                                                text: `NT$ ${bookingData.finalAmount || 0}`,
+                                                text: `NT$ ${(bookingData.finalAmount || 0).toLocaleString()}`,
                                                 size: 'sm',
                                                 color: '#FF6B6B',
                                                 align: 'end',
@@ -293,15 +354,24 @@ class LineBotService {
      */
     formatBookingTextMessage(bookingData) {
         const amountLabel = bookingData.isPaid ? '已付金額' : '應付金額';
-        return `✅ 訂房成功！
+        let message = `✅ 訂房成功！
 
 訂房編號：${bookingData.bookingId || 'N/A'}
 入住日期：${bookingData.checkInDate || 'N/A'}
 退房日期：${bookingData.checkOutDate || 'N/A'}
 房型：${bookingData.roomType || 'N/A'}
-${amountLabel}：NT$ ${bookingData.finalAmount || 0}
+總金額：NT$ ${(bookingData.totalAmount || 0).toLocaleString()}`;
+        
+        if (bookingData.discountAmount && bookingData.discountAmount > 0) {
+            message += `\n優惠折扣：-NT$ ${Math.round(bookingData.discountAmount).toLocaleString()}`;
+            message += `\n折後總額：NT$ ${Math.round(bookingData.discountedTotal || bookingData.totalAmount || 0).toLocaleString()}`;
+        }
+        
+        message += `\n${amountLabel}：NT$ ${(bookingData.finalAmount || 0).toLocaleString()}
 
 確認信已發送至您的 Email，請查收。`;
+        
+        return message;
     }
 
     /**
