@@ -1901,13 +1901,20 @@ async function generateCustomerEmail(data) {
     `;
 }
 
-// 生成收款確認郵件（匯款轉帳收到款項時）
+// 生成收款確認郵件（匯款轉帳收到款項時）- 使用模板系統
 async function generatePaymentReceivedEmail(booking) {
-    const hotelInfoFooter = await getHotelInfoFooter();
-    const checkInDate = new Date(booking.check_in_date);
-    const checkOutDate = new Date(booking.check_out_date);
-    
-    return `
+    try {
+        // 使用 payment_completed 模板
+        const { subject, content } = await generateEmailFromTemplate('payment_completed', booking);
+        return content;
+    } catch (error) {
+        console.error('⚠️ 無法從數據庫讀取付款完成確認模板，使用備用方案:', error.message);
+        // 備用方案：使用原來的硬編碼模板
+        const hotelInfoFooter = await getHotelInfoFooter();
+        const checkInDate = new Date(booking.check_in_date);
+        const checkOutDate = new Date(booking.check_out_date);
+        
+        return `
     <!DOCTYPE html>
     <html>
     <head>
@@ -3282,12 +3289,26 @@ app.put('/api/bookings/:bookingId', adminLimiter, async (req, res) => {
                             process.env.EMAIL_USER ||
                             'cheng701107@gmail.com';
                         
-                        const mailOptions = {
-                            from: emailUser,
-                            to: updatedBooking.guest_email,
-                            subject: '【收款確認】我們已收到您的款項',
-                            html: await generatePaymentReceivedEmail(updatedBooking)
-                        };
+                        // 使用模板系統生成郵件
+                        let mailOptions;
+                        try {
+                            const { subject, content } = await generateEmailFromTemplate('payment_completed', updatedBooking);
+                            mailOptions = {
+                                from: emailUser,
+                                to: updatedBooking.guest_email,
+                                subject: subject,
+                                html: content
+                            };
+                        } catch (templateError) {
+                            console.error('⚠️ 無法從數據庫讀取付款完成確認模板，使用備用方案:', templateError.message);
+                            // 備用方案：使用原來的函數
+                            mailOptions = {
+                                from: emailUser,
+                                to: updatedBooking.guest_email,
+                                subject: '【收款確認】我們已收到您的款項',
+                                html: await generatePaymentReceivedEmail(updatedBooking)
+                            };
+                        }
                         
                         let emailSent = false;
                         
@@ -6083,17 +6104,29 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
         .header { background: #198754; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #198754; }
-        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
-        .info-label { font-weight: 600; color: #666; }
-        .info-value { color: #333; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0; text-align: center; }
+        .header p { font-size: 18px; margin: 10px 0 0 0; opacity: 0.95; }
+        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #198754; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
+        .info-value strong { color: #333; font-weight: 700; }
+        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
+        .section-title:first-of-type { margin-top: 0; }
+        p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
+        .greeting { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+        .intro-text { font-size: 16px; color: #555; margin-bottom: 25px; }
+        strong { color: #333; font-weight: 700; }
+        .amount-highlight { background: #e8f5e9; border: 2px solid #198754; border-radius: 8px; padding: 18px; margin: 20px 0; }
+        .amount-label { font-size: 18px; font-weight: 600; color: #2e7d32; margin-bottom: 8px; }
+        .amount-value { font-size: 24px; font-weight: 700; color: #2e7d32; }
+        .success-box { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .success-box p { margin: 0; color: #2e7d32; font-weight: 600; font-size: 17px; }
     </style>
 </head>
 <body>
@@ -6103,11 +6136,11 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             <p>感謝您的付款！</p>
         </div>
         <div class="content">
-            <p>親愛的 {{guestName}}，</p>
-            <p>我們已確認收到您的付款，以下是您的訂房與付款資訊：</p>
+            <p class="greeting">親愛的 {{guestName}}，</p>
+            <p class="intro-text">我們已確認收到您的付款，以下是您的訂房與付款資訊：</p>
             
             <div class="info-box">
-                <h2 style="margin-top: 0;">訂房與付款資訊</h2>
+                <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">訂房與付款資訊</div>
                 <div class="info-row">
                     <span class="info-label">訂房編號</span>
                     <span class="info-value"><strong>{{bookingId}}</strong></span>
@@ -6126,22 +6159,38 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
                 </div>
                 <div class="info-row">
                     <span class="info-label">總金額</span>
-                    <span class="info-value"><strong>NT$ {{totalAmount}}</strong></span>
+                    <span class="info-value">NT$ {{totalAmount}}</span>
                 </div>
+                {{#if hasDiscount}}
                 <div class="info-row">
-                    <span class="info-label">本次已收金額</span>
-                    <span class="info-value"><strong>NT$ {{finalAmount}}</strong></span>
+                    <span class="info-label" style="color: #10b981;">優惠折扣</span>
+                    <span class="info-value" style="color: #10b981; font-weight: 600;">-NT$ {{discountAmount}}</span>
                 </div>
+                <div class="info-row" style="padding-top: 10px; border-top: 1px solid #e0e0e0;">
+                    <span class="info-label" style="font-size: 18px; color: #333; font-weight: 700;">折後總額</span>
+                    <span class="info-value" style="font-size: 20px; font-weight: 700; color: #198754;">NT$ {{discountedTotal}}</span>
+                </div>
+                {{/if}}
                 <div class="info-row" style="border-bottom: none;">
                     <span class="info-label">付款方式</span>
                     <span class="info-value">{{paymentMethod}}</span>
                 </div>
             </div>
             
+            <div class="amount-highlight">
+                <div class="amount-label">本次已收金額</div>
+                <div class="amount-value">NT$ {{finalAmount}}</div>
+            </div>
+            
+            <div class="success-box">
+                <p>✅ 付款已完成！</p>
+                <p style="margin-top: 10px; font-size: 14px; font-weight: 400;">感謝您的付款，訂房已確認完成。</p>
+            </div>
+            
             <p>若您後續仍需變更或取消訂房，請儘早與我們聯繫，我們將盡力協助您。</p>
             
-            <p>再次感謝您的預訂，期待您的光臨！</p>
-            <p style="text-align: center; margin-top: 30px; color: #666; font-size: 14px;">此為系統自動發送郵件，請勿直接回覆</p>
+            <p style="margin-top: 35px; font-size: 17px; font-weight: 500;">再次感謝您的預訂，期待您的光臨！</p>
+            <p style="text-align: center; margin-top: 30px; color: #666; font-size: 14px; padding-top: 20px; border-top: 1px solid #e0e0e0;">此為系統自動發送郵件，請勿直接回覆</p>
             
             {{hotelInfoFooter}}
         </div>
@@ -6856,38 +6905,97 @@ app.get('/api/email-templates/:key/default', requireAuth, adminLimiter, async (r
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #198754; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0; text-align: center; }
+        .header p { font-size: 18px; margin: 10px 0 0 0; opacity: 0.95; }
+        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #198754; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
+        .info-value strong { color: #333; font-weight: 700; }
+        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
+        .section-title:first-of-type { margin-top: 0; }
+        p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
+        .greeting { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+        .intro-text { font-size: 16px; color: #555; margin-bottom: 25px; }
+        strong { color: #333; font-weight: 700; }
+        .amount-highlight { background: #e8f5e9; border: 2px solid #198754; border-radius: 8px; padding: 18px; margin: 20px 0; }
+        .amount-label { font-size: 18px; font-weight: 600; color: #2e7d32; margin-bottom: 8px; }
+        .amount-value { font-size: 24px; font-weight: 700; color: #2e7d32; }
+        .success-box { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .success-box p { margin: 0; color: #2e7d32; font-weight: 600; font-size: 17px; }
     </style>
 </head>
 <body>
-    <h1>✅ 付款完成確認</h1>
-    <p>感謝您的付款！</p>
-    
-    <p>親愛的 {{guestName}}，</p>
-    <p>我們已確認收到您的付款，以下是您的訂房與付款資訊：</p>
-    
-    <h2>訂房與付款資訊</h2>
-    <p><strong>訂房編號：</strong>{{bookingId}}</p>
-    <p><strong>入住日期：</strong>{{checkInDate}}</p>
-    <p><strong>退房日期：</strong>{{checkOutDate}}</p>
-    <p><strong>房型：</strong>{{roomType}}</p>
-    <p><strong>總金額：</strong>NT$ {{totalAmount}}</p>
-    <p><strong>本次已收金額：</strong>NT$ {{finalAmount}}</p>
-    <p><strong>付款方式：</strong>{{paymentMethod}}</p>
-    
-    <p>若您後續仍需變更或取消訂房，請儘早與我們聯繫，我們將盡力協助您。</p>
-    
-    <p>再次感謝您的預訂，期待您的光臨！</p>
-    <p>此為系統自動發送郵件，請勿直接回覆</p>
-    
-    {{hotelInfoFooter}}
+    <div class="container">
+        <div class="header">
+            <h1>✅ 付款完成確認</h1>
+            <p>感謝您的付款！</p>
+        </div>
+        <div class="content">
+            <p class="greeting">親愛的 {{guestName}}，</p>
+            <p class="intro-text">我們已確認收到您的付款，以下是您的訂房與付款資訊：</p>
+            
+            <div class="info-box">
+                <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">訂房與付款資訊</div>
+                <div class="info-row">
+                    <span class="info-label">訂房編號</span>
+                    <span class="info-value"><strong>{{bookingId}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">入住日期</span>
+                    <span class="info-value">{{checkInDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">退房日期</span>
+                    <span class="info-value">{{checkOutDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">房型</span>
+                    <span class="info-value">{{roomType}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">總金額</span>
+                    <span class="info-value">NT$ {{totalAmount}}</span>
+                </div>
+                {{#if hasDiscount}}
+                <div class="info-row">
+                    <span class="info-label" style="color: #10b981;">優惠折扣</span>
+                    <span class="info-value" style="color: #10b981; font-weight: 600;">-NT$ {{discountAmount}}</span>
+                </div>
+                <div class="info-row" style="padding-top: 10px; border-top: 1px solid #e0e0e0;">
+                    <span class="info-label" style="font-size: 18px; color: #333; font-weight: 700;">折後總額</span>
+                    <span class="info-value" style="font-size: 20px; font-weight: 700; color: #198754;">NT$ {{discountedTotal}}</span>
+                </div>
+                {{/if}}
+                <div class="info-row" style="border-bottom: none;">
+                    <span class="info-label">付款方式</span>
+                    <span class="info-value">{{paymentMethod}}</span>
+                </div>
+            </div>
+            
+            <div class="amount-highlight">
+                <div class="amount-label">本次已收金額</div>
+                <div class="amount-value">NT$ {{finalAmount}}</div>
+            </div>
+            
+            <div class="success-box">
+                <p>✅ 付款已完成！</p>
+                <p style="margin-top: 10px; font-size: 14px; font-weight: 400;">感謝您的付款，訂房已確認完成。</p>
+            </div>
+            
+            <p>若您後續仍需變更或取消訂房，請儘早與我們聯繫，我們將盡力協助您。</p>
+            
+            <p style="margin-top: 35px; font-size: 17px; font-weight: 500;">再次感謝您的預訂，期待您的光臨！</p>
+            <p style="text-align: center; margin-top: 30px; color: #666; font-size: 14px; padding-top: 20px; border-top: 1px solid #e0e0e0;">此為系統自動發送郵件，請勿直接回覆</p>
+            
+            {{hotelInfoFooter}}
+        </div>
+    </div>
 </body>
 </html>`
             },
