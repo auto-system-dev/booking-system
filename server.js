@@ -5008,10 +5008,7 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         // 這裡不需要再次設置，因為已經在 useEditorContent 分支中處理過了
         
         // 創建模擬的 booking 對象，用於 replaceTemplateVariables 函數
-        // 計算折扣相關資料（模擬有折扣的情況）
-        const originalAmount = parseInt(testData.totalAmount.replace(/,/g, ''));
-        const discountAmount = randomInt(100, 1000); // 隨機折扣金額
-        const discountedTotal = Math.max(0, originalAmount - discountAmount);
+        const totalAmount = parseInt(testData.totalAmount.replace(/,/g, ''));
         
         const mockBooking = {
             guest_name: testData.guestName,
@@ -5020,9 +5017,7 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             check_out_date: checkOutDate.toISOString().split('T')[0],
             room_type: testData.roomType,
             price_per_night: parseInt(testData.pricePerNight.replace(/,/g, '')),
-            total_amount: originalAmount,
-            original_amount: originalAmount,
-            discount_amount: discountAmount,
+            total_amount: totalAmount,
             final_amount: parseInt(testData.finalAmount.replace(/,/g, '')),
             remaining_amount: parseInt(testData.remainingAmount.replace(/,/g, '')),
             payment_method: testData.paymentMethod,
@@ -5707,16 +5702,6 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
                     <span class="info-label">總金額</span>
                     <span class="info-value"><strong>NT$ {{totalAmount}}</strong></span>
                 </div>
-                {{#if hasDiscount}}
-                <div class="info-row">
-                    <span class="info-label">優惠折扣</span>
-                    <span class="info-value" style="color: #10b981; font-weight: 600;"><strong>-NT$ {{discountAmount}}</strong></span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">折後總額</span>
-                    <span class="info-value"><strong>NT$ {{discountedTotal}}</strong></span>
-                </div>
-                {{/if}}
                 <div class="info-row" style="border-bottom: none;">
                     <span class="info-label">應付金額</span>
                     <span class="info-value"><strong>NT$ {{finalAmount}}</strong></span>
@@ -6262,16 +6247,6 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
                     <span class="info-label" style="font-size: 18px; color: #333;">總金額</span>
                     <span class="info-value" style="font-size: 20px; font-weight: 700;">NT$ {{totalAmount}}</span>
                 </div>
-                {{#if hasDiscount}}
-                <div class="info-row">
-                    <span class="info-label">優惠折扣</span>
-                    <span class="info-value" style="color: #10b981; font-weight: 600;">-NT$ {{discountAmount}}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label" style="font-weight: 700;">折後總額</span>
-                    <span class="info-value" style="font-size: 18px; font-weight: 700;">NT$ {{discountedTotal}}</span>
-                </div>
-                {{/if}}
                 <div class="info-row">
                     <span class="info-label">支付方式</span>
                     <span class="info-value">{{paymentAmount}} - {{paymentMethod}}</span>
@@ -6361,16 +6336,6 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
                     <span class="info-label">總金額</span>
                     <span class="info-value"><strong>NT$ {{totalAmount}}</strong></span>
                 </div>
-                {{#if hasDiscount}}
-                <div class="info-row">
-                    <span class="info-label">優惠折扣</span>
-                    <span class="info-value" style="color: #10b981; font-weight: 600;"><strong>-NT$ {{discountAmount}}</strong></span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">折後總額</span>
-                    <span class="info-value"><strong>NT$ {{discountedTotal}}</strong></span>
-                </div>
-                {{/if}}
                 <div class="info-row">
                     <span class="info-label">本次已收金額</span>
                     <span class="info-value"><strong>NT$ {{finalAmount}}</strong></span>
@@ -6850,16 +6815,6 @@ app.get('/api/email-templates/:key/default', requireAuth, adminLimiter, async (r
                     <span class="info-label" style="font-size: 18px; color: #333;">總金額</span>
                     <span class="info-value" style="font-size: 20px; font-weight: 700;">NT$ {{totalAmount}}</span>
                 </div>
-                {{#if hasDiscount}}
-                <div class="info-row">
-                    <span class="info-label">優惠折扣</span>
-                    <span class="info-value" style="color: #10b981; font-weight: 600;">-NT$ {{discountAmount}}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label" style="font-weight: 700;">折後總額</span>
-                    <span class="info-value" style="font-size: 18px; font-weight: 700;">NT$ {{discountedTotal}}</span>
-                </div>
-                {{/if}}
                 <div class="info-row">
                     <span class="info-label">支付方式</span>
                     <span class="info-value">{{paymentAmount}} - {{paymentMethod}}</span>
