@@ -5042,13 +5042,22 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             ...(testData.hotelPhone ? { '{{hotelPhone}}': testData.hotelPhone } : {})
         };
         
+        // 準備測試用的 bankInfo（與實際發送時一致）
+        const testBankInfo = {
+            bankName: await db.getSetting('bank_name') || testData.bankName,
+            bankBranch: await db.getSetting('bank_branch') || testData.bankBranch,
+            account: await db.getSetting('bank_account') || testData.bankAccount,
+            accountName: await db.getSetting('account_name') || testData.accountName
+        };
+        
         // 使用與實際發送相同的 replaceTemplateVariables 函數
         // 這確保測試郵件與實際發送的郵件完全一致
         // 直接使用資料庫中的完整 HTML 模板內容
         let testContent, testSubject;
         try {
             // 確保使用資料庫中的完整 HTML 模板內容
-            const testResult = await replaceTemplateVariables(template, mockBooking, null, additionalData);
+            // 傳入 bankInfo 以確保匯款資訊區塊能正確顯示（與實際郵件一致）
+            const testResult = await replaceTemplateVariables(template, mockBooking, testBankInfo, additionalData);
             testContent = testResult.content;
             testSubject = testResult.subject;
             console.log('✅ 使用 replaceTemplateVariables 函數生成測試郵件（使用資料庫中的完整 HTML 模板）');
