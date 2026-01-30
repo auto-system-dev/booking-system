@@ -7960,13 +7960,19 @@ ${htmlEnd}`;
     }
     
     // 重新檢查內容（可能在上面已經修復了）
+    // 檢查是否已經有完整的圖卡樣式結構（container、header、content）
+    const hasCardStructure = content.includes('class="container') || content.includes("class='container") ||
+                             content.includes('class="header') || content.includes("class='header") ||
+                             content.includes('class="content') || content.includes("class='content");
+    
     const stillMissingStructure = !content.includes('<!DOCTYPE html>') && 
                                   !(content.includes('<html') && content.includes('</html>'));
     const stillMissingStyle = !content.includes('<style>') && !content.includes('<style ');
     const stillMissingBody = !content.includes('<body>') && !content.includes('<body ');
     
-    // 如果仍然缺少完整結構，使用基本樣式（非入住提醒郵件，或讀取失敗的情況）
-    if (stillMissingStructure || stillMissingStyle || stillMissingBody) {
+    // 如果模板已經有完整的圖卡樣式結構，不要進行任何修復，直接使用
+    // 只有在缺少基本結構且沒有圖卡樣式時才進行修復
+    if (!hasCardStructure && (stillMissingStructure || stillMissingStyle || stillMissingBody)) {
         console.log('⚠️ 郵件模板缺少基本 HTML 結構或樣式，自動修復中...', {
             templateKey,
             stillMissingStructure,

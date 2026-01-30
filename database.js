@@ -1445,10 +1445,23 @@ async function initEmailTemplates() {
                 }
             }
             
-            // 對於入住提醒模板，強制更新以確保使用最新格式
+            // 對於入住提醒和匯款提醒模板，強制更新以確保使用最新格式
             const forceUpdateCheckinReminder = template.key === 'checkin_reminder';
+            const forceUpdatePaymentReminder = template.key === 'payment_reminder';
             
-            if (!existing || !existing.content || existing.content.trim() === '' || existing.template_name !== template.name || isContentTooShort || needsUpdateForHtmlStructure || forceUpdateCheckinReminder) {
+            // 檢查匯款提醒模板是否需要更新（檢查是否缺少圖卡樣式結構）
+            let needsUpdateForPaymentReminder = false;
+            if (template.key === 'payment_reminder' && existing && existing.content && existing.content.trim() !== '') {
+                const hasCardStructure = existing.content.includes('class="container') || existing.content.includes("class='container") ||
+                                         existing.content.includes('class="header') || existing.content.includes("class='header") ||
+                                         existing.content.includes('class="content') || existing.content.includes("class='content");
+                if (!hasCardStructure) {
+                    needsUpdateForPaymentReminder = true;
+                    console.log(`⚠️ 匯款提醒模板缺少圖卡樣式結構，需要更新`);
+                }
+            }
+            
+            if (!existing || !existing.content || existing.content.trim() === '' || existing.template_name !== template.name || isContentTooShort || needsUpdateForHtmlStructure || forceUpdateCheckinReminder || forceUpdatePaymentReminder || needsUpdateForPaymentReminder) {
                 if (usePostgreSQL) {
                     await query(
                         `INSERT INTO email_templates (template_key, template_name, subject, content, is_enabled, days_before_checkin, send_hour_checkin, days_after_checkout, send_hour_feedback, days_reserved, send_hour_payment_reminder)
