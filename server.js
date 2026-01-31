@@ -5914,6 +5914,10 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             <div class="info-box">
                 <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">訂房資訊</div>
                 <div class="info-row">
+                    <span class="info-label">訂房時間</span>
+                    <span class="info-value">{{bookingDate}}</span>
+                </div>
+                <div class="info-row">
                     <span class="info-label">訂房編號</span>
                     <span class="info-value"><strong>{{bookingId}}</strong></span>
                 </div>
@@ -6066,6 +6070,10 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             <div class="info-box">
                 <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">訂房資訊</div>
                 <div class="info-row">
+                    <span class="info-label">訂房時間</span>
+                    <span class="info-value">{{bookingDate}}</span>
+                </div>
+                <div class="info-row">
                     <span class="info-label">訂房編號</span>
                     <span class="info-value"><strong>{{bookingId}}</strong></span>
                 </div>
@@ -6103,13 +6111,19 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
                     <span class="info-label" style="font-size: 18px; color: #333;">總金額</span>
                     <span class="info-value" style="font-size: 20px; font-weight: 700;">NT$ {{totalAmount}}</span>
                 </div>
+                {{#if hasDiscount}}
                 <div class="info-row">
+                    <span class="info-label" style="color: #10b981;">優惠折扣</span>
+                    <span class="info-value" style="color: #10b981; font-weight: 600;">-NT$ {{discountAmount}}</span>
+                </div>
+                <div class="info-row" style="padding-top: 10px; border-top: 1px solid #e0e0e0;">
+                    <span class="info-label" style="font-size: 18px; color: #333; font-weight: 700;">折後總額</span>
+                    <span class="info-value" style="font-size: 20px; font-weight: 700; color: #c62828;">NT$ {{discountedTotal}}</span>
+                </div>
+                {{/if}}
+                <div class="info-row" style="border-bottom: none;">
                     <span class="info-label">支付方式</span>
                     <span class="info-value">{{paymentAmount}} - {{paymentMethod}}</span>
-                </div>
-                <div class="info-row" style="border-bottom: none;">
-                    <span class="info-label">訂房時間</span>
-                    <span class="info-value">{{bookingDate}}</span>
                 </div>
             </div>
 
@@ -6715,6 +6729,10 @@ app.get('/api/email-templates/:key/default', requireAuth, adminLimiter, async (r
             <div class="info-box">
                 <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">訂房資訊</div>
                 <div class="info-row">
+                    <span class="info-label">訂房時間</span>
+                    <span class="info-value">{{bookingDate}}</span>
+                </div>
+                <div class="info-row">
                     <span class="info-label">訂房編號</span>
                     <span class="info-value"><strong>{{bookingId}}</strong></span>
                 </div>
@@ -6867,6 +6885,10 @@ app.get('/api/email-templates/:key/default', requireAuth, adminLimiter, async (r
             <div class="info-box">
                 <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">訂房資訊</div>
                 <div class="info-row">
+                    <span class="info-label">訂房時間</span>
+                    <span class="info-value">{{bookingDate}}</span>
+                </div>
+                <div class="info-row">
                     <span class="info-label">訂房編號</span>
                     <span class="info-value"><strong>{{bookingId}}</strong></span>
                 </div>
@@ -6904,13 +6926,19 @@ app.get('/api/email-templates/:key/default', requireAuth, adminLimiter, async (r
                     <span class="info-label" style="font-size: 18px; color: #333;">總金額</span>
                     <span class="info-value" style="font-size: 20px; font-weight: 700;">NT$ {{totalAmount}}</span>
                 </div>
+                {{#if hasDiscount}}
                 <div class="info-row">
+                    <span class="info-label" style="color: #10b981;">優惠折扣</span>
+                    <span class="info-value" style="color: #10b981; font-weight: 600;">-NT$ {{discountAmount}}</span>
+                </div>
+                <div class="info-row" style="padding-top: 10px; border-top: 1px solid #e0e0e0;">
+                    <span class="info-label" style="font-size: 18px; color: #333; font-weight: 700;">折後總額</span>
+                    <span class="info-value" style="font-size: 20px; font-weight: 700; color: #c62828;">NT$ {{discountedTotal}}</span>
+                </div>
+                {{/if}}
+                <div class="info-row" style="border-bottom: none;">
                     <span class="info-label">支付方式</span>
                     <span class="info-value">{{paymentAmount}} - {{paymentMethod}}</span>
-                </div>
-                <div class="info-row" style="border-bottom: none;">
-                    <span class="info-label">訂房時間</span>
-                    <span class="info-value">{{bookingDate}}</span>
                 </div>
             </div>
 

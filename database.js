@@ -1189,6 +1189,10 @@ async function initEmailTemplates() {
             <div class="info-box">
                 <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">訂房資訊</div>
                 <div class="info-row">
+                    <span class="info-label">訂房時間</span>
+                    <span class="info-value">{{bookingDate}}</span>
+                </div>
+                <div class="info-row">
                     <span class="info-label">訂房編號</span>
                     <span class="info-value"><strong>{{bookingId}}</strong></span>
                 </div>
@@ -1236,13 +1240,9 @@ async function initEmailTemplates() {
                     <span class="info-value" style="font-size: 20px; font-weight: 700; color: #c62828;">NT$ {{discountedTotal}}</span>
                 </div>
                 {{/if}}
-                <div class="info-row">
+                <div class="info-row" style="border-bottom: none;">
                     <span class="info-label">支付方式</span>
                     <span class="info-value">{{paymentAmount}} - {{paymentMethod}}</span>
-                </div>
-                <div class="info-row" style="border-bottom: none;">
-                    <span class="info-label">訂房時間</span>
-                    <span class="info-value">{{bookingDate}}</span>
                 </div>
             </div>
 
@@ -1281,97 +1281,42 @@ async function initEmailTemplates() {
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #198754; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .header h1 { font-size: 28px; font-weight: bold; margin: 0; text-align: center; }
-        .header p { font-size: 18px; margin: 10px 0 0 0; opacity: 0.95; }
-        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #198754; }
-        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
-        .info-row:last-child { border-bottom: none; }
-        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
-        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
-        .info-value strong { color: #333; font-weight: 700; }
-        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
-        .section-title:first-of-type { margin-top: 0; }
-        p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
-        .greeting { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
-        .intro-text { font-size: 16px; color: #555; margin-bottom: 25px; }
-        strong { color: #333; font-weight: 700; }
-        .amount-highlight { background: #e8f5e9; border: 2px solid #198754; border-radius: 8px; padding: 18px; margin: 20px 0; }
-        .amount-label { font-size: 18px; font-weight: 600; color: #2e7d32; margin-bottom: 8px; }
-        .amount-value { font-size: 24px; font-weight: 700; color: #2e7d32; }
-        .success-box { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .success-box p { margin: 0; color: #2e7d32; font-weight: 600; font-size: 17px; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
+        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
+        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
+        p { margin: 10px 0; }
+        strong { color: #333; }
+        ul, ol { margin: 10px 0; padding-left: 30px; }
+        li { margin: 5px 0; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>✅ 付款完成確認</h1>
-            <p>感謝您的付款！</p>
-        </div>
-        <div class="content">
-            <p class="greeting">親愛的 {{guestName}}，</p>
-            <p class="intro-text">我們已確認收到您的付款，以下是您的訂房與付款資訊：</p>
-            
-            <div class="info-box">
-                <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">訂房與付款資訊</div>
-                <div class="info-row">
-                    <span class="info-label">訂房編號</span>
-                    <span class="info-value"><strong>{{bookingId}}</strong></span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">入住日期</span>
-                    <span class="info-value">{{checkInDate}}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">退房日期</span>
-                    <span class="info-value">{{checkOutDate}}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">房型</span>
-                    <span class="info-value">{{roomType}}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">總金額</span>
-                    <span class="info-value">NT$ {{totalAmount}}</span>
-                </div>
-                {{#if hasDiscount}}
-                <div class="info-row">
-                    <span class="info-label" style="color: #10b981;">優惠折扣</span>
-                    <span class="info-value" style="color: #10b981; font-weight: 600;">-NT$ {{discountAmount}}</span>
-                </div>
-                <div class="info-row" style="padding-top: 10px; border-top: 1px solid #e0e0e0;">
-                    <span class="info-label" style="font-size: 18px; color: #333; font-weight: 700;">折後總額</span>
-                    <span class="info-value" style="font-size: 20px; font-weight: 700; color: #198754;">NT$ {{discountedTotal}}</span>
-                </div>
-                {{/if}}
-                <div class="info-row" style="border-bottom: none;">
-                    <span class="info-label">付款方式</span>
-                    <span class="info-value">{{paymentMethod}}</span>
-                </div>
-            </div>
-            
-            <div class="amount-highlight">
-                <div class="amount-label">本次已收金額</div>
-                <div class="amount-value">NT$ {{finalAmount}}</div>
-            </div>
-            
-            <div class="success-box">
-                <p>✅ 付款已完成！</p>
-                <p style="margin-top: 10px; font-size: 14px; font-weight: 400;">感謝您的付款，訂房已確認完成。</p>
-            </div>
-            
-            <p>若您後續仍需變更或取消訂房，請儘早與我們聯繫，我們將盡力協助您。</p>
-            
-            <p style="margin-top: 35px; font-size: 17px; font-weight: 500;">再次感謝您的預訂，期待您的光臨！</p>
-            <p style="text-align: center; margin-top: 30px; color: #666; font-size: 14px; padding-top: 20px; border-top: 1px solid #e0e0e0;">此為系統自動發送郵件，請勿直接回覆</p>
-            
-            {{hotelInfoFooter}}
-        </div>
-    </div>
+    <h1>✅ 付款完成確認</h1>
+    <p>感謝您的付款！</p>
+    
+    <p>親愛的 {{guestName}}，</p>
+    <p>我們已確認收到您的付款，以下是您的訂房與付款資訊：</p>
+    
+    <h2>訂房與付款資訊</h2>
+    <p><strong>訂房編號：</strong>{{bookingId}}</p>
+    <p><strong>入住日期：</strong>{{checkInDate}}</p>
+    <p><strong>退房日期：</strong>{{checkOutDate}}</p>
+    <p><strong>房型：</strong>{{roomType}}</p>
+    <p><strong>總金額：</strong>NT$ {{totalAmount}}</p>
+    {{#if hasDiscount}}
+    <p><strong style="color: #10b981;">優惠折扣：</strong><span style="color: #10b981;">-NT$ {{discountAmount}}</span></p>
+    <p><strong>折後總額：</strong>NT$ {{discountedTotal}}</p>
+    {{/if}}
+    <p><strong>本次已收金額：</strong>NT$ {{finalAmount}}</p>
+    <p><strong>付款方式：</strong>{{paymentMethod}}</p>
+    
+    <p>若您後續仍需變更或取消訂房，請儘早與我們聯繫，我們將盡力協助您。</p>
+    
+    <p>再次感謝您的預訂，期待您的光臨！</p>
+    <p>此為系統自動發送郵件，請勿直接回覆</p>
+    
+    {{hotelInfoFooter}}
 </body>
 </html>`,
             enabled: 1
@@ -1467,10 +1412,9 @@ async function initEmailTemplates() {
                 }
             }
             
-            // 對於入住提醒、匯款提醒和付款完成確認模板，強制更新以確保使用最新格式
+            // 對於入住提醒和匯款提醒模板，強制更新以確保使用最新格式
             const forceUpdateCheckinReminder = template.key === 'checkin_reminder';
             const forceUpdatePaymentReminder = template.key === 'payment_reminder';
-            const forceUpdatePaymentCompleted = template.key === 'payment_completed';
             
             // 檢查匯款提醒模板是否需要更新（檢查是否缺少圖卡樣式結構）
             let needsUpdateForPaymentReminder = false;
@@ -1484,19 +1428,7 @@ async function initEmailTemplates() {
                 }
             }
             
-            // 檢查付款完成確認模板是否需要更新（檢查是否缺少圖卡樣式結構）
-            let needsUpdateForPaymentCompleted = false;
-            if (template.key === 'payment_completed' && existing && existing.content && existing.content.trim() !== '') {
-                const hasCardStructure = existing.content.includes('class="container') || existing.content.includes("class='container") ||
-                                         existing.content.includes('class="header') || existing.content.includes("class='header") ||
-                                         existing.content.includes('class="content') || existing.content.includes("class='content");
-                if (!hasCardStructure) {
-                    needsUpdateForPaymentCompleted = true;
-                    console.log(`⚠️ 付款完成確認模板缺少圖卡樣式結構，需要更新`);
-                }
-            }
-            
-            if (!existing || !existing.content || existing.content.trim() === '' || existing.template_name !== template.name || isContentTooShort || needsUpdateForHtmlStructure || forceUpdateCheckinReminder || forceUpdatePaymentReminder || needsUpdateForPaymentReminder || forceUpdatePaymentCompleted || needsUpdateForPaymentCompleted) {
+            if (!existing || !existing.content || existing.content.trim() === '' || existing.template_name !== template.name || isContentTooShort || needsUpdateForHtmlStructure || forceUpdateCheckinReminder || forceUpdatePaymentReminder || needsUpdateForPaymentReminder) {
                 if (usePostgreSQL) {
                     await query(
                         `INSERT INTO email_templates (template_key, template_name, subject, content, is_enabled, days_before_checkin, send_hour_checkin, days_after_checkout, send_hour_feedback, days_reserved, send_hour_payment_reminder)
