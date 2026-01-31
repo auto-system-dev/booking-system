@@ -5154,22 +5154,29 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             accountName: await db.getSetting('account_name') || testData.accountName
         };
         
-        // 使用與實際發送相同的 replaceTemplateVariables 函數
+        // 使用與實際發送相同的 generateEmailFromTemplate 函數（與訂房確認邏輯一致）
         // 這確保測試郵件與實際發送的郵件完全一致
-        // 直接使用資料庫中的完整 HTML 模板內容
         let testContent, testSubject;
         try {
-            // 確保使用資料庫中的完整 HTML 模板內容
-            // 傳入 bankInfo 以確保匯款資訊區塊能正確顯示（與實際郵件一致）
-            const testResult = await replaceTemplateVariables(template, mockBooking, testBankInfo, additionalData);
+            // 優先使用 generateEmailFromTemplate（與實際發送邏輯一致）
+            const testResult = await generateEmailFromTemplate(key, mockBooking, testBankInfo, additionalData);
             testContent = testResult.content;
             testSubject = testResult.subject;
-            console.log('✅ 使用 replaceTemplateVariables 函數生成測試郵件（使用資料庫中的完整 HTML 模板）');
+            console.log('✅ 使用 generateEmailFromTemplate 函數生成測試郵件（與實際發送邏輯一致）');
             console.log(`   模板內容長度: ${template.content.length} 字元`);
             console.log(`   處理後內容長度: ${testContent.length} 字元`);
-        } catch (error) {
-            console.error('❌ 使用 replaceTemplateVariables 失敗:', error);
-            throw error; // 不再回退，直接拋出錯誤，確保使用完整的模板
+        } catch (templateError) {
+            console.error('⚠️ 使用 generateEmailFromTemplate 失敗，使用備用方案:', templateError.message);
+            // 備用方案：使用 replaceTemplateVariables（與實際發送邏輯一致）
+            try {
+                const testResult = await replaceTemplateVariables(template, mockBooking, testBankInfo, additionalData);
+                testContent = testResult.content;
+                testSubject = testResult.subject;
+                console.log('✅ 使用 replaceTemplateVariables 函數生成測試郵件（備用方案）');
+            } catch (error) {
+                console.error('❌ 使用 replaceTemplateVariables 也失敗:', error);
+                throw error;
+            }
         }
         
         // 確保測試郵件使用資料庫中的完整 HTML 模板內容
@@ -5648,20 +5655,21 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #2196f3; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; width: 100%; }
+        .header { background: #2196f3; color: white; padding: 30px 20px; text-align: center; border-radius: 0; }
         .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
         .header p { font-size: 18px; margin: 0; opacity: 0.95; }
-        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #2196f3; }
-        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .content { background: #ffffff; padding: 30px 20px; border-radius: 0; }
+        .info-box { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #2196f3; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
         .info-row:last-child { border-bottom: none; }
-        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
-        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; flex: 0 0 auto; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; flex: 1 1 auto; word-break: break-word; }
         .info-value strong { color: #333; font-weight: 700; }
-        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
+        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .section-title:first-of-type { margin-top: 0; }
         p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
         .greeting { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
@@ -5672,6 +5680,29 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
         .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
         .info-section { background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; padding: 20px; margin: 25px 0; }
         .info-section-title { font-size: 20px; font-weight: bold; color: #1976d2; margin: 0 0 15px 0; }
+        .section-content { font-size: 16px; line-height: 1.8; }
+        
+        /* 手機響應式設計 */
+        @media only screen and (max-width: 600px) {
+            .container { padding: 0; }
+            .header { padding: 25px 15px; }
+            .header h1 { font-size: 24px; }
+            .header p { font-size: 16px; }
+            .content { padding: 20px 15px; }
+            .info-box { padding: 15px; margin: 20px 0; }
+            .info-row { flex-direction: column; align-items: flex-start; padding: 10px 0; }
+            .info-label { min-width: auto; width: 100%; margin-bottom: 5px; font-size: 14px; }
+            .info-value { text-align: left; width: 100%; font-size: 15px; }
+            .section-title { font-size: 20px; margin: 25px 0 15px 0; }
+            p { font-size: 15px; }
+            .greeting { font-size: 17px; }
+            .intro-text { font-size: 15px; margin-bottom: 20px; }
+            ul { padding-left: 25px; }
+            li { font-size: 15px; }
+            .highlight-box { padding: 15px; margin: 20px 0; }
+            .info-section { padding: 15px; margin: 20px 0; }
+            .info-section-title { font-size: 18px; }
+        }
     </style>
 </head>
 <body>
@@ -7331,20 +7362,21 @@ app.post('/api/email-templates/checkin_reminder/regenerate', requireAuth, adminL
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #2196f3; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; width: 100%; }
+        .header { background: #2196f3; color: white; padding: 30px 20px; text-align: center; border-radius: 0; }
         .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
         .header p { font-size: 18px; margin: 0; opacity: 0.95; }
-        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #2196f3; }
-        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .content { background: #ffffff; padding: 30px 20px; border-radius: 0; }
+        .info-box { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #2196f3; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
         .info-row:last-child { border-bottom: none; }
-        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
-        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; flex: 0 0 auto; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; flex: 1 1 auto; word-break: break-word; }
         .info-value strong { color: #333; font-weight: 700; }
-        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
+        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .section-title:first-of-type { margin-top: 0; }
         p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
         .greeting { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
@@ -7355,6 +7387,29 @@ app.post('/api/email-templates/checkin_reminder/regenerate', requireAuth, adminL
         .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
         .info-section { background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; padding: 20px; margin: 25px 0; }
         .info-section-title { font-size: 20px; font-weight: bold; color: #1976d2; margin: 0 0 15px 0; }
+        .section-content { font-size: 16px; line-height: 1.8; }
+        
+        /* 手機響應式設計 */
+        @media only screen and (max-width: 600px) {
+            .container { padding: 0; }
+            .header { padding: 25px 15px; }
+            .header h1 { font-size: 24px; }
+            .header p { font-size: 16px; }
+            .content { padding: 20px 15px; }
+            .info-box { padding: 15px; margin: 20px 0; }
+            .info-row { flex-direction: column; align-items: flex-start; padding: 10px 0; }
+            .info-label { min-width: auto; width: 100%; margin-bottom: 5px; font-size: 14px; }
+            .info-value { text-align: left; width: 100%; font-size: 15px; }
+            .section-title { font-size: 20px; margin: 25px 0 15px 0; }
+            p { font-size: 15px; }
+            .greeting { font-size: 17px; }
+            .intro-text { font-size: 15px; margin-bottom: 20px; }
+            ul { padding-left: 25px; }
+            li { font-size: 15px; }
+            .highlight-box { padding: 15px; margin: 20px 0; }
+            .info-section { padding: 15px; margin: 20px 0; }
+            .info-section-title { font-size: 18px; }
+        }
     </style>
 </head>
 <body>
@@ -9006,14 +9061,27 @@ async function sendPaymentReminderEmails() {
         
         for (const booking of bookings) {
             try {
-                const { subject, content } = await replaceTemplateVariables(template, booking, bankInfo);
-                
-                const mailOptions = {
-                    from: emailUser,
-                    to: booking.guest_email,
-                    subject: subject,
-                    html: content
-                };
+                // 使用數據庫模板生成郵件（與訂房確認邏輯一致）
+                let mailOptions = null;
+                try {
+                    const { subject, content } = await generateEmailFromTemplate('payment_reminder', booking, bankInfo);
+                    mailOptions = {
+                        from: emailUser,
+                        to: booking.guest_email,
+                        subject: subject,
+                        html: content
+                    };
+                } catch (templateError) {
+                    console.error('⚠️ 無法從數據庫讀取匯款提醒模板，使用備用方案:', templateError.message);
+                    // 備用方案：使用 replaceTemplateVariables
+                    const { subject, content } = await replaceTemplateVariables(template, booking, bankInfo);
+                    mailOptions = {
+                        from: emailUser,
+                        to: booking.guest_email,
+                        subject: subject,
+                        html: content
+                    };
+                }
                 
                 let emailSent = false;
                 
@@ -9302,21 +9370,33 @@ async function sendCheckinReminderEmails() {
                     ...(hotelPhone ? { '{{hotelPhone}}': hotelPhone } : {})
                 };
                 
-                // 使用資料庫中保存的完整模板內容生成郵件
-                const { subject, content } = await replaceTemplateVariables(template, booking, null, additionalData);
+                // 使用數據庫模板生成郵件（與訂房確認邏輯一致）
+                let mailOptions = null;
+                try {
+                    const { subject, content } = await generateEmailFromTemplate('checkin_reminder', booking, null, additionalData);
+                    mailOptions = {
+                        from: emailUser,
+                        to: booking.guest_email,
+                        subject: subject,
+                        html: content
+                    };
+                } catch (templateError) {
+                    console.error('⚠️ 無法從數據庫讀取入住提醒模板，使用備用方案:', templateError.message);
+                    // 備用方案：使用 replaceTemplateVariables
+                    const { subject, content } = await replaceTemplateVariables(template, booking, null, additionalData);
+                    mailOptions = {
+                        from: emailUser,
+                        to: booking.guest_email,
+                        subject: subject,
+                        html: content
+                    };
+                }
                 
                 // 檢查生成的郵件內容
-                if (!content || content.trim() === '') {
+                if (!mailOptions.html || mailOptions.html.trim() === '') {
                     console.error(`❌ 生成的郵件內容為空，跳過發送 (${booking.booking_id})`);
                     continue;
                 }
-                
-                const mailOptions = {
-                    from: emailUser,
-                    to: booking.guest_email,
-                    subject: subject,
-                    html: content
-                };
                 
                 let emailSent = false;
                 
@@ -9392,14 +9472,28 @@ async function sendFeedbackRequestEmails() {
                     ...(hotelEmail ? { '{{hotelEmail}}': hotelEmail } : {}),
                     ...(hotelPhone ? { '{{hotelPhone}}': hotelPhone } : {})
                 };
-                const { subject, content } = await replaceTemplateVariables(template, booking, null, additionalData);
                 
-                const mailOptions = {
-                    from: emailUser,
-                    to: booking.guest_email,
-                    subject: subject,
-                    html: content
-                };
+                // 使用數據庫模板生成郵件（與訂房確認邏輯一致）
+                let mailOptions = null;
+                try {
+                    const { subject, content } = await generateEmailFromTemplate('feedback_request', booking, null, additionalData);
+                    mailOptions = {
+                        from: emailUser,
+                        to: booking.guest_email,
+                        subject: subject,
+                        html: content
+                    };
+                } catch (templateError) {
+                    console.error('⚠️ 無法從數據庫讀取感謝入住模板，使用備用方案:', templateError.message);
+                    // 備用方案：使用 replaceTemplateVariables
+                    const { subject, content } = await replaceTemplateVariables(template, booking, null, additionalData);
+                    mailOptions = {
+                        from: emailUser,
+                        to: booking.guest_email,
+                        subject: subject,
+                        html: content
+                    };
+                }
                 
                 let emailSent = false;
                 
