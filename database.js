@@ -1096,7 +1096,7 @@ async function initEmailTemplates() {
                 </div>
                 <div class="info-row" style="padding-top: 10px; border-top: 1px solid #e0e0e0;">
                     <span class="info-label" style="font-size: 18px; color: #333; font-weight: 700;">折後總額</span>
-                    <span class="info-value" style="font-size: 20px; font-weight: 700; color: #1976d2;">NT$ {{discountedTotal}}</span>
+                    <span class="info-value" style="font-size: 20px; font-weight: 700; color: #c62828;">NT$ {{discountedTotal}}</span>
                 </div>
                 {{/if}}
                 <div class="info-row">
@@ -1113,7 +1113,7 @@ async function initEmailTemplates() {
             {{#if isDeposit}}
             <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0;">
                 <div class="section-title" style="margin-top: 0; margin-bottom: 12px; color: #2e7d32;">💡 剩餘尾款</div>
-                <p style="color: #2e7d32; font-weight: 600; margin: 0 0 12px 0; font-size: 17px;">剩餘尾款於現場付清！</p>
+                <p style="color: #2e7d32; font-weight: 600; margin: 0 0 12px 0; font-size: 17px;">剩餘尾款請於現場付清！</p>
                 <p style="color: #2e7d32; margin: 0; font-size: 22px; font-weight: 700;">剩餘尾款：NT$ {{remainingAmount}}</p>
             </div>
             {{/if}}
