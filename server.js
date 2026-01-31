@@ -6109,20 +6109,21 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #e74c3c; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; width: 100%; }
+        .header { background: #e74c3c; color: white; padding: 30px 20px; text-align: center; border-radius: 0; }
         .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
         .header p { font-size: 18px; margin: 0; opacity: 0.95; }
-        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #e74c3c; }
-        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .content { background: #ffffff; padding: 30px 20px; border-radius: 0; }
+        .info-box { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #e74c3c; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
         .info-row:last-child { border-bottom: none; }
-        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
-        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; flex: 0 0 auto; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; flex: 1 1 auto; word-break: break-word; }
         .info-value strong { color: #333; font-weight: 700; }
-        .section-title { color: #333; font-size: 20px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
+        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .section-title:first-of-type { margin-top: 0; }
         p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
         .intro-text { font-size: 16px; color: #555; margin-bottom: 25px; }
@@ -6132,6 +6133,27 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
         .amount-value { font-size: 24px; font-weight: 700; color: #c62828; }
         .contact-section { background: #fff3e0; border: 2px solid #ff9800; border-radius: 8px; padding: 20px; margin: 25px 0; }
         .contact-title { font-size: 20px; font-weight: bold; color: #e65100; margin: 0 0 15px 0; }
+        
+        /* 手機響應式設計 */
+        @media only screen and (max-width: 600px) {
+            .container { padding: 0; }
+            .header { padding: 25px 15px; }
+            .header h1 { font-size: 24px; }
+            .header p { font-size: 16px; }
+            .content { padding: 20px 15px; }
+            .info-box { padding: 15px; margin: 20px 0; }
+            .info-row { flex-direction: column; align-items: flex-start; padding: 10px 0; }
+            .info-label { min-width: auto; width: 100%; margin-bottom: 5px; font-size: 14px; }
+            .info-value { text-align: left; width: 100%; font-size: 15px; }
+            .section-title { font-size: 20px; margin: 25px 0 15px 0; }
+            p { font-size: 15px; }
+            .intro-text { font-size: 15px; margin-bottom: 20px; }
+            .amount-highlight { padding: 15px; margin: 20px 0; }
+            .amount-label { font-size: 16px; }
+            .amount-value { font-size: 22px; }
+            .contact-section { padding: 15px; margin: 20px 0; }
+            .contact-title { font-size: 18px; }
+        }
     </style>
 </head>
 <body>

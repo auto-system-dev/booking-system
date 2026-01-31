@@ -1111,12 +1111,35 @@ document.getElementById('bookingForm').addEventListener('submit', async function
         paymentMethod: document.querySelector('input[name="paymentMethod"]:checked').value
     };
     
-    // 計算價格資訊
-    const pricePerNight = parseInt(selectedRoom.dataset.price);
+    // 計算價格資訊（考慮假日）
+    const checkInDate = formData.checkInDate;
+    const checkOutDate = formData.checkOutDate;
     const nights = calculateNights();
     // 計算加購商品總金額（只有在啟用時才計算，考慮數量）
     const addonsTotal = enableAddons ? selectedAddons.reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0) : 0;
-    const roomTotal = pricePerNight * nights;
+    
+    // 使用 API 計算價格（考慮假日）
+    let pricePerNight = parseInt(selectedRoom.dataset.price); // 預設值
+    let roomTotal = pricePerNight * nights; // 預設值
+    
+    if (checkInDate && checkOutDate) {
+        try {
+            const roomTypeName = selectedRoom.closest('.room-option').querySelector('.room-name').textContent.trim();
+            const priceResponse = await fetch(`/api/calculate-price?checkInDate=${checkInDate}&checkOutDate=${checkOutDate}&roomTypeName=${encodeURIComponent(roomTypeName)}`);
+            const priceResult = await priceResponse.json();
+            
+            if (priceResult.success) {
+                roomTotal = priceResult.data.totalAmount;
+                pricePerNight = priceResult.data.averagePricePerNight;
+                console.log('✅ 使用 API 計算價格（考慮假日）:', { roomTotal, pricePerNight, nights });
+            } else {
+                console.warn('⚠️ API 計算價格失敗，使用基礎價格:', priceResult.message);
+            }
+        } catch (priceError) {
+            console.error('❌ 計算價格錯誤，使用基礎價格:', priceError);
+        }
+    }
+    
     let totalAmount = roomTotal + addonsTotal;
     
     // 計算優惠代碼折扣
