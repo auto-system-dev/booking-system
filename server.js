@@ -1137,6 +1137,34 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
         // 確保 bankInfo 被加入到 bookingData（即使不是匯款轉帳）
         bookingData.bankInfo = bankInfo;
         
+        // 計算折扣金額和折後總額（在發送郵件之前）
+        let discountAmount = 0;
+        let discountedTotal = totalAmount;
+        if (promoCode) {
+            try {
+                const promoCodeData = await db.getPromoCodeByCode(promoCode);
+                if (promoCodeData) {
+                    // 計算折扣金額（應該與前端計算的一致）
+                    if (promoCodeData.discount_type === 'fixed') {
+                        discountAmount = promoCodeData.discount_value;
+                    } else if (promoCodeData.discount_type === 'percent') {
+                        discountAmount = totalAmount * (promoCodeData.discount_value / 100);
+                        if (promoCodeData.max_discount && discountAmount > promoCodeData.max_discount) {
+                            discountAmount = promoCodeData.max_discount;
+                        }
+                    }
+                    discountedTotal = Math.max(0, totalAmount - discountAmount);
+                }
+            } catch (promoError) {
+                console.warn('⚠️  計算折扣金額失敗:', promoError.message);
+            }
+        }
+        
+        // 將折扣資訊加入到 bookingData（用於郵件模板）
+        bookingData.discountAmount = discountAmount;
+        bookingData.discountedTotal = discountedTotal;
+        bookingData.originalAmount = totalAmount; // 原始總金額（用於計算折後總額）
+        
         // 發送通知郵件給管理員（所有付款方式都需要）
         // 優先使用資料庫設定，其次使用環境變數，最後使用預設值
         const adminEmail = await db.getSetting('admin_email') || process.env.ADMIN_EMAIL || 'cheng701107@gmail.com';
@@ -4337,9 +4365,10 @@ const handlePaymentResult = async (req, res) => {
                         }
                         
                         // 計算折扣金額和折後總額（從資料庫讀取的 booking 可能已包含這些資訊）
-                        const originalAmount = booking.original_amount || booking.total_amount || 0;
-                        const discountAmount = booking.discount_amount || 0;
-                        const discountedTotal = discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : originalAmount;
+                        const originalAmount = booking.original_amount || booking.originalAmount || booking.total_amount || booking.totalAmount || 0;
+                        const discountAmount = booking.discount_amount || booking.discountAmount || 0;
+                        // 如果 booking 中有 discountedTotal，優先使用；否則計算
+                        const discountedTotal = booking.discountedTotal || (discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : originalAmount);
                         
                         const bookingData = {
                             bookingId: booking.booking_id,
@@ -4351,6 +4380,7 @@ const handlePaymentResult = async (req, res) => {
                             roomType: booking.room_type,
                             pricePerNight: booking.price_per_night,
                             nights: booking.nights,
+                            originalAmount: originalAmount,
                             totalAmount: originalAmount,
                             discountAmount: discountAmount,
                             discountedTotal: discountedTotal,
@@ -5032,6 +5062,10 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
         // 創建模擬的 booking 對象，用於 replaceTemplateVariables 函數
         const totalAmount = parseInt(testData.totalAmount.replace(/,/g, ''));
         
+        // 計算測試資料的折扣金額和折後總額（用於測試折扣顯示）
+        const testDiscountAmount = randomInt(100, 1000); // 隨機折扣金額
+        const testDiscountedTotal = Math.max(0, totalAmount - testDiscountAmount);
+        
         // 計算測試資料的剩餘尾款（如果是訂金，則計算剩餘尾款）
         const testFinalAmount = parseInt(testData.finalAmount.replace(/,/g, ''));
         const testRemainingAmount = testData.paymentAmount.includes('訂金') ? (totalAmount - testFinalAmount) : 0;
@@ -5055,7 +5089,13 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
             payment_deadline: paymentDeadlineDate.toISOString().split('T')[0],
             days_reserved: parseInt(testData.daysReserved),
             addons: testData.addonsList,
-            addons_total: parseInt(testData.addonsTotal.replace(/,/g, ''))
+            addons_total: parseInt(testData.addonsTotal.replace(/,/g, '')),
+            // 添加折扣資訊（用於測試折扣顯示）
+            discount_amount: testDiscountAmount,
+            discountAmount: testDiscountAmount,
+            original_amount: totalAmount,
+            originalAmount: totalAmount,
+            discountedTotal: testDiscountedTotal
         };
         
         // 準備 additionalData（與實際發送時一致）
@@ -8365,10 +8405,11 @@ ${htmlEnd}`;
     const isDeposit = paymentAmount && paymentAmount.includes('訂金');
     
     // 計算總金額、折扣金額和折後總額（支援多種格式）
-    const originalAmount = booking.original_amount || booking.total_amount || booking.totalAmount || 0;
+    const originalAmount = booking.original_amount || booking.originalAmount || booking.total_amount || booking.totalAmount || 0;
     const totalAmount = booking.total_amount || booking.totalAmount || 0;
-    const discountAmount = booking.discount_amount || 0;
-    const discountedTotal = discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : originalAmount;
+    const discountAmount = booking.discount_amount || booking.discountAmount || 0;
+    // 如果 booking 中有 discountedTotal，優先使用；否則計算
+    const discountedTotal = booking.discountedTotal || (discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : originalAmount);
     const finalAmount = booking.final_amount || booking.finalAmount || 0;
     
     // 計算剩餘尾款金額
