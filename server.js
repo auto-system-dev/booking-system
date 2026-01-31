@@ -1184,12 +1184,27 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
             }
         }
         
-        const adminMailOptions = {
-            from: emailUser,
-            to: adminEmail, // 管理員 Email
-            subject: `【新訂房通知】${guestName} - ${bookingData.bookingId}`,
-            html: generateAdminEmail(bookingData)
-        };
+        // 準備管理員通知郵件（使用數據庫模板，與客戶郵件邏輯一致）
+        let adminMailOptions = null;
+        try {
+            console.log('📧 準備發送管理員通知郵件');
+            const { subject, content } = await generateEmailFromTemplate('booking_confirmation_admin', bookingData);
+            adminMailOptions = {
+                from: emailUser,
+                to: adminEmail, // 管理員 Email
+                subject: subject,
+                html: content
+            };
+        } catch (adminTemplateError) {
+            console.error('⚠️ 無法從數據庫讀取管理員通知模板，使用備用方案:', adminTemplateError.message);
+            // 備用方案：使用原來的函數
+            adminMailOptions = {
+                from: emailUser,
+                to: adminEmail,
+                subject: `【新訂房通知】${guestName} - ${bookingData.bookingId}`,
+                html: generateAdminEmail(bookingData)
+            };
+        }
 
         // 發送郵件
         let emailSent = false;
@@ -4435,16 +4450,29 @@ const handlePaymentResult = async (req, res) => {
                             console.log('✅ 郵件狀態已更新');
                         }
                         
-                        // 發送管理者通知郵件
+                        // 發送管理者通知郵件 - 使用數據庫模板
                         try {
                             console.log('📧 發送管理者通知郵件...');
                             const adminEmail = await db.getSetting('admin_email') || process.env.ADMIN_EMAIL || 'cheng701107@gmail.com';
-                            const adminMailOptions = {
-                                from: emailUser,
-                                to: adminEmail,
-                                subject: `【新訂房通知】${booking.guest_name} - ${booking.booking_id}`,
-                                html: generateAdminEmail(bookingData)
-                            };
+                            let adminMailOptions = null;
+                            try {
+                                const { subject, content } = await generateEmailFromTemplate('booking_confirmation_admin', bookingData);
+                                adminMailOptions = {
+                                    from: emailUser,
+                                    to: adminEmail,
+                                    subject: subject,
+                                    html: content
+                                };
+                            } catch (adminTemplateError) {
+                                console.error('⚠️ 無法從數據庫讀取管理員通知模板，使用備用方案:', adminTemplateError.message);
+                                // 備用方案：使用原來的函數
+                                adminMailOptions = {
+                                    from: emailUser,
+                                    to: adminEmail,
+                                    subject: `【新訂房通知】${booking.guest_name} - ${booking.booking_id}`,
+                                    html: generateAdminEmail(bookingData)
+                                };
+                            }
                             await sendEmail(adminMailOptions);
                             console.log('✅ 管理者通知郵件已發送');
                         } catch (adminEmailError) {
