@@ -5542,21 +5542,40 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #e74c3c; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #e74c3c; }
-        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
-        .info-label { font-weight: 600; color: #666; }
-        .info-value { color: #333; }
-        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; width: 100%; }
+        .header { background: #e74c3c; color: white; padding: 30px 20px; text-align: center; border-radius: 0; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0; text-align: center; }
+        .content { background: #ffffff; padding: 30px 20px; border-radius: 0; }
+        .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-box { background: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; flex: 0 0 auto; }
+        .info-value { color: #333; font-size: 16px; font-weight: 500; flex: 1 1 auto; text-align: right; word-break: break-word; }
+        .info-value strong { color: #e74c3c; font-weight: 700; }
+        .remaining-box { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        h2 { color: #333; font-size: 20px; font-weight: bold; margin: 0 0 15px 0; }
+        p { margin: 10px 0; font-size: 16px; line-height: 1.8; }
+        strong { color: #333; font-weight: 700; }
+        
+        /* 手機響應式設計 */
+        @media only screen and (max-width: 600px) {
+            .container { padding: 0; }
+            .header { padding: 25px 15px; }
+            .header h1 { font-size: 24px; }
+            .content { padding: 20px 15px; }
+            .highlight-box { padding: 15px; margin: 20px 0; }
+            .info-box { padding: 15px; margin: 20px 0; }
+            .info-row { flex-direction: column; align-items: flex-start; padding: 10px 0; }
+            .info-label { min-width: auto; width: 100%; margin-bottom: 5px; font-size: 14px; }
+            .info-value { text-align: left; width: 100%; font-size: 15px; }
+            h2 { font-size: 18px; margin: 0 0 12px 0; }
+            p { font-size: 15px; }
+            .remaining-box { padding: 15px; margin: 20px 0; }
+        }
     </style>
 </head>
 <body>
@@ -5568,9 +5587,9 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
             <p>親愛的 {{guestName}} 您好，</p>
             <p>感謝您選擇我們的住宿服務！</p>
             
-            <div class="highlight">
+            <div class="highlight-box">
                 <h2 style="margin-top: 0; color: #856404;">⚠️ 重要提醒</h2>
-                <p style="color: #856404; font-weight: 600;">此訂房將為您保留 {{daysReserved}} 天，請於 <strong>{{paymentDeadline}}前</strong>完成匯款，逾期將自動取消訂房。</p>
+                <p style="margin: 0; color: #856404;">此訂房將為您保留 {{daysReserved}} 天，請於 <strong>{{paymentDeadline}}前</strong>完成匯款，逾期將自動取消訂房。</p>
             </div>
             
             <div class="info-box">
@@ -5601,47 +5620,46 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
                     <span class="info-value">NT$ {{addonsTotal}}</span>
                 </div>
                 {{/if}}
-                <div class="info-row">
-                    <span class="info-label">總金額</span>
-                    <span class="info-value"><strong>NT$ {{totalAmount}}</strong></span>
+                <div class="info-row" style="margin-top: 10px; padding-top: 15px; border-top: 2px solid #e0e0e0;">
+                    <span class="info-label" style="font-size: 18px;">總金額</span>
+                    <span class="info-value" style="font-size: 18px; font-weight: 700;">NT$ {{totalAmount}}</span>
                 </div>
-                <div class="info-row" style="border-bottom: none;">
-                    <span class="info-label">應付金額</span>
-                    <span class="info-value"><strong>NT$ {{finalAmount}}</strong></span>
+                {{#if hasDiscount}}
+                <div class="info-row">
+                    <span class="info-label" style="color: #10b981;">優惠折扣</span>
+                    <span class="info-value" style="color: #10b981; font-weight: 600;">-NT$ {{discountAmount}}</span>
+                </div>
+                <div class="info-row" style="padding-top: 10px; border-top: 1px solid #e0e0e0;">
+                    <span class="info-label" style="font-size: 18px; font-weight: 700;">折後總額</span>
+                    <span class="info-value" style="font-size: 18px; font-weight: 700; color: #e74c3c;">NT$ {{discountedTotal}}</span>
+                </div>
+                {{/if}}
+                <div class="info-row" style="border-top: 2px solid #e0e0e0; padding-top: 15px; margin-top: 10px;">
+                    <span class="info-label" style="font-size: 18px;">應付金額</span>
+                    <span class="info-value" style="font-size: 18px; font-weight: 700; color: #e74c3c;">NT$ {{finalAmount}}</span>
                 </div>
             </div>
             
-            <div class="info-box">
-                <h2 style="margin-top: 0;">💰 匯款資訊</h2>
-                <div class="info-row">
-                    <span class="info-label">銀行</span>
-                    <span class="info-value">{{bankName}}{{bankBranchDisplay}}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">帳號</span>
-                    <span class="info-value"><strong>{{bankAccount}}</strong></span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">戶名</span>
-                    <span class="info-value">{{accountName}}</span>
-                </div>
-                <p style="margin-top: 15px; color: #666; font-size: 14px;">請在匯款時備註訂房編號後5碼：<strong>{{bookingId}}</strong></p>
+            <div class="highlight-box">
+                <h2 style="margin-top: 0; color: #856404;">💰 匯款資訊</h2>
+                <p style="margin: 8px 0;"><strong>銀行：</strong>{{bankName}}{{bankBranchDisplay}}</p>
+                <p style="margin: 8px 0;"><strong>帳號：</strong><strong style="color: #e74c3c;">{{bankAccount}}</strong></p>
+                <p style="margin: 8px 0;"><strong>戶名：</strong>{{accountName}}</p>
+                <p style="margin: 15px 0 0 0; padding-top: 15px; border-top: 1px solid #ffc107;">請在匯款時備註訂房編號後5碼：<strong>{{bookingIdLast5}}</strong></p>
             </div>
             
             {{#if isDeposit}}
-            <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 15px; margin: 20px 0;">
-                <h2 style="margin-top: 0; color: #2e7d32;">💡 剩餘尾款</h2>
-                <p style="color: #2e7d32; font-weight: 600; margin: 0;">剩餘尾款於現場付清！</p>
-                <p style="color: #2e7d32; margin: 10px 0 0 0; font-size: 18px; font-weight: 700;">剩餘尾款：NT$ {{remainingAmount}}</p>
+            <div class="remaining-box">
+                <h2 style="margin-top: 0; color: #2e7d32;">💡 剩餘尾款於現場付清！</h2>
+                <p style="margin: 10px 0 0 0; color: #2e7d32; font-size: 18px; font-weight: 700;">剩餘尾款：NT$ {{remainingAmount}}</p>
             </div>
             {{/if}}
             
-            <p>如有任何問題，請隨時與我們聯繫。</p>
+            <p style="margin-top: 30px;">如有任何問題，請隨時與我們聯繫。</p>
             <p>感謝您的配合！</p>
-            
-            {{hotelInfoFooter}}
         </div>
     </div>
+    {{hotelInfoFooter}}
 </body>
 </html>`,
                 days_reserved: 3,
@@ -6289,20 +6307,21 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #198754; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .header h1 { font-size: 28px; font-weight: bold; margin: 0; text-align: center; }
-        .header p { font-size: 18px; margin: 10px 0 0 0; opacity: 0.95; }
-        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #198754; }
-        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; width: 100%; }
+        .header { background: #198754; color: white; padding: 30px 20px; text-align: center; border-radius: 0; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
+        .header p { font-size: 18px; margin: 0; opacity: 0.95; }
+        .content { background: #ffffff; padding: 30px 20px; border-radius: 0; }
+        .info-box { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #198754; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
         .info-row:last-child { border-bottom: none; }
-        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
-        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; flex: 0 0 auto; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; flex: 1 1 auto; word-break: break-word; }
         .info-value strong { color: #333; font-weight: 700; }
-        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
+        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .section-title:first-of-type { margin-top: 0; }
         p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
         .greeting { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
@@ -6313,6 +6332,28 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
         .amount-value { font-size: 24px; font-weight: 700; color: #2e7d32; }
         .success-box { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
         .success-box p { margin: 0; color: #2e7d32; font-weight: 600; font-size: 17px; }
+        
+        /* 手機響應式設計 */
+        @media only screen and (max-width: 600px) {
+            .container { padding: 0; }
+            .header { padding: 25px 15px; }
+            .header h1 { font-size: 24px; }
+            .header p { font-size: 16px; }
+            .content { padding: 20px 15px; }
+            .info-box { padding: 15px; margin: 20px 0; }
+            .info-row { flex-direction: column; align-items: flex-start; padding: 10px 0; }
+            .info-label { min-width: auto; width: 100%; margin-bottom: 5px; font-size: 14px; }
+            .info-value { text-align: left; width: 100%; font-size: 15px; }
+            .section-title { font-size: 20px; margin: 25px 0 15px 0; }
+            p { font-size: 15px; }
+            .greeting { font-size: 17px; }
+            .intro-text { font-size: 15px; margin-bottom: 20px; }
+            .amount-highlight { padding: 15px; margin: 20px 0; }
+            .amount-label { font-size: 16px; }
+            .amount-value { font-size: 22px; }
+            .success-box { padding: 15px; margin: 20px 0; }
+            .success-box p { font-size: 16px; }
+        }
     </style>
 </head>
 <body>
@@ -6392,19 +6433,43 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #e74c3c; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #e74c3c; }
-        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
-        .info-label { font-weight: 600; color: #666; }
-        .info-value { color: #333; }
-        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; width: 100%; }
+        .header { background: #e74c3c; color: white; padding: 30px 20px; text-align: center; border-radius: 0; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
+        .header p { font-size: 18px; margin: 0; opacity: 0.95; }
+        .content { background: #ffffff; padding: 30px 20px; border-radius: 0; }
+        .info-box { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #e74c3c; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; flex: 0 0 auto; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; flex: 1 1 auto; word-break: break-word; }
+        .info-value strong { color: #e74c3c; font-weight: 700; }
+        h2 { color: #333; font-size: 20px; font-weight: bold; margin: 0 0 15px 0; }
+        p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
+        strong { color: #333; font-weight: 700; }
+        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .rebook-box { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        a { color: #1976d2; text-decoration: underline; word-break: break-word; }
+        
+        /* 手機響應式設計 */
+        @media only screen and (max-width: 600px) {
+            .container { padding: 0; }
+            .header { padding: 25px 15px; }
+            .header h1 { font-size: 24px; }
+            .header p { font-size: 16px; }
+            .content { padding: 20px 15px; }
+            .info-box { padding: 15px; margin: 20px 0; }
+            .info-row { flex-direction: column; align-items: flex-start; padding: 10px 0; }
+            .info-label { min-width: auto; width: 100%; margin-bottom: 5px; font-size: 14px; }
+            .info-value { text-align: left; width: 100%; font-size: 15px; }
+            h2 { font-size: 18px; margin: 0 0 12px 0; }
+            p { font-size: 15px; }
+            .highlight { padding: 15px; margin: 20px 0; }
+            .rebook-box { padding: 15px; margin: 20px 0; }
+        }
     </style>
 </head>
 <body>
@@ -6451,13 +6516,13 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 
             <div class="highlight">
                 <h2 style="margin-top: 0; color: #856404;">📌 取消原因</h2>
-                <p style="color: #856404;">此訂房因超過匯款保留期限（{{bookingDate}} 起算），且未在期限內完成付款，系統已自動取消。</p>
+                <p style="margin: 0; color: #856404;">此訂房因超過匯款保留期限（{{bookingDate}} 起算），且未在期限內完成付款，系統已自動取消。</p>
             </div>
 
-            <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <div class="rebook-box">
                 <h2 style="color: #2e7d32; margin-top: 0;">💡 如需重新訂房</h2>
                 <p style="color: #2e7d32; margin: 10px 0;">如果您仍希望預訂，歡迎重新進行訂房。如有任何疑問，請隨時與我們聯繫。</p>
-                <p style="color: #2e7d32; margin: 10px 0;"><strong>線上訂房：</strong><a href="{{bookingUrl}}" style="color: #1976d2; text-decoration: underline;">{{bookingUrl}}</a></p>
+                <p style="color: #2e7d32; margin: 10px 0;"><strong>線上訂房：</strong><a href="{{bookingUrl}}" style="color: #1976d2; text-decoration: underline;">重新訂房</a></p>
                 <p style="color: #2e7d32; margin: 10px 0;"><strong>Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: underline;">{{hotelEmail}}</a></p>
                 <p style="color: #2e7d32; margin: 10px 0;"><strong>電話：</strong>{{hotelPhone}}</p>
             </div>
@@ -6597,23 +6662,40 @@ app.get('/api/email-templates/:key/default', requireAuth, adminLimiter, async (r
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #e74c3c; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .header h1 { font-size: 28px; font-weight: bold; margin: 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; width: 100%; }
+        .header { background: #e74c3c; color: white; padding: 30px 20px; text-align: center; border-radius: 0; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0; text-align: center; }
+        .content { background: #ffffff; padding: 30px 20px; border-radius: 0; }
         .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
         .info-box { background: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
         .info-row:last-child { border-bottom: none; }
-        .info-label { font-weight: 600; color: #666; font-size: 16px; }
-        .info-value { color: #333; font-size: 16px; font-weight: 500; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; flex: 0 0 auto; }
+        .info-value { color: #333; font-size: 16px; font-weight: 500; flex: 1 1 auto; text-align: right; word-break: break-word; }
         .info-value strong { color: #e74c3c; font-weight: 700; }
         .remaining-box { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
         h2 { color: #333; font-size: 20px; font-weight: bold; margin: 0 0 15px 0; }
         p { margin: 10px 0; font-size: 16px; line-height: 1.8; }
         strong { color: #333; font-weight: 700; }
+        
+        /* 手機響應式設計 */
+        @media only screen and (max-width: 600px) {
+            .container { padding: 0; }
+            .header { padding: 25px 15px; }
+            .header h1 { font-size: 24px; }
+            .content { padding: 20px 15px; }
+            .highlight-box { padding: 15px; margin: 20px 0; }
+            .info-box { padding: 15px; margin: 20px 0; }
+            .info-row { flex-direction: column; align-items: flex-start; padding: 10px 0; }
+            .info-label { min-width: auto; width: 100%; margin-bottom: 5px; font-size: 14px; }
+            .info-value { text-align: left; width: 100%; font-size: 15px; }
+            h2 { font-size: 18px; margin: 0 0 12px 0; }
+            p { font-size: 15px; }
+            .remaining-box { padding: 15px; margin: 20px 0; }
+        }
     </style>
 </head>
 <body>
@@ -7114,20 +7196,21 @@ app.get('/api/email-templates/:key/default', requireAuth, adminLimiter, async (r
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #198754; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .header h1 { font-size: 28px; font-weight: bold; margin: 0; text-align: center; }
-        .header p { font-size: 18px; margin: 10px 0 0 0; opacity: 0.95; }
-        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #198754; }
-        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; width: 100%; }
+        .header { background: #198754; color: white; padding: 30px 20px; text-align: center; border-radius: 0; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
+        .header p { font-size: 18px; margin: 0; opacity: 0.95; }
+        .content { background: #ffffff; padding: 30px 20px; border-radius: 0; }
+        .info-box { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #198754; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
         .info-row:last-child { border-bottom: none; }
-        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
-        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; flex: 0 0 auto; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; flex: 1 1 auto; word-break: break-word; }
         .info-value strong { color: #333; font-weight: 700; }
-        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
+        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .section-title:first-of-type { margin-top: 0; }
         p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
         .greeting { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
@@ -7138,6 +7221,28 @@ app.get('/api/email-templates/:key/default', requireAuth, adminLimiter, async (r
         .amount-value { font-size: 24px; font-weight: 700; color: #2e7d32; }
         .success-box { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
         .success-box p { margin: 0; color: #2e7d32; font-weight: 600; font-size: 17px; }
+        
+        /* 手機響應式設計 */
+        @media only screen and (max-width: 600px) {
+            .container { padding: 0; }
+            .header { padding: 25px 15px; }
+            .header h1 { font-size: 24px; }
+            .header p { font-size: 16px; }
+            .content { padding: 20px 15px; }
+            .info-box { padding: 15px; margin: 20px 0; }
+            .info-row { flex-direction: column; align-items: flex-start; padding: 10px 0; }
+            .info-label { min-width: auto; width: 100%; margin-bottom: 5px; font-size: 14px; }
+            .info-value { text-align: left; width: 100%; font-size: 15px; }
+            .section-title { font-size: 20px; margin: 25px 0 15px 0; }
+            p { font-size: 15px; }
+            .greeting { font-size: 17px; }
+            .intro-text { font-size: 15px; margin-bottom: 20px; }
+            .amount-highlight { padding: 15px; margin: 20px 0; }
+            .amount-label { font-size: 16px; }
+            .amount-value { font-size: 22px; }
+            .success-box { padding: 15px; margin: 20px 0; }
+            .success-box p { font-size: 16px; }
+        }
     </style>
 </head>
 <body>
@@ -7217,19 +7322,43 @@ app.get('/api/email-templates/:key/default', requireAuth, adminLimiter, async (r
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #e74c3c; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #e74c3c; }
-        .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
-        .info-label { font-weight: 600; color: #666; }
-        .info-value { color: #333; }
-        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 15px; margin: 15px 0; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; width: 100%; }
+        .header { background: #e74c3c; color: white; padding: 30px 20px; text-align: center; border-radius: 0; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
+        .header p { font-size: 18px; margin: 0; opacity: 0.95; }
+        .content { background: #ffffff; padding: 30px 20px; border-radius: 0; }
+        .info-box { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #e74c3c; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; flex: 0 0 auto; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; flex: 1 1 auto; word-break: break-word; }
+        .info-value strong { color: #e74c3c; font-weight: 700; }
+        h2 { color: #333; font-size: 20px; font-weight: bold; margin: 0 0 15px 0; }
+        p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
+        strong { color: #333; font-weight: 700; }
+        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .rebook-box { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        a { color: #1976d2; text-decoration: underline; word-break: break-word; }
+        
+        /* 手機響應式設計 */
+        @media only screen and (max-width: 600px) {
+            .container { padding: 0; }
+            .header { padding: 25px 15px; }
+            .header h1 { font-size: 24px; }
+            .header p { font-size: 16px; }
+            .content { padding: 20px 15px; }
+            .info-box { padding: 15px; margin: 20px 0; }
+            .info-row { flex-direction: column; align-items: flex-start; padding: 10px 0; }
+            .info-label { min-width: auto; width: 100%; margin-bottom: 5px; font-size: 14px; }
+            .info-value { text-align: left; width: 100%; font-size: 15px; }
+            h2 { font-size: 18px; margin: 0 0 12px 0; }
+            p { font-size: 15px; }
+            .highlight { padding: 15px; margin: 20px 0; }
+            .rebook-box { padding: 15px; margin: 20px 0; }
+        }
     </style>
 </head>
 <body>
@@ -7276,13 +7405,13 @@ app.get('/api/email-templates/:key/default', requireAuth, adminLimiter, async (r
 
             <div class="highlight">
                 <h2 style="margin-top: 0; color: #856404;">📌 取消原因</h2>
-                <p style="color: #856404;">此訂房因超過匯款保留期限（{{bookingDate}} 起算），且未在期限內完成付款，系統已自動取消。</p>
+                <p style="margin: 0; color: #856404;">此訂房因超過匯款保留期限（{{bookingDate}} 起算），且未在期限內完成付款，系統已自動取消。</p>
             </div>
 
-            <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <div class="rebook-box">
                 <h2 style="color: #2e7d32; margin-top: 0;">💡 如需重新訂房</h2>
                 <p style="color: #2e7d32; margin: 10px 0;">如果您仍希望預訂，歡迎重新進行訂房。如有任何疑問，請隨時與我們聯繫。</p>
-                <p style="color: #2e7d32; margin: 10px 0;"><strong>線上訂房：</strong><a href="{{bookingUrl}}" style="color: #1976d2; text-decoration: underline;">{{bookingUrl}}</a></p>
+                <p style="color: #2e7d32; margin: 10px 0;"><strong>線上訂房：</strong><a href="{{bookingUrl}}" style="color: #1976d2; text-decoration: underline;">重新訂房</a></p>
                 <p style="color: #2e7d32; margin: 10px 0;"><strong>Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: underline;">{{hotelEmail}}</a></p>
                 <p style="color: #2e7d32; margin: 10px 0;"><strong>電話：</strong>{{hotelPhone}}</p>
             </div>

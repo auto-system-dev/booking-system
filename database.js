@@ -642,23 +642,40 @@ async function initEmailTemplates() {
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #e74c3c; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; width: 100%; }
+        .header { background: #e74c3c; color: white; padding: 30px 20px; text-align: center; border-radius: 0; }
         .header h1 { font-size: 28px; font-weight: bold; margin: 0; text-align: center; }
-        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
+        .content { background: #ffffff; padding: 30px 20px; border-radius: 0; }
         .highlight-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
         .info-box { background: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin: 25px 0; }
-        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
         .info-row:last-child { border-bottom: none; }
-        .info-label { font-weight: 600; color: #666; font-size: 16px; }
-        .info-value { color: #333; font-size: 16px; font-weight: 500; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; flex: 0 0 auto; }
+        .info-value { color: #333; font-size: 16px; font-weight: 500; flex: 1 1 auto; text-align: right; word-break: break-word; }
         .info-value strong { color: #e74c3c; font-weight: 700; }
         .remaining-box { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
         h2 { color: #333; font-size: 20px; font-weight: bold; margin: 0 0 15px 0; }
         p { margin: 10px 0; font-size: 16px; line-height: 1.8; }
         strong { color: #333; font-weight: 700; }
+        
+        /* 手機響應式設計 */
+        @media only screen and (max-width: 600px) {
+            .container { padding: 0; }
+            .header { padding: 25px 15px; }
+            .header h1 { font-size: 24px; }
+            .content { padding: 20px 15px; }
+            .highlight-box { padding: 15px; margin: 20px 0; }
+            .info-box { padding: 15px; margin: 20px 0; }
+            .info-row { flex-direction: column; align-items: flex-start; padding: 10px 0; }
+            .info-label { min-width: auto; width: 100%; margin-bottom: 5px; font-size: 14px; }
+            .info-value { text-align: left; width: 100%; font-size: 15px; }
+            h2 { font-size: 18px; margin: 0 0 12px 0; }
+            p { font-size: 15px; }
+            .remaining-box { padding: 15px; margin: 20px 0; }
+        }
     </style>
 </head>
 <body>
@@ -1355,43 +1372,121 @@ async function initEmailTemplates() {
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; width: 100%; }
+        .header { background: #198754; color: white; padding: 30px 20px; text-align: center; border-radius: 0; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
+        .header p { font-size: 18px; margin: 0; opacity: 0.95; }
+        .content { background: #ffffff; padding: 30px 20px; border-radius: 0; }
+        .info-box { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #198754; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; flex: 0 0 auto; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; flex: 1 1 auto; word-break: break-word; }
+        .info-value strong { color: #333; font-weight: 700; }
+        .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .section-title:first-of-type { margin-top: 0; }
+        p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
+        .greeting { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+        .intro-text { font-size: 16px; color: #555; margin-bottom: 25px; }
+        strong { color: #333; font-weight: 700; }
+        .amount-highlight { background: #e8f5e9; border: 2px solid #198754; border-radius: 8px; padding: 18px; margin: 20px 0; }
+        .amount-label { font-size: 18px; font-weight: 600; color: #2e7d32; margin-bottom: 8px; }
+        .amount-value { font-size: 24px; font-weight: 700; color: #2e7d32; }
+        .success-box { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .success-box p { margin: 0; color: #2e7d32; font-weight: 600; font-size: 17px; }
+        
+        /* 手機響應式設計 */
+        @media only screen and (max-width: 600px) {
+            .container { padding: 0; }
+            .header { padding: 25px 15px; }
+            .header h1 { font-size: 24px; }
+            .header p { font-size: 16px; }
+            .content { padding: 20px 15px; }
+            .info-box { padding: 15px; margin: 20px 0; }
+            .info-row { flex-direction: column; align-items: flex-start; padding: 10px 0; }
+            .info-label { min-width: auto; width: 100%; margin-bottom: 5px; font-size: 14px; }
+            .info-value { text-align: left; width: 100%; font-size: 15px; }
+            .section-title { font-size: 20px; margin: 25px 0 15px 0; }
+            p { font-size: 15px; }
+            .greeting { font-size: 17px; }
+            .intro-text { font-size: 15px; margin-bottom: 20px; }
+            .amount-highlight { padding: 15px; margin: 20px 0; }
+            .amount-label { font-size: 16px; }
+            .amount-value { font-size: 22px; }
+            .success-box { padding: 15px; margin: 20px 0; }
+            .success-box p { font-size: 16px; }
+        }
     </style>
 </head>
 <body>
-    <h1>✅ 付款完成確認</h1>
-    <p>感謝您的付款！</p>
-    
-    <p>親愛的 {{guestName}}，</p>
-    <p>我們已確認收到您的付款，以下是您的訂房與付款資訊：</p>
-    
-    <h2>訂房與付款資訊</h2>
-    <p><strong>訂房編號：</strong>{{bookingId}}</p>
-    <p><strong>入住日期：</strong>{{checkInDate}}</p>
-    <p><strong>退房日期：</strong>{{checkOutDate}}</p>
-    <p><strong>房型：</strong>{{roomType}}</p>
-    <p><strong>總金額：</strong>NT$ {{totalAmount}}</p>
-    {{#if hasDiscount}}
-    <p><strong style="color: #10b981;">優惠折扣：</strong><span style="color: #10b981;">-NT$ {{discountAmount}}</span></p>
-    <p><strong>折後總額：</strong>NT$ {{discountedTotal}}</p>
-    {{/if}}
-    <p><strong>本次已收金額：</strong>NT$ {{finalAmount}}</p>
-    <p><strong>付款方式：</strong>{{paymentMethod}}</p>
-    
-    <p>若您後續仍需變更或取消訂房，請儘早與我們聯繫，我們將盡力協助您。</p>
-    
-    <p>再次感謝您的預訂，期待您的光臨！</p>
-    <p>此為系統自動發送郵件，請勿直接回覆</p>
-    
-    {{hotelInfoFooter}}
+    <div class="container">
+        <div class="header">
+            <h1>✅ 付款完成確認</h1>
+            <p>感謝您的付款！</p>
+        </div>
+        <div class="content">
+            <p class="greeting">親愛的 {{guestName}}，</p>
+            <p class="intro-text">我們已確認收到您的付款，以下是您的訂房與付款資訊：</p>
+            
+            <div class="info-box">
+                <div class="section-title" style="margin-top: 0; margin-bottom: 20px;">訂房與付款資訊</div>
+                <div class="info-row">
+                    <span class="info-label">訂房編號</span>
+                    <span class="info-value"><strong>{{bookingId}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">入住日期</span>
+                    <span class="info-value">{{checkInDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">退房日期</span>
+                    <span class="info-value">{{checkOutDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">房型</span>
+                    <span class="info-value">{{roomType}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">總金額</span>
+                    <span class="info-value">NT$ {{totalAmount}}</span>
+                </div>
+                {{#if hasDiscount}}
+                <div class="info-row">
+                    <span class="info-label" style="color: #10b981;">優惠折扣</span>
+                    <span class="info-value" style="color: #10b981; font-weight: 600;">-NT$ {{discountAmount}}</span>
+                </div>
+                <div class="info-row" style="padding-top: 10px; border-top: 1px solid #e0e0e0;">
+                    <span class="info-label" style="font-size: 18px; color: #333; font-weight: 700;">折後總額</span>
+                    <span class="info-value" style="font-size: 20px; font-weight: 700; color: #198754;">NT$ {{discountedTotal}}</span>
+                </div>
+                {{/if}}
+                <div class="info-row" style="border-bottom: none;">
+                    <span class="info-label">付款方式</span>
+                    <span class="info-value">{{paymentMethod}}</span>
+                </div>
+            </div>
+            
+            <div class="amount-highlight">
+                <div class="amount-label">本次已收金額</div>
+                <div class="amount-value">NT$ {{finalAmount}}</div>
+            </div>
+            
+            <div class="success-box">
+                <p>✅ 付款已完成！</p>
+                <p style="margin-top: 10px; font-size: 14px; font-weight: 400;">感謝您的付款，訂房已確認完成。</p>
+            </div>
+            
+            <p>若您後續仍需變更或取消訂房，請儘早與我們聯繫，我們將盡力協助您。</p>
+            
+            <p style="margin-top: 35px; font-size: 17px; font-weight: 500;">再次感謝您的預訂，期待您的光臨！</p>
+            <p style="text-align: center; margin-top: 30px; color: #666; font-size: 14px; padding-top: 20px; border-top: 1px solid #e0e0e0;">此為系統自動發送郵件，請勿直接回覆</p>
+            
+            {{hotelInfoFooter}}
+        </div>
+    </div>
 </body>
 </html>`,
             enabled: 1
@@ -1404,45 +1499,103 @@ async function initEmailTemplates() {
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; font-size: 24px; margin-bottom: 20px; }
-        h2 { color: #333; font-size: 20px; margin-top: 25px; margin-bottom: 15px; }
-        h3 { color: #333; font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        p { margin: 10px 0; }
-        strong { color: #333; }
-        ul, ol { margin: 10px 0; padding-left: 30px; }
-        li { margin: 5px 0; }
+        body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 0; width: 100%; }
+        .header { background: #e74c3c; color: white; padding: 30px 20px; text-align: center; border-radius: 0; }
+        .header h1 { font-size: 28px; font-weight: bold; margin: 0 0 10px 0; }
+        .header p { font-size: 18px; margin: 0; opacity: 0.95; }
+        .content { background: #ffffff; padding: 30px 20px; border-radius: 0; }
+        .info-box { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #e74c3c; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; flex: 0 0 auto; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; flex: 1 1 auto; word-break: break-word; }
+        .info-value strong { color: #e74c3c; font-weight: 700; }
+        h2 { color: #333; font-size: 20px; font-weight: bold; margin: 0 0 15px 0; }
+        p { margin: 12px 0; font-size: 16px; line-height: 1.8; }
+        strong { color: #333; font-weight: 700; }
+        .highlight { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        .rebook-box { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 25px 0; }
+        a { color: #1976d2; text-decoration: underline; word-break: break-word; }
+        
+        /* 手機響應式設計 */
+        @media only screen and (max-width: 600px) {
+            .container { padding: 0; }
+            .header { padding: 25px 15px; }
+            .header h1 { font-size: 24px; }
+            .header p { font-size: 16px; }
+            .content { padding: 20px 15px; }
+            .info-box { padding: 15px; margin: 20px 0; }
+            .info-row { flex-direction: column; align-items: flex-start; padding: 10px 0; }
+            .info-label { min-width: auto; width: 100%; margin-bottom: 5px; font-size: 14px; }
+            .info-value { text-align: left; width: 100%; font-size: 15px; }
+            h2 { font-size: 18px; margin: 0 0 12px 0; }
+            p { font-size: 15px; }
+            .highlight { padding: 15px; margin: 20px 0; }
+            .rebook-box { padding: 15px; margin: 20px 0; }
+        }
     </style>
 </head>
 <body>
-    <h1>⚠️ 訂房已自動取消</h1>
-    <p>很抱歉，您的訂房因超過保留期限已自動取消</p>
-    
-    <p>親愛的 {{guestName}}，</p>
-    <p>很抱歉通知您，由於超過匯款保留期限，您的訂房已自動取消。以下是取消的訂房資訊：</p>
-    
-    <h2>取消的訂房資訊</h2>
-    <p><strong>訂房編號：</strong>{{bookingId}}</p>
-    <p><strong>入住日期：</strong>{{checkInDate}}</p>
-    <p><strong>退房日期：</strong>{{checkOutDate}}</p>
-    <p><strong>住宿天數：</strong>{{nights}} 晚</p>
-    <p><strong>房型：</strong>{{roomType}}</p>
-    <p><strong>訂房日期：</strong>{{bookingDate}}</p>
-    <p><strong>應付金額：</strong>NT$ {{finalAmount}}</p>
+    <div class="container">
+        <div class="header">
+            <h1>⚠️ 訂房已自動取消</h1>
+            <p>很抱歉，您的訂房因超過保留期限已自動取消</p>
+        </div>
+        <div class="content">
+            <p>親愛的 {{guestName}}，</p>
+            <p>很抱歉通知您，由於超過匯款保留期限，您的訂房已自動取消。以下是取消的訂房資訊：</p>
+            
+            <div class="info-box">
+                <h2 style="margin-top: 0;">取消的訂房資訊</h2>
+                <div class="info-row">
+                    <span class="info-label">訂房編號</span>
+                    <span class="info-value"><strong>{{bookingId}}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">入住日期</span>
+                    <span class="info-value">{{checkInDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">退房日期</span>
+                    <span class="info-value">{{checkOutDate}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">住宿天數</span>
+                    <span class="info-value">{{nights}} 晚</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">房型</span>
+                    <span class="info-value">{{roomType}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">訂房日期</span>
+                    <span class="info-value">{{bookingDate}}</span>
+                </div>
+                <div class="info-row" style="border-bottom: none;">
+                    <span class="info-label">應付金額</span>
+                    <span class="info-value"><strong>NT$ {{finalAmount}}</strong></span>
+                </div>
+            </div>
 
-    <h2>📌 取消原因</h2>
-    <p>此訂房因超過匯款保留期限（{{bookingDate}} 起算），且未在期限內完成付款，系統已自動取消。</p>
+            <div class="highlight">
+                <h2 style="margin-top: 0; color: #856404;">📌 取消原因</h2>
+                <p style="margin: 0; color: #856404;">此訂房因超過匯款保留期限（{{bookingDate}} 起算），且未在期限內完成付款，系統已自動取消。</p>
+            </div>
 
-    <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 20px 0;">
-        <h2 style="color: #2e7d32; margin-top: 0;">💡 如需重新訂房</h2>
-        <p style="color: #2e7d32; margin: 10px 0;">如果您仍希望預訂，歡迎重新進行訂房。如有任何疑問，請隨時與我們聯繫。</p>
-        <p style="color: #2e7d32; margin: 10px 0;"><strong>線上訂房：</strong><a href="{{bookingUrl}}" style="color: #1976d2; text-decoration: underline;">{{bookingUrl}}</a></p>
-        <p style="color: #2e7d32; margin: 10px 0;"><strong>Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: underline;">{{hotelEmail}}</a></p>
-        <p style="color: #2e7d32; margin: 10px 0;"><strong>電話：</strong>{{hotelPhone}}</p>
+            <div class="rebook-box">
+                <h2 style="color: #2e7d32; margin-top: 0;">💡 如需重新訂房</h2>
+                <p style="color: #2e7d32; margin: 10px 0;">如果您仍希望預訂，歡迎重新進行訂房。如有任何疑問，請隨時與我們聯繫。</p>
+                <p style="color: #2e7d32; margin: 10px 0;"><strong>線上訂房：</strong><a href="{{bookingUrl}}" style="color: #1976d2; text-decoration: underline;">重新訂房</a></p>
+                <p style="color: #2e7d32; margin: 10px 0;"><strong>Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: underline;">{{hotelEmail}}</a></p>
+                <p style="color: #2e7d32; margin: 10px 0;"><strong>電話：</strong>{{hotelPhone}}</p>
+            </div>
+
+            {{hotelInfoFooter}}
+        </div>
     </div>
-
-    {{hotelInfoFooter}}
 </body>
 </html>`,
             enabled: 1
