@@ -1883,8 +1883,10 @@ async function generateCustomerEmail(data) {
                 ` : ''}
 
                 ${data.paymentAmount && data.paymentAmount.includes('訂金') && data.paymentStatus !== 'paid' ? (() => {
-                    // 剩餘尾款 = 總金額 - 已付金額
-                    const remainingAmount = (data.totalAmount || 0) - (data.finalAmount || 0);
+                    // 剩餘尾款 = 折後總額 - 已付金額
+                    // 如果有折扣，使用折後總額；如果沒有折扣，discountedTotal 等於 totalAmount
+                    const discountedTotal = data.discountedTotal || data.totalAmount || 0;
+                    const remainingAmount = Math.max(0, discountedTotal - (data.finalAmount || 0));
                     return `
                 <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 15px; margin: 20px 0;">
                     <p style="color: #2e7d32; font-weight: 600; margin: 0; font-size: 16px;">💡 剩餘尾款於現場付清！</p>
@@ -8413,8 +8415,9 @@ ${htmlEnd}`;
     const finalAmount = booking.final_amount || booking.finalAmount || 0;
     
     // 計算剩餘尾款金額
-    // 剩餘尾款 = 總金額 - 已付金額（finalAmount）
-    const remainingAmount = totalAmount - finalAmount;
+    // 剩餘尾款 = 折後總額 - 已付金額（finalAmount）
+    // 如果有折扣，使用折後總額；如果沒有折扣，discountedTotal 等於 totalAmount
+    const remainingAmount = Math.max(0, discountedTotal - finalAmount);
     
     // 處理加購商品顯示
     let addonsList = '';
