@@ -2847,7 +2847,7 @@ async function getMonthlyComparison() {
             const thisMonthSql = `
                 SELECT 
                     COUNT(*) as booking_count,
-                    SUM(total_amount) as total_revenue,
+                    COALESCE(SUM(total_amount), 0) as total_revenue,
                     COUNT(DISTINCT check_in_date) as unique_dates
                 FROM bookings
                 WHERE check_in_date::date BETWEEN $1::date AND $2::date
@@ -2858,7 +2858,7 @@ async function getMonthlyComparison() {
             const lastMonthSql = `
                 SELECT 
                     COUNT(*) as booking_count,
-                    SUM(total_amount) as total_revenue,
+                    COALESCE(SUM(total_amount), 0) as total_revenue,
                     COUNT(DISTINCT check_in_date) as unique_dates
                 FROM bookings
                 WHERE check_in_date::date BETWEEN $1::date AND $2::date
@@ -2870,7 +2870,9 @@ async function getMonthlyComparison() {
                 query(lastMonthSql, [lastMonthStart, lastMonthEnd]).then(r => r.rows[0] || null)
             ]);
             
+            console.log(`📊 本月統計查詢參數: ${thisMonthStart} ~ ${thisMonthEnd}`);
             console.log(`📊 本月統計結果:`, thisMonthResult);
+            console.log(`📊 上月統計查詢參數: ${lastMonthStart} ~ ${lastMonthEnd}`);
             console.log(`📊 上月統計結果:`, lastMonthResult);
             
             // 計算本月平日和假日的房間夜數（包含跨月份的訂房）
@@ -3006,16 +3008,27 @@ async function getMonthlyComparison() {
             ]);
             console.log('✅ 住房率計算完成:', { thisMonthOccupancy, lastMonthOccupancy });
             
+            // 確保 NULL 值被正確處理為 0
+            const thisMonthBookingCount = thisMonthResult?.booking_count ? parseInt(thisMonthResult.booking_count) : 0;
+            const thisMonthTotalRevenue = thisMonthResult?.total_revenue ? parseInt(thisMonthResult.total_revenue) : 0;
+            const lastMonthBookingCount = lastMonthResult?.booking_count ? parseInt(lastMonthResult.booking_count) : 0;
+            const lastMonthTotalRevenue = lastMonthResult?.total_revenue ? parseInt(lastMonthResult.total_revenue) : 0;
+            
+            console.log(`📊 處理後的統計數據:`, {
+                thisMonth: { bookingCount: thisMonthBookingCount, totalRevenue: thisMonthTotalRevenue },
+                lastMonth: { bookingCount: lastMonthBookingCount, totalRevenue: lastMonthTotalRevenue }
+            });
+            
             const result = {
                 thisMonth: {
-                    bookingCount: parseInt(thisMonthResult?.booking_count || 0),
-                    totalRevenue: parseInt(thisMonthResult?.total_revenue || 0),
+                    bookingCount: thisMonthBookingCount,
+                    totalRevenue: thisMonthTotalRevenue,
                     weekdayOccupancy: thisMonthOccupancy.weekdayOccupancy,
                     weekendOccupancy: thisMonthOccupancy.weekendOccupancy
                 },
                 lastMonth: {
-                    bookingCount: parseInt(lastMonthResult?.booking_count || 0),
-                    totalRevenue: parseInt(lastMonthResult?.total_revenue || 0),
+                    bookingCount: lastMonthBookingCount,
+                    totalRevenue: lastMonthTotalRevenue,
                     weekdayOccupancy: lastMonthOccupancy.weekdayOccupancy,
                     weekendOccupancy: lastMonthOccupancy.weekendOccupancy
                 }
@@ -3027,7 +3040,7 @@ async function getMonthlyComparison() {
             const thisMonthSql = `
                 SELECT 
                     COUNT(*) as booking_count,
-                    SUM(total_amount) as total_revenue,
+                    COALESCE(SUM(total_amount), 0) as total_revenue,
                     COUNT(DISTINCT check_in_date) as unique_dates
                 FROM bookings
                 WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?)
@@ -3037,7 +3050,7 @@ async function getMonthlyComparison() {
             const lastMonthSql = `
                 SELECT 
                     COUNT(*) as booking_count,
-                    SUM(total_amount) as total_revenue,
+                    COALESCE(SUM(total_amount), 0) as total_revenue,
                     COUNT(DISTINCT check_in_date) as unique_dates
                 FROM bookings
                 WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?)
@@ -3048,6 +3061,11 @@ async function getMonthlyComparison() {
                 queryOne(thisMonthSql, [thisMonthStart, thisMonthEnd]),
                 queryOne(lastMonthSql, [lastMonthStart, lastMonthEnd])
             ]);
+            
+            console.log(`📊 本月統計查詢參數: ${thisMonthStart} ~ ${thisMonthEnd}`);
+            console.log(`📊 本月統計結果:`, thisMonthResult);
+            console.log(`📊 上月統計查詢參數: ${lastMonthStart} ~ ${lastMonthEnd}`);
+            console.log(`📊 上月統計結果:`, lastMonthResult);
             
             // 計算本月平日和假日的房間夜數（包含跨月份的訂房）
             const thisMonthBookingsSql = `
@@ -3169,16 +3187,27 @@ async function getMonthlyComparison() {
                 calculateOccupancyRate(lastMonthBookings, lastMonthStart, lastMonthEnd)
             ]);
             
+            // 確保 NULL 值被正確處理為 0
+            const thisMonthBookingCount = thisMonthResult?.booking_count ? parseInt(thisMonthResult.booking_count) : 0;
+            const thisMonthTotalRevenue = thisMonthResult?.total_revenue ? parseInt(thisMonthResult.total_revenue) : 0;
+            const lastMonthBookingCount = lastMonthResult?.booking_count ? parseInt(lastMonthResult.booking_count) : 0;
+            const lastMonthTotalRevenue = lastMonthResult?.total_revenue ? parseInt(lastMonthResult.total_revenue) : 0;
+            
+            console.log(`📊 處理後的統計數據:`, {
+                thisMonth: { bookingCount: thisMonthBookingCount, totalRevenue: thisMonthTotalRevenue },
+                lastMonth: { bookingCount: lastMonthBookingCount, totalRevenue: lastMonthTotalRevenue }
+            });
+            
             return {
                 thisMonth: {
-                    bookingCount: parseInt(thisMonthResult?.booking_count || 0),
-                    totalRevenue: parseInt(thisMonthResult?.total_revenue || 0),
+                    bookingCount: thisMonthBookingCount,
+                    totalRevenue: thisMonthTotalRevenue,
                     weekdayOccupancy: thisMonthOccupancy.weekdayOccupancy,
                     weekendOccupancy: thisMonthOccupancy.weekendOccupancy
                 },
                 lastMonth: {
-                    bookingCount: parseInt(lastMonthResult?.booking_count || 0),
-                    totalRevenue: parseInt(lastMonthResult?.total_revenue || 0),
+                    bookingCount: lastMonthBookingCount,
+                    totalRevenue: lastMonthTotalRevenue,
                     weekdayOccupancy: lastMonthOccupancy.weekdayOccupancy,
                     weekendOccupancy: lastMonthOccupancy.weekendOccupancy
                 }
