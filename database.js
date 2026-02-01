@@ -2794,11 +2794,13 @@ async function getMonthlyComparison() {
         // 計算本月第一天和最後一天（使用本地時區避免時區偏移）
         const thisMonthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
         // currentMonth 是 1-12，Date 構造函數的月份參數是 0-11
-        // 要獲取 currentMonth 月的最後一天，應該用 new Date(currentYear, currentMonth + 1, 0)
-        // 例如：currentMonth = 2（二月），Date(2024, 3, 0) = 2024年2月29日 ✓
-        // 例如：currentMonth = 1（一月），Date(2024, 2, 0) = 2024年1月31日 ✓
-        // 例如：currentMonth = 12（十二月），Date(2024, 13, 0) = 2024年12月31日 ✓（自動處理年份溢出）
-        const thisMonthEndDate = new Date(currentYear, currentMonth + 1, 0);
+        // 要獲取 currentMonth 月的最後一天，應該用 new Date(currentYear, currentMonth, 0)
+        // 因為 currentMonth 是 1-12，在 Date 中就是索引 1-12（即2月到13月）
+        // new Date(year, month, 0) 會返回 month 月的前一天
+        // 例如：currentMonth = 2（二月），Date(2026, 2, 0) = 2026年2月28日 ✓
+        // 例如：currentMonth = 1（一月），Date(2026, 1, 0) = 2026年1月31日 ✓
+        // 例如：currentMonth = 12（十二月），Date(2026, 12, 0) = 2026年12月31日 ✓
+        const thisMonthEndDate = new Date(currentYear, currentMonth, 0);
         // 使用本地時區格式化日期，避免 toISOString() 造成的時區偏移
         const thisMonthEndYear = thisMonthEndDate.getFullYear();
         const thisMonthEndMonth = String(thisMonthEndDate.getMonth() + 1).padStart(2, '0');
@@ -2809,10 +2811,11 @@ async function getMonthlyComparison() {
         const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
         const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
         const lastMonthStart = `${lastMonthYear}-${String(lastMonth).padStart(2, '0')}-01`;
-        // lastMonth 是 1-12，要獲取 lastMonth 月的最後一天，應該用 new Date(lastMonthYear, lastMonth + 1, 0)
-        // 例如：lastMonth = 1（一月），Date(2024, 2, 0) = 2024年1月31日 ✓
-        // 例如：lastMonth = 12（十二月），Date(2023, 13, 0) = 2023年12月31日 ✓（自動處理年份溢出）
-        const lastMonthEndDate = new Date(lastMonthYear, lastMonth + 1, 0);
+        // lastMonth 是 1-12，Date 構造函數的月份參數是 0-11
+        // 要獲取 lastMonth 月的最後一天，應該用 new Date(lastMonthYear, lastMonth, 0)
+        // 例如：lastMonth = 1（一月），Date(2026, 1, 0) = 2026年1月31日 ✓
+        // 例如：lastMonth = 12（十二月），Date(2025, 12, 0) = 2025年12月31日 ✓
+        const lastMonthEndDate = new Date(lastMonthYear, lastMonth, 0);
         // 使用本地時區格式化日期，避免 toISOString() 造成的時區偏移
         const lastMonthEndYear = lastMonthEndDate.getFullYear();
         const lastMonthEndMonth = String(lastMonthEndDate.getMonth() + 1).padStart(2, '0');
@@ -2864,6 +2867,11 @@ async function getMonthlyComparison() {
                 WHERE check_in_date::date BETWEEN $1::date AND $2::date
                 AND status != 'cancelled'
             `;
+            
+            // 輸出實際的SQL語句和參數以便調試
+            console.log(`🔍 執行上月統計查詢:`);
+            console.log(`   SQL: ${lastMonthSql}`);
+            console.log(`   參數: [${lastMonthStart}, ${lastMonthEnd}]`);
             
             const [thisMonthResult, lastMonthResult] = await Promise.all([
                 query(thisMonthSql, [thisMonthStart, thisMonthEnd]).then(r => r.rows[0] || null),
@@ -3076,6 +3084,11 @@ async function getMonthlyComparison() {
                 WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?)
                 AND status != 'cancelled'
             `;
+            
+            // 輸出實際的SQL語句和參數以便調試
+            console.log(`🔍 執行上月統計查詢:`);
+            console.log(`   SQL: ${lastMonthSql}`);
+            console.log(`   參數: [${lastMonthStart}, ${lastMonthEnd}]`);
             
             const [thisMonthResult, lastMonthResult] = await Promise.all([
                 queryOne(thisMonthSql, [thisMonthStart, thisMonthEnd]),
@@ -4124,13 +4137,15 @@ async function isCustomWeekend(dateString) {
                 const settings = typeof settingsJson === 'string' ? JSON.parse(settingsJson) : settingsJson;
                 if (settings.weekdays && Array.isArray(settings.weekdays)) {
                     weekdays = settings.weekdays.map(d => parseInt(d));
-                    console.log(`📅 使用自訂平日/假日設定: 平日為週 ${weekdays.join(', ')}`);
+                    // 只在首次載入時輸出，減少日誌量
+                    // console.log(`📅 使用自訂平日/假日設定: 平日為週 ${weekdays.join(', ')}`);
                 }
             } catch (e) {
                 console.warn('⚠️ 解析 weekday_settings 失敗，使用預設值:', e);
             }
         } else {
-            console.log('📅 未找到 weekday_settings，使用預設值（週一到週五為平日）');
+            // 移除詳細日誌以減少日誌輸出量
+            // console.log('📅 未找到 weekday_settings，使用預設值（週一到週五為平日）');
         }
         
         // 檢查該日期是星期幾
@@ -4139,7 +4154,8 @@ async function isCustomWeekend(dateString) {
         
         // 如果該日期不在 weekdays 列表中，則為假日
         const isHoliday = !weekdays.includes(day);
-        console.log(`📅 日期 ${dateString} 是週${['日', '一', '二', '三', '四', '五', '六'][day]}，${isHoliday ? '是' : '不是'}假日`);
+        // 移除詳細日誌以減少日誌輸出量（避免 Railway 速率限制）
+        // console.log(`📅 日期 ${dateString} 是週${['日', '一', '二', '三', '四', '五', '六'][day]}，${isHoliday ? '是' : '不是'}假日`);
         return isHoliday;
     } catch (error) {
         console.error('❌ 檢查自訂平日/假日設定失敗:', error.message);
@@ -4379,13 +4395,15 @@ async function isCustomWeekend(dateString) {
                 const settings = typeof settingsJson === 'string' ? JSON.parse(settingsJson) : settingsJson;
                 if (settings.weekdays && Array.isArray(settings.weekdays)) {
                     weekdays = settings.weekdays.map(d => parseInt(d));
-                    console.log(`📅 使用自訂平日/假日設定: 平日為週 ${weekdays.join(', ')}`);
+                    // 只在首次載入時輸出，減少日誌量
+                    // console.log(`📅 使用自訂平日/假日設定: 平日為週 ${weekdays.join(', ')}`);
                 }
             } catch (e) {
                 console.warn('⚠️ 解析 weekday_settings 失敗，使用預設值:', e);
             }
         } else {
-            console.log('📅 未找到 weekday_settings，使用預設值（週一到週五為平日）');
+            // 移除詳細日誌以減少日誌輸出量
+            // console.log('📅 未找到 weekday_settings，使用預設值（週一到週五為平日）');
         }
         
         // 檢查該日期是星期幾
@@ -4394,7 +4412,8 @@ async function isCustomWeekend(dateString) {
         
         // 如果該日期不在 weekdays 列表中，則為假日
         const isHoliday = !weekdays.includes(day);
-        console.log(`📅 日期 ${dateString} 是週${['日', '一', '二', '三', '四', '五', '六'][day]}，${isHoliday ? '是' : '不是'}假日`);
+        // 移除詳細日誌以減少日誌輸出量（避免 Railway 速率限制）
+        // console.log(`📅 日期 ${dateString} 是週${['日', '一', '二', '三', '四', '五', '六'][day]}，${isHoliday ? '是' : '不是'}假日`);
         return isHoliday;
     } catch (error) {
         console.error('❌ 檢查自訂平日/假日設定失敗:', error.message);
