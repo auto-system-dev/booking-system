@@ -47,11 +47,11 @@
                 <h1>管理後台</h1>
             </div>
             <nav class="sidebar-nav">
-                <a href="#dashboard" class="nav-item" data-section="dashboard">
+                <a href="#dashboard" class="nav-item active" data-section="dashboard">
                     <span class="nav-icon"><span class="material-symbols-outlined">speed</span></span>
                     <span>儀表板</span>
                 </a>
-                <a href="#bookings" class="nav-item active" data-section="bookings">
+                <a href="#bookings" class="nav-item" data-section="bookings">
                     <span class="nav-icon"><span class="material-symbols-outlined">event_note</span></span>
                     <span>訂房記錄</span>
                 </a>
@@ -97,7 +97,7 @@
         <!-- 主內容區 -->
         <main class="main-content">
             <!-- 儀表板區 -->
-            <section id="dashboard-section" class="content-section">
+            <section id="dashboard-section" class="content-section active">
                 <div class="section-header">
                     <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">speed</span> 儀表板</h2>
                     <button class="btn-refresh" onclick="loadDashboard()">
@@ -167,7 +167,7 @@
             </section>
 
             <!-- 訂房記錄區 -->
-            <section id="bookings-section" class="content-section active">
+            <section id="bookings-section" class="content-section">
                 <div class="section-header">
                     <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">event_note</span> 訂房記錄管理</h2>
                     <div class="header-actions">

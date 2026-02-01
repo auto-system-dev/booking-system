@@ -401,19 +401,19 @@ function showAdminPage(admin) {
         // 確保至少有一個 section 是顯示的
         let activeSection = document.querySelector('.content-section.active');
         if (!activeSection) {
-            console.warn('⚠️ 沒有找到 active 的 section，設置 bookings-section 為 active');
+            console.warn('⚠️ 沒有找到 active 的 section，設置 dashboard-section 為 active');
             // 移除所有 active 類並清除內聯樣式
             document.querySelectorAll('.content-section').forEach(sec => {
                 sec.classList.remove('active');
                 sec.style.display = '';
                 sec.style.visibility = '';
             });
-            // 設置 bookings-section 為 active
-            const bookingsSection = document.getElementById('bookings-section');
-            if (bookingsSection) {
-                bookingsSection.classList.add('active');
-                activeSection = bookingsSection;
-                console.log('✅ 已設置 bookings-section 為 active');
+            // 設置 dashboard-section 為 active
+            const dashboardSection = document.getElementById('dashboard-section');
+            if (dashboardSection) {
+                dashboardSection.classList.add('active');
+                activeSection = dashboardSection;
+                console.log('✅ 已設置 dashboard-section 為 active');
             }
         } else {
             // 清除所有 section 的內聯樣式，讓 CSS 規則控制
@@ -704,6 +704,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (urlHash === '#dashboard') {
         switchSection('dashboard');
         loadDashboard();
+    } else if (urlHash === '#bookings') {
+        switchSection('bookings');
+        if (currentBookingView === 'calendar') {
+            loadBookingCalendar();
+        } else {
+            loadBookings();
+        }
     } else if (urlHash === '#room-types') {
         switchSection('room-types');
         // loadRoomTypes() 會在 switchSection 中根據分頁狀態決定是否載入
@@ -723,6 +730,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     } else if (urlHash === '#statistics') {
         switchSection('statistics');
         loadStatistics();
+    } else if (!urlHash) {
+        // 如果沒有 URL hash，預設顯示儀表板
+        switchSection('dashboard');
+        loadDashboard();
     }
 
     // 點擊模態框外部關閉
