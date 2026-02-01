@@ -2843,7 +2843,7 @@ async function getMonthlyComparison() {
         console.log(`📊 開始查詢月度比較統計 (資料庫類型: ${usePostgreSQL ? 'PostgreSQL' : 'SQLite'})`);
         
         if (usePostgreSQL) {
-            // 本月統計
+            // 本月統計 - 以入住日期（check_in_date）為準，不是訂房日期（created_at 或 booking_date）
             const thisMonthSql = `
                 SELECT 
                     COUNT(*) as booking_count,
@@ -2854,7 +2854,7 @@ async function getMonthlyComparison() {
                 AND status != 'cancelled'
             `;
             
-            // 上月統計
+            // 上月統計 - 以入住日期（check_in_date）為準，不是訂房日期（created_at 或 booking_date）
             const lastMonthSql = `
                 SELECT 
                     COUNT(*) as booking_count,
@@ -2874,6 +2874,24 @@ async function getMonthlyComparison() {
             console.log(`📊 本月統計結果:`, thisMonthResult);
             console.log(`📊 上月統計查詢參數: ${lastMonthStart} ~ ${lastMonthEnd}`);
             console.log(`📊 上月統計結果:`, lastMonthResult);
+            
+            // 查詢實際的訂房記錄以確認（以入住日期 check_in_date 為準）
+            const debugLastMonthSql = `
+                SELECT booking_id, check_in_date, check_out_date, total_amount, status
+                FROM bookings
+                WHERE check_in_date::date BETWEEN $1::date AND $2::date
+                AND status != 'cancelled'
+                ORDER BY check_in_date
+            `;
+            const debugLastMonthResult = await query(debugLastMonthSql, [lastMonthStart, lastMonthEnd]);
+            console.log(`🔍 上月實際查詢到的訂房記錄 (${debugLastMonthResult?.rows?.length || 0} 筆):`);
+            if (debugLastMonthResult?.rows && debugLastMonthResult.rows.length > 0) {
+                debugLastMonthResult.rows.forEach(booking => {
+                    console.log(`   - ${booking.booking_id}: 入住 ${booking.check_in_date}, 退房 ${booking.check_out_date}, 金額 ${booking.total_amount}, 狀態 ${booking.status}`);
+                });
+            } else {
+                console.log(`   (無訂房記錄)`);
+            }
             
             // 計算本月平日和假日的房間夜數（包含跨月份的訂房）
             const thisMonthBookingsSql = `
@@ -3037,6 +3055,7 @@ async function getMonthlyComparison() {
             return result;
         } else {
             // SQLite 版本
+            // 本月統計 - 以入住日期（check_in_date）為準，不是訂房日期（created_at 或 booking_date）
             const thisMonthSql = `
                 SELECT 
                     COUNT(*) as booking_count,
@@ -3047,6 +3066,7 @@ async function getMonthlyComparison() {
                 AND status != 'cancelled'
             `;
             
+            // 上月統計 - 以入住日期（check_in_date）為準，不是訂房日期（created_at 或 booking_date）
             const lastMonthSql = `
                 SELECT 
                     COUNT(*) as booking_count,
@@ -3066,6 +3086,24 @@ async function getMonthlyComparison() {
             console.log(`📊 本月統計結果:`, thisMonthResult);
             console.log(`📊 上月統計查詢參數: ${lastMonthStart} ~ ${lastMonthEnd}`);
             console.log(`📊 上月統計結果:`, lastMonthResult);
+            
+            // 查詢實際的訂房記錄以確認（以入住日期 check_in_date 為準）
+            const debugLastMonthSql = `
+                SELECT booking_id, check_in_date, check_out_date, total_amount, status
+                FROM bookings
+                WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?)
+                AND status != 'cancelled'
+                ORDER BY check_in_date
+            `;
+            const debugLastMonthResult = await query(debugLastMonthSql, [lastMonthStart, lastMonthEnd]);
+            console.log(`🔍 上月實際查詢到的訂房記錄 (${debugLastMonthResult?.length || 0} 筆):`);
+            if (debugLastMonthResult && debugLastMonthResult.length > 0) {
+                debugLastMonthResult.forEach(booking => {
+                    console.log(`   - ${booking.booking_id}: 入住 ${booking.check_in_date}, 退房 ${booking.check_out_date}, 金額 ${booking.total_amount}, 狀態 ${booking.status}`);
+                });
+            } else {
+                console.log(`   (無訂房記錄)`);
+            }
             
             // 計算本月平日和假日的房間夜數（包含跨月份的訂房）
             const thisMonthBookingsSql = `
