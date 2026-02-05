@@ -47,46 +47,57 @@
                 <h1>管理後台</h1>
             </div>
             <nav class="sidebar-nav">
-                <a href="#dashboard" class="nav-item active" data-section="dashboard">
+                <a href="#dashboard" class="nav-item active permission-required" data-section="dashboard" data-permission="dashboard.view">
                     <span class="nav-icon"><span class="material-symbols-outlined">speed</span></span>
                     <span>儀表板</span>
                 </a>
-                <a href="#bookings" class="nav-item" data-section="bookings">
+                <a href="#bookings" class="nav-item permission-required" data-section="bookings" data-permission="bookings.view">
                     <span class="nav-icon"><span class="material-symbols-outlined">event_note</span></span>
                     <span>訂房記錄</span>
                 </a>
-                <a href="#customers" class="nav-item" data-section="customers">
+                <a href="#customers" class="nav-item permission-required" data-section="customers" data-permission="customers.view">
                     <span class="nav-icon"><span class="material-symbols-outlined">people</span></span>
                     <span>客戶管理</span>
                 </a>
-                <a href="#room-types" class="nav-item" data-section="room-types">
+                <a href="#room-types" class="nav-item permission-required" data-section="room-types" data-permission="room_types.view">
                     <span class="nav-icon"><span class="material-symbols-outlined">king_bed</span></span>
                     <span>房型管理</span>
                 </a>
-                <a href="#addons" class="nav-item" data-section="addons">
+                <a href="#addons" class="nav-item permission-required" data-section="addons" data-permission="addons.view">
                     <span class="nav-icon"><span class="material-symbols-outlined">add_shopping_cart</span></span>
                     <span>加購商品</span>
                 </a>
-                <a href="#promo-codes" class="nav-item" data-section="promo-codes">
+                <a href="#promo-codes" class="nav-item permission-required" data-section="promo-codes" data-permission="promo_codes.view">
                     <span class="nav-icon"><span class="material-symbols-outlined">local_offer</span></span>
                     <span>優惠代碼</span>
                 </a>
-                <a href="#settings" class="nav-item" data-section="settings">
+                <a href="#settings" class="nav-item permission-required" data-section="settings" data-permission="settings.view">
                     <span class="nav-icon"><span class="material-symbols-outlined">settings</span></span>
                     <span>系統設定</span>
                 </a>
-                <a href="#email-templates" class="nav-item" data-section="email-templates">
+                <a href="#email-templates" class="nav-item permission-required" data-section="email-templates" data-permission="email_templates.view">
                     <span class="nav-icon"><span class="material-symbols-outlined">mail</span></span>
                     <span>郵件模板</span>
                 </a>
-                <a href="#statistics" class="nav-item" data-section="statistics">
+                <a href="#statistics" class="nav-item permission-required" data-section="statistics" data-permission="statistics.view">
                     <span class="nav-icon"><span class="material-symbols-outlined">monitoring</span></span>
                     <span>統計資料</span>
+                </a>
+                <!-- 權限管理系統（需要相應權限才會顯示） -->
+                <a href="#admin-management" class="nav-item permission-required" data-section="admin-management" data-permission="admins.view">
+                    <span class="nav-icon"><span class="material-symbols-outlined">manage_accounts</span></span>
+                    <span>管理員管理</span>
+                </a>
+                <a href="#role-management" class="nav-item permission-required" data-section="role-management" data-permission="roles.view">
+                    <span class="nav-icon"><span class="material-symbols-outlined">admin_panel_settings</span></span>
+                    <span>角色權限</span>
                 </a>
             </nav>
             <div class="sidebar-footer" style="margin-top: auto; padding: 20px; border-top: 1px solid #e0e0e0;">
                 <div style="margin-bottom: 10px; color: #666; font-size: 14px;">
                     <span id="adminInfo">管理員：<span id="currentAdminUsername">-</span></span>
+                    <br>
+                    <span id="adminRole" style="font-size: 12px; color: #888;">角色：<span id="currentAdminRole">-</span></span>
                 </div>
                 <button class="btn-secondary" onclick="handleLogout()" style="width: 100%;">
                     <span class="material-symbols-outlined">logout</span> 登出
@@ -341,7 +352,7 @@
                         <div class="settings-card">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                                 <h3>會員等級設定</h3>
-                                <button class="btn-primary" onclick="showAddMemberLevelModal()">
+                                <button class="btn-primary permission-required" id="addMemberLevelBtn" data-permission="customers.edit" onclick="showAddMemberLevelModal()">
                                     <span class="material-symbols-outlined">add</span> 新增等級
                                 </button>
                             </div>
@@ -443,7 +454,7 @@
                 <div class="section-header">
                     <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">king_bed</span> 房型管理</h2>
                     <div class="header-actions">
-                        <button class="btn-primary" id="addRoomTypeBtn" onclick="showAddRoomTypeModal()" style="display: none;">
+                        <button class="btn-primary permission-required" id="addRoomTypeBtn" data-permission="room_types.create" onclick="showAddRoomTypeModal()">
                             <span class="material-symbols-outlined">add</span> 新增房型
                         </button>
                         <button class="btn-refresh" id="roomTypeRefreshBtn" onclick="loadRoomTypes()" style="display: none;">
@@ -551,7 +562,7 @@
                                 <label>假日名稱（選填）</label>
                                 <input type="text" id="holidayName" placeholder="例如：元旦" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
                             </div>
-                            <button type="button" class="btn-save" onclick="addHoliday()">新增</button>
+                            <button type="button" class="btn-save permission-required" data-permission="room_types.edit" onclick="addHoliday()">新增</button>
                         </div>
                         
                         <div class="settings-card" style="margin-top: 20px;">
@@ -568,7 +579,7 @@
                                 <label>假日名稱（選填）</label>
                                 <input type="text" id="holidayRangeName" placeholder="例如：春節連假" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
                             </div>
-                            <button type="button" class="btn-save" onclick="addHolidayRange()">新增</button>
+                            <button type="button" class="btn-save permission-required" data-permission="room_types.edit" onclick="addHolidayRange()">新增</button>
                         </div>
                         
                         <div class="settings-card" style="margin-top: 20px;">
@@ -586,7 +597,7 @@
                 <div class="section-header">
                     <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">add_shopping_cart</span> 加購商品管理</h2>
                     <div class="header-actions">
-                        <button class="btn-primary" onclick="showAddAddonModal()">
+                        <button class="btn-primary permission-required" id="addAddonBtn" data-permission="addons.create" onclick="showAddAddonModal()">
                             <span class="material-symbols-outlined">add</span> 新增加購商品
                         </button>
                         <button class="btn-refresh" onclick="loadAddons()">
@@ -634,7 +645,7 @@
                 <div class="section-header">
                     <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">local_offer</span> 優惠代碼管理</h2>
                     <div class="header-actions">
-                        <button class="btn-primary" onclick="showAddPromoCodeModal()">
+                        <button class="btn-primary permission-required" id="addPromoCodeBtn" data-permission="promo_codes.create" onclick="showAddPromoCodeModal()">
                             <span class="material-symbols-outlined">add</span> 新增優惠代碼
                         </button>
                         <button class="btn-refresh" onclick="loadPromoCodes()">
@@ -1007,6 +1018,94 @@
                     </div>
                 </div>
             </section>
+
+            <!-- 管理員管理區 -->
+            <section id="admin-management-section" class="content-section">
+                <div class="section-header">
+                    <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">manage_accounts</span> 管理員管理</h2>
+                    <div class="header-actions">
+                        <button class="btn-primary permission-required" onclick="showAddAdminModal()" id="addAdminBtn" data-permission="admins.create">
+                            <span class="material-symbols-outlined">person_add</span> 新增管理員
+                        </button>
+                        <button class="btn-refresh" onclick="loadAdmins()">
+                            <span class="material-symbols-outlined">refresh</span> 重新整理
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="bookings-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align: center;">ID</th>
+                                <th style="text-align: left;">帳號</th>
+                                <th style="text-align: left;">Email</th>
+                                <th style="text-align: center;">角色</th>
+                                <th style="text-align: left;">部門</th>
+                                <th style="text-align: center;">狀態</th>
+                                <th style="text-align: left;">最後登入</th>
+                                <th style="text-align: center;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminsTableBody">
+                            <tr>
+                                <td colspan="8" class="loading">載入中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 角色權限管理區 -->
+            <section id="role-management-section" class="content-section">
+                <div class="section-header">
+                    <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">admin_panel_settings</span> 角色權限管理</h2>
+                    <div class="header-actions">
+                        <button class="btn-primary permission-required" onclick="showAddRoleModal()" id="addRoleBtn" data-permission="roles.create">
+                            <span class="material-symbols-outlined">add</span> 新增角色
+                        </button>
+                        <button class="btn-refresh" onclick="loadRoles()">
+                            <span class="material-symbols-outlined">refresh</span> 重新整理
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 角色列表 -->
+                <div class="roles-container">
+                    <div class="table-container">
+                        <table class="bookings-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: center;">ID</th>
+                                    <th style="text-align: left;">角色代碼</th>
+                                    <th style="text-align: left;">顯示名稱</th>
+                                    <th style="text-align: left;">描述</th>
+                                    <th style="text-align: center;">權限數</th>
+                                    <th style="text-align: center;">管理員數</th>
+                                    <th style="text-align: center;">系統角色</th>
+                                    <th style="text-align: center;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rolesTableBody">
+                                <tr>
+                                    <td colspan="8" class="loading">載入中...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 權限對照表 -->
+                <div class="settings-card" style="margin-top: 30px;">
+                    <h3 style="display: flex; align-items: center; gap: 10px;">
+                        <span class="material-symbols-outlined">checklist</span>
+                        權限代碼說明
+                    </h3>
+                    <div id="permissionsReferenceList" style="margin-top: 15px;">
+                        <div class="loading">載入中...</div>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -1327,6 +1426,145 @@
                     <button type="button" class="btn-primary btn-danger" id="emailTemplateModalCancel">取消</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- 新增/編輯管理員模態框 -->
+    <div id="adminModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 id="adminModalTitle">新增管理員</h3>
+                <span class="modal-close" onclick="closeAdminModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="adminForm" onsubmit="saveAdmin(event)">
+                    <input type="hidden" id="editAdminId" value="">
+                    <div class="form-group">
+                        <label>帳號 <span style="color: red;">*</span></label>
+                        <input type="text" id="adminUsername" required placeholder="請輸入帳號" autocomplete="off">
+                        <small>帳號不可修改</small>
+                    </div>
+                    <div class="form-group" id="adminPasswordGroup">
+                        <label>密碼 <span style="color: red;">*</span></label>
+                        <input type="password" id="adminPassword" placeholder="請輸入密碼（至少6個字元）" autocomplete="new-password">
+                        <small>新增時必填，編輯時留空表示不修改</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="adminEmail" placeholder="example@email.com">
+                        <small>選填，用於接收系統通知</small>
+                    </div>
+                    <div class="form-group">
+                        <label>角色 <span style="color: red;">*</span></label>
+                        <select id="adminRoleId" required>
+                            <option value="">請選擇角色</option>
+                        </select>
+                        <small>選擇管理員的角色決定其權限</small>
+                    </div>
+                    <div class="form-group">
+                        <label>部門</label>
+                        <input type="text" id="adminDepartment" placeholder="例如：客服部">
+                        <small>選填</small>
+                    </div>
+                    <div class="form-group">
+                        <label>電話</label>
+                        <input type="text" id="adminPhone" placeholder="例如：0912345678">
+                        <small>選填</small>
+                    </div>
+                    <div class="form-group">
+                        <label>備註</label>
+                        <textarea id="adminNotes" rows="3" placeholder="選填"></textarea>
+                    </div>
+                    <div class="form-group" id="adminIsActiveGroup" style="display: none;">
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="adminIsActive" checked style="width: 20px; height: 20px;">
+                            <span>啟用此帳號</span>
+                        </label>
+                    </div>
+                    <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                        <button type="button" class="btn-primary btn-danger" onclick="closeAdminModal()">取消</button>
+                        <button type="submit" class="btn-save">儲存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增/編輯角色模態框 -->
+    <div id="roleModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 id="roleModalTitle">新增角色</h3>
+                <span class="modal-close" onclick="closeRoleModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="roleForm" onsubmit="saveRole(event)">
+                    <input type="hidden" id="editRoleId" value="">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group">
+                            <label>角色代碼 <span style="color: red;">*</span></label>
+                            <input type="text" id="roleCode" required placeholder="例如：manager" pattern="[a-z_]+" title="只能使用小寫字母和底線">
+                            <small>只能使用小寫字母和底線，建立後不可修改</small>
+                        </div>
+                        <div class="form-group">
+                            <label>顯示名稱 <span style="color: red;">*</span></label>
+                            <input type="text" id="roleDisplayName" required placeholder="例如：經理">
+                            <small>在系統中顯示的名稱</small>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>描述</label>
+                        <textarea id="roleDescription" rows="2" placeholder="角色的說明文字（選填）"></textarea>
+                    </div>
+                    
+                    <!-- 權限選擇區 -->
+                    <div class="form-group" style="margin-top: 20px;">
+                        <label style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>權限設定</span>
+                            <div style="display: flex; gap: 10px;">
+                                <button type="button" class="btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="selectAllPermissions()">全選</button>
+                                <button type="button" class="btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="deselectAllPermissions()">取消全選</button>
+                            </div>
+                        </label>
+                        <div id="permissionsContainer" style="margin-top: 15px; max-height: 400px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; background: #f9f9f9;">
+                            <div class="loading">載入權限列表中...</div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                        <button type="button" class="btn-primary btn-danger" onclick="closeRoleModal()">取消</button>
+                        <button type="submit" class="btn-save">儲存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 重設密碼模態框 -->
+    <div id="resetPasswordModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>重設密碼</h3>
+                <span class="modal-close" onclick="closeResetPasswordModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="resetPasswordForm" onsubmit="resetAdminPassword(event)">
+                    <input type="hidden" id="resetPasswordAdminId" value="">
+                    <p id="resetPasswordInfo" style="margin-bottom: 15px; color: #666;"></p>
+                    <div class="form-group">
+                        <label>新密碼 <span style="color: red;">*</span></label>
+                        <input type="password" id="newAdminPassword" required placeholder="請輸入新密碼（至少6個字元）" minlength="6" autocomplete="new-password">
+                    </div>
+                    <div class="form-group">
+                        <label>確認新密碼 <span style="color: red;">*</span></label>
+                        <input type="password" id="confirmNewAdminPassword" required placeholder="請再次輸入新密碼" minlength="6" autocomplete="new-password">
+                    </div>
+                    <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                        <button type="button" class="btn-primary btn-danger" onclick="closeResetPasswordModal()">取消</button>
+                        <button type="submit" class="btn-save">重設密碼</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 

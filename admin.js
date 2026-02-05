@@ -432,13 +432,28 @@ function showAdminPage(admin) {
             console.log('✅ Active section 已顯示:', activeSection.id);
         }
         
-        // 設置管理員名稱
+        // 設置管理員名稱和角色
         if (admin && admin.username) {
             const usernameEl = document.getElementById('currentAdminUsername');
             if (usernameEl) {
                 usernameEl.textContent = admin.username;
                 console.log('✅ 管理員名稱已設置:', admin.username);
             }
+            
+            // 設置角色名稱
+            const roleEl = document.getElementById('currentAdminRole');
+            if (roleEl) {
+                roleEl.textContent = admin.role_display_name || admin.role || '-';
+            }
+            
+            // 儲存管理員權限到全域變數
+            if (admin.permissions) {
+                window.currentAdminPermissions = admin.permissions;
+                console.log('✅ 管理員權限已載入:', admin.permissions.length, '個權限');
+            }
+            
+            // 根據權限更新側邊欄顯示
+            updateSidebarByPermissions();
         }
         
         // 立即載入初始資料（不等待，讓頁面先顯示）
@@ -825,6 +840,11 @@ function switchSection(section) {
         // 檢查是否有保存的分頁
         const savedTab = localStorage.getItem('customerTab') || 'customers';
         switchCustomerTab(savedTab);
+    } else if (section === 'admin-management') {
+        loadAdmins();
+    } else if (section === 'role-management') {
+        loadRoles();
+        loadPermissionsReference();
     }
 }
 
@@ -1234,9 +1254,9 @@ function renderCustomers() {
             <td style="text-align: left;">${customer.last_booking_date || '-'}</td>
             <td style="text-align: center;">
                 <div class="action-buttons">
-                    <button class="btn-view" onclick="viewCustomerDetails('${escapeHtml(customer.guest_email)}')">查看</button>
-                    <button class="btn-edit" onclick="editCustomer('${escapeHtml(customer.guest_email)}', '${escapeHtml(customer.guest_name || '')}', '${escapeHtml(customer.guest_phone || '')}')">修改</button>
-                    <button class="btn-delete" onclick="deleteCustomer('${escapeHtml(customer.guest_email)}', ${customer.booking_count || 0})">刪除</button>
+                    ${hasPermission('customers.view') ? `<button class="btn-view" onclick="viewCustomerDetails('${escapeHtml(customer.guest_email)}')">查看</button>` : ''}
+                    ${hasPermission('customers.edit') ? `<button class="btn-edit" onclick="editCustomer('${escapeHtml(customer.guest_email)}', '${escapeHtml(customer.guest_name || '')}', '${escapeHtml(customer.guest_phone || '')}')">修改</button>` : ''}
+                    ${hasPermission('customers.delete') ? `<button class="btn-delete" onclick="deleteCustomer('${escapeHtml(customer.guest_email)}', ${customer.booking_count || 0})">刪除</button>` : ''}
                 </div>
             </td>
         </tr>
@@ -1425,8 +1445,8 @@ function renderMemberLevels(levels) {
             </td>
             <td style="text-align: center;">
                 <div class="action-buttons">
-                    <button class="btn-edit" onclick="editMemberLevel(${level.id})">編輯</button>
-                    <button class="btn-delete" onclick="deleteMemberLevel(${level.id}, '${escapeHtml(level.level_name)}')">刪除</button>
+                    ${hasPermission('customers.edit') ? `<button class="btn-edit" onclick="editMemberLevel(${level.id})">編輯</button>` : ''}
+                    ${hasPermission('customers.delete') ? `<button class="btn-delete" onclick="deleteMemberLevel(${level.id}, '${escapeHtml(level.level_name)}')">刪除</button>` : ''}
                 </div>
             </td>
         </tr>
@@ -1711,12 +1731,12 @@ function renderBookings() {
             </td>
             <td>
                 <div class="action-buttons">
-                    <button class="btn-view" onclick="viewBookingDetail('${booking.booking_id}')">查看</button>
+                    ${hasPermission('bookings.view') ? `<button class="btn-view" onclick="viewBookingDetail('${booking.booking_id}')">查看</button>` : ''}
                     ${!isCancelled ? `
-                        <button class="btn-edit" onclick="editBooking('${booking.booking_id}')">編輯</button>
-                        <button class="btn-cancel" onclick="cancelBooking('${booking.booking_id}')">取消</button>
+                        ${hasPermission('bookings.edit') ? `<button class="btn-edit" onclick="editBooking('${booking.booking_id}')">編輯</button>` : ''}
+                        ${hasPermission('bookings.cancel') ? `<button class="btn-cancel" onclick="cancelBooking('${booking.booking_id}')">取消</button>` : ''}
                     ` : `
-                        <button class="btn-delete" onclick="deleteBooking('${booking.booking_id}')">刪除</button>
+                        ${hasPermission('bookings.delete') ? `<button class="btn-delete" onclick="deleteBooking('${booking.booking_id}')">刪除</button>` : ''}
                     `}
                 </div>
             </td>
@@ -3086,8 +3106,8 @@ function renderRoomTypes() {
             </td>
             <td>
                 <div class="action-buttons">
-                    <button class="btn-edit" onclick="editRoomType(${room.id})">編輯</button>
-                    <button class="btn-cancel" onclick="deleteRoomType(${room.id})">刪除</button>
+                    ${hasPermission('room_types.edit') ? `<button class="btn-edit" onclick="editRoomType(${room.id})">編輯</button>` : ''}
+                    ${hasPermission('room_types.delete') ? `<button class="btn-cancel" onclick="deleteRoomType(${room.id})">刪除</button>` : ''}
                 </div>
             </td>
         </tr>
@@ -3361,8 +3381,8 @@ function renderAddons() {
             </td>
             <td>
                 <div class="action-buttons">
-                    <button class="btn-edit" onclick="editAddon(${addon.id})">編輯</button>
-                    <button class="btn-cancel" onclick="deleteAddon(${addon.id})">刪除</button>
+                    ${hasPermission('addons.edit') ? `<button class="btn-edit" onclick="editAddon(${addon.id})">編輯</button>` : ''}
+                    ${hasPermission('addons.delete') ? `<button class="btn-cancel" onclick="deleteAddon(${addon.id})">刪除</button>` : ''}
                 </div>
             </td>
         </tr>
@@ -7562,7 +7582,7 @@ function renderHolidays(holidays) {
                     ${holiday.holiday_name ? `<span style="color: #667eea; margin-left: 10px;">${escapeHtml(holiday.holiday_name)}</span>` : ''}
                     ${isWeekend ? '<span style="color: #999; margin-left: 10px; font-size: 12px;">(自動週末)</span>' : ''}
                 </div>
-                ${!isWeekend ? `<button class="btn-cancel" onclick="deleteHoliday('${holiday.holiday_date}')" style="padding: 5px 10px; font-size: 12px;">刪除</button>` : ''}
+                ${!isWeekend && hasPermission('room_types.edit') ? `<button class="btn-cancel" onclick="deleteHoliday('${holiday.holiday_date}')" style="padding: 5px 10px; font-size: 12px;">刪除</button>` : ''}
             </div>
         `;
     }).join('');
@@ -7832,8 +7852,8 @@ function renderPromoCodes() {
             </td>
             <td style="text-align: center;">
                 <div class="action-buttons">
-                    <button class="btn-edit" onclick="editPromoCode(${code.id})">編輯</button>
-                    <button class="btn-delete" onclick="deletePromoCode(${code.id}, '${escapeHtml(code.code)}')">刪除</button>
+                    ${hasPermission('promo_codes.edit') ? `<button class="btn-edit" onclick="editPromoCode(${code.id})">編輯</button>` : ''}
+                    ${hasPermission('promo_codes.delete') ? `<button class="btn-delete" onclick="deletePromoCode(${code.id}, '${escapeHtml(code.code)}')">刪除</button>` : ''}
                 </div>
             </td>
         </tr>
@@ -8013,4 +8033,757 @@ function closePromoCodeModal() {
     document.getElementById('promoCodeModal').style.display = 'none';
     document.getElementById('promoCodeForm').reset();
     document.getElementById('promoCodeId').value = '';
+}
+
+// ==================== 權限管理系統 ====================
+
+// 全域權限變數
+window.currentAdminPermissions = window.currentAdminPermissions || [];
+
+// 檢查是否有指定權限
+function hasPermission(permissionCode) {
+    return window.currentAdminPermissions && window.currentAdminPermissions.includes(permissionCode);
+}
+
+// 根據權限顯示/隱藏元素
+function checkPermissionAndShow(elementId, permissionCode) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.style.display = hasPermission(permissionCode) ? '' : 'none';
+    }
+}
+
+// 更新側邊欄和按鈕根據權限顯示
+function updateSidebarByPermissions() {
+    console.log('🔐 更新權限顯示...');
+    
+    // 更新需要權限的側邊欄項目
+    document.querySelectorAll('.nav-item.permission-required').forEach(item => {
+        const requiredPermission = item.dataset.permission;
+        if (requiredPermission) {
+            if (hasPermission(requiredPermission)) {
+                item.style.display = '';
+                console.log(`✅ 顯示選單項目: ${item.dataset.section} (需要 ${requiredPermission})`);
+            } else {
+                item.style.display = 'none';
+                console.log(`❌ 隱藏選單項目: ${item.dataset.section} (缺少 ${requiredPermission})`);
+            }
+        }
+    });
+    
+    // 更新需要權限的按鈕
+    document.querySelectorAll('button.permission-required, .btn-primary.permission-required, .btn-save.permission-required').forEach(btn => {
+        const requiredPermission = btn.dataset.permission;
+        if (requiredPermission) {
+            if (hasPermission(requiredPermission)) {
+                btn.style.display = '';
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+    });
+}
+
+// ==================== 管理員管理 ====================
+
+// 載入管理員列表
+async function loadAdmins() {
+    console.log('📋 載入管理員列表...');
+    const tbody = document.getElementById('adminsTableBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="8" class="loading">載入中...</td></tr>';
+    
+    try {
+        const response = await adminFetch('/api/admin/admins');
+        const result = await response.json();
+        
+        if (result.success) {
+            const admins = result.admins || [];
+            
+            if (admins.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #666;">尚無管理員資料</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = admins.map(admin => `
+                <tr>
+                    <td style="text-align: center;">${admin.id}</td>
+                    <td style="text-align: left;">
+                        <strong>${escapeHtml(admin.username)}</strong>
+                    </td>
+                    <td style="text-align: left;">${escapeHtml(admin.email || '-')}</td>
+                    <td style="text-align: center;">
+                        <span class="badge badge-${getRoleBadgeClass(admin.role_name)}">
+                            ${escapeHtml(admin.role_display_name || admin.role || '-')}
+                        </span>
+                    </td>
+                    <td style="text-align: left;">${escapeHtml(admin.department || '-')}</td>
+                    <td style="text-align: center;">
+                        <span class="status-badge ${admin.is_active ? 'status-active' : 'status-cancelled'}">
+                            ${admin.is_active ? '啟用' : '停用'}
+                        </span>
+                    </td>
+                    <td style="text-align: left;">${admin.last_login ? formatDateTime(admin.last_login) : '-'}</td>
+                    <td style="text-align: center;">
+                        <div style="display: flex; gap: 5px; justify-content: center;">
+                            ${hasPermission('admins.edit') ? `
+                                <button class="btn-icon" onclick="showEditAdminModal(${admin.id})" title="編輯">
+                                    <span class="material-symbols-outlined">edit</span>
+                                </button>
+                            ` : ''}
+                            ${hasPermission('admins.change_password') ? `
+                                <button class="btn-icon" onclick="showResetPasswordModal(${admin.id}, '${escapeHtml(admin.username)}')" title="重設密碼">
+                                    <span class="material-symbols-outlined">key</span>
+                                </button>
+                            ` : ''}
+                            ${hasPermission('admins.delete') ? `
+                                <button class="btn-icon btn-danger" onclick="deleteAdmin(${admin.id}, '${escapeHtml(admin.username)}')" title="刪除">
+                                    <span class="material-symbols-outlined">delete</span>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: red;">載入失敗：${result.message}</td></tr>`;
+        }
+    } catch (error) {
+        console.error('載入管理員列表錯誤:', error);
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: red;">載入失敗：${error.message}</td></tr>`;
+    }
+}
+
+// 根據角色名稱返回對應的 badge 類別
+function getRoleBadgeClass(roleName) {
+    const roleClasses = {
+        'super_admin': 'danger',
+        'admin': 'primary',
+        'staff': 'info',
+        'finance': 'warning',
+        'viewer': 'secondary'
+    };
+    return roleClasses[roleName] || 'secondary';
+}
+
+// 顯示新增管理員模態框
+async function showAddAdminModal() {
+    document.getElementById('adminModalTitle').textContent = '新增管理員';
+    document.getElementById('editAdminId').value = '';
+    document.getElementById('adminForm').reset();
+    document.getElementById('adminUsername').disabled = false;
+    document.getElementById('adminPassword').required = true;
+    document.getElementById('adminPasswordGroup').style.display = 'block';
+    document.getElementById('adminIsActiveGroup').style.display = 'none';
+    
+    // 載入角色選項
+    await loadRoleOptions();
+    
+    document.getElementById('adminModal').style.display = 'block';
+}
+
+// 顯示編輯管理員模態框
+async function showEditAdminModal(adminId) {
+    document.getElementById('adminModalTitle').textContent = '編輯管理員';
+    document.getElementById('editAdminId').value = adminId;
+    document.getElementById('adminUsername').disabled = true;
+    document.getElementById('adminPassword').required = false;
+    document.getElementById('adminPasswordGroup').style.display = 'none'; // 編輯時不顯示密碼欄位
+    document.getElementById('adminIsActiveGroup').style.display = 'block';
+    
+    // 載入角色選項
+    await loadRoleOptions();
+    
+    try {
+        const response = await adminFetch(`/api/admin/admins/${adminId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const admin = result.admin;
+            document.getElementById('adminUsername').value = admin.username;
+            document.getElementById('adminEmail').value = admin.email || '';
+            document.getElementById('adminRoleId').value = admin.role_id || '';
+            document.getElementById('adminDepartment').value = admin.department || '';
+            document.getElementById('adminPhone').value = admin.phone || '';
+            document.getElementById('adminNotes').value = admin.notes || '';
+            document.getElementById('adminIsActive').checked = admin.is_active === 1 || admin.is_active === true;
+            
+            document.getElementById('adminModal').style.display = 'block';
+        } else {
+            showError('載入管理員資料失敗：' + result.message);
+        }
+    } catch (error) {
+        console.error('載入管理員資料錯誤:', error);
+        showError('載入管理員資料失敗：' + error.message);
+    }
+}
+
+// 載入角色選項
+async function loadRoleOptions() {
+    const select = document.getElementById('adminRoleId');
+    select.innerHTML = '<option value="">載入中...</option>';
+    
+    try {
+        const response = await adminFetch('/api/admin/roles');
+        const result = await response.json();
+        
+        if (result.success) {
+            const roles = result.roles || [];
+            select.innerHTML = '<option value="">請選擇角色</option>' + 
+                roles.map(role => `<option value="${role.id}">${escapeHtml(role.display_name)}</option>`).join('');
+        } else {
+            select.innerHTML = '<option value="">載入失敗</option>';
+        }
+    } catch (error) {
+        console.error('載入角色選項錯誤:', error);
+        select.innerHTML = '<option value="">載入失敗</option>';
+    }
+}
+
+// 關閉管理員模態框
+function closeAdminModal() {
+    document.getElementById('adminModal').style.display = 'none';
+    document.getElementById('adminForm').reset();
+    document.getElementById('editAdminId').value = '';
+}
+
+// 儲存管理員
+async function saveAdmin(event) {
+    event.preventDefault();
+    
+    const adminId = document.getElementById('editAdminId').value;
+    const isNew = !adminId;
+    
+    const adminData = {
+        username: document.getElementById('adminUsername').value.trim(),
+        password: document.getElementById('adminPassword').value,
+        email: document.getElementById('adminEmail').value.trim(),
+        role_id: parseInt(document.getElementById('adminRoleId').value),
+        department: document.getElementById('adminDepartment').value.trim(),
+        phone: document.getElementById('adminPhone').value.trim(),
+        notes: document.getElementById('adminNotes').value.trim()
+    };
+    
+    // 編輯模式時添加 is_active
+    if (!isNew) {
+        adminData.is_active = document.getElementById('adminIsActive').checked ? 1 : 0;
+    }
+    
+    // 驗證
+    if (!adminData.username) {
+        showError('請輸入帳號');
+        return;
+    }
+    if (isNew && (!adminData.password || adminData.password.length < 6)) {
+        showError('密碼至少需要 6 個字元');
+        return;
+    }
+    if (!adminData.role_id) {
+        showError('請選擇角色');
+        return;
+    }
+    
+    try {
+        const url = isNew ? '/api/admin/admins' : `/api/admin/admins/${adminId}`;
+        const method = isNew ? 'POST' : 'PUT';
+        
+        const response = await adminFetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(adminData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess(isNew ? '管理員已新增' : '管理員資料已更新');
+            closeAdminModal();
+            loadAdmins();
+        } else {
+            showError((isNew ? '新增' : '更新') + '失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('儲存管理員錯誤:', error);
+        showError('儲存時發生錯誤：' + error.message);
+    }
+}
+
+// 刪除管理員
+async function deleteAdmin(adminId, username) {
+    if (!confirm(`確定要刪除管理員「${username}」嗎？此操作無法復原。`)) {
+        return;
+    }
+    
+    try {
+        const response = await adminFetch(`/api/admin/admins/${adminId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('管理員已刪除');
+            loadAdmins();
+        } else {
+            showError('刪除失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('刪除管理員錯誤:', error);
+        showError('刪除時發生錯誤：' + error.message);
+    }
+}
+
+// 顯示重設密碼模態框
+function showResetPasswordModal(adminId, username) {
+    document.getElementById('resetPasswordAdminId').value = adminId;
+    document.getElementById('resetPasswordInfo').textContent = `將為管理員「${username}」重設密碼`;
+    document.getElementById('resetPasswordForm').reset();
+    document.getElementById('resetPasswordModal').style.display = 'block';
+}
+
+// 關閉重設密碼模態框
+function closeResetPasswordModal() {
+    document.getElementById('resetPasswordModal').style.display = 'none';
+    document.getElementById('resetPasswordForm').reset();
+}
+
+// 重設管理員密碼
+async function resetAdminPassword(event) {
+    event.preventDefault();
+    
+    const adminId = document.getElementById('resetPasswordAdminId').value;
+    const newPassword = document.getElementById('newAdminPassword').value;
+    const confirmPassword = document.getElementById('confirmNewAdminPassword').value;
+    
+    if (newPassword.length < 6) {
+        showError('新密碼至少需要 6 個字元');
+        return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        showError('兩次輸入的密碼不一致');
+        return;
+    }
+    
+    try {
+        const response = await adminFetch(`/api/admin/admins/${adminId}/reset-password`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ newPassword })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('密碼已重設');
+            closeResetPasswordModal();
+        } else {
+            showError('重設密碼失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('重設密碼錯誤:', error);
+        showError('重設密碼時發生錯誤：' + error.message);
+    }
+}
+
+// ==================== 角色管理 ====================
+
+// 載入角色列表
+async function loadRoles() {
+    console.log('📋 載入角色列表...');
+    const tbody = document.getElementById('rolesTableBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="8" class="loading">載入中...</td></tr>';
+    
+    try {
+        const response = await adminFetch('/api/admin/roles');
+        const result = await response.json();
+        
+        if (result.success) {
+            const roles = result.roles || [];
+            
+            if (roles.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #666;">尚無角色資料</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = roles.map(role => `
+                <tr>
+                    <td style="text-align: center;">${role.id}</td>
+                    <td style="text-align: left;"><code>${escapeHtml(role.role_name)}</code></td>
+                    <td style="text-align: left;"><strong>${escapeHtml(role.display_name)}</strong></td>
+                    <td style="text-align: left;">${escapeHtml(role.description || '-')}</td>
+                    <td style="text-align: center;">${role.permission_count || 0}</td>
+                    <td style="text-align: center;">${role.admin_count || 0}</td>
+                    <td style="text-align: center;">
+                        ${role.is_system_role ? '<span class="badge badge-info">系統</span>' : '<span class="badge badge-secondary">自訂</span>'}
+                    </td>
+                    <td style="text-align: center;">
+                        <div style="display: flex; gap: 5px; justify-content: center;">
+                            ${hasPermission('roles.assign_permissions') ? `
+                                <button class="btn-icon" onclick="showEditRoleModal(${role.id})" title="編輯權限">
+                                    <span class="material-symbols-outlined">edit</span>
+                                </button>
+                            ` : ''}
+                            ${!role.is_system_role && hasPermission('roles.delete') ? `
+                                <button class="btn-icon btn-danger" onclick="deleteRole(${role.id}, '${escapeHtml(role.display_name)}')" title="刪除">
+                                    <span class="material-symbols-outlined">delete</span>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: red;">載入失敗：${result.message}</td></tr>`;
+        }
+    } catch (error) {
+        console.error('載入角色列表錯誤:', error);
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: red;">載入失敗：${error.message}</td></tr>`;
+    }
+}
+
+// 載入權限參考列表
+async function loadPermissionsReference() {
+    const container = document.getElementById('permissionsReferenceList');
+    if (!container) return;
+    
+    try {
+        const response = await adminFetch('/api/admin/permissions');
+        const result = await response.json();
+        
+        if (result.success) {
+            const permissions = result.permissions || {};
+            
+            let html = '';
+            for (const [module, perms] of Object.entries(permissions)) {
+                html += `
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="margin: 0 0 8px 0; color: #333; text-transform: capitalize;">
+                            <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">${getModuleIcon(module)}</span>
+                            ${getModuleDisplayName(module)}
+                        </h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px;">
+                            ${perms.map(p => `
+                                <div style="background: #fff; padding: 8px 12px; border-radius: 4px; border: 1px solid #e0e0e0;">
+                                    <code style="font-size: 12px; color: #667eea;">${p.permission_code}</code>
+                                    <div style="font-size: 13px; color: #333;">${escapeHtml(p.permission_name)}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html || '<p style="color: #666;">尚無權限資料</p>';
+        } else {
+            container.innerHTML = `<p style="color: red;">載入失敗：${result.message}</p>`;
+        }
+    } catch (error) {
+        console.error('載入權限參考列表錯誤:', error);
+        container.innerHTML = `<p style="color: red;">載入失敗：${error.message}</p>`;
+    }
+}
+
+// 取得模組圖示
+function getModuleIcon(module) {
+    const icons = {
+        'bookings': 'event_note',
+        'customers': 'people',
+        'room_types': 'king_bed',
+        'addons': 'add_shopping_cart',
+        'promo_codes': 'local_offer',
+        'statistics': 'monitoring',
+        'settings': 'settings',
+        'email_templates': 'mail',
+        'admins': 'manage_accounts',
+        'roles': 'admin_panel_settings',
+        'logs': 'history',
+        'backup': 'backup'
+    };
+    return icons[module] || 'folder';
+}
+
+// 取得模組顯示名稱
+function getModuleDisplayName(module) {
+    const names = {
+        'bookings': '訂房管理',
+        'customers': '客戶管理',
+        'room_types': '房型管理',
+        'addons': '加購商品',
+        'promo_codes': '優惠代碼',
+        'statistics': '統計資料',
+        'settings': '系統設定',
+        'email_templates': '郵件模板',
+        'admins': '管理員管理',
+        'roles': '角色權限',
+        'logs': '操作日誌',
+        'backup': '資料備份'
+    };
+    return names[module] || module;
+}
+
+// 顯示新增角色模態框
+async function showAddRoleModal() {
+    document.getElementById('roleModalTitle').textContent = '新增角色';
+    document.getElementById('editRoleId').value = '';
+    document.getElementById('roleForm').reset();
+    document.getElementById('roleCode').disabled = false;
+    
+    // 載入權限列表
+    await loadPermissionsList();
+    
+    document.getElementById('roleModal').style.display = 'block';
+}
+
+// 顯示編輯角色模態框
+async function showEditRoleModal(roleId) {
+    document.getElementById('roleModalTitle').textContent = '編輯角色權限';
+    document.getElementById('editRoleId').value = roleId;
+    document.getElementById('roleCode').disabled = true;
+    
+    // 先載入權限列表
+    await loadPermissionsList();
+    
+    try {
+        const response = await adminFetch(`/api/admin/roles/${roleId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const role = result.role;
+            document.getElementById('roleCode').value = role.role_name;
+            document.getElementById('roleDisplayName').value = role.display_name;
+            document.getElementById('roleDescription').value = role.description || '';
+            
+            // 勾選已有的權限
+            if (role.permissions) {
+                role.permissions.forEach(p => {
+                    const checkbox = document.querySelector(`input[name="permissions"][value="${p.permission_code}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                });
+            }
+            
+            // 如果是超級管理員，禁用權限編輯
+            if (role.role_name === 'super_admin') {
+                document.querySelectorAll('input[name="permissions"]').forEach(cb => {
+                    cb.disabled = true;
+                });
+                document.getElementById('roleDisplayName').disabled = true;
+                document.getElementById('roleDescription').disabled = true;
+            }
+            
+            document.getElementById('roleModal').style.display = 'block';
+        } else {
+            showError('載入角色資料失敗：' + result.message);
+        }
+    } catch (error) {
+        console.error('載入角色資料錯誤:', error);
+        showError('載入角色資料失敗：' + error.message);
+    }
+}
+
+// 載入權限列表（用於編輯）
+async function loadPermissionsList() {
+    const container = document.getElementById('permissionsContainer');
+    container.innerHTML = '<div class="loading">載入權限列表中...</div>';
+    
+    try {
+        const response = await adminFetch('/api/admin/permissions');
+        const result = await response.json();
+        
+        if (result.success) {
+            const permissions = result.permissions || {};
+            
+            let html = '';
+            for (const [module, perms] of Object.entries(permissions)) {
+                html += `
+                    <div style="margin-bottom: 20px;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 2px solid #667eea;">
+                            <span class="material-symbols-outlined" style="font-size: 20px; color: #667eea;">${getModuleIcon(module)}</span>
+                            <strong style="color: #333;">${getModuleDisplayName(module)}</strong>
+                            <button type="button" class="btn-secondary" style="padding: 2px 8px; font-size: 11px; margin-left: auto;" onclick="toggleModulePermissions('${module}')">切換</button>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px;">
+                            ${perms.map(p => `
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 8px; background: #fff; border-radius: 4px; border: 1px solid #e0e0e0; cursor: pointer;">
+                                    <input type="checkbox" name="permissions" value="${p.permission_code}" data-module="${module}" style="width: 16px; height: 16px;">
+                                    <span style="font-size: 13px;">${escapeHtml(p.permission_name)}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html || '<p style="color: #666;">尚無權限資料</p>';
+        } else {
+            container.innerHTML = `<p style="color: red;">載入失敗：${result.message}</p>`;
+        }
+    } catch (error) {
+        console.error('載入權限列表錯誤:', error);
+        container.innerHTML = `<p style="color: red;">載入失敗：${error.message}</p>`;
+    }
+}
+
+// 切換模組權限
+function toggleModulePermissions(module) {
+    const checkboxes = document.querySelectorAll(`input[name="permissions"][data-module="${module}"]`);
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+}
+
+// 全選權限
+function selectAllPermissions() {
+    document.querySelectorAll('input[name="permissions"]').forEach(cb => {
+        if (!cb.disabled) cb.checked = true;
+    });
+}
+
+// 取消全選權限
+function deselectAllPermissions() {
+    document.querySelectorAll('input[name="permissions"]').forEach(cb => {
+        if (!cb.disabled) cb.checked = false;
+    });
+}
+
+// 關閉角色模態框
+function closeRoleModal() {
+    document.getElementById('roleModal').style.display = 'none';
+    document.getElementById('roleForm').reset();
+    document.getElementById('editRoleId').value = '';
+    document.getElementById('roleCode').disabled = false;
+    document.getElementById('roleDisplayName').disabled = false;
+    document.getElementById('roleDescription').disabled = false;
+    document.querySelectorAll('input[name="permissions"]').forEach(cb => cb.disabled = false);
+}
+
+// 儲存角色
+async function saveRole(event) {
+    event.preventDefault();
+    
+    const roleId = document.getElementById('editRoleId').value;
+    const isNew = !roleId;
+    
+    const roleName = document.getElementById('roleCode').value.trim();
+    const displayName = document.getElementById('roleDisplayName').value.trim();
+    const description = document.getElementById('roleDescription').value.trim();
+    
+    // 取得選中的權限
+    const selectedPermissions = [];
+    document.querySelectorAll('input[name="permissions"]:checked').forEach(cb => {
+        selectedPermissions.push(cb.value);
+    });
+    
+    // 驗證
+    if (!roleName) {
+        showError('請輸入角色代碼');
+        return;
+    }
+    if (!displayName) {
+        showError('請輸入顯示名稱');
+        return;
+    }
+    
+    try {
+        if (isNew) {
+            // 新增角色
+            const response = await adminFetch('/api/admin/roles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    role_name: roleName,
+                    display_name: displayName,
+                    description: description
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // 新增成功後，分配權限
+                const newRoleId = result.roleId;
+                await adminFetch(`/api/admin/roles/${newRoleId}/permissions`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ permissions: selectedPermissions })
+                });
+                
+                showSuccess('角色已新增');
+                closeRoleModal();
+                loadRoles();
+            } else {
+                showError('新增失敗：' + (result.message || '未知錯誤'));
+            }
+        } else {
+            // 更新角色
+            const updateResponse = await adminFetch(`/api/admin/roles/${roleId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    display_name: displayName,
+                    description: description
+                })
+            });
+            
+            // 更新權限
+            await adminFetch(`/api/admin/roles/${roleId}/permissions`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ permissions: selectedPermissions })
+            });
+            
+            showSuccess('角色已更新');
+            closeRoleModal();
+            loadRoles();
+        }
+    } catch (error) {
+        console.error('儲存角色錯誤:', error);
+        showError('儲存時發生錯誤：' + error.message);
+    }
+}
+
+// 刪除角色
+async function deleteRole(roleId, displayName) {
+    if (!confirm(`確定要刪除角色「${displayName}」嗎？此操作無法復原。`)) {
+        return;
+    }
+    
+    try {
+        const response = await adminFetch(`/api/admin/roles/${roleId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('角色已刪除');
+            loadRoles();
+        } else {
+            showError('刪除失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('刪除角色錯誤:', error);
+        showError('刪除時發生錯誤：' + error.message);
+    }
+}
+
+// 格式化日期時間
+function formatDateTime(dateStr) {
+    if (!dateStr) return '-';
+    try {
+        const date = new Date(dateStr);
+        return date.toLocaleString('zh-TW', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (e) {
+        return dateStr;
+    }
 }

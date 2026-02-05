@@ -606,6 +606,79 @@ async function initPostgreSQL() {
             `);
             console.log('✅ 優惠代碼使用記錄表已準備就緒');
             
+            // ==================== 權限管理系統 ====================
+            
+            // 建立角色表
+            await query(`
+                CREATE TABLE IF NOT EXISTS roles (
+                    id SERIAL PRIMARY KEY,
+                    role_name VARCHAR(50) UNIQUE NOT NULL,
+                    display_name VARCHAR(100) NOT NULL,
+                    description TEXT,
+                    is_system_role INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ 角色表已準備就緒');
+            
+            // 建立權限表
+            await query(`
+                CREATE TABLE IF NOT EXISTS permissions (
+                    id SERIAL PRIMARY KEY,
+                    permission_code VARCHAR(100) UNIQUE NOT NULL,
+                    permission_name VARCHAR(100) NOT NULL,
+                    module VARCHAR(50) NOT NULL,
+                    description TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ 權限表已準備就緒');
+            
+            // 建立角色權限關聯表
+            await query(`
+                CREATE TABLE IF NOT EXISTS role_permissions (
+                    id SERIAL PRIMARY KEY,
+                    role_id INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+                    permission_id INTEGER NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(role_id, permission_id)
+                )
+            `);
+            console.log('✅ 角色權限關聯表已準備就緒');
+            
+            // 更新 admins 表，添加 role_id 欄位（如果不存在）
+            const adminColumnsToAdd = [
+                { name: 'role_id', type: 'INTEGER', default: null },
+                { name: 'department', type: 'VARCHAR(100)', default: null },
+                { name: 'phone', type: 'VARCHAR(20)', default: null },
+                { name: 'notes', type: 'TEXT', default: null }
+            ];
+            
+            for (const col of adminColumnsToAdd) {
+                try {
+                    const checkResult = await query(`
+                        SELECT column_name 
+                        FROM information_schema.columns 
+                        WHERE table_name = 'admins' 
+                        AND column_name = $1
+                    `, [col.name]);
+                    
+                    if (!checkResult.rows || checkResult.rows.length === 0) {
+                        const defaultClause = col.default !== null ? `DEFAULT ${col.default}` : '';
+                        await query(`ALTER TABLE admins ADD COLUMN ${col.name} ${col.type} ${defaultClause}`);
+                        console.log(`✅ admins 表已添加 ${col.name} 欄位`);
+                    }
+                } catch (err) {
+                    if (!err.message.includes('already exists') && !err.message.includes('duplicate column')) {
+                        console.warn(`⚠️  添加 admins.${col.name} 欄位時發生錯誤:`, err.message);
+                    }
+                }
+            }
+            
+            // 初始化預設角色和權限
+            await initRolesAndPermissions();
+            
             // 初始化預設管理員（如果不存在）
             const defaultAdmin = await queryOne('SELECT id FROM admins WHERE username = $1', ['admin']);
             if (!defaultAdmin) {
@@ -5218,6 +5291,708 @@ async function getAdminLogsCount(options = {}) {
     }
 }
 
+// ==================== 權限管理系統函數 ====================
+
+// 初始化預設角色和權限
+async function initRolesAndPermissions() {
+    try {
+        // 預設角色列表
+        const defaultRoles = [
+            { role_name: 'super_admin', display_name: '超級管理員', description: '系統擁有者，擁有所有權限', is_system_role: 1 },
+            { role_name: 'admin', display_name: '一般管理員', description: '店長/經理，日常營運管理', is_system_role: 1 },
+            { role_name: 'staff', display_name: '客服人員', description: '客服/櫃台人員，客戶服務相關', is_system_role: 1 },
+            { role_name: 'finance', display_name: '財務人員', description: '會計/財務，財務相關功能', is_system_role: 1 },
+            { role_name: 'viewer', display_name: '只讀管理員', description: '實習生/外部顧問，僅查看權限', is_system_role: 1 }
+        ];
+        
+        // 建立預設角色
+        for (const role of defaultRoles) {
+            const existing = await queryOne(
+                usePostgreSQL 
+                    ? 'SELECT id FROM roles WHERE role_name = $1' 
+                    : 'SELECT id FROM roles WHERE role_name = ?',
+                [role.role_name]
+            );
+            
+            if (!existing) {
+                await query(
+                    usePostgreSQL 
+                        ? 'INSERT INTO roles (role_name, display_name, description, is_system_role) VALUES ($1, $2, $3, $4)'
+                        : 'INSERT INTO roles (role_name, display_name, description, is_system_role) VALUES (?, ?, ?, ?)',
+                    [role.role_name, role.display_name, role.description, role.is_system_role]
+                );
+            }
+        }
+        console.log('✅ 預設角色已初始化');
+        
+        // 預設權限列表
+        const defaultPermissions = [
+            // 訂房管理
+            { code: 'bookings.view', name: '查看訂房記錄', module: 'bookings', description: '查看所有訂房記錄' },
+            { code: 'bookings.create', name: '新增訂房', module: 'bookings', description: '手動建立訂房' },
+            { code: 'bookings.edit', name: '編輯訂房', module: 'bookings', description: '修改訂房資訊' },
+            { code: 'bookings.delete', name: '刪除訂房', module: 'bookings', description: '永久刪除訂房記錄' },
+            { code: 'bookings.cancel', name: '取消訂房', module: 'bookings', description: '取消訂房' },
+            { code: 'bookings.export', name: '匯出訂房資料', module: 'bookings', description: '匯出訂房報表' },
+            
+            // 客戶管理
+            { code: 'customers.view', name: '查看客戶資料', module: 'customers', description: '查看客戶列表和詳情' },
+            { code: 'customers.create', name: '新增客戶', module: 'customers', description: '手動建立客戶' },
+            { code: 'customers.edit', name: '編輯客戶資料', module: 'customers', description: '修改客戶資訊' },
+            { code: 'customers.delete', name: '刪除客戶資料', module: 'customers', description: '刪除客戶記錄' },
+            { code: 'customers.export', name: '匯出客戶資料', module: 'customers', description: '匯出客戶報表' },
+            
+            // 房型管理
+            { code: 'room_types.view', name: '查看房型', module: 'room_types', description: '查看房型設定' },
+            { code: 'room_types.create', name: '新增房型', module: 'room_types', description: '建立新房型' },
+            { code: 'room_types.edit', name: '編輯房型', module: 'room_types', description: '修改房型設定' },
+            { code: 'room_types.delete', name: '刪除房型', module: 'room_types', description: '刪除房型' },
+            
+            // 加購商品
+            { code: 'addons.view', name: '查看加購商品', module: 'addons', description: '查看加購商品列表' },
+            { code: 'addons.create', name: '新增加購商品', module: 'addons', description: '建立新加購商品' },
+            { code: 'addons.edit', name: '編輯加購商品', module: 'addons', description: '修改加購商品' },
+            { code: 'addons.delete', name: '刪除加購商品', module: 'addons', description: '刪除加購商品' },
+            
+            // 優惠代碼
+            { code: 'promo_codes.view', name: '查看優惠代碼', module: 'promo_codes', description: '查看優惠代碼列表' },
+            { code: 'promo_codes.create', name: '新增優惠代碼', module: 'promo_codes', description: '建立新優惠代碼' },
+            { code: 'promo_codes.edit', name: '編輯優惠代碼', module: 'promo_codes', description: '修改優惠代碼' },
+            { code: 'promo_codes.delete', name: '刪除優惠代碼', module: 'promo_codes', description: '刪除優惠代碼' },
+            
+            // 統計資料
+            { code: 'statistics.view', name: '查看統計資料', module: 'statistics', description: '查看營運統計' },
+            { code: 'statistics.export', name: '匯出報表', module: 'statistics', description: '匯出統計報表' },
+            
+            // 系統設定
+            { code: 'settings.view', name: '查看系統設定', module: 'settings', description: '查看系統設定' },
+            { code: 'settings.edit', name: '編輯系統設定', module: 'settings', description: '修改系統設定' },
+            { code: 'settings.payment', name: '支付設定', module: 'settings', description: '管理支付設定' },
+            { code: 'settings.email', name: '郵件設定', module: 'settings', description: '管理郵件設定' },
+            
+            // 郵件模板
+            { code: 'email_templates.view', name: '查看郵件模板', module: 'email_templates', description: '查看郵件模板' },
+            { code: 'email_templates.edit', name: '編輯郵件模板', module: 'email_templates', description: '修改郵件模板' },
+            { code: 'email_templates.send_test', name: '發送測試郵件', module: 'email_templates', description: '發送測試郵件' },
+            
+            // 管理員管理
+            { code: 'admins.view', name: '查看管理員列表', module: 'admins', description: '查看所有管理員' },
+            { code: 'admins.create', name: '新增管理員', module: 'admins', description: '建立新管理員帳號' },
+            { code: 'admins.edit', name: '編輯管理員資料', module: 'admins', description: '修改管理員資訊' },
+            { code: 'admins.delete', name: '刪除管理員', module: 'admins', description: '刪除管理員帳號' },
+            { code: 'admins.change_password', name: '修改其他管理員密碼', module: 'admins', description: '重設其他管理員的密碼' },
+            
+            // 角色權限管理
+            { code: 'roles.view', name: '查看角色列表', module: 'roles', description: '查看所有角色' },
+            { code: 'roles.create', name: '新增角色', module: 'roles', description: '建立新角色' },
+            { code: 'roles.edit', name: '編輯角色', module: 'roles', description: '修改角色資訊' },
+            { code: 'roles.delete', name: '刪除角色', module: 'roles', description: '刪除角色' },
+            { code: 'roles.assign_permissions', name: '分配權限', module: 'roles', description: '為角色分配權限' },
+            
+            // 操作日誌
+            { code: 'logs.view', name: '查看操作日誌', module: 'logs', description: '查看系統操作日誌' },
+            { code: 'logs.export', name: '匯出操作日誌', module: 'logs', description: '匯出操作日誌' },
+            
+            // 資料備份
+            { code: 'backup.view', name: '查看備份', module: 'backup', description: '查看備份列表' },
+            { code: 'backup.create', name: '建立備份', module: 'backup', description: '建立資料備份' },
+            { code: 'backup.restore', name: '還原備份', module: 'backup', description: '還原資料備份' },
+            { code: 'backup.delete', name: '刪除備份', module: 'backup', description: '刪除備份檔案' }
+        ];
+        
+        // 建立預設權限
+        for (const perm of defaultPermissions) {
+            const existing = await queryOne(
+                usePostgreSQL 
+                    ? 'SELECT id FROM permissions WHERE permission_code = $1' 
+                    : 'SELECT id FROM permissions WHERE permission_code = ?',
+                [perm.code]
+            );
+            
+            if (!existing) {
+                await query(
+                    usePostgreSQL 
+                        ? 'INSERT INTO permissions (permission_code, permission_name, module, description) VALUES ($1, $2, $3, $4)'
+                        : 'INSERT INTO permissions (permission_code, permission_name, module, description) VALUES (?, ?, ?, ?)',
+                    [perm.code, perm.name, perm.module, perm.description]
+                );
+            }
+        }
+        console.log('✅ 預設權限已初始化');
+        
+        // 為每個角色分配預設權限
+        await assignDefaultPermissions();
+        
+        // 遷移現有管理員到新角色系統
+        await migrateAdminsToRoles();
+        
+    } catch (error) {
+        console.error('❌ 初始化角色和權限失敗:', error.message);
+        throw error;
+    }
+}
+
+// 為每個角色分配預設權限
+async function assignDefaultPermissions() {
+    try {
+        // 角色權限對應
+        const rolePermissions = {
+            'super_admin': 'all', // 超級管理員擁有所有權限
+            'admin': [
+                'bookings.view', 'bookings.create', 'bookings.edit', 'bookings.cancel', 'bookings.export',
+                'customers.view', 'customers.edit',
+                'room_types.view', 'room_types.create', 'room_types.edit',
+                'addons.view', 'addons.create', 'addons.edit',
+                'promo_codes.view', 'promo_codes.create', 'promo_codes.edit',
+                'statistics.view', 'statistics.export',
+                'settings.view',
+                'email_templates.view', 'email_templates.edit',
+                'logs.view'
+            ],
+            'staff': [
+                'bookings.view', 'bookings.create', 'bookings.edit',
+                'customers.view', 'customers.edit',
+                'room_types.view',
+                'addons.view'
+            ],
+            'finance': [
+                'bookings.view', 'bookings.export',
+                'customers.view',
+                'statistics.view', 'statistics.export',
+                'logs.view'
+            ],
+            'viewer': [
+                'bookings.view',
+                'customers.view',
+                'room_types.view',
+                'addons.view',
+                'promo_codes.view',
+                'statistics.view',
+                'settings.view',
+                'email_templates.view',
+                'logs.view'
+            ]
+        };
+        
+        // 取得所有角色
+        const roles = await query('SELECT id, role_name FROM roles');
+        
+        for (const role of roles.rows) {
+            const permissions = rolePermissions[role.role_name];
+            
+            if (!permissions) continue;
+            
+            // 取得角色當前的權限數量
+            const existingCount = await queryOne(
+                usePostgreSQL 
+                    ? 'SELECT COUNT(*) as count FROM role_permissions WHERE role_id = $1'
+                    : 'SELECT COUNT(*) as count FROM role_permissions WHERE role_id = ?',
+                [role.id]
+            );
+            
+            // 如果已經有權限，跳過（避免重複分配）
+            if (existingCount && parseInt(existingCount.count) > 0) continue;
+            
+            if (permissions === 'all') {
+                // 超級管理員取得所有權限
+                const allPerms = await query('SELECT id FROM permissions');
+                for (const perm of allPerms.rows) {
+                    try {
+                        await query(
+                            usePostgreSQL 
+                                ? 'INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2) ON CONFLICT DO NOTHING'
+                                : 'INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)',
+                            [role.id, perm.id]
+                        );
+                    } catch (err) {
+                        // 忽略重複鍵錯誤
+                    }
+                }
+            } else {
+                // 其他角色取得指定權限
+                for (const permCode of permissions) {
+                    const perm = await queryOne(
+                        usePostgreSQL 
+                            ? 'SELECT id FROM permissions WHERE permission_code = $1'
+                            : 'SELECT id FROM permissions WHERE permission_code = ?',
+                        [permCode]
+                    );
+                    
+                    if (perm) {
+                        try {
+                            await query(
+                                usePostgreSQL 
+                                    ? 'INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2) ON CONFLICT DO NOTHING'
+                                    : 'INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)',
+                                [role.id, perm.id]
+                            );
+                        } catch (err) {
+                            // 忽略重複鍵錯誤
+                        }
+                    }
+                }
+            }
+        }
+        console.log('✅ 角色預設權限已分配');
+    } catch (error) {
+        console.error('❌ 分配角色權限失敗:', error.message);
+        throw error;
+    }
+}
+
+// 遷移現有管理員到新角色系統
+async function migrateAdminsToRoles() {
+    try {
+        // 取得所有沒有 role_id 的管理員
+        const admins = await query(
+            usePostgreSQL
+                ? 'SELECT id, role FROM admins WHERE role_id IS NULL'
+                : 'SELECT id, role FROM admins WHERE role_id IS NULL'
+        );
+        
+        if (!admins.rows || admins.rows.length === 0) {
+            return;
+        }
+        
+        for (const admin of admins.rows) {
+            // 根據舊的 role 欄位找到對應的 role_id
+            let roleName = admin.role || 'admin';
+            
+            // 映射舊角色名稱到新角色
+            const roleMapping = {
+                'super_admin': 'super_admin',
+                'admin': 'admin',
+                'staff': 'staff',
+                'finance': 'finance',
+                'viewer': 'viewer'
+            };
+            
+            roleName = roleMapping[roleName] || 'admin';
+            
+            const role = await queryOne(
+                usePostgreSQL
+                    ? 'SELECT id FROM roles WHERE role_name = $1'
+                    : 'SELECT id FROM roles WHERE role_name = ?',
+                [roleName]
+            );
+            
+            if (role) {
+                await query(
+                    usePostgreSQL
+                        ? 'UPDATE admins SET role_id = $1 WHERE id = $2'
+                        : 'UPDATE admins SET role_id = ? WHERE id = ?',
+                    [role.id, admin.id]
+                );
+            }
+        }
+        console.log('✅ 現有管理員已遷移到新角色系統');
+    } catch (error) {
+        console.error('❌ 遷移管理員角色失敗:', error.message);
+        // 不拋出錯誤，因為這不是關鍵操作
+    }
+}
+
+// 取得管理員所有權限
+async function getAdminPermissions(adminId) {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT DISTINCT p.permission_code 
+               FROM permissions p
+               INNER JOIN role_permissions rp ON p.id = rp.permission_id
+               INNER JOIN roles r ON rp.role_id = r.id
+               INNER JOIN admins a ON a.role_id = r.id
+               WHERE a.id = $1`
+            : `SELECT DISTINCT p.permission_code 
+               FROM permissions p
+               INNER JOIN role_permissions rp ON p.id = rp.permission_id
+               INNER JOIN roles r ON rp.role_id = r.id
+               INNER JOIN admins a ON a.role_id = r.id
+               WHERE a.id = ?`;
+        
+        const result = await query(sql, [adminId]);
+        return result.rows.map(row => row.permission_code);
+    } catch (error) {
+        console.error('❌ 取得管理員權限失敗:', error.message);
+        return [];
+    }
+}
+
+// 檢查管理員是否有特定權限
+async function hasPermission(adminId, permissionCode) {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT 1 
+               FROM permissions p
+               INNER JOIN role_permissions rp ON p.id = rp.permission_id
+               INNER JOIN roles r ON rp.role_id = r.id
+               INNER JOIN admins a ON a.role_id = r.id
+               WHERE a.id = $1 AND p.permission_code = $2
+               LIMIT 1`
+            : `SELECT 1 
+               FROM permissions p
+               INNER JOIN role_permissions rp ON p.id = rp.permission_id
+               INNER JOIN roles r ON rp.role_id = r.id
+               INNER JOIN admins a ON a.role_id = r.id
+               WHERE a.id = ? AND p.permission_code = ?
+               LIMIT 1`;
+        
+        const result = await queryOne(sql, [adminId, permissionCode]);
+        return !!result;
+    } catch (error) {
+        console.error('❌ 檢查權限失敗:', error.message);
+        return false;
+    }
+}
+
+// 取得角色的所有權限
+async function getRolePermissions(roleId) {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT p.permission_code, p.permission_name, p.module, p.description
+               FROM permissions p
+               INNER JOIN role_permissions rp ON p.id = rp.permission_id
+               WHERE rp.role_id = $1
+               ORDER BY p.module, p.permission_code`
+            : `SELECT p.permission_code, p.permission_name, p.module, p.description
+               FROM permissions p
+               INNER JOIN role_permissions rp ON p.id = rp.permission_id
+               WHERE rp.role_id = ?
+               ORDER BY p.module, p.permission_code`;
+        
+        const result = await query(sql, [roleId]);
+        return result.rows;
+    } catch (error) {
+        console.error('❌ 取得角色權限失敗:', error.message);
+        return [];
+    }
+}
+
+// 取得所有角色
+async function getAllRoles() {
+    try {
+        const sql = `SELECT r.*, 
+                     (SELECT COUNT(*) FROM role_permissions WHERE role_id = r.id) as permission_count,
+                     (SELECT COUNT(*) FROM admins WHERE role_id = r.id) as admin_count
+                     FROM roles r 
+                     ORDER BY r.id`;
+        const result = await query(sql);
+        return result.rows;
+    } catch (error) {
+        console.error('❌ 取得所有角色失敗:', error.message);
+        throw error;
+    }
+}
+
+// 取得角色詳情（包含權限）
+async function getRoleById(roleId) {
+    try {
+        const sql = usePostgreSQL
+            ? 'SELECT * FROM roles WHERE id = $1'
+            : 'SELECT * FROM roles WHERE id = ?';
+        const role = await queryOne(sql, [roleId]);
+        
+        if (role) {
+            role.permissions = await getRolePermissions(roleId);
+        }
+        
+        return role;
+    } catch (error) {
+        console.error('❌ 取得角色詳情失敗:', error.message);
+        throw error;
+    }
+}
+
+// 取得所有權限（按模組分組）
+async function getAllPermissions() {
+    try {
+        const sql = 'SELECT * FROM permissions ORDER BY module, permission_code';
+        const result = await query(sql);
+        return result.rows;
+    } catch (error) {
+        console.error('❌ 取得所有權限失敗:', error.message);
+        throw error;
+    }
+}
+
+// 取得所有權限（按模組分組）
+async function getAllPermissionsGrouped() {
+    try {
+        const permissions = await getAllPermissions();
+        const grouped = {};
+        
+        for (const perm of permissions) {
+            if (!grouped[perm.module]) {
+                grouped[perm.module] = [];
+            }
+            grouped[perm.module].push(perm);
+        }
+        
+        return grouped;
+    } catch (error) {
+        console.error('❌ 取得權限分組失敗:', error.message);
+        throw error;
+    }
+}
+
+// 建立新角色
+async function createRole(roleData) {
+    try {
+        const { role_name, display_name, description } = roleData;
+        
+        const sql = usePostgreSQL
+            ? 'INSERT INTO roles (role_name, display_name, description) VALUES ($1, $2, $3) RETURNING id'
+            : 'INSERT INTO roles (role_name, display_name, description) VALUES (?, ?, ?)';
+        
+        const result = await query(sql, [role_name, display_name, description || '']);
+        
+        return usePostgreSQL ? result.rows[0].id : result.lastID;
+    } catch (error) {
+        console.error('❌ 建立角色失敗:', error.message);
+        throw error;
+    }
+}
+
+// 更新角色
+async function updateRole(roleId, roleData) {
+    try {
+        const { display_name, description } = roleData;
+        
+        const sql = usePostgreSQL
+            ? 'UPDATE roles SET display_name = $1, description = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND is_system_role = 0'
+            : 'UPDATE roles SET display_name = ?, description = ?, updated_at = datetime(\'now\') WHERE id = ? AND is_system_role = 0';
+        
+        const result = await query(sql, [display_name, description || '', roleId]);
+        return result.changes > 0;
+    } catch (error) {
+        console.error('❌ 更新角色失敗:', error.message);
+        throw error;
+    }
+}
+
+// 刪除角色
+async function deleteRole(roleId) {
+    try {
+        // 檢查是否為系統角色
+        const role = await queryOne(
+            usePostgreSQL ? 'SELECT is_system_role FROM roles WHERE id = $1' : 'SELECT is_system_role FROM roles WHERE id = ?',
+            [roleId]
+        );
+        
+        if (!role) {
+            throw new Error('角色不存在');
+        }
+        
+        if (role.is_system_role) {
+            throw new Error('無法刪除系統內建角色');
+        }
+        
+        // 檢查是否有管理員使用此角色
+        const adminCount = await queryOne(
+            usePostgreSQL ? 'SELECT COUNT(*) as count FROM admins WHERE role_id = $1' : 'SELECT COUNT(*) as count FROM admins WHERE role_id = ?',
+            [roleId]
+        );
+        
+        if (adminCount && parseInt(adminCount.count) > 0) {
+            throw new Error('此角色仍有管理員使用中，無法刪除');
+        }
+        
+        const sql = usePostgreSQL
+            ? 'DELETE FROM roles WHERE id = $1 AND is_system_role = 0'
+            : 'DELETE FROM roles WHERE id = ? AND is_system_role = 0';
+        
+        const result = await query(sql, [roleId]);
+        return result.changes > 0;
+    } catch (error) {
+        console.error('❌ 刪除角色失敗:', error.message);
+        throw error;
+    }
+}
+
+// 更新角色權限
+async function updateRolePermissions(roleId, permissionCodes) {
+    try {
+        // 檢查是否為超級管理員角色（不允許修改）
+        const role = await queryOne(
+            usePostgreSQL ? 'SELECT role_name FROM roles WHERE id = $1' : 'SELECT role_name FROM roles WHERE id = ?',
+            [roleId]
+        );
+        
+        if (role && role.role_name === 'super_admin') {
+            throw new Error('無法修改超級管理員的權限');
+        }
+        
+        // 刪除現有權限
+        await query(
+            usePostgreSQL ? 'DELETE FROM role_permissions WHERE role_id = $1' : 'DELETE FROM role_permissions WHERE role_id = ?',
+            [roleId]
+        );
+        
+        // 新增新的權限
+        for (const permCode of permissionCodes) {
+            const perm = await queryOne(
+                usePostgreSQL 
+                    ? 'SELECT id FROM permissions WHERE permission_code = $1'
+                    : 'SELECT id FROM permissions WHERE permission_code = ?',
+                [permCode]
+            );
+            
+            if (perm) {
+                await query(
+                    usePostgreSQL 
+                        ? 'INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)'
+                        : 'INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)',
+                    [roleId, perm.id]
+                );
+            }
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('❌ 更新角色權限失敗:', error.message);
+        throw error;
+    }
+}
+
+// 取得所有管理員（包含角色資訊）
+async function getAllAdmins() {
+    try {
+        const sql = `SELECT a.id, a.username, a.email, a.role, a.role_id, a.department, a.phone, a.notes,
+                     a.created_at, a.last_login, a.is_active,
+                     r.display_name as role_display_name, r.role_name
+                     FROM admins a
+                     LEFT JOIN roles r ON a.role_id = r.id
+                     ORDER BY a.id`;
+        const result = await query(sql);
+        return result.rows;
+    } catch (error) {
+        console.error('❌ 取得所有管理員失敗:', error.message);
+        throw error;
+    }
+}
+
+// 取得管理員詳情（包含權限）
+async function getAdminById(adminId) {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT a.*, r.display_name as role_display_name, r.role_name
+               FROM admins a
+               LEFT JOIN roles r ON a.role_id = r.id
+               WHERE a.id = $1`
+            : `SELECT a.*, r.display_name as role_display_name, r.role_name
+               FROM admins a
+               LEFT JOIN roles r ON a.role_id = r.id
+               WHERE a.id = ?`;
+        const admin = await queryOne(sql, [adminId]);
+        
+        if (admin) {
+            admin.permissions = await getAdminPermissions(adminId);
+            // 移除敏感資訊
+            delete admin.password_hash;
+        }
+        
+        return admin;
+    } catch (error) {
+        console.error('❌ 取得管理員詳情失敗:', error.message);
+        throw error;
+    }
+}
+
+// 建立管理員
+async function createAdmin(adminData) {
+    try {
+        const { username, password, email, role_id, department, phone, notes } = adminData;
+        
+        const bcrypt = require('bcrypt');
+        const passwordHash = await bcrypt.hash(password, 10);
+        
+        const sql = usePostgreSQL
+            ? `INSERT INTO admins (username, password_hash, email, role_id, department, phone, notes) 
+               VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
+            : `INSERT INTO admins (username, password_hash, email, role_id, department, phone, notes) 
+               VALUES (?, ?, ?, ?, ?, ?, ?)`;
+        
+        const result = await query(sql, [username, passwordHash, email || '', role_id, department || '', phone || '', notes || '']);
+        
+        return usePostgreSQL ? result.rows[0].id : result.lastID;
+    } catch (error) {
+        console.error('❌ 建立管理員失敗:', error.message);
+        throw error;
+    }
+}
+
+// 更新管理員
+async function updateAdmin(adminId, adminData) {
+    try {
+        const { email, role_id, department, phone, notes, is_active } = adminData;
+        
+        const sql = usePostgreSQL
+            ? `UPDATE admins SET email = $1, role_id = $2, department = $3, phone = $4, notes = $5, is_active = $6
+               WHERE id = $7`
+            : `UPDATE admins SET email = ?, role_id = ?, department = ?, phone = ?, notes = ?, is_active = ?
+               WHERE id = ?`;
+        
+        const result = await query(sql, [email || '', role_id, department || '', phone || '', notes || '', is_active !== undefined ? is_active : 1, adminId]);
+        return result.changes > 0;
+    } catch (error) {
+        console.error('❌ 更新管理員失敗:', error.message);
+        throw error;
+    }
+}
+
+// 刪除管理員
+async function deleteAdmin(adminId) {
+    try {
+        // 檢查是否為最後一個超級管理員
+        const admin = await queryOne(
+            usePostgreSQL ? 'SELECT role_id FROM admins WHERE id = $1' : 'SELECT role_id FROM admins WHERE id = ?',
+            [adminId]
+        );
+        
+        if (admin) {
+            const superAdminRole = await queryOne(
+                usePostgreSQL ? 'SELECT id FROM roles WHERE role_name = $1' : 'SELECT id FROM roles WHERE role_name = ?',
+                ['super_admin']
+            );
+            
+            if (superAdminRole && admin.role_id === superAdminRole.id) {
+                const superAdminCount = await queryOne(
+                    usePostgreSQL ? 'SELECT COUNT(*) as count FROM admins WHERE role_id = $1' : 'SELECT COUNT(*) as count FROM admins WHERE role_id = ?',
+                    [superAdminRole.id]
+                );
+                
+                if (superAdminCount && parseInt(superAdminCount.count) <= 1) {
+                    throw new Error('無法刪除最後一個超級管理員');
+                }
+            }
+        }
+        
+        const sql = usePostgreSQL
+            ? 'DELETE FROM admins WHERE id = $1'
+            : 'DELETE FROM admins WHERE id = ?';
+        
+        const result = await query(sql, [adminId]);
+        return result.changes > 0;
+    } catch (error) {
+        console.error('❌ 刪除管理員失敗:', error.message);
+        throw error;
+    }
+}
+
+// 更新管理員角色
+async function updateAdminRole(adminId, roleId) {
+    try {
+        const sql = usePostgreSQL
+            ? 'UPDATE admins SET role_id = $1 WHERE id = $2'
+            : 'UPDATE admins SET role_id = ? WHERE id = ?';
+        
+        const result = await query(sql, [roleId, adminId]);
+        return result.changes > 0;
+    } catch (error) {
+        console.error('❌ 更新管理員角色失敗:', error.message);
+        throw error;
+    }
+}
+
 module.exports = {
     initDatabase,
     saveBooking,
@@ -5304,6 +6079,25 @@ module.exports = {
     // 個資保護
     anonymizeCustomerData,
     deleteCustomerData,
+    // 權限管理系統
+    initRolesAndPermissions,
+    getAdminPermissions,
+    hasPermission,
+    getRolePermissions,
+    getAllRoles,
+    getRoleById,
+    getAllPermissions,
+    getAllPermissionsGrouped,
+    createRole,
+    updateRole,
+    deleteRole,
+    updateRolePermissions,
+    getAllAdmins,
+    getAdminById,
+    createAdmin,
+    updateAdmin,
+    deleteAdmin,
+    updateAdminRole,
     // PostgreSQL 連接池（供 session store 使用）
     getPgPool: () => pgPool,
     usePostgreSQL

@@ -1671,7 +1671,7 @@ app.post('/api/line/webhook', express.raw({ type: 'application/json' }), async (
 });
 
 // 後台：快速建立訂房（不發送任何郵件，用於電話 / 其他平台訂房）
-app.post('/api/admin/bookings/quick', requireAuth, adminLimiter, async (req, res) => {
+app.post('/api/admin/bookings/quick', requireAuth, checkPermission('bookings.create'), adminLimiter, async (req, res) => {
     try {
         const {
             roomType,
@@ -2147,6 +2147,51 @@ function requireAuth(req, res, next) {
     res.status(401).json({ success: false, message: '請先登入' });
 }
 
+// 權限檢查中間件
+function checkPermission(permissionCode) {
+    return async (req, res, next) => {
+        if (!req.session || !req.session.admin) {
+            return res.status(401).json({ success: false, message: '未登入' });
+        }
+        
+        const adminId = req.session.admin.id;
+        const permissions = req.session.admin.permissions || [];
+        
+        // 先從 session 中檢查權限（效能優化）
+        if (permissions.includes(permissionCode)) {
+            return next();
+        }
+        
+        // 如果 session 中沒有權限列表，從資料庫檢查
+        const hasPermission = await db.hasPermission(adminId, permissionCode);
+        
+        if (hasPermission) {
+            // 更新 session 中的權限列表
+            if (!req.session.admin.permissions) {
+                req.session.admin.permissions = await db.getAdminPermissions(adminId);
+            }
+            return next();
+        }
+        
+        // 記錄權限檢查失敗日誌
+        await db.logAdminAction({
+            adminId: adminId,
+            adminUsername: req.session.admin.username,
+            action: 'permission_denied',
+            resourceType: 'permission',
+            resourceId: permissionCode,
+            details: JSON.stringify({ requestedPermission: permissionCode }),
+            ipAddress: req.ip || req.connection?.remoteAddress || 'unknown',
+            userAgent: req.get('user-agent') || 'unknown'
+        }).catch(err => console.error('記錄權限檢查失敗日誌錯誤:', err));
+        
+        return res.status(403).json({ 
+            success: false, 
+            message: '您沒有權限執行此操作' 
+        });
+    };
+}
+
 // 記錄操作日誌的輔助函數
 async function logAction(req, action, resourceType = null, resourceId = null, details = null) {
     try {
@@ -2213,18 +2258,30 @@ app.post('/api/admin/login', loginLimiter, validateLogin, async (req, res) => {
         const admin = await db.verifyAdminPassword(username, password);
         
         if (admin) {
+            // 取得管理員權限列表
+            const permissions = await db.getAdminPermissions(admin.id);
+            
+            // 取得管理員詳情（包含角色資訊）
+            const adminDetail = await db.getAdminById(admin.id);
+            const roleName = adminDetail?.role_display_name || admin.role || '管理員';
+            
             // 建立 Session
             req.session.admin = {
                 id: admin.id,
                 username: admin.username,
                 email: admin.email,
-                role: admin.role
+                role: admin.role,
+                role_id: adminDetail?.role_id,
+                role_display_name: roleName,
+                permissions: permissions
             };
             
             // 記錄 Session 資訊（用於除錯）
             console.log('✅ 登入成功，建立 Session:', {
                 sessionId: req.sessionID,
                 admin: admin.username,
+                role: roleName,
+                permissionCount: permissions.length,
                 hasSecret: !!process.env.SESSION_SECRET,
                 useSecureCookie: useSecureCookie
             });
@@ -2232,7 +2289,8 @@ app.post('/api/admin/login', loginLimiter, validateLogin, async (req, res) => {
             // 記錄登入日誌（異步執行，不阻塞回應）
             logAction(req, 'login', null, null, {
                 username: admin.username,
-                role: admin.role
+                role: roleName,
+                permissionCount: permissions.length
             }).catch(err => console.error('記錄登入日誌失敗:', err));
             
             // 立即回應登入成功（express-session 會在回應發送時自動設定 Cookie）
@@ -2242,7 +2300,9 @@ app.post('/api/admin/login', loginLimiter, validateLogin, async (req, res) => {
                 message: '登入成功',
                 admin: {
                     username: admin.username,
-                    role: admin.role
+                    role: admin.role,
+                    role_display_name: roleName,
+                    permissions: permissions
                 }
             });
             
@@ -2355,8 +2415,12 @@ app.post('/api/admin/change-password', requireAuth, adminLimiter, async (req, re
 });
 
 // 檢查登入狀態 API（應用管理後台 rate limiting）
-app.get('/api/admin/check-auth', adminLimiter, (req, res) => {
+app.get('/api/admin/check-auth', adminLimiter, async (req, res) => {
     if (req.session && req.session.admin) {
+        // 如果 session 中沒有權限列表，重新載入
+        if (!req.session.admin.permissions) {
+            req.session.admin.permissions = await db.getAdminPermissions(req.session.admin.id);
+        }
         res.json({
             success: true,
             authenticated: true,
@@ -2370,8 +2434,483 @@ app.get('/api/admin/check-auth', adminLimiter, (req, res) => {
     }
 });
 
+// ==================== 權限管理 API ====================
+
+// 取得當前管理員的權限列表
+app.get('/api/admin/my-permissions', requireAuth, async (req, res) => {
+    try {
+        const adminId = req.session.admin.id;
+        let permissions = req.session.admin.permissions;
+        
+        // 如果 session 中沒有權限列表，從資料庫載入
+        if (!permissions) {
+            permissions = await db.getAdminPermissions(adminId);
+            req.session.admin.permissions = permissions;
+        }
+        
+        res.json({
+            success: true,
+            permissions: permissions
+        });
+    } catch (error) {
+        console.error('取得權限列表錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '取得權限列表失敗：' + error.message
+        });
+    }
+});
+
+// 檢查是否有特定權限
+app.get('/api/admin/check-permission/:code', requireAuth, async (req, res) => {
+    try {
+        const adminId = req.session.admin.id;
+        const permissionCode = req.params.code;
+        const permissions = req.session.admin.permissions || [];
+        
+        // 先從 session 中檢查
+        let hasPermission = permissions.includes(permissionCode);
+        
+        // 如果 session 中沒有，從資料庫檢查
+        if (!hasPermission && !permissions.length) {
+            hasPermission = await db.hasPermission(adminId, permissionCode);
+        }
+        
+        res.json({
+            success: true,
+            hasPermission: hasPermission
+        });
+    } catch (error) {
+        console.error('檢查權限錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '檢查權限失敗：' + error.message
+        });
+    }
+});
+
+// 取得所有權限列表（僅供超級管理員或有 roles.view 權限的管理員）
+app.get('/api/admin/permissions', requireAuth, checkPermission('roles.view'), async (req, res) => {
+    try {
+        const permissions = await db.getAllPermissionsGrouped();
+        res.json({
+            success: true,
+            permissions: permissions
+        });
+    } catch (error) {
+        console.error('取得權限列表錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '取得權限列表失敗：' + error.message
+        });
+    }
+});
+
+// ==================== 角色管理 API ====================
+
+// 取得所有角色
+app.get('/api/admin/roles', requireAuth, checkPermission('roles.view'), async (req, res) => {
+    try {
+        const roles = await db.getAllRoles();
+        res.json({
+            success: true,
+            roles: roles
+        });
+    } catch (error) {
+        console.error('取得角色列表錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '取得角色列表失敗：' + error.message
+        });
+    }
+});
+
+// 取得角色詳情
+app.get('/api/admin/roles/:id', requireAuth, checkPermission('roles.view'), async (req, res) => {
+    try {
+        const roleId = parseInt(req.params.id);
+        const role = await db.getRoleById(roleId);
+        
+        if (!role) {
+            return res.status(404).json({
+                success: false,
+                message: '找不到該角色'
+            });
+        }
+        
+        res.json({
+            success: true,
+            role: role
+        });
+    } catch (error) {
+        console.error('取得角色詳情錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '取得角色詳情失敗：' + error.message
+        });
+    }
+});
+
+// 新增角色
+app.post('/api/admin/roles', requireAuth, checkPermission('roles.create'), async (req, res) => {
+    try {
+        const { role_name, display_name, description } = req.body;
+        
+        if (!role_name || !display_name) {
+            return res.status(400).json({
+                success: false,
+                message: '角色名稱和顯示名稱為必填'
+            });
+        }
+        
+        const roleId = await db.createRole({ role_name, display_name, description });
+        
+        await logAction(req, 'create_role', 'role', roleId, {
+            role_name: role_name,
+            display_name: display_name
+        });
+        
+        res.json({
+            success: true,
+            message: '角色建立成功',
+            roleId: roleId
+        });
+    } catch (error) {
+        console.error('新增角色錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '新增角色失敗：' + error.message
+        });
+    }
+});
+
+// 更新角色
+app.put('/api/admin/roles/:id', requireAuth, checkPermission('roles.edit'), async (req, res) => {
+    try {
+        const roleId = parseInt(req.params.id);
+        const { display_name, description } = req.body;
+        
+        const success = await db.updateRole(roleId, { display_name, description });
+        
+        if (success) {
+            await logAction(req, 'update_role', 'role', roleId, {
+                display_name: display_name
+            });
+            
+            res.json({
+                success: true,
+                message: '角色更新成功'
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                message: '無法更新系統內建角色或角色不存在'
+            });
+        }
+    } catch (error) {
+        console.error('更新角色錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '更新角色失敗：' + error.message
+        });
+    }
+});
+
+// 刪除角色
+app.delete('/api/admin/roles/:id', requireAuth, checkPermission('roles.delete'), async (req, res) => {
+    try {
+        const roleId = parseInt(req.params.id);
+        
+        const success = await db.deleteRole(roleId);
+        
+        if (success) {
+            await logAction(req, 'delete_role', 'role', roleId, {});
+            
+            res.json({
+                success: true,
+                message: '角色刪除成功'
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                message: '無法刪除角色'
+            });
+        }
+    } catch (error) {
+        console.error('刪除角色錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '刪除角色失敗：' + error.message
+        });
+    }
+});
+
+// 更新角色權限
+app.put('/api/admin/roles/:id/permissions', requireAuth, checkPermission('roles.assign_permissions'), async (req, res) => {
+    try {
+        const roleId = parseInt(req.params.id);
+        const { permissions } = req.body;
+        
+        if (!Array.isArray(permissions)) {
+            return res.status(400).json({
+                success: false,
+                message: '權限列表格式錯誤'
+            });
+        }
+        
+        await db.updateRolePermissions(roleId, permissions);
+        
+        await logAction(req, 'update_role_permissions', 'role', roleId, {
+            permissionCount: permissions.length
+        });
+        
+        res.json({
+            success: true,
+            message: '角色權限更新成功'
+        });
+    } catch (error) {
+        console.error('更新角色權限錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '更新角色權限失敗：' + error.message
+        });
+    }
+});
+
+// ==================== 管理員管理 API ====================
+
+// 取得所有管理員
+app.get('/api/admin/admins', requireAuth, checkPermission('admins.view'), async (req, res) => {
+    try {
+        const admins = await db.getAllAdmins();
+        res.json({
+            success: true,
+            admins: admins
+        });
+    } catch (error) {
+        console.error('取得管理員列表錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '取得管理員列表失敗：' + error.message
+        });
+    }
+});
+
+// 取得管理員詳情
+app.get('/api/admin/admins/:id', requireAuth, checkPermission('admins.view'), async (req, res) => {
+    try {
+        const adminId = parseInt(req.params.id);
+        const admin = await db.getAdminById(adminId);
+        
+        if (!admin) {
+            return res.status(404).json({
+                success: false,
+                message: '找不到該管理員'
+            });
+        }
+        
+        res.json({
+            success: true,
+            admin: admin
+        });
+    } catch (error) {
+        console.error('取得管理員詳情錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '取得管理員詳情失敗：' + error.message
+        });
+    }
+});
+
+// 新增管理員
+app.post('/api/admin/admins', requireAuth, checkPermission('admins.create'), async (req, res) => {
+    try {
+        const { username, password, email, role_id, department, phone, notes } = req.body;
+        
+        if (!username || !password || !role_id) {
+            return res.status(400).json({
+                success: false,
+                message: '帳號、密碼和角色為必填'
+            });
+        }
+        
+        // 檢查帳號是否已存在
+        const existing = await db.getAdminByUsername(username);
+        if (existing) {
+            return res.status(400).json({
+                success: false,
+                message: '此帳號已存在'
+            });
+        }
+        
+        const adminId = await db.createAdmin({ username, password, email, role_id, department, phone, notes });
+        
+        await logAction(req, 'create_admin', 'admin', adminId, {
+            username: username,
+            role_id: role_id
+        });
+        
+        res.json({
+            success: true,
+            message: '管理員建立成功',
+            adminId: adminId
+        });
+    } catch (error) {
+        console.error('新增管理員錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '新增管理員失敗：' + error.message
+        });
+    }
+});
+
+// 更新管理員
+app.put('/api/admin/admins/:id', requireAuth, checkPermission('admins.edit'), async (req, res) => {
+    try {
+        const adminId = parseInt(req.params.id);
+        const { email, role_id, department, phone, notes, is_active } = req.body;
+        
+        const success = await db.updateAdmin(adminId, { email, role_id, department, phone, notes, is_active });
+        
+        if (success) {
+            await logAction(req, 'update_admin', 'admin', adminId, {
+                role_id: role_id
+            });
+            
+            res.json({
+                success: true,
+                message: '管理員資料更新成功'
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                message: '更新失敗，管理員不存在'
+            });
+        }
+    } catch (error) {
+        console.error('更新管理員錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '更新管理員失敗：' + error.message
+        });
+    }
+});
+
+// 刪除管理員
+app.delete('/api/admin/admins/:id', requireAuth, checkPermission('admins.delete'), async (req, res) => {
+    try {
+        const adminId = parseInt(req.params.id);
+        
+        // 不允許刪除自己
+        if (adminId === req.session.admin.id) {
+            return res.status(400).json({
+                success: false,
+                message: '無法刪除自己的帳號'
+            });
+        }
+        
+        const success = await db.deleteAdmin(adminId);
+        
+        if (success) {
+            await logAction(req, 'delete_admin', 'admin', adminId, {});
+            
+            res.json({
+                success: true,
+                message: '管理員刪除成功'
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                message: '刪除失敗，管理員不存在'
+            });
+        }
+    } catch (error) {
+        console.error('刪除管理員錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '刪除管理員失敗：' + error.message
+        });
+    }
+});
+
+// 更新管理員角色
+app.put('/api/admin/admins/:id/role', requireAuth, checkPermission('admins.edit'), async (req, res) => {
+    try {
+        const adminId = parseInt(req.params.id);
+        const { role_id } = req.body;
+        
+        if (!role_id) {
+            return res.status(400).json({
+                success: false,
+                message: '角色 ID 為必填'
+            });
+        }
+        
+        const success = await db.updateAdminRole(adminId, role_id);
+        
+        if (success) {
+            await logAction(req, 'update_admin_role', 'admin', adminId, {
+                role_id: role_id
+            });
+            
+            res.json({
+                success: true,
+                message: '管理員角色更新成功'
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                message: '更新失敗'
+            });
+        }
+    } catch (error) {
+        console.error('更新管理員角色錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '更新管理員角色失敗：' + error.message
+        });
+    }
+});
+
+// 重設管理員密碼（需要 admins.change_password 權限）
+app.put('/api/admin/admins/:id/reset-password', requireAuth, checkPermission('admins.change_password'), async (req, res) => {
+    try {
+        const adminId = parseInt(req.params.id);
+        const { newPassword } = req.body;
+        
+        if (!newPassword || newPassword.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: '新密碼至少需要 6 個字元'
+            });
+        }
+        
+        const success = await db.updateAdminPassword(adminId, newPassword);
+        
+        if (success) {
+            await logAction(req, 'reset_admin_password', 'admin', adminId, {});
+            
+            res.json({
+                success: true,
+                message: '密碼重設成功'
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                message: '重設失敗，管理員不存在'
+            });
+        }
+    } catch (error) {
+        console.error('重設密碼錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '重設密碼失敗：' + error.message
+        });
+    }
+});
+
 // API: 取得備份列表
-app.get('/api/admin/backups', requireAuth, adminLimiter, async (req, res) => {
+app.get('/api/admin/backups', requireAuth, checkPermission('backup.view'), adminLimiter, async (req, res) => {
     try {
         const backups = backup.getBackupList();
         const stats = backup.getBackupStats();
@@ -2391,7 +2930,7 @@ app.get('/api/admin/backups', requireAuth, adminLimiter, async (req, res) => {
 });
 
 // API: 手動執行備份
-app.post('/api/admin/backups/create', requireAuth, adminLimiter, async (req, res) => {
+app.post('/api/admin/backups/create', requireAuth, checkPermission('backup.create'), adminLimiter, async (req, res) => {
     try {
         const result = await backup.performBackup();
         
@@ -2416,7 +2955,7 @@ app.post('/api/admin/backups/create', requireAuth, adminLimiter, async (req, res
 });
 
 // API: 清理舊備份
-app.post('/api/admin/backups/cleanup', requireAuth, adminLimiter, async (req, res) => {
+app.post('/api/admin/backups/cleanup', requireAuth, checkPermission('backup.delete'), adminLimiter, async (req, res) => {
     try {
         const { daysToKeep = 30 } = req.body;
         const result = await backup.cleanupOldBackups(parseInt(daysToKeep));
@@ -2554,7 +3093,7 @@ app.get('/api/bookings/email/:email', publicLimiter, async (req, res) => {
 });
 
 // API: 取得所有客戶列表（聚合訂房資料）- 需要登入
-app.get('/api/customers', requireAuth, adminLimiter, async (req, res) => {
+app.get('/api/customers', requireAuth, checkPermission('customers.view'), adminLimiter, async (req, res) => {
     try {
         const customers = await db.getAllCustomers();
         
@@ -2573,7 +3112,7 @@ app.get('/api/customers', requireAuth, adminLimiter, async (req, res) => {
 });
 
 // API: 更新客戶資料
-app.put('/api/customers/:email', requireAuth, adminLimiter, async (req, res) => {
+app.put('/api/customers/:email', requireAuth, checkPermission('customers.edit'), adminLimiter, async (req, res) => {
     try {
         const { email } = req.params;
         const { guest_name, guest_phone } = req.body;
@@ -2602,7 +3141,7 @@ app.put('/api/customers/:email', requireAuth, adminLimiter, async (req, res) => 
 });
 
 // API: 刪除客戶
-app.delete('/api/customers/:email', requireAuth, adminLimiter, async (req, res) => {
+app.delete('/api/customers/:email', requireAuth, checkPermission('customers.delete'), adminLimiter, async (req, res) => {
     try {
         const { email } = req.params;
         
@@ -2625,7 +3164,7 @@ app.delete('/api/customers/:email', requireAuth, adminLimiter, async (req, res) 
 // ==================== 會員等級管理 API ====================
 
 // API: 取得所有會員等級
-app.get('/api/member-levels', requireAuth, adminLimiter, async (req, res) => {
+app.get('/api/member-levels', requireAuth, checkPermission('customers.view'), adminLimiter, async (req, res) => {
     try {
         const levels = await db.getAllMemberLevels();
         
@@ -2644,7 +3183,7 @@ app.get('/api/member-levels', requireAuth, adminLimiter, async (req, res) => {
 });
 
 // API: 取得單一會員等級
-app.get('/api/member-levels/:id', requireAuth, adminLimiter, async (req, res) => {
+app.get('/api/member-levels/:id', requireAuth, checkPermission('customers.view'), adminLimiter, async (req, res) => {
     try {
         const { id } = req.params;
         const level = await db.getMemberLevelById(parseInt(id));
@@ -2670,7 +3209,7 @@ app.get('/api/member-levels/:id', requireAuth, adminLimiter, async (req, res) =>
 });
 
 // API: 新增會員等級
-app.post('/api/member-levels', requireAuth, adminLimiter, async (req, res) => {
+app.post('/api/member-levels', requireAuth, checkPermission('customers.edit'), adminLimiter, async (req, res) => {
     try {
         const { level_name, min_spent, min_bookings, discount_percent, display_order, is_active } = req.body;
         
@@ -2705,7 +3244,7 @@ app.post('/api/member-levels', requireAuth, adminLimiter, async (req, res) => {
 });
 
 // API: 更新會員等級
-app.put('/api/member-levels/:id', requireAuth, adminLimiter, async (req, res) => {
+app.put('/api/member-levels/:id', requireAuth, checkPermission('customers.edit'), adminLimiter, async (req, res) => {
     try {
         const { id } = req.params;
         const { level_name, min_spent, min_bookings, discount_percent, display_order, is_active } = req.body;
@@ -2741,7 +3280,7 @@ app.put('/api/member-levels/:id', requireAuth, adminLimiter, async (req, res) =>
 });
 
 // API: 刪除會員等級
-app.delete('/api/member-levels/:id', requireAuth, adminLimiter, async (req, res) => {
+app.delete('/api/member-levels/:id', requireAuth, checkPermission('customers.delete'), adminLimiter, async (req, res) => {
     try {
         const { id } = req.params;
         
@@ -2814,7 +3353,7 @@ app.post('/api/promo-codes/validate', publicLimiter, async (req, res) => {
 });
 
 // API: 取得所有優惠代碼（管理後台）
-app.get('/api/admin/promo-codes', requireAuth, adminLimiter, async (req, res) => {
+app.get('/api/admin/promo-codes', requireAuth, checkPermission('promo_codes.view'), adminLimiter, async (req, res) => {
     try {
         const codes = await db.getAllPromoCodes();
         
@@ -2842,7 +3381,7 @@ app.get('/api/admin/promo-codes', requireAuth, adminLimiter, async (req, res) =>
 });
 
 // API: 取得單一優惠代碼
-app.get('/api/admin/promo-codes/:id', requireAuth, adminLimiter, async (req, res) => {
+app.get('/api/admin/promo-codes/:id', requireAuth, checkPermission('promo_codes.view'), adminLimiter, async (req, res) => {
     try {
         const { id } = req.params;
         const code = await db.getPromoCodeById(parseInt(id));
@@ -2872,7 +3411,7 @@ app.get('/api/admin/promo-codes/:id', requireAuth, adminLimiter, async (req, res
 });
 
 // API: 新增優惠代碼
-app.post('/api/admin/promo-codes', requireAuth, adminLimiter, async (req, res) => {
+app.post('/api/admin/promo-codes', requireAuth, checkPermission('promo_codes.create'), adminLimiter, async (req, res) => {
     try {
         const {
             code, name, description, discount_type, discount_value,
@@ -2929,7 +3468,7 @@ app.post('/api/admin/promo-codes', requireAuth, adminLimiter, async (req, res) =
 });
 
 // API: 更新優惠代碼
-app.put('/api/admin/promo-codes/:id', requireAuth, adminLimiter, async (req, res) => {
+app.put('/api/admin/promo-codes/:id', requireAuth, checkPermission('promo_codes.edit'), adminLimiter, async (req, res) => {
     try {
         const { id } = req.params;
         const {
@@ -2988,7 +3527,7 @@ app.put('/api/admin/promo-codes/:id', requireAuth, adminLimiter, async (req, res
 });
 
 // API: 刪除優惠代碼
-app.delete('/api/admin/promo-codes/:id', requireAuth, adminLimiter, async (req, res) => {
+app.delete('/api/admin/promo-codes/:id', requireAuth, checkPermission('promo_codes.delete'), adminLimiter, async (req, res) => {
     try {
         const { id } = req.params;
         
@@ -3201,7 +3740,7 @@ app.post('/api/data-protection/delete', publicLimiter, async (req, res, next) =>
 
 // API: 取得統計資料 - 需要登入
 // 支援可選的日期區間：?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
-app.get('/api/statistics', requireAuth, adminLimiter, async (req, res) => {
+app.get('/api/statistics', requireAuth, checkPermission('statistics.view'), adminLimiter, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
 
@@ -3230,7 +3769,7 @@ app.get('/api/statistics', requireAuth, adminLimiter, async (req, res) => {
 });
 
 // API: 取得上月和本月的統計資料（不含比較）
-app.get('/api/statistics/monthly-stats', requireAuth, adminLimiter, async (req, res) => {
+app.get('/api/statistics/monthly-stats', requireAuth, checkPermission('statistics.view'), adminLimiter, async (req, res) => {
     try {
         const stats = await db.getMonthlyComparison();
         res.json({
@@ -3315,7 +3854,7 @@ app.get('/api/dashboard', adminLimiter, async (req, res) => {
 });
 
 // API: 更新訂房資料
-app.put('/api/bookings/:bookingId', adminLimiter, async (req, res) => {
+app.put('/api/bookings/:bookingId', requireAuth, checkPermission('bookings.edit'), adminLimiter, async (req, res) => {
     try {
         const { bookingId } = req.params;
         const updateData = { ...req.body };
@@ -3413,7 +3952,7 @@ app.put('/api/bookings/:bookingId', adminLimiter, async (req, res) => {
 });
 
 // API: 取消訂房
-app.post('/api/bookings/:bookingId/cancel', adminLimiter, async (req, res) => {
+app.post('/api/bookings/:bookingId/cancel', requireAuth, checkPermission('bookings.cancel'), adminLimiter, async (req, res) => {
     try {
         const { bookingId } = req.params;
         
@@ -3440,7 +3979,7 @@ app.post('/api/bookings/:bookingId/cancel', adminLimiter, async (req, res) => {
 });
 
 // API: 刪除訂房（僅限已取消的訂房）
-app.delete('/api/bookings/:bookingId', adminLimiter, async (req, res) => {
+app.delete('/api/bookings/:bookingId', requireAuth, checkPermission('bookings.delete'), adminLimiter, async (req, res) => {
     try {
         const { bookingId } = req.params;
         
@@ -3529,7 +4068,7 @@ app.get('/api/room-availability', publicLimiter, async (req, res) => {
 
 
 // API: 取得所有房型（管理後台，包含已停用的）
-app.get('/api/admin/room-types', requireAuth, adminLimiter, async (req, res) => {
+app.get('/api/admin/room-types', requireAuth, checkPermission('room_types.view'), adminLimiter, async (req, res) => {
     try {
         // 使用資料庫抽象層，支援 PostgreSQL 和 SQLite
         const roomTypes = await db.getAllRoomTypesAdmin();
@@ -3547,7 +4086,7 @@ app.get('/api/admin/room-types', requireAuth, adminLimiter, async (req, res) => 
 });
 
 // API: 新增房型
-app.post('/api/admin/room-types', requireAuth, adminLimiter, validateRoomType, async (req, res) => {
+app.post('/api/admin/room-types', requireAuth, checkPermission('room_types.create'), adminLimiter, validateRoomType, async (req, res) => {
     try {
         const roomData = req.body;
         
@@ -3581,7 +4120,7 @@ app.post('/api/admin/room-types', requireAuth, adminLimiter, validateRoomType, a
 });
 
 // API: 更新房型
-app.put('/api/admin/room-types/:id', requireAuth, adminLimiter, validateRoomType, async (req, res) => {
+app.put('/api/admin/room-types/:id', requireAuth, checkPermission('room_types.edit'), adminLimiter, validateRoomType, async (req, res) => {
     try {
         const { id } = req.params;
         const roomData = req.body;
@@ -3611,7 +4150,7 @@ app.put('/api/admin/room-types/:id', requireAuth, adminLimiter, validateRoomType
 // ==================== 假日管理 API ====================
 
 // API: 取得所有假日
-app.get('/api/admin/holidays', requireAuth, adminLimiter, async (req, res) => {
+app.get('/api/admin/holidays', requireAuth, checkPermission('room_types.view'), adminLimiter, async (req, res) => {
     try {
         const holidays = await db.getAllHolidays();
         res.json({
@@ -3628,7 +4167,7 @@ app.get('/api/admin/holidays', requireAuth, adminLimiter, async (req, res) => {
 });
 
 // API: 新增假日
-app.post('/api/admin/holidays', requireAuth, adminLimiter, validateHoliday, async (req, res) => {
+app.post('/api/admin/holidays', requireAuth, checkPermission('room_types.edit'), adminLimiter, validateHoliday, async (req, res) => {
     try {
         const { holidayDate, holidayName, startDate, endDate } = req.body;
         
@@ -3664,7 +4203,7 @@ app.post('/api/admin/holidays', requireAuth, adminLimiter, validateHoliday, asyn
 });
 
 // API: 刪除假日
-app.delete('/api/admin/holidays/:date', requireAuth, adminLimiter, async (req, res) => {
+app.delete('/api/admin/holidays/:date', requireAuth, checkPermission('room_types.edit'), adminLimiter, async (req, res) => {
     try {
         const { date } = req.params;
         const result = await db.deleteHoliday(date);
@@ -3783,7 +4322,7 @@ app.get('/api/calculate-price', publicLimiter, async (req, res) => {
 });
 
 // API: 刪除房型
-app.delete('/api/admin/room-types/:id', requireAuth, adminLimiter, async (req, res) => {
+app.delete('/api/admin/room-types/:id', requireAuth, checkPermission('room_types.delete'), adminLimiter, async (req, res) => {
     try {
         const { id } = req.params;
         
@@ -3841,7 +4380,7 @@ app.get('/api/addons', publicLimiter, async (req, res) => {
 });
 
 // API: 取得所有加購商品（管理後台，包含已停用的）
-app.get('/api/admin/addons', requireAuth, adminLimiter, async (req, res) => {
+app.get('/api/admin/addons', requireAuth, checkPermission('addons.view'), adminLimiter, async (req, res) => {
     try {
         const addons = await db.getAllAddonsAdmin();
         res.json({
@@ -3858,7 +4397,7 @@ app.get('/api/admin/addons', requireAuth, adminLimiter, async (req, res) => {
 });
 
 // API: 新增加購商品
-app.post('/api/admin/addons', requireAuth, adminLimiter, validateAddon, async (req, res) => {
+app.post('/api/admin/addons', requireAuth, checkPermission('addons.create'), adminLimiter, validateAddon, async (req, res) => {
     try {
         const addonData = req.body;
         
@@ -3885,7 +4424,7 @@ app.post('/api/admin/addons', requireAuth, adminLimiter, validateAddon, async (r
 });
 
 // API: 更新加購商品
-app.put('/api/admin/addons/:id', requireAuth, adminLimiter, validateAddon, async (req, res) => {
+app.put('/api/admin/addons/:id', requireAuth, checkPermission('addons.edit'), adminLimiter, validateAddon, async (req, res) => {
     try {
         const { id } = req.params;
         const addonData = req.body;
@@ -3913,7 +4452,7 @@ app.put('/api/admin/addons/:id', requireAuth, adminLimiter, validateAddon, async
 });
 
 // API: 刪除加購商品
-app.delete('/api/admin/addons/:id', requireAuth, adminLimiter, async (req, res) => {
+app.delete('/api/admin/addons/:id', requireAuth, checkPermission('addons.delete'), adminLimiter, async (req, res) => {
     try {
         const { id } = req.params;
         
@@ -3994,7 +4533,7 @@ app.get('/api/settings', publicLimiter, async (req, res) => {
 });
 
 // API: 更新系統設定
-app.put('/api/admin/settings/:key', requireAuth, adminLimiter, async (req, res) => {
+app.put('/api/admin/settings/:key', requireAuth, checkPermission('settings.edit'), adminLimiter, async (req, res) => {
     try {
         const { key } = req.params;
         const { value, description } = req.body;
@@ -4720,7 +5259,7 @@ app.get('/api/payment/result', paymentLimiter, handlePaymentResult);
 app.post('/api/payment/result', paymentLimiter, handlePaymentResult);
 
 // API: 檢查郵件服務狀態（Resend/Gmail）
-app.get('/api/admin/email-service-status', requireAuth, adminLimiter, async (req, res) => {
+app.get('/api/admin/email-service-status', requireAuth, checkPermission('email_templates.view'), adminLimiter, async (req, res) => {
     try {
         // 檢查 Resend 套件
         const resendPackageInstalled = Resend !== null;
@@ -4798,7 +5337,7 @@ app.get('/api/admin/email-service-status', requireAuth, adminLimiter, async (req
 // ==================== 郵件模板 API ====================
 
 // API: 取得所有郵件模板
-app.get('/api/email-templates', requireAuth, adminLimiter, async (req, res) => {
+app.get('/api/email-templates', requireAuth, checkPermission('email_templates.view'), adminLimiter, async (req, res) => {
     try {
         const templates = await db.getAllEmailTemplates();
         res.json({
@@ -4815,7 +5354,7 @@ app.get('/api/email-templates', requireAuth, adminLimiter, async (req, res) => {
 });
 
 // API: 取得單一郵件模板
-app.get('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res) => {
+app.get('/api/email-templates/:key', requireAuth, checkPermission('email_templates.view'), adminLimiter, async (req, res) => {
     try {
         const { key } = req.params;
         console.log(`📧 取得郵件模板: ${key}`);
@@ -4851,7 +5390,7 @@ app.get('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res)
 });
 
 // API: 更新郵件模板
-app.put('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res) => {
+app.put('/api/email-templates/:key', requireAuth, checkPermission('email_templates.edit'), adminLimiter, async (req, res) => {
     try {
         const { key } = req.params;
         const { 
@@ -4974,7 +5513,7 @@ app.put('/api/email-templates/:key', requireAuth, adminLimiter, async (req, res)
 });
 
 // API: 發送測試郵件
-app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req, res) => {
+app.post('/api/email-templates/:key/test', requireAuth, checkPermission('email_templates.send_test'), adminLimiter, async (req, res) => {
     try {
         const { key } = req.params;
         const { email, useEditorContent } = req.body;
@@ -5530,7 +6069,7 @@ app.post('/api/email-templates/:key/test', requireAuth, adminLimiter, async (req
 });
 
 // API: 重置郵件模板為預設圖卡樣式
-app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, async (req, res) => {
+app.post('/api/email-templates/reset-to-default', requireAuth, checkPermission('email_templates.edit'), adminLimiter, async (req, res) => {
     try {
         // 使用圖卡樣式的模板
         const fallbackTemplates = [
@@ -6627,7 +7166,7 @@ app.post('/api/email-templates/reset-to-default', requireAuth, adminLimiter, asy
 });
 
 // API: 強制更新所有郵件模板為最新版本（用於更新折扣欄位等功能）
-app.post('/api/email-templates/force-update', requireAuth, adminLimiter, async (req, res) => {
+app.post('/api/email-templates/force-update', requireAuth, checkPermission('email_templates.edit'), adminLimiter, async (req, res) => {
     try {
         console.log('🔄 強制更新所有郵件模板為最新版本...');
         
@@ -6648,7 +7187,7 @@ app.post('/api/email-templates/force-update', requireAuth, adminLimiter, async (
 });
 
 // API: 獲取預設郵件模板內容（用於還原功能）
-app.get('/api/email-templates/:key/default', requireAuth, adminLimiter, async (req, res) => {
+app.get('/api/email-templates/:key/default', requireAuth, checkPermission('email_templates.view'), adminLimiter, async (req, res) => {
     try {
         const { key } = req.params;
         
@@ -7479,7 +8018,7 @@ app.get('/api/email-templates/:key/default', requireAuth, adminLimiter, async (r
 });
 
 // API: 強制重新生成入住提醒郵件模板（使用最新格式）
-app.post('/api/email-templates/checkin_reminder/regenerate', requireAuth, adminLimiter, async (req, res) => {
+app.post('/api/email-templates/checkin_reminder/regenerate', requireAuth, checkPermission('email_templates.edit'), adminLimiter, async (req, res) => {
     try {
         // 從 database.js 中獲取最新的模板定義
         const defaultTemplates = [
@@ -7716,7 +8255,7 @@ app.post('/api/email-templates/checkin_reminder/regenerate', requireAuth, adminL
 });
 
 // API: 強制更新入住提醒郵件模板為完整的圖卡格式（並重新初始化所有模板）
-app.post('/api/email-templates/checkin_reminder/force-update-card-format', requireAuth, adminLimiter, async (req, res) => {
+app.post('/api/email-templates/checkin_reminder/force-update-card-format', requireAuth, checkPermission('email_templates.edit'), adminLimiter, async (req, res) => {
     try {
         // 完整的圖卡格式模板（與感謝入住格式一致，但使用藍色系）
         const cardFormatTemplate = `<!DOCTYPE html>
@@ -7856,7 +8395,7 @@ app.post('/api/email-templates/checkin_reminder/force-update-card-format', requi
 });
 
 // API: 清除入住提醒郵件的區塊內容（使用新的預設格式）
-app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, adminLimiter, async (req, res) => {
+app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, checkPermission('email_templates.edit'), adminLimiter, async (req, res) => {
     try {
         // 取得入住提醒模板
         const template = await db.getEmailTemplateByKey('checkin_reminder');
