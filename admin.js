@@ -1706,6 +1706,17 @@ function renderBookings() {
         // 確保金額是數字類型並正確顯示
         const finalAmount = parseInt(booking.final_amount) || 0;
         
+        // 判斷是否已過入住日期（一般管理員不可取消已付款且已入住的訂房）
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const checkInDate = new Date(booking.check_in_date);
+        checkInDate.setHours(0, 0, 0, 0);
+        const isPastCheckIn = checkInDate < today;
+        
+        // 一般管理員不可取消：已付款 + 有效 + 已過入住日期
+        const isSuperAdmin = window.currentAdminInfo && window.currentAdminInfo.role === 'super_admin';
+        const cannotCancel = !isSuperAdmin && paymentStatus === 'paid' && bookingStatus === 'active' && isPastCheckIn;
+        
         return `
         <tr ${isCancelled ? 'style="opacity: 0.6; background: #f8f8f8;"' : ''}>
             <td>${booking.booking_id}</td>
@@ -1734,7 +1745,7 @@ function renderBookings() {
                     ${hasPermission('bookings.view') ? `<button class="btn-view" onclick="viewBookingDetail('${booking.booking_id}')">查看</button>` : ''}
                     ${!isCancelled ? `
                         ${hasPermission('bookings.edit') ? `<button class="btn-edit" onclick="editBooking('${booking.booking_id}')">編輯</button>` : ''}
-                        ${hasPermission('bookings.cancel') ? `<button class="btn-cancel" onclick="cancelBooking('${booking.booking_id}')">取消</button>` : ''}
+                        ${hasPermission('bookings.cancel') && !cannotCancel ? `<button class="btn-cancel" onclick="cancelBooking('${booking.booking_id}')">取消</button>` : ''}
                     ` : `
                         ${hasPermission('bookings.delete') ? `<button class="btn-delete" onclick="deleteBooking('${booking.booking_id}')">刪除</button>` : ''}
                     `}

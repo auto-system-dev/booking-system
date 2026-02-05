@@ -3956,6 +3956,34 @@ app.post('/api/bookings/:bookingId/cancel', requireAuth, checkPermission('bookin
     try {
         const { bookingId } = req.params;
         
+        // 取得訂房資料
+        const booking = await db.getBookingById(bookingId);
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: '找不到該訂房記錄'
+            });
+        }
+        
+        // 檢查是否為超級管理員
+        const isSuperAdmin = req.session.admin && req.session.admin.role === 'super_admin';
+        
+        // 一般管理員不可取消：已付款 + 有效 + 已過入住日期
+        if (!isSuperAdmin) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const checkInDate = new Date(booking.check_in_date);
+            checkInDate.setHours(0, 0, 0, 0);
+            const isPastCheckIn = checkInDate < today;
+            
+            if (booking.payment_status === 'paid' && booking.status === 'active' && isPastCheckIn) {
+                return res.status(403).json({
+                    success: false,
+                    message: '無法取消已付款且已過入住日期的訂房，請聯繫超級管理員'
+                });
+            }
+        }
+        
         const result = await db.cancelBooking(bookingId);
         
         if (result > 0) {
