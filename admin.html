@@ -41,6 +41,14 @@
 
     <!-- 管理後台主頁面 -->
     <div id="adminPage" class="admin-container" style="display: none;">
+        <!-- 手機版選單按鈕 -->
+        <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">
+            <span class="material-symbols-outlined">menu</span>
+        </button>
+        
+        <!-- 側邊欄遮罩 -->
+        <div class="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
+        
         <!-- 側邊欄 -->
         <aside class="sidebar">
             <div class="sidebar-header">

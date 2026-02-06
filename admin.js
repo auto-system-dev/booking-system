@@ -703,6 +703,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                     e.preventDefault();
                     const section = this.dataset.section;
                     switchSection(section);
+                    // 手機版自動關閉側邊欄
+                    closeMobileSidebar();
                 });
             });
         }
@@ -8080,6 +8082,36 @@ function closePromoCodeModal() {
     document.getElementById('promoCodeForm').reset();
     document.getElementById('promoCodeId').value = '';
 }
+
+// ==================== 手機版側邊欄 ====================
+
+// 切換手機版側邊欄
+function toggleMobileSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    
+    if (sidebar && overlay) {
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+    }
+}
+
+// 點擊導航項目時自動關閉側邊欄（手機版）
+function closeMobileSidebar() {
+    if (window.innerWidth <= 768) {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.querySelector('.sidebar-overlay');
+        
+        if (sidebar && overlay) {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+        }
+    }
+}
+
+// 暴露到全局
+window.toggleMobileSidebar = toggleMobileSidebar;
+window.closeMobileSidebar = closeMobileSidebar;
 
 // ==================== 權限管理系統 ====================
 

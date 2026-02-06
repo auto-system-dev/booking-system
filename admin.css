@@ -1513,3 +1513,316 @@ code {
     color: #667eea;
 }
 
+/* ==================== 手機響應式設計 ==================== */
+
+/* 手機版選單按鈕 */
+.mobile-menu-btn {
+    display: none;
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 1001;
+    background: #262A33;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.mobile-menu-btn .material-symbols-outlined {
+    font-size: 24px;
+}
+
+/* 側邊欄遮罩 */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+}
+
+.sidebar-overlay.active {
+    display: block;
+}
+
+/* 平板螢幕 (768px - 1024px) */
+@media screen and (max-width: 1024px) {
+    .main-content {
+        padding: 20px;
+    }
+    
+    .dashboard-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .header-actions {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+}
+
+/* 手機螢幕 (768px 以下) */
+@media screen and (max-width: 768px) {
+    /* 顯示手機版選單按鈕 */
+    .mobile-menu-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* 側邊欄預設隱藏 */
+    .sidebar {
+        position: fixed;
+        left: -280px;
+        width: 280px;
+        z-index: 1000;
+        transition: left 0.3s ease;
+        padding-top: 60px;
+    }
+    
+    .sidebar.active {
+        left: 0;
+    }
+    
+    /* 主內容區佔滿寬度 */
+    .main-content {
+        margin-left: 0;
+        padding: 70px 15px 15px 15px;
+    }
+    
+    /* 區塊標題 */
+    .section-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    
+    .section-header h2 {
+        font-size: 20px;
+    }
+    
+    .header-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .header-actions button,
+    .header-actions .btn-primary,
+    .header-actions .btn-refresh {
+        flex: 1;
+        min-width: 120px;
+        justify-content: center;
+    }
+    
+    /* 儀表板卡片 */
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .dashboard-card {
+        padding: 20px;
+    }
+    
+    .dashboard-card-title {
+        font-size: 18px;
+    }
+    
+    .dashboard-metric-value {
+        font-size: 28px;
+    }
+    
+    /* 表格容器 - 橫向滾動 */
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -15px;
+        padding: 0 15px;
+    }
+    
+    .bookings-table {
+        min-width: 800px;
+    }
+    
+    .bookings-table th,
+    .bookings-table td {
+        padding: 10px 8px;
+        font-size: 13px;
+    }
+    
+    /* 篩選區域 */
+    .filters {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .filter-group {
+        width: 100%;
+    }
+    
+    .filter-group input,
+    .filter-group select {
+        width: 100%;
+    }
+    
+    /* 分頁按鈕 */
+    .pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 5px;
+    }
+    
+    .pagination button {
+        min-width: 40px;
+        padding: 8px 12px;
+    }
+    
+    /* 模態框 - 全螢幕 */
+    .modal-content {
+        width: 95%;
+        max-width: none;
+        max-height: 90vh;
+        margin: 5vh auto;
+        border-radius: 12px;
+    }
+    
+    .modal-header {
+        padding: 15px 20px;
+    }
+    
+    .modal-body {
+        padding: 15px 20px;
+        max-height: calc(90vh - 130px);
+        overflow-y: auto;
+    }
+    
+    .modal-footer {
+        padding: 15px 20px;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .modal-footer button {
+        width: 100%;
+    }
+    
+    /* 表單 */
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .form-group label {
+        font-size: 14px;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        padding: 12px;
+        font-size: 16px; /* 防止 iOS 自動縮放 */
+    }
+    
+    /* 按鈕 */
+    .btn-primary,
+    .btn-secondary,
+    .btn-danger,
+    .btn-save {
+        padding: 12px 20px;
+        font-size: 14px;
+    }
+    
+    /* 設定卡片 */
+    .settings-card {
+        padding: 15px;
+    }
+    
+    .settings-card h3 {
+        font-size: 16px;
+    }
+    
+    /* 分頁標籤 */
+    .tab-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .tab-button {
+        padding: 10px 15px;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+    
+    /* 客戶/房型卡片 */
+    .customer-card,
+    .room-type-card {
+        padding: 15px;
+    }
+    
+    /* 側邊欄底部 */
+    .sidebar-footer {
+        padding: 15px !important;
+    }
+    
+    .sidebar-footer button {
+        padding: 12px;
+    }
+}
+
+/* 小手機螢幕 (480px 以下) */
+@media screen and (max-width: 480px) {
+    .main-content {
+        padding: 60px 10px 10px 10px;
+    }
+    
+    .section-header h2 {
+        font-size: 18px;
+    }
+    
+    .dashboard-card {
+        padding: 15px;
+    }
+    
+    .dashboard-metric-value {
+        font-size: 24px;
+    }
+    
+    .bookings-table th,
+    .bookings-table td {
+        padding: 8px 6px;
+        font-size: 12px;
+    }
+    
+    .status-badge {
+        padding: 3px 8px;
+        font-size: 11px;
+    }
+    
+    .modal-content {
+        width: 100%;
+        height: 100%;
+        max-height: 100vh;
+        margin: 0;
+        border-radius: 0;
+    }
+    
+    .modal-body {
+        max-height: calc(100vh - 130px);
+    }
+}
+
