@@ -5327,6 +5327,9 @@ async function initRolesAndPermissions() {
         
         // 預設權限列表
         const defaultPermissions = [
+            // 儀表板
+            { code: 'dashboard.view', name: '查看儀表板', module: 'dashboard', description: '查看儀表板資訊' },
+            
             // 訂房管理
             { code: 'bookings.view', name: '查看訂房記錄', module: 'bookings', description: '查看所有訂房記錄' },
             { code: 'bookings.create', name: '新增訂房', module: 'bookings', description: '手動建立訂房' },
@@ -5439,6 +5442,7 @@ async function assignDefaultPermissions() {
         const rolePermissions = {
             'super_admin': 'all', // 超級管理員擁有所有權限
             'admin': [
+                'dashboard.view',
                 'bookings.view', 'bookings.create', 'bookings.edit', 'bookings.cancel', 'bookings.export',
                 'customers.view', 'customers.edit',
                 'room_types.view', 'room_types.create', 'room_types.edit',
@@ -5450,18 +5454,21 @@ async function assignDefaultPermissions() {
                 'logs.view'
             ],
             'staff': [
+                'dashboard.view',
                 'bookings.view', 'bookings.create', 'bookings.edit',
                 'customers.view', 'customers.edit',
                 'room_types.view',
                 'addons.view'
             ],
             'finance': [
+                'dashboard.view',
                 'bookings.view', 'bookings.export',
                 'customers.view',
                 'statistics.view', 'statistics.export',
                 'logs.view'
             ],
             'viewer': [
+                'dashboard.view',
                 'bookings.view',
                 'customers.view',
                 'room_types.view',

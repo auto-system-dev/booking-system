@@ -8501,6 +8501,7 @@ async function loadPermissionsReference() {
 // 取得模組圖示
 function getModuleIcon(module) {
     const icons = {
+        'dashboard': 'speed',
         'bookings': 'event_note',
         'customers': 'people',
         'room_types': 'king_bed',
@@ -8520,6 +8521,7 @@ function getModuleIcon(module) {
 // 取得模組顯示名稱
 function getModuleDisplayName(module) {
     const names = {
+        'dashboard': '儀表板',
         'bookings': '訂房管理',
         'customers': '客戶管理',
         'room_types': '房型管理',
