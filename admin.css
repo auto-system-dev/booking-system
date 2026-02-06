@@ -823,39 +823,7 @@ body {
     display: block;
 }
 
-/* 響應式設計 */
-@media (max-width: 768px) {
-    .sidebar {
-        width: 70px;
-    }
-
-    .sidebar-header h1,
-    .nav-item span:not(.nav-icon) {
-        display: none;
-    }
-
-    .main-content {
-        margin-left: 70px;
-        padding: 20px;
-    }
-
-    .filter-bar {
-        flex-direction: column;
-    }
-
-    .search-box {
-        min-width: 100%;
-    }
-
-    .bookings-table {
-        font-size: 12px;
-    }
-
-    .bookings-table th,
-    .bookings-table td {
-        padding: 10px 8px;
-    }
-}
+/* 舊的響應式設計已由底部的手機版響應式設計取代 */
 
 /* 儀表板樣式 */
 .dashboard-grid {
@@ -1597,6 +1565,16 @@ code {
     
     .sidebar.active {
         left: 0;
+    }
+    
+    /* 確保側邊欄文字顯示 */
+    .sidebar .nav-item span,
+    .sidebar .sidebar-header h1 {
+        display: inline !important;
+    }
+    
+    .sidebar .nav-item {
+        color: white;
     }
     
     /* 主內容區佔滿寬度 */
