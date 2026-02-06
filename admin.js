@@ -446,6 +446,14 @@ function showAdminPage(admin) {
                 roleEl.textContent = admin.role_display_name || admin.role || '-';
             }
             
+            // 儲存管理員資訊到全域變數
+            window.currentAdminInfo = {
+                username: admin.username,
+                role: admin.role,
+                role_display_name: admin.role_display_name
+            };
+            console.log('✅ 管理員資訊已設置:', window.currentAdminInfo);
+            
             // 儲存管理員權限到全域變數
             if (admin.permissions) {
                 window.currentAdminPermissions = admin.permissions;
@@ -8053,6 +8061,10 @@ window.currentAdminPermissions = window.currentAdminPermissions || [];
 
 // 檢查是否有指定權限
 function hasPermission(permissionCode) {
+    // 超級管理員擁有所有權限
+    if (window.currentAdminInfo && window.currentAdminInfo.role === 'super_admin') {
+        return true;
+    }
     return window.currentAdminPermissions && window.currentAdminPermissions.includes(permissionCode);
 }
 
