@@ -11,6 +11,79 @@ let capacityModalData = { capacity: 0, totalGuests: 0 };
 let lineUserId = null; // LINE User ID（如果從 LIFF 開啟）
 let appliedPromoCode = null; // 已套用的優惠代碼
 
+// ===== Facebook Pixel 追蹤函數 =====
+
+/**
+ * 追蹤開始結帳（進入訂房頁）
+ */
+function trackInitiateCheckout() {
+    if (typeof fbq !== 'undefined') {
+        fbq('track', 'InitiateCheckout', {
+            content_name: '訂房頁面',
+            content_category: '民宿訂房'
+        });
+        console.log('FB Pixel: InitiateCheckout event tracked');
+    }
+}
+
+/**
+ * 追蹤加入購物車（選擇房型）
+ * @param {string} roomName - 房型名稱
+ * @param {number} price - 房型價格
+ */
+function trackAddToCart(roomName, price) {
+    if (typeof fbq !== 'undefined') {
+        fbq('track', 'AddToCart', {
+            content_name: roomName,
+            content_type: 'product',
+            content_ids: [roomName],
+            value: price,
+            currency: 'TWD'
+        });
+        console.log('FB Pixel: AddToCart event tracked -', roomName);
+    }
+}
+
+/**
+ * 追蹤訂房完成（購買事件）
+ * @param {string} bookingId - 訂房編號
+ * @param {string} roomType - 房型名稱
+ * @param {number} totalAmount - 總金額
+ * @param {number} paidAmount - 實付金額
+ */
+function trackPurchase(bookingId, roomType, totalAmount, paidAmount) {
+    if (typeof fbq !== 'undefined') {
+        fbq('track', 'Purchase', {
+            content_name: roomType,
+            content_type: 'product',
+            content_ids: [roomType, bookingId],
+            value: paidAmount,
+            currency: 'TWD',
+            num_items: 1,
+            order_id: bookingId
+        });
+        console.log('FB Pixel: Purchase event tracked -', bookingId, 'Amount:', paidAmount);
+    }
+}
+
+/**
+ * 追蹤表單提交嘗試
+ */
+function trackSubmitApplication() {
+    if (typeof fbq !== 'undefined') {
+        fbq('track', 'SubmitApplication', {
+            content_name: '訂房表單提交',
+            content_category: '民宿訂房'
+        });
+        console.log('FB Pixel: SubmitApplication event tracked');
+    }
+}
+
+// 頁面載入時追蹤 InitiateCheckout（從銷售頁來的訪客）
+if (document.referrer.includes('landing')) {
+    trackInitiateCheckout();
+}
+
 // 初始化 LIFF（如果從 LINE 開啟）
 async function initLIFF() {
     try {
@@ -1226,6 +1299,14 @@ document.getElementById('bookingForm').addEventListener('submit', async function
                 // 匯款轉帳：顯示成功訊息
                 document.getElementById('bookingForm').style.display = 'none';
                 document.getElementById('successMessage').classList.remove('hidden');
+                
+                // Facebook Pixel: 追蹤訂房完成（Purchase 事件）
+                const selectedRoom = document.querySelector('input[name="roomType"]:checked');
+                const roomTypeName = selectedRoom ? 
+                    selectedRoom.closest('.room-option').querySelector('.room-name').textContent.trim() : '';
+                const paidAmount = parseInt(document.getElementById('paymentAmount').textContent.replace(/[^0-9]/g, '')) || 0;
+                const totalAmount = parseInt(document.getElementById('totalAmount').textContent.replace(/[^0-9]/g, '')) || 0;
+                trackPurchase(result.bookingId, roomTypeName, totalAmount, paidAmount);
                 
                 // 滾動到頂部
                 window.scrollTo({ top: 0, behavior: 'smooth' });

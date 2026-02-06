@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>悠然山居民宿 | 遠離塵囂的完美假期</title>
+    <meta name="description" content="坐落於青山綠水間，悠然山居民宿提供您最舒適的住宿體驗。享受寧靜自然，品味慢活人生。限時優惠中！">
+    
+    <!-- Open Graph Meta Tags (Facebook 分享) -->
+    <meta property="og:title" content="悠然山居民宿 | 遠離塵囂的完美假期">
+    <meta property="og:description" content="坐落於青山綠水間，提供您最舒適的住宿體驗。享受寧靜自然，品味慢活人生。">
+    <meta property="og:image" content="https://your-domain.com/images/og-image.jpg">
+    <meta property="og:url" content="https://your-domain.com/landing">
+    <meta property="og:type" content="website">
+    
+    <!-- 字型載入 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    
+    <!-- Facebook Pixel Code -->
+    <script>
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        
+        // 請替換為您的 Facebook Pixel ID
+        fbq('init', 'YOUR_PIXEL_ID_HERE');
+        fbq('track', 'PageView');
+    </script>
+    <noscript>
+        <img height="1" width="1" style="display:none"
+        src="https://www.facebook.com/tr?id=YOUR_PIXEL_ID_HERE&ev=PageView&noscript=1"/>
+    </noscript>
+    <!-- End Facebook Pixel Code -->
+    
+    <link rel="stylesheet" href="landing.css">
+</head>
+<body>
+    <!-- 導航列 -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <a href="#" class="nav-logo">悠然山居</a>
+            <div class="nav-menu" id="navMenu">
+                <a href="#features" class="nav-link">特色</a>
+                <a href="#rooms" class="nav-link">房型</a>
+                <a href="#reviews" class="nav-link">評價</a>
+                <a href="#location" class="nav-link">交通</a>
+                <a href="index.html" class="nav-cta" onclick="trackBookingClick()">立即訂房</a>
+            </div>
+            <button class="nav-toggle" id="navToggle" aria-label="切換選單">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero 區塊 -->
+    <section class="hero" id="hero">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <span class="hero-badge">限時優惠</span>
+            <h1 class="hero-title">遠離塵囂<br>擁抱自然</h1>
+            <p class="hero-subtitle">坐落於青山綠水間的悠然山居，讓您在繁忙生活中找到片刻寧靜</p>
+            <div class="hero-price">
+                <span class="price-from">每晚只要</span>
+                <span class="price-amount">NT$ 2,800</span>
+                <span class="price-original">原價 NT$ 3,500</span>
+            </div>
+            <a href="index.html" class="hero-cta" onclick="trackBookingClick()">
+                <span>立即預訂</span>
+                <span class="material-symbols-outlined">arrow_forward</span>
+            </a>
+            <div class="hero-trust">
+                <div class="trust-item">
+                    <span class="material-symbols-outlined">verified</span>
+                    <span>官方認證</span>
+                </div>
+                <div class="trust-item">
+                    <span class="material-symbols-outlined">security</span>
+                    <span>安全付款</span>
+                </div>
+                <div class="trust-item">
+                    <span class="material-symbols-outlined">support_agent</span>
+                    <span>專人服務</span>
+                </div>
+            </div>
+        </div>
+        <div class="hero-scroll">
+            <span>向下探索</span>
+            <span class="material-symbols-outlined">keyboard_arrow_down</span>
+        </div>
+    </section>
+
+    <!-- 限時倒數區 -->
+    <section class="countdown-section">
+        <div class="container">
+            <div class="countdown-content">
+                <div class="countdown-text">
+                    <span class="material-symbols-outlined">local_fire_department</span>
+                    <span>限時早鳥優惠！享 <strong>8 折</strong> 優惠</span>
+                </div>
+                <div class="countdown-timer" id="countdownTimer">
+                    <div class="countdown-item">
+                        <span class="countdown-number" id="days">00</span>
+                        <span class="countdown-label">天</span>
+                    </div>
+                    <div class="countdown-separator">:</div>
+                    <div class="countdown-item">
+                        <span class="countdown-number" id="hours">00</span>
+                        <span class="countdown-label">時</span>
+                    </div>
+                    <div class="countdown-separator">:</div>
+                    <div class="countdown-item">
+                        <span class="countdown-number" id="minutes">00</span>
+                        <span class="countdown-label">分</span>
+                    </div>
+                    <div class="countdown-separator">:</div>
+                    <div class="countdown-item">
+                        <span class="countdown-number" id="seconds">00</span>
+                        <span class="countdown-label">秒</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 特色賣點區 -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">為什麼選擇我們</span>
+                <h2 class="section-title">獨一無二的住宿體驗</h2>
+                <p class="section-subtitle">我們用心打造每一個細節，只為給您最完美的假期</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <span class="material-symbols-outlined">landscape</span>
+                    </div>
+                    <h3>絕美山景</h3>
+                    <p>每間房間都能欣賞到壯闘的山巒美景，讓您沉浸在大自然的懷抱中</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <span class="material-symbols-outlined">spa</span>
+                    </div>
+                    <h3>私人湯屋</h3>
+                    <p>獨立溫泉湯屋，24 小時供應天然溫泉，讓您隨時放鬆身心</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <span class="material-symbols-outlined">restaurant</span>
+                    </div>
+                    <h3>精緻早餐</h3>
+                    <p>使用在地新鮮食材，每日現做的豐盛早餐，開啟美好的一天</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <span class="material-symbols-outlined">pets</span>
+                    </div>
+                    <h3>寵物友善</h3>
+                    <p>帶著毛小孩一起來度假，我們提供專屬寵物備品與活動空間</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 房型展示區 -->
+    <section class="rooms" id="rooms">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">精選房型</span>
+                <h2 class="section-title">為您準備的完美空間</h2>
+                <p class="section-subtitle">每一間房間都經過精心設計，給您賓至如歸的感受</p>
+            </div>
+            <div class="rooms-grid">
+                <div class="room-card" onclick="trackViewContent('標準雙人房', 2800)">
+                    <div class="room-image">
+                        <img src="https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600" alt="標準雙人房" loading="lazy">
+                        <span class="room-badge">熱門</span>
+                    </div>
+                    <div class="room-info">
+                        <h3>標準雙人房</h3>
+                        <div class="room-features">
+                            <span><span class="material-symbols-outlined">king_bed</span> 雙人床</span>
+                            <span><span class="material-symbols-outlined">bathtub</span> 獨立衛浴</span>
+                            <span><span class="material-symbols-outlined">wifi</span> 免費 WiFi</span>
+                        </div>
+                        <div class="room-price-row">
+                            <div class="room-price">
+                                <span class="price-current">NT$ 2,800</span>
+                                <span class="price-old">NT$ 3,500</span>
+                            </div>
+                            <a href="index.html" class="room-book-btn" onclick="trackBookingClick()">預訂</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="room-card" onclick="trackViewContent('豪華山景房', 3800)">
+                    <div class="room-image">
+                        <img src="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600" alt="豪華山景房" loading="lazy">
+                        <span class="room-badge best-value">超值</span>
+                    </div>
+                    <div class="room-info">
+                        <h3>豪華山景房</h3>
+                        <div class="room-features">
+                            <span><span class="material-symbols-outlined">king_bed</span> 加大雙人床</span>
+                            <span><span class="material-symbols-outlined">balcony</span> 私人陽台</span>
+                            <span><span class="material-symbols-outlined">landscape</span> 山景視野</span>
+                        </div>
+                        <div class="room-price-row">
+                            <div class="room-price">
+                                <span class="price-current">NT$ 3,800</span>
+                                <span class="price-old">NT$ 4,500</span>
+                            </div>
+                            <a href="index.html" class="room-book-btn" onclick="trackBookingClick()">預訂</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="room-card" onclick="trackViewContent('溫泉套房', 5800)">
+                    <div class="room-image">
+                        <img src="https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=600" alt="溫泉套房" loading="lazy">
+                        <span class="room-badge premium">頂級</span>
+                    </div>
+                    <div class="room-info">
+                        <h3>溫泉套房</h3>
+                        <div class="room-features">
+                            <span><span class="material-symbols-outlined">king_bed</span> 特大雙人床</span>
+                            <span><span class="material-symbols-outlined">hot_tub</span> 私人湯池</span>
+                            <span><span class="material-symbols-outlined">living</span> 客廳空間</span>
+                        </div>
+                        <div class="room-price-row">
+                            <div class="room-price">
+                                <span class="price-current">NT$ 5,800</span>
+                                <span class="price-old">NT$ 6,800</span>
+                            </div>
+                            <a href="index.html" class="room-book-btn" onclick="trackBookingClick()">預訂</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 評價區 -->
+    <section class="reviews" id="reviews">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">旅客好評</span>
+                <h2 class="section-title">超過 500+ 位旅客的選擇</h2>
+                <div class="rating-summary">
+                    <div class="rating-stars">
+                        <span class="material-symbols-outlined filled">star</span>
+                        <span class="material-symbols-outlined filled">star</span>
+                        <span class="material-symbols-outlined filled">star</span>
+                        <span class="material-symbols-outlined filled">star</span>
+                        <span class="material-symbols-outlined filled">star</span>
+                    </div>
+                    <span class="rating-score">4.9 / 5.0</span>
+                </div>
+            </div>
+            <div class="reviews-grid">
+                <div class="review-card">
+                    <div class="review-header">
+                        <div class="reviewer-avatar">林</div>
+                        <div class="reviewer-info">
+                            <span class="reviewer-name">林小姐</span>
+                            <span class="review-date">2026 年 1 月</span>
+                        </div>
+                        <div class="review-rating">
+                            <span class="material-symbols-outlined filled">star</span>
+                            <span>5.0</span>
+                        </div>
+                    </div>
+                    <p class="review-text">「環境超棒！房間乾淨舒適，窗外就是美麗的山景。早餐也很豐盛，下次一定還要再來！」</p>
+                    <div class="review-tags">
+                        <span>環境優美</span>
+                        <span>服務親切</span>
+                    </div>
+                </div>
+                <div class="review-card">
+                    <div class="review-header">
+                        <div class="reviewer-avatar">陳</div>
+                        <div class="reviewer-info">
+                            <span class="reviewer-name">陳先生</span>
+                            <span class="review-date">2026 年 1 月</span>
+                        </div>
+                        <div class="review-rating">
+                            <span class="material-symbols-outlined filled">star</span>
+                            <span>5.0</span>
+                        </div>
+                    </div>
+                    <p class="review-text">「帶著狗狗一起入住，民宿很貼心地準備了寵物備品。房間的溫泉湯池太讚了，泡完整個人都放鬆了！」</p>
+                    <div class="review-tags">
+                        <span>寵物友善</span>
+                        <span>溫泉推薦</span>
+                    </div>
+                </div>
+                <div class="review-card">
+                    <div class="review-header">
+                        <div class="reviewer-avatar">王</div>
+                        <div class="reviewer-info">
+                            <span class="reviewer-name">王小姐</span>
+                            <span class="review-date">2025 年 12 月</span>
+                        </div>
+                        <div class="review-rating">
+                            <span class="material-symbols-outlined filled">star</span>
+                            <span>4.9</span>
+                        </div>
+                    </div>
+                    <p class="review-text">「位置很好找，民宿主人超級熱情，還推薦了很多在地美食跟景點。整體體驗非常棒，CP 值很高！」</p>
+                    <div class="review-tags">
+                        <span>CP值高</span>
+                        <span>主人熱情</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 設施服務區 -->
+    <section class="amenities" id="amenities">
+        <div class="container">
+            <div class="section-header light">
+                <span class="section-badge">完善設施</span>
+                <h2 class="section-title">一切您需要的，我們都準備好了</h2>
+            </div>
+            <div class="amenities-grid">
+                <div class="amenity-item">
+                    <span class="material-symbols-outlined">wifi</span>
+                    <span>免費高速 WiFi</span>
+                </div>
+                <div class="amenity-item">
+                    <span class="material-symbols-outlined">local_parking</span>
+                    <span>免費停車場</span>
+                </div>
+                <div class="amenity-item">
+                    <span class="material-symbols-outlined">ac_unit</span>
+                    <span>空調設備</span>
+                </div>
+                <div class="amenity-item">
+                    <span class="material-symbols-outlined">tv</span>
+                    <span>智慧電視</span>
+                </div>
+                <div class="amenity-item">
+                    <span class="material-symbols-outlined">coffee_maker</span>
+                    <span>咖啡機</span>
+                </div>
+                <div class="amenity-item">
+                    <span class="material-symbols-outlined">kitchen</span>
+                    <span>小廚房</span>
+                </div>
+                <div class="amenity-item">
+                    <span class="material-symbols-outlined">local_laundry_service</span>
+                    <span>洗衣服務</span>
+                </div>
+                <div class="amenity-item">
+                    <span class="material-symbols-outlined">concierge</span>
+                    <span>行李寄放</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 交通位置區 -->
+    <section class="location" id="location">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">交通資訊</span>
+                <h2 class="section-title">輕鬆抵達</h2>
+            </div>
+            <div class="location-content">
+                <div class="location-info">
+                    <div class="location-card">
+                        <span class="material-symbols-outlined">location_on</span>
+                        <div>
+                            <h4>地址</h4>
+                            <p>台灣某縣某鎮某路 123 號</p>
+                        </div>
+                    </div>
+                    <div class="location-card">
+                        <span class="material-symbols-outlined">directions_car</span>
+                        <div>
+                            <h4>自行開車</h4>
+                            <p>國道 3 號下交流道後約 15 分鐘</p>
+                        </div>
+                    </div>
+                    <div class="location-card">
+                        <span class="material-symbols-outlined">train</span>
+                        <div>
+                            <h4>大眾運輸</h4>
+                            <p>火車站提供免費接駁服務（需預約）</p>
+                        </div>
+                    </div>
+                    <div class="location-card">
+                        <span class="material-symbols-outlined">call</span>
+                        <div>
+                            <h4>聯絡電話</h4>
+                            <p>0912-345-678</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="location-map">
+                    <!-- 請替換為您的 Google Maps 嵌入代碼 -->
+                    <iframe 
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3614.!2d121.5!3d25.0!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjXCsDAn!5e0!3m2!1szh-TW!2stw!4v1234567890"
+                        width="100%" 
+                        height="400" 
+                        style="border:0; border-radius: 16px;" 
+                        allowfullscreen="" 
+                        loading="lazy">
+                    </iframe>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 最終 CTA 區 -->
+    <section class="final-cta">
+        <div class="container">
+            <div class="cta-content">
+                <h2>準備好展開您的旅程了嗎？</h2>
+                <p>限時優惠即將結束，立即預訂享受 8 折優惠！</p>
+                <a href="index.html" class="cta-button" onclick="trackInitiateCheckout()">
+                    <span>立即預訂</span>
+                    <span class="material-symbols-outlined">arrow_forward</span>
+                </a>
+                <div class="cta-guarantee">
+                    <span class="material-symbols-outlined">verified_user</span>
+                    <span>安全付款 · 免費取消 · 最低價保證</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 頁尾 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <h3>悠然山居民宿</h3>
+                    <p>讓每一次旅行都成為美好回憶</p>
+                </div>
+                <div class="footer-links">
+                    <a href="index.html">線上訂房</a>
+                    <a href="/privacy">隱私權政策</a>
+                    <a href="/data-protection">個資保護</a>
+                </div>
+                <div class="footer-social">
+                    <a href="#" class="social-link" aria-label="Facebook">
+                        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12 2.04C6.5 2.04 2 6.53 2 12.06C2 17.06 5.66 21.21 10.44 21.96V14.96H7.9V12.06H10.44V9.85C10.44 7.34 11.93 5.96 14.22 5.96C15.31 5.96 16.45 6.15 16.45 6.15V8.62H15.19C13.95 8.62 13.56 9.39 13.56 10.18V12.06H16.34L15.89 14.96H13.56V21.96A10 10 0 0 0 22 12.06C22 6.53 17.5 2.04 12 2.04Z"/></svg>
+                    </a>
+                    <a href="#" class="social-link" aria-label="Instagram">
+                        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M7.8,2H16.2C19.4,2 22,4.6 22,7.8V16.2A5.8,5.8 0 0,1 16.2,22H7.8C4.6,22 2,19.4 2,16.2V7.8A5.8,5.8 0 0,1 7.8,2M7.6,4A3.6,3.6 0 0,0 4,7.6V16.4C4,18.39 5.61,20 7.6,20H16.4A3.6,3.6 0 0,0 20,16.4V7.6C20,5.61 18.39,4 16.4,4H7.6M17.25,5.5A1.25,1.25 0 0,1 18.5,6.75A1.25,1.25 0 0,1 17.25,8A1.25,1.25 0 0,1 16,6.75A1.25,1.25 0 0,1 17.25,5.5M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9Z"/></svg>
+                    </a>
+                    <a href="#" class="social-link" aria-label="LINE">
+                        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.349 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.281.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+                    </a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 悠然山居民宿. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 浮動 CTA 按鈕（手機版） -->
+    <div class="floating-cta">
+        <a href="index.html" class="floating-cta-btn" onclick="trackBookingClick()">
+            <span class="material-symbols-outlined">calendar_month</span>
+            <span>立即訂房</span>
+        </a>
+    </div>
+
+    <script src="landing.js"></script>
+</body>
+</html>
+
