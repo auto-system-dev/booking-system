@@ -377,11 +377,14 @@ function showAdminPage(admin) {
         adminPage.removeAttribute('style');
         adminPage.setAttribute('style', 'display: flex !important; visibility: visible !important; opacity: 1 !important; min-height: 100vh !important;');
         
-        // 強制顯示側邊欄和主內容區
+        // 強制顯示主內容區（手機版不設置側邊欄的 display，讓 CSS 控制）
         const sidebar = adminPage.querySelector('.sidebar');
         const mainContent = adminPage.querySelector('.main-content');
         if (sidebar) {
-            sidebar.style.display = 'flex';
+            // 手機版使用 left 來控制側邊欄，不設置 display
+            if (window.innerWidth > 768) {
+                sidebar.style.display = 'flex';
+            }
             sidebar.style.visibility = 'visible';
         }
         if (mainContent) {
@@ -838,8 +841,11 @@ function switchSection(section) {
     const contentSection = document.getElementById(`${section}-section`);
     if (contentSection) {
         contentSection.classList.add('active');
-        // 確保 active section 顯示（CSS 應該已經處理，但為了保險起見）
+        // 確保 active section 顯示
         contentSection.style.display = 'block';
+        contentSection.style.visibility = 'visible';
+        contentSection.style.opacity = '1';
+        console.log(`✅ 切換到區塊: ${section}`);
     } else {
         console.warn('⚠️ 找不到 section:', `${section}-section`);
     }
