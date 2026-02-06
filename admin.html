@@ -55,48 +55,48 @@
                 <h1>管理後台</h1>
             </div>
             <nav class="sidebar-nav">
-                <a href="#dashboard" class="nav-item active permission-required" data-section="dashboard" data-permission="dashboard.view">
+                <a href="#dashboard" class="nav-item active permission-required" data-section="dashboard" data-permission="dashboard.view" onclick="handleNavClick(event, 'dashboard')">
                     <span class="nav-icon"><span class="material-symbols-outlined">speed</span></span>
                     <span>儀表板</span>
                 </a>
-                <a href="#bookings" class="nav-item permission-required" data-section="bookings" data-permission="bookings.view">
+                <a href="#bookings" class="nav-item permission-required" data-section="bookings" data-permission="bookings.view" onclick="handleNavClick(event, 'bookings')">
                     <span class="nav-icon"><span class="material-symbols-outlined">event_note</span></span>
                     <span>訂房記錄</span>
                 </a>
-                <a href="#customers" class="nav-item permission-required" data-section="customers" data-permission="customers.view">
+                <a href="#customers" class="nav-item permission-required" data-section="customers" data-permission="customers.view" onclick="handleNavClick(event, 'customers')">
                     <span class="nav-icon"><span class="material-symbols-outlined">people</span></span>
                     <span>客戶管理</span>
                 </a>
-                <a href="#room-types" class="nav-item permission-required" data-section="room-types" data-permission="room_types.view">
+                <a href="#room-types" class="nav-item permission-required" data-section="room-types" data-permission="room_types.view" onclick="handleNavClick(event, 'room-types')">
                     <span class="nav-icon"><span class="material-symbols-outlined">king_bed</span></span>
                     <span>房型管理</span>
                 </a>
-                <a href="#addons" class="nav-item permission-required" data-section="addons" data-permission="addons.view">
+                <a href="#addons" class="nav-item permission-required" data-section="addons" data-permission="addons.view" onclick="handleNavClick(event, 'addons')">
                     <span class="nav-icon"><span class="material-symbols-outlined">add_shopping_cart</span></span>
                     <span>加購商品</span>
                 </a>
-                <a href="#promo-codes" class="nav-item permission-required" data-section="promo-codes" data-permission="promo_codes.view">
+                <a href="#promo-codes" class="nav-item permission-required" data-section="promo-codes" data-permission="promo_codes.view" onclick="handleNavClick(event, 'promo-codes')">
                     <span class="nav-icon"><span class="material-symbols-outlined">local_offer</span></span>
                     <span>優惠代碼</span>
                 </a>
-                <a href="#settings" class="nav-item permission-required" data-section="settings" data-permission="settings.view">
+                <a href="#settings" class="nav-item permission-required" data-section="settings" data-permission="settings.view" onclick="handleNavClick(event, 'settings')">
                     <span class="nav-icon"><span class="material-symbols-outlined">settings</span></span>
                     <span>系統設定</span>
                 </a>
-                <a href="#email-templates" class="nav-item permission-required" data-section="email-templates" data-permission="email_templates.view">
+                <a href="#email-templates" class="nav-item permission-required" data-section="email-templates" data-permission="email_templates.view" onclick="handleNavClick(event, 'email-templates')">
                     <span class="nav-icon"><span class="material-symbols-outlined">mail</span></span>
                     <span>郵件模板</span>
                 </a>
-                <a href="#statistics" class="nav-item permission-required" data-section="statistics" data-permission="statistics.view">
+                <a href="#statistics" class="nav-item permission-required" data-section="statistics" data-permission="statistics.view" onclick="handleNavClick(event, 'statistics')">
                     <span class="nav-icon"><span class="material-symbols-outlined">monitoring</span></span>
                     <span>統計資料</span>
                 </a>
                 <!-- 權限管理系統（需要相應權限才會顯示） -->
-                <a href="#admin-management" class="nav-item permission-required" data-section="admin-management" data-permission="admins.view">
+                <a href="#admin-management" class="nav-item permission-required" data-section="admin-management" data-permission="admins.view" onclick="handleNavClick(event, 'admin-management')">
                     <span class="nav-icon"><span class="material-symbols-outlined">manage_accounts</span></span>
                     <span>管理員管理</span>
                 </a>
-                <a href="#role-management" class="nav-item permission-required" data-section="role-management" data-permission="roles.view">
+                <a href="#role-management" class="nav-item permission-required" data-section="role-management" data-permission="roles.view" onclick="handleNavClick(event, 'role-management')">
                     <span class="nav-icon"><span class="material-symbols-outlined">admin_panel_settings</span></span>
                     <span>角色權限</span>
                 </a>

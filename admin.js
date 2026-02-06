@@ -8104,20 +8104,27 @@ function toggleMobileSidebar() {
 
 // 點擊導航項目時自動關閉側邊欄（手機版）
 function closeMobileSidebar() {
-    if (window.innerWidth <= 768) {
-        const sidebar = document.querySelector('.sidebar');
-        const overlay = document.querySelector('.sidebar-overlay');
-        
-        if (sidebar && overlay) {
-            sidebar.classList.remove('active');
-            overlay.classList.remove('active');
-        }
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    
+    if (sidebar && overlay) {
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
     }
+}
+
+// 處理導航點擊（統一入口，確保手機版關閉側邊欄）
+function handleNavClick(event, section) {
+    event.preventDefault();
+    switchSection(section);
+    closeMobileSidebar();
 }
 
 // 暴露到全局
 window.toggleMobileSidebar = toggleMobileSidebar;
 window.closeMobileSidebar = closeMobileSidebar;
+window.handleNavClick = handleNavClick;
+window.switchSection = switchSection;
 
 // ==================== 權限管理系統 ====================
 
