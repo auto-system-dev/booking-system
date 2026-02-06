@@ -788,6 +788,33 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 // 切換區塊
 function switchSection(section) {
+    // 區塊對應的權限
+    const sectionPermissions = {
+        'dashboard': 'dashboard.view',
+        'bookings': 'bookings.view',
+        'customers': 'customers.view',
+        'room-types': 'room_types.view',
+        'addons': 'addons.view',
+        'promo-codes': 'promo_codes.view',
+        'settings': 'settings.view',
+        'email-templates': 'email_templates.view',
+        'statistics': 'statistics.view',
+        'admin-management': 'admins.view',
+        'role-management': 'roles.view'
+    };
+    
+    // 檢查權限
+    const requiredPermission = sectionPermissions[section];
+    if (requiredPermission && !hasPermission(requiredPermission)) {
+        console.warn(`⚠️ 沒有權限訪問 ${section}，需要 ${requiredPermission}`);
+        showError(`您沒有權限訪問此功能`);
+        // 跳轉到儀表板
+        if (section !== 'dashboard') {
+            switchSection('dashboard');
+        }
+        return;
+    }
+    
     // 更新導航狀態
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
