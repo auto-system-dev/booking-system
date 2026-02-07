@@ -1,14 +1,12 @@
 /**
  * 資料庫備份模組
  * 支援 SQLite 和 PostgreSQL 的自動備份功能
+ * PostgreSQL 使用 JavaScript 原生 SQL 查詢匯出（不依賴 pg_dump）
  */
 
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
-const { promisify } = require('util');
-
-const execAsync = promisify(exec);
+const { Pool } = require('pg');
 
 // 備份目錄
 const BACKUP_DIR = path.join(__dirname, 'backups');
@@ -63,59 +61,99 @@ async function backupSQLite(dbPath) {
 }
 
 /**
- * 備份 PostgreSQL 資料庫
+ * 備份 PostgreSQL 資料庫（使用 JavaScript 原生 SQL 查詢匯出）
+ * 不依賴 pg_dump，適用於 Railway 等無 pg_dump 的環境
  */
 async function backupPostgreSQL(databaseUrl) {
     try {
         ensureBackupDir();
         
-        // 解析 DATABASE_URL
-        // 格式：postgresql://user:password@host:port/database
-        const url = new URL(databaseUrl);
-        const dbName = url.pathname.slice(1); // 移除開頭的 /
-        const host = url.hostname;
-        const port = url.port || 5432;
-        const user = url.username;
-        const password = url.password;
+        // 建立獨立連線池進行備份
+        const pool = new Pool({
+            connectionString: databaseUrl,
+            ssl: databaseUrl.includes('railway') ? { rejectUnauthorized: false } : false
+        });
         
-        // 產生備份檔名：backup_YYYYMMDD_HHMMSS.sql
+        // 產生備份檔名：backup_YYYYMMDD_HHMMSS.json
         const now = new Date();
         const dateStr = now.toISOString().replace(/[-:]/g, '').replace('T', '_').split('.')[0];
-        const backupFileName = `backup_${dateStr}.sql`;
+        const backupFileName = `backup_${dateStr}.json`;
         const backupPath = path.join(BACKUP_DIR, backupFileName);
         
-        // 設定環境變數（pg_dump 會自動讀取）
-        const env = {
-            ...process.env,
-            PGPASSWORD: password
+        console.log('📦 開始匯出 PostgreSQL 資料...');
+        
+        // 取得所有使用者建立的資料表
+        const tablesResult = await pool.query(`
+            SELECT table_name FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_type = 'BASE TABLE'
+            ORDER BY table_name
+        `);
+        
+        const tables = tablesResult.rows.map(r => r.table_name);
+        console.log(`📋 找到 ${tables.length} 個資料表: ${tables.join(', ')}`);
+        
+        const backupData = {
+            metadata: {
+                version: '1.0',
+                type: 'postgresql_json_backup',
+                created_at: now.toISOString(),
+                tables: tables,
+                table_count: tables.length
+            },
+            data: {}
         };
         
-        // 執行 pg_dump
-        const command = `pg_dump -h ${host} -p ${port} -U ${user} -d ${dbName} -F c -f "${backupPath}"`;
-        
-        try {
-            await execAsync(command, { env });
-        } catch (execError) {
-            // 如果 pg_dump 不可用，嘗試使用自訂格式失敗時改用純文字格式
-            if (execError.message.includes('pg_dump')) {
-                console.warn('⚠️  pg_dump 不可用，嘗試使用純文字格式...');
-                const textCommand = `pg_dump -h ${host} -p ${port} -U ${user} -d ${dbName} > "${backupPath}"`;
-                await execAsync(textCommand, { env });
-            } else {
-                throw execError;
+        // 逐一匯出每個資料表的資料
+        for (const table of tables) {
+            try {
+                // 取得資料表結構
+                const columnsResult = await pool.query(`
+                    SELECT column_name, data_type, is_nullable, column_default
+                    FROM information_schema.columns 
+                    WHERE table_schema = 'public' AND table_name = $1
+                    ORDER BY ordinal_position
+                `, [table]);
+                
+                // 取得資料
+                const dataResult = await pool.query(`SELECT * FROM "${table}"`);
+                
+                backupData.data[table] = {
+                    columns: columnsResult.rows,
+                    row_count: dataResult.rows.length,
+                    rows: dataResult.rows
+                };
+                
+                console.log(`  ✅ ${table}: ${dataResult.rows.length} 筆資料`);
+            } catch (tableError) {
+                console.error(`  ❌ 匯出 ${table} 失敗:`, tableError.message);
+                backupData.data[table] = {
+                    error: tableError.message,
+                    row_count: 0,
+                    rows: []
+                };
             }
         }
         
-        // 檢查備份檔案是否存在
-        if (!fs.existsSync(backupPath)) {
-            throw new Error('備份檔案未建立');
+        // 更新 metadata 的記錄數
+        let totalRows = 0;
+        for (const table of tables) {
+            totalRows += (backupData.data[table]?.row_count || 0);
         }
+        backupData.metadata.total_rows = totalRows;
+        
+        // 寫入備份檔案
+        const jsonStr = JSON.stringify(backupData, null, 2);
+        fs.writeFileSync(backupPath, jsonStr, 'utf8');
+        
+        // 關閉獨立連線池
+        await pool.end();
         
         // 取得檔案大小
         const stats = fs.statSync(backupPath);
         const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
         
-        console.log(`✅ PostgreSQL 備份成功: ${backupFileName} (${fileSizeMB} MB)`);
+        console.log(`✅ PostgreSQL 備份成功: ${backupFileName} (${fileSizeMB} MB, ${totalRows} 筆資料)`);
         
         return {
             success: true,
@@ -123,7 +161,9 @@ async function backupPostgreSQL(databaseUrl) {
             filePath: backupPath,
             fileSize: stats.size,
             fileSizeMB: parseFloat(fileSizeMB),
-            timestamp: now.toISOString()
+            timestamp: now.toISOString(),
+            tableCount: tables.length,
+            totalRows: totalRows
         };
     } catch (error) {
         console.error('❌ PostgreSQL 備份失敗:', error.message);
