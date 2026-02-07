@@ -9129,7 +9129,7 @@ async function loadBackups() {
     const statsDiv = document.getElementById('backupStats');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="3" class="loading">載入中...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="loading">載入中...</td></tr>';
     if (statsDiv) statsDiv.innerHTML = '<div class="loading">載入中...</div>';
     
     try {
@@ -9163,25 +9163,50 @@ async function loadBackups() {
             // 渲染備份列表
             const backups = result.data || [];
             if (backups.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="loading">目前沒有備份檔案</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="loading">目前沒有備份檔案</td></tr>';
             } else {
-                tbody.innerHTML = backups.map(backup => `
+                const canRestore = hasPermission('backup.restore');
+                const canDelete = hasPermission('backup.delete');
+                
+                tbody.innerHTML = backups.map(backup => {
+                    const fileName = escapeHtml(backup.fileName || backup.name || '-');
+                    const rawFileName = backup.fileName || backup.name || '';
+                    const isJsonBackup = rawFileName.endsWith('.json');
+                    
+                    let actionButtons = '';
+                    if (canRestore && isJsonBackup) {
+                        actionButtons += `<button class="btn-edit" onclick="restoreBackup('${escapeHtml(rawFileName)}')" title="還原此備份" style="padding: 4px 10px; font-size: 12px;">
+                            <span class="material-symbols-outlined" style="font-size: 15px;">restore</span> 還原
+                        </button> `;
+                    } else if (canRestore && !isJsonBackup) {
+                        actionButtons += `<button class="btn-edit" disabled title="僅支援 JSON 格式備份還原" style="padding: 4px 10px; font-size: 12px; opacity: 0.5; cursor: not-allowed;">
+                            <span class="material-symbols-outlined" style="font-size: 15px;">restore</span> 還原
+                        </button> `;
+                    }
+                    if (canDelete) {
+                        actionButtons += `<button class="btn-cancel" onclick="deleteBackup('${escapeHtml(rawFileName)}')" title="刪除此備份" style="padding: 4px 10px; font-size: 12px;">
+                            <span class="material-symbols-outlined" style="font-size: 15px;">delete</span> 刪除
+                        </button>`;
+                    }
+                    
+                    return `
                     <tr>
                         <td>
                             <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 5px; color: #667eea;">description</span>
-                            ${escapeHtml(backup.fileName || backup.name || '-')}
+                            ${fileName}
                         </td>
                         <td style="text-align: right;">${backup.fileSizeMB || backup.size || '-'} MB</td>
                         <td>${formatDateTime(backup.createdAt || backup.created || backup.modifiedTime)}</td>
-                    </tr>
-                `).join('');
+                        <td style="text-align: center; white-space: nowrap;">${actionButtons || '-'}</td>
+                    </tr>`;
+                }).join('');
             }
         } else {
-            tbody.innerHTML = `<tr><td colspan="3" class="loading">載入失敗：${result.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" class="loading">載入失敗：${result.message}</td></tr>`;
         }
     } catch (error) {
         console.error('載入備份列表錯誤:', error);
-        tbody.innerHTML = '<tr><td colspan="3" class="loading">載入時發生錯誤</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="loading">載入時發生錯誤</td></tr>';
         if (statsDiv) statsDiv.innerHTML = '<div class="loading">載入失敗</div>';
     }
 }
@@ -9239,9 +9264,66 @@ async function cleanupBackups() {
     }
 }
 
+// 刪除單一備份
+async function deleteBackup(fileName) {
+    if (!confirm(`確定要刪除備份「${fileName}」嗎？此操作無法復原。`)) return;
+    
+    try {
+        const response = await adminFetch(`/api/admin/backups/${encodeURIComponent(fileName)}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess(result.message);
+            loadBackups();
+        } else {
+            showError('刪除失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('刪除備份錯誤:', error);
+        showError('刪除備份時發生錯誤：' + error.message);
+    }
+}
+
+// 還原備份
+async function restoreBackup(fileName) {
+    if (!confirm(`⚠️ 警告：還原備份將會覆蓋目前所有資料！\n\n備份檔案：${fileName}\n\n系統會在還原前自動建立一份安全備份。\n\n確定要繼續嗎？`)) return;
+    
+    // 二次確認
+    if (!confirm('再次確認：此操作將覆蓋資料庫中的所有現有資料，確定要還原嗎？')) return;
+    
+    try {
+        showSuccess('正在還原備份，請稍候...');
+        
+        const response = await adminFetch(`/api/admin/backups/restore/${encodeURIComponent(fileName)}`, {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const info = result.data;
+            let msg = `✅ 備份已還原：${info.fileName}`;
+            if (info.restoredTables) msg += `\n還原 ${info.restoredTables} 個資料表`;
+            if (info.totalRowsRestored) msg += `，共 ${info.totalRowsRestored} 筆資料`;
+            showSuccess(msg);
+            loadBackups();
+        } else {
+            showError('還原失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('還原備份錯誤:', error);
+        showError('還原備份時發生錯誤：' + error.message);
+    }
+}
+
 // 暴露操作日誌和備份相關函數到全域
 window.loadLogs = loadLogs;
 window.resetLogFilters = resetLogFilters;
 window.loadBackups = loadBackups;
 window.createBackup = createBackup;
 window.cleanupBackups = cleanupBackups;
+window.deleteBackup = deleteBackup;
+window.restoreBackup = restoreBackup;

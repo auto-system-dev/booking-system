@@ -310,11 +310,227 @@ function getBackupStats() {
     }
 }
 
+/**
+ * 刪除指定備份檔案
+ */
+function deleteBackup(fileName) {
+    try {
+        ensureBackupDir();
+        
+        // 防止路徑遍歷攻擊
+        const safeName = path.basename(fileName);
+        if (!safeName.startsWith('backup_')) {
+            throw new Error('無效的備份檔案名稱');
+        }
+        
+        const filePath = path.join(BACKUP_DIR, safeName);
+        
+        if (!fs.existsSync(filePath)) {
+            throw new Error('備份檔案不存在');
+        }
+        
+        const stats = fs.statSync(filePath);
+        const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+        
+        fs.unlinkSync(filePath);
+        
+        console.log(`🗑️ 已刪除備份: ${safeName} (${fileSizeMB} MB)`);
+        
+        return {
+            success: true,
+            fileName: safeName,
+            fileSizeMB: parseFloat(fileSizeMB)
+        };
+    } catch (error) {
+        console.error('❌ 刪除備份失敗:', error.message);
+        throw error;
+    }
+}
+
+/**
+ * 還原 PostgreSQL 備份（從 JSON 備份檔案）
+ */
+async function restorePostgreSQL(databaseUrl, fileName) {
+    try {
+        ensureBackupDir();
+        
+        const safeName = path.basename(fileName);
+        const filePath = path.join(BACKUP_DIR, safeName);
+        
+        if (!fs.existsSync(filePath)) {
+            throw new Error('備份檔案不存在');
+        }
+        
+        console.log(`🔄 開始還原 PostgreSQL 備份: ${safeName}`);
+        
+        // 讀取備份檔案
+        const rawData = fs.readFileSync(filePath, 'utf8');
+        const backupData = JSON.parse(rawData);
+        
+        if (!backupData.metadata || backupData.metadata.type !== 'postgresql_json_backup') {
+            throw new Error('無效的備份檔案格式，僅支援 JSON 格式備份還原');
+        }
+        
+        // 建立獨立連線池
+        const pool = new Pool({
+            connectionString: databaseUrl,
+            ssl: databaseUrl.includes('railway') ? { rejectUnauthorized: false } : false
+        });
+        
+        const client = await pool.connect();
+        
+        try {
+            await client.query('BEGIN');
+            
+            const tables = backupData.metadata.tables || Object.keys(backupData.data);
+            let restoredTables = 0;
+            let totalRowsRestored = 0;
+            
+            for (const table of tables) {
+                const tableData = backupData.data[table];
+                if (!tableData || !tableData.rows || tableData.rows.length === 0) {
+                    console.log(`  ⏭️ ${table}: 無資料，跳過`);
+                    continue;
+                }
+                
+                try {
+                    // 清空資料表（使用 TRUNCATE CASCADE 處理外鍵）
+                    await client.query(`TRUNCATE TABLE "${table}" CASCADE`);
+                    
+                    // 批次插入資料
+                    const columns = Object.keys(tableData.rows[0]);
+                    const columnNames = columns.map(c => `"${c}"`).join(', ');
+                    
+                    for (const row of tableData.rows) {
+                        const values = columns.map(c => row[c]);
+                        const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+                        
+                        await client.query(
+                            `INSERT INTO "${table}" (${columnNames}) VALUES (${placeholders})`,
+                            values
+                        );
+                    }
+                    
+                    // 重設序列（auto-increment）
+                    if (columns.includes('id')) {
+                        await client.query(`
+                            SELECT setval(pg_get_serial_sequence('"${table}"', 'id'), 
+                                COALESCE((SELECT MAX(id) FROM "${table}"), 0) + 1, false)
+                        `).catch(() => {
+                            // 如果沒有序列就跳過
+                        });
+                    }
+                    
+                    restoredTables++;
+                    totalRowsRestored += tableData.rows.length;
+                    console.log(`  ✅ ${table}: 還原 ${tableData.rows.length} 筆資料`);
+                } catch (tableError) {
+                    console.error(`  ❌ 還原 ${table} 失敗:`, tableError.message);
+                    throw tableError;
+                }
+            }
+            
+            await client.query('COMMIT');
+            
+            console.log(`✅ PostgreSQL 還原完成: ${restoredTables} 個資料表, ${totalRowsRestored} 筆資料`);
+            
+            return {
+                success: true,
+                fileName: safeName,
+                restoredTables,
+                totalRowsRestored
+            };
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+            await pool.end();
+        }
+    } catch (error) {
+        console.error('❌ PostgreSQL 還原失敗:', error.message);
+        throw error;
+    }
+}
+
+/**
+ * 還原 SQLite 備份
+ */
+async function restoreSQLite(fileName) {
+    try {
+        ensureBackupDir();
+        
+        const safeName = path.basename(fileName);
+        const filePath = path.join(BACKUP_DIR, safeName);
+        
+        if (!fs.existsSync(filePath)) {
+            throw new Error('備份檔案不存在');
+        }
+        
+        if (!safeName.endsWith('.db')) {
+            throw new Error('無效的 SQLite 備份檔案格式');
+        }
+        
+        const dbPath = path.join(__dirname, 'bookings.db');
+        
+        // 先備份目前的資料庫（安全措施）
+        const now = new Date();
+        const dateStr = now.toISOString().replace(/[-:]/g, '').replace('T', '_').split('.')[0];
+        const preRestoreBackup = `backup_pre_restore_${dateStr}.db`;
+        const preRestorePath = path.join(BACKUP_DIR, preRestoreBackup);
+        
+        if (fs.existsSync(dbPath)) {
+            fs.copyFileSync(dbPath, preRestorePath);
+            console.log(`📦 還原前備份: ${preRestoreBackup}`);
+        }
+        
+        // 覆蓋目前的資料庫檔案
+        fs.copyFileSync(filePath, dbPath);
+        
+        const stats = fs.statSync(dbPath);
+        const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+        
+        console.log(`✅ SQLite 還原完成: ${safeName} (${fileSizeMB} MB)`);
+        
+        return {
+            success: true,
+            fileName: safeName,
+            fileSizeMB: parseFloat(fileSizeMB),
+            preRestoreBackup
+        };
+    } catch (error) {
+        console.error('❌ SQLite 還原失敗:', error.message);
+        throw error;
+    }
+}
+
+/**
+ * 還原備份（自動偵測資料庫類型）
+ */
+async function restoreBackup(fileName) {
+    try {
+        console.log(`\n[還原任務] 開始還原備份: ${fileName}`);
+        
+        const usePostgreSQL = !!process.env.DATABASE_URL;
+        
+        if (usePostgreSQL) {
+            return await restorePostgreSQL(process.env.DATABASE_URL, fileName);
+        } else {
+            return await restoreSQLite(fileName);
+        }
+    } catch (error) {
+        console.error('❌ 還原備份失敗:', error.message);
+        throw error;
+    }
+}
+
 module.exports = {
     performBackup,
     cleanupOldBackups,
     getBackupList,
     getBackupStats,
+    deleteBackup,
+    restoreBackup,
     backupSQLite,
     backupPostgreSQL
 };

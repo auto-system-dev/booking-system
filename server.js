@@ -3050,6 +3050,68 @@ app.post('/api/admin/backups/cleanup', requireAuth, checkPermission('backup.dele
     }
 });
 
+// API: 刪除單一備份
+app.delete('/api/admin/backups/:fileName', requireAuth, checkPermission('backup.delete'), adminLimiter, async (req, res) => {
+    try {
+        const { fileName } = req.params;
+        const result = backup.deleteBackup(fileName);
+        
+        // 記錄刪除操作日誌
+        await logAction(req, 'delete_backup', 'backup', fileName, {
+            fileName: result.fileName,
+            fileSizeMB: result.fileSizeMB
+        });
+        
+        res.json({
+            success: true,
+            message: `已刪除備份：${result.fileName}`,
+            data: result
+        });
+    } catch (error) {
+        console.error('刪除備份錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '刪除備份失敗：' + error.message
+        });
+    }
+});
+
+// API: 還原備份
+app.post('/api/admin/backups/restore/:fileName', requireAuth, checkPermission('backup.restore'), adminLimiter, async (req, res) => {
+    try {
+        const { fileName } = req.params;
+        
+        // 還原前先自動建立一份備份（安全措施）
+        console.log('⚠️ 還原前自動建立安全備份...');
+        try {
+            await backup.performBackup();
+        } catch (preBackupError) {
+            console.warn('⚠️ 還原前安全備份失敗（繼續還原）:', preBackupError.message);
+        }
+        
+        const result = await backup.restoreBackup(fileName);
+        
+        // 記錄還原操作日誌
+        await logAction(req, 'restore_backup', 'backup', fileName, {
+            fileName: result.fileName,
+            restoredTables: result.restoredTables,
+            totalRowsRestored: result.totalRowsRestored
+        });
+        
+        res.json({
+            success: true,
+            message: `備份已還原：${result.fileName}`,
+            data: result
+        });
+    } catch (error) {
+        console.error('還原備份錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '還原備份失敗：' + error.message
+        });
+    }
+});
+
 // CSRF Token API（提供 Token 給前端）
 app.get('/api/csrf-token', generateCsrfToken, (req, res) => {
     res.json({
