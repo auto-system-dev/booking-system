@@ -1333,6 +1333,8 @@ function switchCustomerTab(tab) {
         // 顯示/隱藏對應的按鈕
         document.getElementById('customerRefreshBtn').style.display = 'inline-flex';
         document.getElementById('memberLevelRefreshBtn').style.display = 'none';
+        const exportBtn = document.getElementById('customerExportBtn');
+        if (exportBtn && hasPermission('customers.export')) exportBtn.style.display = 'inline-flex';
         
         // 載入客戶列表
         loadCustomers();
@@ -1344,6 +1346,8 @@ function switchCustomerTab(tab) {
         // 顯示/隱藏對應的按鈕
         document.getElementById('customerRefreshBtn').style.display = 'none';
         document.getElementById('memberLevelRefreshBtn').style.display = 'inline-flex';
+        const exportBtn = document.getElementById('customerExportBtn');
+        if (exportBtn) exportBtn.style.display = 'none';
         
         // 載入等級列表
         loadMemberLevels();
@@ -9327,3 +9331,87 @@ window.createBackup = createBackup;
 window.cleanupBackups = cleanupBackups;
 window.deleteBackup = deleteBackup;
 window.restoreBackup = restoreBackup;
+
+// ==================== CSV 匯出功能 ====================
+
+// 通用下載函數：從 API 取得 CSV 並觸發瀏覽器下載
+async function downloadCSV(url, defaultFileName) {
+    try {
+        const response = await adminFetch(url);
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `匯出失敗 (${response.status})`);
+        }
+        
+        const blob = await response.blob();
+        
+        // 從 Content-Disposition 取得檔名
+        const disposition = response.headers.get('Content-Disposition');
+        let fileName = defaultFileName;
+        if (disposition && disposition.includes('filename=')) {
+            const match = disposition.match(/filename="?([^";\n]+)"?/);
+            if (match) fileName = match[1];
+        }
+        
+        // 建立下載連結
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(downloadUrl);
+        
+        showSuccess(`已匯出：${fileName}`);
+    } catch (error) {
+        console.error('CSV 匯出錯誤:', error);
+        showError('匯出失敗：' + error.message);
+    }
+}
+
+// 匯出訂房資料 CSV
+async function exportBookingsCSV() {
+    if (!hasPermission('bookings.export')) {
+        showError('您沒有匯出訂房資料的權限');
+        return;
+    }
+    showSuccess('正在匯出訂房資料...');
+    await downloadCSV('/api/admin/bookings/export', 'bookings.csv');
+}
+
+// 匯出客戶資料 CSV
+async function exportCustomersCSV() {
+    if (!hasPermission('customers.export')) {
+        showError('您沒有匯出客戶資料的權限');
+        return;
+    }
+    showSuccess('正在匯出客戶資料...');
+    await downloadCSV('/api/admin/customers/export', 'customers.csv');
+}
+
+// 匯出統計報表 CSV
+async function exportStatisticsCSV() {
+    if (!hasPermission('statistics.export')) {
+        showError('您沒有匯出統計報表的權限');
+        return;
+    }
+    
+    // 讀取目前的日期篩選條件
+    const startDate = document.getElementById('statsStartDate')?.value || '';
+    const endDate = document.getElementById('statsEndDate')?.value || '';
+    
+    let url = '/api/admin/statistics/export';
+    if (startDate && endDate) {
+        url += `?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+    }
+    
+    showSuccess('正在匯出統計報表...');
+    await downloadCSV(url, 'statistics.csv');
+}
+
+// 暴露匯出函數到全域
+window.exportBookingsCSV = exportBookingsCSV;
+window.exportCustomersCSV = exportCustomersCSV;
+window.exportStatisticsCSV = exportStatisticsCSV;

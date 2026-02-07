@@ -3870,6 +3870,193 @@ app.post('/api/data-protection/delete', publicLimiter, async (req, res, next) =>
     }
 });
 
+// ==================== 匯出 CSV API ====================
+
+// CSV 輔助函數：將值轉為 CSV 安全格式
+function csvEscape(value) {
+    if (value === null || value === undefined) return '';
+    const str = String(value);
+    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+}
+
+// CSV 輔助函數：產生 CSV 字串
+function generateCSV(headers, rows) {
+    const bom = '\uFEFF'; // UTF-8 BOM，確保 Excel 正確識別中文
+    const headerLine = headers.map(h => csvEscape(h)).join(',');
+    const dataLines = rows.map(row => row.map(v => csvEscape(v)).join(','));
+    return bom + [headerLine, ...dataLines].join('\r\n');
+}
+
+// API: 匯出訂房資料 CSV
+app.get('/api/admin/bookings/export', requireAuth, checkPermission('bookings.export'), adminLimiter, async (req, res) => {
+    try {
+        const bookings = await db.getAllBookings();
+        
+        const headers = [
+            '訂房編號', '入住日期', '退房日期', '房型', 
+            '客人姓名', '客人電話', '客人 Email',
+            '大人人數', '小孩人數',
+            '付款方式', '付款狀態', '訂房狀態',
+            '每晚價格', '住宿天數', '總金額', '實付金額',
+            '加購商品金額', '訂房日期', '建立時間'
+        ];
+        
+        const paymentStatusMap = { 'paid': '已付款', 'pending': '未付款', 'refunded': '已退款' };
+        const statusMap = { 'active': '有效', 'cancelled': '已取消', 'reserved': '保留中' };
+        
+        const rows = bookings.map(b => [
+            b.booking_id,
+            b.check_in_date,
+            b.check_out_date,
+            b.room_type,
+            b.guest_name,
+            b.guest_phone,
+            b.guest_email,
+            b.adults || 0,
+            b.children || 0,
+            b.payment_method,
+            paymentStatusMap[b.payment_status] || b.payment_status,
+            statusMap[b.status] || b.status,
+            b.price_per_night,
+            b.nights,
+            b.total_amount,
+            b.final_amount,
+            b.addons_total || 0,
+            b.booking_date,
+            b.created_at
+        ]);
+        
+        const csv = generateCSV(headers, rows);
+        
+        // 記錄匯出操作日誌
+        await logAction(req, 'export_bookings', 'booking', null, { count: bookings.length });
+        
+        const now = new Date();
+        const dateStr = now.toISOString().replace(/[-:]/g, '').replace('T', '_').split('.')[0];
+        
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="bookings_${dateStr}.csv"`);
+        res.send(csv);
+    } catch (error) {
+        console.error('匯出訂房資料錯誤:', error);
+        res.status(500).json({ success: false, message: '匯出訂房資料失敗：' + error.message });
+    }
+});
+
+// API: 匯出客戶資料 CSV
+app.get('/api/admin/customers/export', requireAuth, checkPermission('customers.export'), adminLimiter, async (req, res) => {
+    try {
+        const customers = await db.getAllCustomers();
+        
+        const headers = [
+            'Email', '姓名', '電話',
+            '訂房次數', '累計消費金額',
+            '會員等級', '折扣比例 (%)',
+            '最近訂房日期'
+        ];
+        
+        const rows = customers.map(c => [
+            c.guest_email,
+            c.guest_name,
+            c.guest_phone,
+            c.booking_count,
+            c.total_spent,
+            c.member_level || '新會員',
+            c.discount_percent || 0,
+            c.last_booking_date || ''
+        ]);
+        
+        const csv = generateCSV(headers, rows);
+        
+        // 記錄匯出操作日誌
+        await logAction(req, 'export_customers', 'customer', null, { count: customers.length });
+        
+        const now = new Date();
+        const dateStr = now.toISOString().replace(/[-:]/g, '').replace('T', '_').split('.')[0];
+        
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="customers_${dateStr}.csv"`);
+        res.send(csv);
+    } catch (error) {
+        console.error('匯出客戶資料錯誤:', error);
+        res.status(500).json({ success: false, message: '匯出客戶資料失敗：' + error.message });
+    }
+});
+
+// API: 匯出統計報表 CSV
+app.get('/api/admin/statistics/export', requireAuth, checkPermission('statistics.export'), adminLimiter, async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        
+        let stats;
+        if (startDate && endDate) {
+            stats = await db.getStatistics(startDate, endDate);
+        } else {
+            stats = await db.getStatistics();
+        }
+        
+        const periodLabel = (startDate && endDate) ? `${startDate} ~ ${endDate}` : '全部期間';
+        
+        const headers = ['項目', '數值'];
+        const rows = [
+            ['統計期間', periodLabel],
+            [''],
+            ['--- 訂房統計 ---', ''],
+            ['總訂房數', stats.totalBookings],
+            ['已入住', stats.totalBookingsDetail?.checkedIn || 0],
+            ['未入住', stats.totalBookingsDetail?.notCheckedIn || 0],
+            [''],
+            ['--- 營收統計 ---', ''],
+            ['總營收', stats.totalRevenue],
+            ['已付款營收', stats.totalRevenueDetail?.paid || 0],
+            ['未付款營收', stats.totalRevenueDetail?.unpaid || 0],
+            [''],
+            ['--- 匯款轉帳 ---', ''],
+            ['匯款筆數', stats.transferBookings?.count || 0],
+            ['匯款金額', stats.transferBookings?.total || 0],
+            ['匯款已付款筆數', stats.transferBookings?.paid?.count || 0],
+            ['匯款已付款金額', stats.transferBookings?.paid?.total || 0],
+            ['匯款未付款筆數', stats.transferBookings?.unpaid?.count || 0],
+            ['匯款未付款金額', stats.transferBookings?.unpaid?.total || 0],
+            [''],
+            ['--- 線上刷卡 ---', ''],
+            ['刷卡筆數', stats.cardBookings?.count || 0],
+            ['刷卡金額', stats.cardBookings?.total || 0],
+            ['刷卡已付款筆數', stats.cardBookings?.paid?.count || 0],
+            ['刷卡已付款金額', stats.cardBookings?.paid?.total || 0],
+            ['刷卡未付款筆數', stats.cardBookings?.unpaid?.count || 0],
+            ['刷卡未付款金額', stats.cardBookings?.unpaid?.total || 0],
+        ];
+        
+        // 加入各房型統計
+        if (stats.byRoomType && stats.byRoomType.length > 0) {
+            rows.push(['']);
+            rows.push(['--- 房型統計 ---', '']);
+            for (const rt of stats.byRoomType) {
+                rows.push([rt.room_type, rt.count]);
+            }
+        }
+        
+        const csv = generateCSV(headers, rows);
+        
+        // 記錄匯出操作日誌
+        await logAction(req, 'export_statistics', 'statistics', null, { period: periodLabel });
+        
+        const now = new Date();
+        const dateStr = now.toISOString().replace(/[-:]/g, '').replace('T', '_').split('.')[0];
+        
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="statistics_${dateStr}.csv"`);
+        res.send(csv);
+    } catch (error) {
+        console.error('匯出統計報表錯誤:', error);
+        res.status(500).json({ success: false, message: '匯出統計報表失敗：' + error.message });
+    }
+});
+
 // API: 取得統計資料 - 需要登入
 // 支援可選的日期區間：?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
 app.get('/api/statistics', requireAuth, checkPermission('statistics.view'), adminLimiter, async (req, res) => {
