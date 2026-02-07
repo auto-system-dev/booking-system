@@ -808,9 +808,10 @@ function switchSection(section) {
         'role-management': 'roles.view'
     };
     
-    // 檢查權限
+    // 檢查權限（僅在已登入後才檢查）
     const requiredPermission = sectionPermissions[section];
-    if (requiredPermission && !hasPermission(requiredPermission)) {
+    const isLoggedIn = window.currentAdminInfo || (window.currentAdminPermissions && window.currentAdminPermissions.length > 0);
+    if (isLoggedIn && requiredPermission && !hasPermission(requiredPermission)) {
         console.warn(`⚠️ 沒有權限訪問 ${section}，需要 ${requiredPermission}`);
         showError(`您沒有權限訪問此功能`);
         // 跳轉到儀表板
