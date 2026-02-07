@@ -8,8 +8,8 @@ const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
 
-// 備份目錄
-const BACKUP_DIR = path.join(__dirname, 'backups');
+// 備份目錄（支援環境變數設定，適用於 Railway Volume 掛載）
+const BACKUP_DIR = process.env.BACKUP_DIR || path.join(__dirname, 'backups');
 
 // 確保備份目錄存在
 function ensureBackupDir() {

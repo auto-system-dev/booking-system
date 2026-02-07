@@ -10568,6 +10568,7 @@ async function startServer() {
             console.log(`🌐 監聽地址: 0.0.0.0:${PORT}`);
             console.log(`📧 Email: ${process.env.EMAIL_USER || 'cheng701107@gmail.com'}`);
             console.log(`💾 資料庫: PostgreSQL`);
+            console.log(`📁 備份目錄: ${process.env.BACKUP_DIR || './backups'}`);
             console.log('========================================\n');
             console.log('等待請求中...\n');
             
