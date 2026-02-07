@@ -805,7 +805,6 @@ function switchSection(section) {
         'email-templates': 'email_templates.view',
         'statistics': 'statistics.view',
         'admin-management': 'admins.view',
-        'role-management': 'roles.view',
         'logs': 'logs.view',
         'backups': 'backup.view'
     };
@@ -887,10 +886,9 @@ function switchSection(section) {
         const savedTab = localStorage.getItem('customerTab') || 'customers';
         switchCustomerTab(savedTab);
     } else if (section === 'admin-management') {
-        loadAdmins();
-    } else if (section === 'role-management') {
-        loadRoles();
-        loadPermissionsReference();
+        // 恢復上次的分頁
+        const savedTab = localStorage.getItem('adminTab') || 'admins';
+        switchAdminTab(savedTab);
     } else if (section === 'logs') {
         loadLogFilters();
         loadLogs(1);
@@ -8192,6 +8190,48 @@ function updateSidebarByPermissions() {
 }
 
 // ==================== 管理員管理 ====================
+
+// 切換管理員管理分頁（管理員列表 / 角色權限）
+function switchAdminTab(tab) {
+    // 保存當前分頁
+    localStorage.setItem('adminTab', tab);
+    
+    // 更新分頁按鈕狀態
+    const adminsTab = document.getElementById('adminsTab');
+    const rolesTab = document.getElementById('rolesTab');
+    if (adminsTab) adminsTab.classList.toggle('active', tab === 'admins');
+    if (rolesTab) rolesTab.classList.toggle('active', tab === 'roles');
+    
+    // 切換內容
+    const adminsContent = document.getElementById('adminsTabContent');
+    const rolesContent = document.getElementById('rolesTabContent');
+    if (adminsContent) adminsContent.style.display = tab === 'admins' ? 'block' : 'none';
+    if (rolesContent) rolesContent.style.display = tab === 'roles' ? 'block' : 'none';
+    
+    // 切換按鈕顯示
+    const addAdminBtn = document.getElementById('addAdminBtn');
+    const adminRefreshBtn = document.getElementById('adminRefreshBtn');
+    const addRoleBtn = document.getElementById('addRoleBtn');
+    const roleRefreshBtn = document.getElementById('roleRefreshBtn');
+    
+    if (tab === 'admins') {
+        if (addAdminBtn && hasPermission('admins.create')) addAdminBtn.style.display = 'inline-flex';
+        if (adminRefreshBtn) adminRefreshBtn.style.display = 'inline-flex';
+        if (addRoleBtn) addRoleBtn.style.display = 'none';
+        if (roleRefreshBtn) roleRefreshBtn.style.display = 'none';
+        loadAdmins();
+    } else {
+        if (addAdminBtn) addAdminBtn.style.display = 'none';
+        if (adminRefreshBtn) adminRefreshBtn.style.display = 'none';
+        if (addRoleBtn && hasPermission('roles.create')) addRoleBtn.style.display = 'inline-flex';
+        if (roleRefreshBtn) roleRefreshBtn.style.display = 'inline-flex';
+        loadRoles();
+        loadPermissionsReference();
+    }
+}
+
+// 暴露到全局
+window.switchAdminTab = switchAdminTab;
 
 // 載入管理員列表
 async function loadAdmins() {

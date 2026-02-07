@@ -96,10 +96,6 @@
                     <span class="nav-icon"><span class="material-symbols-outlined">manage_accounts</span></span>
                     <span>管理員管理</span>
                 </a>
-                <a href="#role-management" class="nav-item permission-required" data-section="role-management" data-permission="roles.view" onclick="handleNavClick(event, 'role-management')">
-                    <span class="nav-icon"><span class="material-symbols-outlined">admin_panel_settings</span></span>
-                    <span>角色權限</span>
-                </a>
                 <a href="#logs" class="nav-item permission-required" data-section="logs" data-permission="logs.view" onclick="handleNavClick(event, 'logs')">
                     <span class="nav-icon"><span class="material-symbols-outlined">history</span></span>
                     <span>操作日誌</span>
@@ -1044,7 +1040,7 @@
                 </div>
             </section>
 
-            <!-- 管理員管理區 -->
+            <!-- 管理員管理區（包含角色權限分頁） -->
             <section id="admin-management-section" class="content-section">
                 <div class="section-header">
                     <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">manage_accounts</span> 管理員管理</h2>
@@ -1052,66 +1048,47 @@
                         <button class="btn-primary permission-required" onclick="showAddAdminModal()" id="addAdminBtn" data-permission="admins.create">
                             <span class="material-symbols-outlined">person_add</span> 新增管理員
                         </button>
-                        <button class="btn-refresh" onclick="loadAdmins()">
+                        <button class="btn-refresh" id="adminRefreshBtn" onclick="loadAdmins()">
                             <span class="material-symbols-outlined">refresh</span> 重新整理
                         </button>
-                    </div>
-                </div>
-
-                <div class="table-container">
-                    <table class="bookings-table">
-                        <thead>
-                            <tr>
-                                <th style="text-align: center;">ID</th>
-                                <th style="text-align: left;">帳號</th>
-                                <th style="text-align: left;">Email</th>
-                                <th style="text-align: center;">角色</th>
-                                <th style="text-align: left;">部門</th>
-                                <th style="text-align: center;">狀態</th>
-                                <th style="text-align: left;">最後登入</th>
-                                <th style="text-align: center;">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="adminsTableBody">
-                            <tr>
-                                <td colspan="8" class="loading">載入中...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- 角色權限管理區 -->
-            <section id="role-management-section" class="content-section">
-                <div class="section-header">
-                    <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">admin_panel_settings</span> 角色權限管理</h2>
-                    <div class="header-actions">
-                        <button class="btn-primary permission-required" onclick="showAddRoleModal()" id="addRoleBtn" data-permission="roles.create">
+                        <button class="btn-primary permission-required" onclick="showAddRoleModal()" id="addRoleBtn" data-permission="roles.create" style="display: none;">
                             <span class="material-symbols-outlined">add</span> 新增角色
                         </button>
-                        <button class="btn-refresh" onclick="loadRoles()">
+                        <button class="btn-refresh" id="roleRefreshBtn" onclick="loadRoles()" style="display: none;">
                             <span class="material-symbols-outlined">refresh</span> 重新整理
                         </button>
                     </div>
                 </div>
 
-                <!-- 角色列表 -->
-                <div class="roles-container">
+                <!-- 分頁切換 -->
+                <div class="tab-container" style="margin-bottom: 20px; border-bottom: 2px solid #e0e0e0;">
+                    <button class="tab-button active" onclick="switchAdminTab('admins')" id="adminsTab">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">manage_accounts</span>
+                        管理員列表
+                    </button>
+                    <button class="tab-button permission-required" data-permission="roles.view" onclick="switchAdminTab('roles')" id="rolesTab">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">admin_panel_settings</span>
+                        角色權限
+                    </button>
+                </div>
+
+                <!-- 管理員列表內容 -->
+                <div id="adminsTabContent" class="tab-content">
                     <div class="table-container">
                         <table class="bookings-table">
                             <thead>
                                 <tr>
                                     <th style="text-align: center;">ID</th>
-                                    <th style="text-align: left;">角色代碼</th>
-                                    <th style="text-align: left;">顯示名稱</th>
-                                    <th style="text-align: left;">描述</th>
-                                    <th style="text-align: center;">權限數</th>
-                                    <th style="text-align: center;">管理員數</th>
-                                    <th style="text-align: center;">系統角色</th>
+                                    <th style="text-align: left;">帳號</th>
+                                    <th style="text-align: left;">Email</th>
+                                    <th style="text-align: center;">角色</th>
+                                    <th style="text-align: left;">部門</th>
+                                    <th style="text-align: center;">狀態</th>
+                                    <th style="text-align: left;">最後登入</th>
                                     <th style="text-align: center;">操作</th>
                                 </tr>
                             </thead>
-                            <tbody id="rolesTableBody">
+                            <tbody id="adminsTableBody">
                                 <tr>
                                     <td colspan="8" class="loading">載入中...</td>
                                 </tr>
@@ -1120,14 +1097,42 @@
                     </div>
                 </div>
 
-                <!-- 權限對照表 -->
-                <div class="settings-card" style="margin-top: 30px;">
-                    <h3 style="display: flex; align-items: center; gap: 10px;">
-                        <span class="material-symbols-outlined">checklist</span>
-                        權限代碼說明
-                    </h3>
-                    <div id="permissionsReferenceList" style="margin-top: 15px;">
-                        <div class="loading">載入中...</div>
+                <!-- 角色權限內容 -->
+                <div id="rolesTabContent" class="tab-content" style="display: none;">
+                    <!-- 角色列表 -->
+                    <div class="roles-container">
+                        <div class="table-container">
+                            <table class="bookings-table">
+                                <thead>
+                                    <tr>
+                                        <th style="text-align: center;">ID</th>
+                                        <th style="text-align: left;">角色代碼</th>
+                                        <th style="text-align: left;">顯示名稱</th>
+                                        <th style="text-align: left;">描述</th>
+                                        <th style="text-align: center;">權限數</th>
+                                        <th style="text-align: center;">管理員數</th>
+                                        <th style="text-align: center;">系統角色</th>
+                                        <th style="text-align: center;">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rolesTableBody">
+                                    <tr>
+                                        <td colspan="8" class="loading">載入中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 權限對照表 -->
+                    <div class="settings-card" style="margin-top: 30px;">
+                        <h3 style="display: flex; align-items: center; gap: 10px;">
+                            <span class="material-symbols-outlined">checklist</span>
+                            權限代碼說明
+                        </h3>
+                        <div id="permissionsReferenceList" style="margin-top: 15px;">
+                            <div class="loading">載入中...</div>
+                        </div>
                     </div>
                 </div>
             </section>
