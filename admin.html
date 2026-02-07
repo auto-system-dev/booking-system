@@ -100,6 +100,14 @@
                     <span class="nav-icon"><span class="material-symbols-outlined">admin_panel_settings</span></span>
                     <span>角色權限</span>
                 </a>
+                <a href="#logs" class="nav-item permission-required" data-section="logs" data-permission="logs.view" onclick="handleNavClick(event, 'logs')">
+                    <span class="nav-icon"><span class="material-symbols-outlined">history</span></span>
+                    <span>操作日誌</span>
+                </a>
+                <a href="#backups" class="nav-item permission-required" data-section="backups" data-permission="backup.view" onclick="handleNavClick(event, 'backups')">
+                    <span class="nav-icon"><span class="material-symbols-outlined">backup</span></span>
+                    <span>資料備份</span>
+                </a>
             </nav>
             <div class="sidebar-footer" style="margin-top: auto; padding: 20px; border-top: 1px solid #e0e0e0;">
                 <div style="margin-bottom: 10px; color: #666; font-size: 14px;">
@@ -1111,6 +1119,143 @@
                     </h3>
                     <div id="permissionsReferenceList" style="margin-top: 15px;">
                         <div class="loading">載入中...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 操作日誌區 -->
+            <section id="logs-section" class="content-section">
+                <div class="section-header">
+                    <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">history</span> 操作日誌</h2>
+                    <div class="header-actions">
+                        <button class="btn-refresh" onclick="loadLogs()">
+                            <span class="material-symbols-outlined">refresh</span> 重新整理
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 篩選工具列 -->
+                <div class="settings-card" style="margin-bottom: 20px;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+                        <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 150px;">
+                            <label>管理員</label>
+                            <select id="logFilterAdmin" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="">全部</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 150px;">
+                            <label>操作類型</label>
+                            <select id="logFilterAction" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="">全部</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 150px;">
+                            <label>資源類型</label>
+                            <select id="logFilterResourceType" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="">全部</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 140px;">
+                            <label>開始日期</label>
+                            <input type="date" id="logFilterStartDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 140px;">
+                            <label>結束日期</label>
+                            <input type="date" id="logFilterEndDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        <button class="btn-primary" onclick="loadLogs(1)" style="height: 38px;">
+                            <span class="material-symbols-outlined">search</span> 查詢
+                        </button>
+                        <button class="btn-refresh" onclick="resetLogFilters()" style="height: 38px;">
+                            <span class="material-symbols-outlined">restart_alt</span> 重置
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="bookings-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align: center; width: 60px;">ID</th>
+                                <th style="text-align: left;">時間</th>
+                                <th style="text-align: left;">管理員</th>
+                                <th style="text-align: left;">操作</th>
+                                <th style="text-align: left;">資源</th>
+                                <th style="text-align: left;">詳細資訊</th>
+                                <th style="text-align: left;">IP 位址</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTableBody">
+                            <tr>
+                                <td colspan="7" class="loading">載入中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="logsPagination" class="pagination" style="margin-top: 15px;"></div>
+            </section>
+
+            <!-- 資料備份管理區 -->
+            <section id="backups-section" class="content-section">
+                <div class="section-header">
+                    <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">backup</span> 資料備份管理</h2>
+                    <div class="header-actions">
+                        <button class="btn-primary permission-required" data-permission="backup.create" onclick="createBackup()">
+                            <span class="material-symbols-outlined">add</span> 手動備份
+                        </button>
+                        <button class="btn-refresh" onclick="loadBackups()">
+                            <span class="material-symbols-outlined">refresh</span> 重新整理
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 備份統計 -->
+                <div class="settings-card" style="margin-bottom: 20px;">
+                    <h3 style="display: flex; align-items: center; gap: 10px;">
+                        <span class="material-symbols-outlined">analytics</span>
+                        備份統計
+                    </h3>
+                    <div id="backupStats" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; margin-top: 15px;">
+                        <div class="loading">載入中...</div>
+                    </div>
+                </div>
+
+                <!-- 清理設定 -->
+                <div class="settings-card" style="margin-bottom: 20px;">
+                    <h3 style="display: flex; align-items: center; gap: 10px;">
+                        <span class="material-symbols-outlined">cleaning_services</span>
+                        清理舊備份
+                    </h3>
+                    <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px;">
+                        <label>保留天數：</label>
+                        <input type="number" id="backupRetainDays" value="30" min="1" max="365" style="width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <button class="btn-cancel permission-required" data-permission="backup.delete" onclick="cleanupBackups()">
+                            <span class="material-symbols-outlined">delete_sweep</span> 清理
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 備份列表 -->
+                <div class="settings-card">
+                    <h3 style="display: flex; align-items: center; gap: 10px;">
+                        <span class="material-symbols-outlined">folder</span>
+                        備份檔案列表
+                    </h3>
+                    <div class="table-container" style="margin-top: 15px;">
+                        <table class="bookings-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;">檔案名稱</th>
+                                    <th style="text-align: right;">檔案大小</th>
+                                    <th style="text-align: left;">建立時間</th>
+                                </tr>
+                            </thead>
+                            <tbody id="backupsTableBody">
+                                <tr>
+                                    <td colspan="3" class="loading">載入中...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </section>

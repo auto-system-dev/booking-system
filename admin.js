@@ -805,7 +805,9 @@ function switchSection(section) {
         'email-templates': 'email_templates.view',
         'statistics': 'statistics.view',
         'admin-management': 'admins.view',
-        'role-management': 'roles.view'
+        'role-management': 'roles.view',
+        'logs': 'logs.view',
+        'backups': 'backup.view'
     };
     
     // 檢查權限（僅在已登入後才檢查）
@@ -889,6 +891,11 @@ function switchSection(section) {
     } else if (section === 'role-management') {
         loadRoles();
         loadPermissionsReference();
+    } else if (section === 'logs') {
+        loadLogFilters();
+        loadLogs(1);
+    } else if (section === 'backups') {
+        loadBackups();
     }
 }
 
@@ -8885,3 +8892,356 @@ function formatDateTime(dateStr) {
         return dateStr;
     }
 }
+
+// ==================== 操作日誌 ====================
+
+// 操作類型中文對照
+const actionLabels = {
+    'login': '登入',
+    'logout': '登出',
+    'change_password': '修改密碼',
+    'create_booking': '新增訂房',
+    'update_booking': '更新訂房',
+    'cancel_booking': '取消訂房',
+    'delete_booking': '刪除訂房',
+    'create_room_type': '新增房型',
+    'update_room_type': '更新房型',
+    'delete_room_type': '刪除房型',
+    'create_addon': '新增加購商品',
+    'update_addon': '更新加購商品',
+    'delete_addon': '刪除加購商品',
+    'create_promo_code': '新增優惠代碼',
+    'update_promo_code': '更新優惠代碼',
+    'delete_promo_code': '刪除優惠代碼',
+    'update_setting': '更新設定',
+    'update_email_template': '更新郵件模板',
+    'create_role': '新增角色',
+    'update_role': '更新角色',
+    'delete_role': '刪除角色',
+    'update_role_permissions': '更新角色權限',
+    'create_admin': '新增管理員',
+    'update_admin': '更新管理員',
+    'delete_admin': '刪除管理員',
+    'update_admin_role': '更新管理員角色',
+    'reset_admin_password': '重設密碼',
+    'create_backup': '建立備份',
+    'cleanup_backups': '清理備份',
+    'permission_denied': '權限拒絕'
+};
+
+// 資源類型中文對照
+const resourceTypeLabels = {
+    'booking': '訂房',
+    'room_type': '房型',
+    'addon': '加購商品',
+    'promo_code': '優惠代碼',
+    'setting': '系統設定',
+    'email_template': '郵件模板',
+    'role': '角色',
+    'admin': '管理員',
+    'auth': '認證',
+    'backup': '備份',
+    'customer': '客戶'
+};
+
+let logFiltersLoaded = false;
+
+// 載入日誌篩選選項
+async function loadLogFilters() {
+    if (logFiltersLoaded) return;
+    
+    try {
+        const response = await adminFetch('/api/admin/logs/filters');
+        const result = await response.json();
+        
+        if (result.success) {
+            // 填充管理員下拉選單
+            const adminSelect = document.getElementById('logFilterAdmin');
+            if (adminSelect && result.admins) {
+                result.admins.forEach(admin => {
+                    const option = document.createElement('option');
+                    option.value = admin.id;
+                    option.textContent = admin.username;
+                    adminSelect.appendChild(option);
+                });
+            }
+            
+            // 填充操作類型下拉選單
+            const actionSelect = document.getElementById('logFilterAction');
+            if (actionSelect && result.actions) {
+                result.actions.forEach(action => {
+                    const option = document.createElement('option');
+                    option.value = action;
+                    option.textContent = actionLabels[action] || action;
+                    actionSelect.appendChild(option);
+                });
+            }
+            
+            // 填充資源類型下拉選單
+            const resourceTypeSelect = document.getElementById('logFilterResourceType');
+            if (resourceTypeSelect && result.resourceTypes) {
+                result.resourceTypes.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type;
+                    option.textContent = resourceTypeLabels[type] || type;
+                    resourceTypeSelect.appendChild(option);
+                });
+            }
+            
+            logFiltersLoaded = true;
+        }
+    } catch (error) {
+        console.error('載入日誌篩選選項錯誤:', error);
+    }
+}
+
+// 載入操作日誌
+async function loadLogs(page = 1) {
+    const tbody = document.getElementById('logsTableBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="7" class="loading">載入中...</td></tr>';
+    
+    try {
+        const params = new URLSearchParams({ page, limit: 50 });
+        
+        const adminId = document.getElementById('logFilterAdmin')?.value;
+        const action = document.getElementById('logFilterAction')?.value;
+        const resourceType = document.getElementById('logFilterResourceType')?.value;
+        const startDate = document.getElementById('logFilterStartDate')?.value;
+        const endDate = document.getElementById('logFilterEndDate')?.value;
+        
+        if (adminId) params.append('admin_id', adminId);
+        if (action) params.append('action', action);
+        if (resourceType) params.append('resource_type', resourceType);
+        if (startDate) params.append('start_date', startDate);
+        if (endDate) params.append('end_date', endDate);
+        
+        const response = await adminFetch(`/api/admin/logs?${params.toString()}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            if (result.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="loading">沒有找到操作日誌</td></tr>';
+            } else {
+                tbody.innerHTML = result.data.map(log => {
+                    const actionLabel = actionLabels[log.action] || log.action;
+                    const resourceTypeLabel = resourceTypeLabels[log.resource_type] || log.resource_type || '-';
+                    
+                    // 格式化詳細資訊
+                    let detailsStr = '-';
+                    if (log.details) {
+                        try {
+                            const details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+                            detailsStr = Object.entries(details)
+                                .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+                                .join(', ');
+                            if (detailsStr.length > 80) {
+                                detailsStr = detailsStr.substring(0, 80) + '...';
+                            }
+                        } catch (e) {
+                            detailsStr = String(log.details).substring(0, 80);
+                        }
+                    }
+                    
+                    // 操作類型顏色
+                    let actionClass = '';
+                    if (log.action.includes('delete') || log.action === 'cancel_booking') actionClass = 'status-cancelled';
+                    else if (log.action.includes('create')) actionClass = 'status-active';
+                    else if (log.action.includes('update') || log.action.includes('edit')) actionClass = 'status-reserved';
+                    else if (log.action === 'login') actionClass = 'status-active';
+                    else if (log.action === 'permission_denied') actionClass = 'status-cancelled';
+                    
+                    return `
+                    <tr>
+                        <td style="text-align: center; color: #999; font-size: 12px;">${log.id}</td>
+                        <td style="white-space: nowrap; font-size: 13px;">${formatDateTime(log.created_at)}</td>
+                        <td><strong>${escapeHtml(log.admin_username || '-')}</strong></td>
+                        <td><span class="status-badge ${actionClass}">${escapeHtml(actionLabel)}</span></td>
+                        <td>${log.resource_id ? `${escapeHtml(resourceTypeLabel)} #${escapeHtml(log.resource_id)}` : escapeHtml(resourceTypeLabel)}</td>
+                        <td style="font-size: 12px; color: #666; max-width: 250px; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(detailsStr)}">${escapeHtml(detailsStr)}</td>
+                        <td style="font-size: 12px; color: #999;">${escapeHtml(log.ip_address || '-')}</td>
+                    </tr>
+                    `;
+                }).join('');
+            }
+            
+            // 渲染分頁
+            renderLogsPagination(result.pagination);
+        } else {
+            tbody.innerHTML = `<tr><td colspan="7" class="loading">載入失敗：${result.message}</td></tr>`;
+        }
+    } catch (error) {
+        console.error('載入操作日誌錯誤:', error);
+        tbody.innerHTML = `<tr><td colspan="7" class="loading">載入時發生錯誤</td></tr>`;
+    }
+}
+
+// 渲染日誌分頁
+function renderLogsPagination(pagination) {
+    const container = document.getElementById('logsPagination');
+    if (!container || !pagination) return;
+    
+    const { page, totalPages, total } = pagination;
+    
+    if (totalPages <= 1) {
+        container.innerHTML = `<span style="color: #888; font-size: 13px;">共 ${total} 筆記錄</span>`;
+        return;
+    }
+    
+    let html = `<span style="color: #888; font-size: 13px; margin-right: 15px;">共 ${total} 筆記錄</span>`;
+    html += `<button onclick="loadLogs(${page - 1})" ${page === 1 ? 'disabled' : ''}>上一頁</button>`;
+    
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
+            html += `<button onclick="loadLogs(${i})" ${i === page ? 'style="background: #667eea; color: white;"' : ''}>${i}</button>`;
+        } else if (i === page - 3 || i === page + 3) {
+            html += `<span style="padding: 0 5px;">...</span>`;
+        }
+    }
+    
+    html += `<button onclick="loadLogs(${page + 1})" ${page === totalPages ? 'disabled' : ''}>下一頁</button>`;
+    container.innerHTML = html;
+}
+
+// 重置日誌篩選
+function resetLogFilters() {
+    const adminSelect = document.getElementById('logFilterAdmin');
+    const actionSelect = document.getElementById('logFilterAction');
+    const resourceTypeSelect = document.getElementById('logFilterResourceType');
+    const startDate = document.getElementById('logFilterStartDate');
+    const endDate = document.getElementById('logFilterEndDate');
+    
+    if (adminSelect) adminSelect.value = '';
+    if (actionSelect) actionSelect.value = '';
+    if (resourceTypeSelect) resourceTypeSelect.value = '';
+    if (startDate) startDate.value = '';
+    if (endDate) endDate.value = '';
+    
+    loadLogs(1);
+}
+
+// ==================== 資料備份管理 ====================
+
+// 載入備份列表
+async function loadBackups() {
+    const tbody = document.getElementById('backupsTableBody');
+    const statsDiv = document.getElementById('backupStats');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="3" class="loading">載入中...</td></tr>';
+    if (statsDiv) statsDiv.innerHTML = '<div class="loading">載入中...</div>';
+    
+    try {
+        const response = await adminFetch('/api/admin/backups');
+        const result = await response.json();
+        
+        if (result.success) {
+            // 渲染統計資料
+            if (statsDiv && result.stats) {
+                const stats = result.stats;
+                statsDiv.innerHTML = `
+                    <div style="background: #f0f7ff; padding: 15px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #2196F3;">${stats.totalBackups || 0}</div>
+                        <div style="font-size: 13px; color: #666;">備份總數</div>
+                    </div>
+                    <div style="background: #f0fff4; padding: 15px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #4CAF50;">${stats.totalSizeMB || '0'} MB</div>
+                        <div style="font-size: 13px; color: #666;">總大小</div>
+                    </div>
+                    <div style="background: #fff8e1; padding: 15px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #FF9800;">${stats.latestBackup ? formatDateTime(stats.latestBackup) : '無'}</div>
+                        <div style="font-size: 13px; color: #666;">最近備份</div>
+                    </div>
+                    <div style="background: #fce4ec; padding: 15px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #e91e63;">${stats.oldestBackup ? formatDateTime(stats.oldestBackup) : '無'}</div>
+                        <div style="font-size: 13px; color: #666;">最早備份</div>
+                    </div>
+                `;
+            }
+            
+            // 渲染備份列表
+            const backups = result.data || [];
+            if (backups.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="loading">目前沒有備份檔案</td></tr>';
+            } else {
+                tbody.innerHTML = backups.map(backup => `
+                    <tr>
+                        <td>
+                            <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 5px; color: #667eea;">description</span>
+                            ${escapeHtml(backup.fileName || backup.name || '-')}
+                        </td>
+                        <td style="text-align: right;">${backup.fileSizeMB || backup.size || '-'} MB</td>
+                        <td>${formatDateTime(backup.createdAt || backup.created || backup.modifiedTime)}</td>
+                    </tr>
+                `).join('');
+            }
+        } else {
+            tbody.innerHTML = `<tr><td colspan="3" class="loading">載入失敗：${result.message}</td></tr>`;
+        }
+    } catch (error) {
+        console.error('載入備份列表錯誤:', error);
+        tbody.innerHTML = '<tr><td colspan="3" class="loading">載入時發生錯誤</td></tr>';
+        if (statsDiv) statsDiv.innerHTML = '<div class="loading">載入失敗</div>';
+    }
+}
+
+// 手動建立備份
+async function createBackup() {
+    if (!confirm('確定要建立資料備份嗎？')) return;
+    
+    try {
+        showSuccess('正在建立備份...');
+        
+        const response = await adminFetch('/api/admin/backups/create', {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess(`備份已建立：${result.data.fileName}（${result.data.fileSizeMB} MB）`);
+            loadBackups();
+        } else {
+            showError('備份失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('建立備份錯誤:', error);
+        showError('建立備份時發生錯誤：' + error.message);
+    }
+}
+
+// 清理舊備份
+async function cleanupBackups() {
+    const daysInput = document.getElementById('backupRetainDays');
+    const daysToKeep = parseInt(daysInput?.value) || 30;
+    
+    if (!confirm(`確定要清理 ${daysToKeep} 天前的備份嗎？此操作無法復原。`)) return;
+    
+    try {
+        const response = await adminFetch('/api/admin/backups/cleanup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ daysToKeep })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess(result.message);
+            loadBackups();
+        } else {
+            showError('清理失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('清理備份錯誤:', error);
+        showError('清理備份時發生錯誤：' + error.message);
+    }
+}
+
+// 暴露操作日誌和備份相關函數到全域
+window.loadLogs = loadLogs;
+window.resetLogFilters = resetLogFilters;
+window.loadBackups = loadBackups;
+window.createBackup = createBackup;
+window.cleanupBackups = cleanupBackups;

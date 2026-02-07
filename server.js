@@ -2909,6 +2909,76 @@ app.put('/api/admin/admins/:id/reset-password', requireAuth, checkPermission('ad
     }
 });
 
+// ==================== 操作日誌 API ====================
+
+// API: 取得操作日誌列表
+app.get('/api/admin/logs', requireAuth, checkPermission('logs.view'), adminLimiter, async (req, res) => {
+    try {
+        const {
+            page = 1,
+            limit = 50,
+            admin_id,
+            action,
+            resource_type,
+            start_date,
+            end_date
+        } = req.query;
+        
+        const pageNum = parseInt(page) || 1;
+        const limitNum = Math.min(parseInt(limit) || 50, 200);
+        const offset = (pageNum - 1) * limitNum;
+        
+        const filterOptions = {
+            limit: limitNum,
+            offset: offset,
+            adminId: admin_id ? parseInt(admin_id) : null,
+            action: action || null,
+            resourceType: resource_type || null,
+            startDate: start_date || null,
+            endDate: end_date ? start_date === end_date ? end_date + 'T23:59:59' : end_date : null
+        };
+        
+        const [logs, totalCount] = await Promise.all([
+            db.getAdminLogs(filterOptions),
+            db.getAdminLogsCount(filterOptions)
+        ]);
+        
+        res.json({
+            success: true,
+            data: logs,
+            pagination: {
+                page: pageNum,
+                limit: limitNum,
+                total: totalCount,
+                totalPages: Math.ceil(totalCount / limitNum)
+            }
+        });
+    } catch (error) {
+        console.error('查詢操作日誌錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '查詢操作日誌失敗：' + error.message
+        });
+    }
+});
+
+// API: 取得日誌篩選選項（操作類型和管理員列表）
+app.get('/api/admin/logs/filters', requireAuth, checkPermission('logs.view'), adminLimiter, async (req, res) => {
+    try {
+        const filters = await db.getLogFilterOptions();
+        res.json({
+            success: true,
+            ...filters
+        });
+    } catch (error) {
+        console.error('查詢日誌篩選選項錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '查詢篩選選項失敗：' + error.message
+        });
+    }
+});
+
 // API: 取得備份列表
 app.get('/api/admin/backups', requireAuth, checkPermission('backup.view'), adminLimiter, async (req, res) => {
     try {

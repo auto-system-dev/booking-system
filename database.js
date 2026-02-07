@@ -5291,6 +5291,30 @@ async function getAdminLogsCount(options = {}) {
     }
 }
 
+// 取得日誌篩選選項
+async function getLogFilterOptions() {
+    try {
+        const actionsSql = 'SELECT DISTINCT action FROM admin_logs ORDER BY action';
+        const resourceTypesSql = 'SELECT DISTINCT resource_type FROM admin_logs WHERE resource_type IS NOT NULL ORDER BY resource_type';
+        const adminsSql = 'SELECT DISTINCT admin_id, admin_username FROM admin_logs WHERE admin_id IS NOT NULL ORDER BY admin_username';
+        
+        const [actionsResult, resourceTypesResult, adminsResult] = await Promise.all([
+            query(actionsSql),
+            query(resourceTypesSql),
+            query(adminsSql)
+        ]);
+        
+        return {
+            actions: (actionsResult.rows || []).map(r => r.action),
+            resourceTypes: (resourceTypesResult.rows || []).map(r => r.resource_type),
+            admins: (adminsResult.rows || []).map(r => ({ id: r.admin_id, username: r.admin_username }))
+        };
+    } catch (error) {
+        console.error('❌ 取得日誌篩選選項失敗:', error.message);
+        throw error;
+    }
+}
+
 // ==================== 權限管理系統函數 ====================
 
 // 初始化預設角色和權限
@@ -6083,6 +6107,7 @@ module.exports = {
     logAdminAction,
     getAdminLogs,
     getAdminLogsCount,
+    getLogFilterOptions,
     // 個資保護
     anonymizeCustomerData,
     deleteCustomerData,
