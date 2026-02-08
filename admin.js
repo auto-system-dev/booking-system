@@ -3332,8 +3332,7 @@ async function handleRoomImageUpload(input) {
             const imageUrl = result.data.image_url;
             document.getElementById('roomImageUrl').value = imageUrl;
             
-            // 顯示預覽
-            document.getElementById('roomImagePreview').innerHTML = '';
+            // 顯示預覽（直接替換上傳區域內容）
             uploadArea.innerHTML = `
                 <div id="roomImagePreview" style="position: relative; display: inline-block;">
                     <img src="${imageUrl}" style="max-width: 100%; max-height: 200px; border-radius: 8px; object-fit: cover;">
