@@ -18,8 +18,8 @@ const csrf = require('csrf');
 const lineBot = require('./line-bot');
 const multer = require('multer');
 
-// 圖片上傳設定
-const uploadsDir = path.join(__dirname, 'uploads');
+// 圖片上傳設定（支援環境變數，適用於 Railway Volume 掛載）
+const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
     console.log('✅ uploads 目錄已建立');
@@ -10654,6 +10654,7 @@ async function startServer() {
             console.log(`📧 Email: ${process.env.EMAIL_USER || 'cheng701107@gmail.com'}`);
             console.log(`💾 資料庫: PostgreSQL`);
             console.log(`📁 備份目錄: ${process.env.BACKUP_DIR || './backups'}`);
+            console.log(`🖼️ 圖片目錄: ${process.env.UPLOADS_DIR || './uploads'}`);
             console.log('========================================\n');
             console.log('等待請求中...\n');
             
@@ -10706,8 +10707,8 @@ async function startServer() {
     }
 }
 
-// 靜態檔案服務 - uploads 目錄（房型照片等）
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+// 靜態檔案服務 - uploads 目錄（房型照片等，支援 Railway Volume 掛載）
+app.use('/uploads', express.static(uploadsDir, {
     maxAge: '7d',
     etag: true
 }));
