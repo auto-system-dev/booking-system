@@ -593,10 +593,18 @@ async function adminFetch(url, options = {}) {
     // 取得 CSRF Token
     const csrfToken = await getCsrfToken();
     
+    // 判斷是否為 FormData（檔案上傳時不能手動設定 Content-Type，瀏覽器會自動處理 multipart boundary）
+    const isFormData = options.body instanceof FormData;
+    
+    const defaultHeaders = {};
+    if (!isFormData) {
+        defaultHeaders['Content-Type'] = 'application/json';
+    }
+    
     const defaultOptions = {
         credentials: 'include',
         headers: {
-            'Content-Type': 'application/json',
+            ...defaultHeaders,
             ...options.headers
         }
     };
@@ -3156,7 +3164,11 @@ function renderRoomTypes() {
     tbody.innerHTML = filteredRoomTypes.map(room => `
         <tr ${room.is_active === 0 ? 'style="opacity: 0.6; background: #f8f8f8;"' : ''}>
             <td>${room.display_order || 0}</td>
-            <td>${room.icon || '🏠'}</td>
+            <td>
+                ${room.image_url 
+                    ? `<img src="${escapeHtml(room.image_url)}" alt="${escapeHtml(room.display_name)}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid #eee;">` 
+                    : `<span style="font-size: 28px;">${room.icon || '🏠'}</span>`}
+            </td>
             <td>${room.name}</td>
             <td>${room.display_name}</td>
             <td>${room.max_occupancy ?? 0}</td>
@@ -3203,6 +3215,7 @@ function showRoomTypeModal(room) {
     const modal = document.getElementById('bookingModal');
     const modalBody = document.getElementById('modalBody');
     const isEdit = room !== null;
+    const currentImageUrl = isEdit ? (room.image_url || '') : '';
     
     modalBody.innerHTML = `
         <form id="roomTypeForm" onsubmit="saveRoomType(event, ${isEdit ? room.id : 'null'})">
@@ -3236,8 +3249,29 @@ function showRoomTypeModal(room) {
                 <small>假日（週六、週日及手動設定的假日）的加價金額。可為正數（加價）或負數（折扣），0 表示假日價格與平日相同</small>
             </div>
             <div class="form-group">
-                <label>圖示（Emoji）</label>
+                <label>房型照片</label>
+                <div id="roomImageUploadArea" style="border: 2px dashed #ccc; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.3s; background: #fafafa; position: relative;" onclick="document.getElementById('roomImageInput').click()">
+                    ${currentImageUrl ? `
+                        <div id="roomImagePreview" style="position: relative; display: inline-block;">
+                            <img src="${escapeHtml(currentImageUrl)}" style="max-width: 100%; max-height: 200px; border-radius: 8px; object-fit: cover;">
+                            <button type="button" onclick="event.stopPropagation(); removeRoomImage();" style="position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%; border: none; background: #e74c3c; color: white; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">✕</button>
+                        </div>
+                    ` : `
+                        <div id="roomImagePreview">
+                            <span class="material-symbols-outlined" style="font-size: 48px; color: #aaa; display: block; margin-bottom: 8px;">add_photo_alternate</span>
+                            <p style="color: #888; margin: 0;">點擊上傳房型照片</p>
+                            <small style="color: #aaa;">支援 JPG、PNG、WebP、GIF，最大 5MB</small>
+                        </div>
+                    `}
+                </div>
+                <input type="file" id="roomImageInput" accept="image/jpeg,image/png,image/webp,image/gif" style="display: none;" onchange="handleRoomImageUpload(this)">
+                <input type="hidden" name="image_url" id="roomImageUrl" value="${escapeHtml(currentImageUrl)}">
+                <small>上傳房型照片，將在前台訂房頁面顯示（若無照片則顯示圖示）</small>
+            </div>
+            <div class="form-group">
+                <label>圖示（Emoji，備用）</label>
                 <input type="text" name="icon" value="${isEdit ? escapeHtml(room.icon) : '🏠'}" maxlength="10">
+                <small>當沒有上傳照片時，將顯示此圖示</small>
             </div>
             <div class="form-group">
                 <label>顯示順序</label>
@@ -3260,6 +3294,95 @@ function showRoomTypeModal(room) {
     modal.classList.add('active');
 }
 
+// 處理房型圖片上傳
+async function handleRoomImageUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    // 檢查檔案大小
+    if (file.size > 5 * 1024 * 1024) {
+        showError('圖片大小不可超過 5MB');
+        input.value = '';
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    const uploadArea = document.getElementById('roomImageUploadArea');
+    const originalContent = uploadArea.innerHTML;
+    
+    // 顯示上傳中
+    uploadArea.innerHTML = `
+        <div style="padding: 20px; text-align: center;">
+            <span class="material-symbols-outlined" style="font-size: 36px; color: #667eea; animation: spin 1s linear infinite;">progress_activity</span>
+            <p style="color: #667eea; margin: 8px 0 0;">上傳中...</p>
+        </div>
+    `;
+    
+    try {
+        const response = await adminFetch('/api/admin/room-types/upload-image', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const imageUrl = result.data.image_url;
+            document.getElementById('roomImageUrl').value = imageUrl;
+            
+            // 顯示預覽
+            document.getElementById('roomImagePreview').innerHTML = '';
+            uploadArea.innerHTML = `
+                <div id="roomImagePreview" style="position: relative; display: inline-block;">
+                    <img src="${imageUrl}" style="max-width: 100%; max-height: 200px; border-radius: 8px; object-fit: cover;">
+                    <button type="button" onclick="event.stopPropagation(); removeRoomImage();" style="position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%; border: none; background: #e74c3c; color: white; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">✕</button>
+                </div>
+            `;
+            
+            showSuccess('圖片上傳成功');
+        } else {
+            showError('上傳失敗：' + (result.message || '未知錯誤'));
+            uploadArea.innerHTML = originalContent;
+        }
+    } catch (error) {
+        console.error('上傳圖片錯誤:', error);
+        showError('上傳圖片時發生錯誤：' + error.message);
+        uploadArea.innerHTML = originalContent;
+    }
+    
+    input.value = '';
+}
+
+// 移除房型圖片
+async function removeRoomImage() {
+    const imageUrl = document.getElementById('roomImageUrl').value;
+    
+    if (imageUrl) {
+        try {
+            await adminFetch('/api/admin/room-types/delete-image', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image_url: imageUrl })
+            });
+        } catch (error) {
+            console.warn('刪除舊圖片失敗:', error);
+        }
+    }
+    
+    document.getElementById('roomImageUrl').value = '';
+    const uploadArea = document.getElementById('roomImageUploadArea');
+    uploadArea.innerHTML = `
+        <div id="roomImagePreview">
+            <span class="material-symbols-outlined" style="font-size: 48px; color: #aaa; display: block; margin-bottom: 8px;">add_photo_alternate</span>
+            <p style="color: #888; margin: 0;">點擊上傳房型照片</p>
+            <small style="color: #aaa;">支援 JPG、PNG、WebP、GIF，最大 5MB</small>
+        </div>
+    `;
+    document.getElementById('roomImageInput').value = '';
+}
+
 // 儲存房型
 async function saveRoomType(event, id) {
     event.preventDefault();
@@ -3273,6 +3396,7 @@ async function saveRoomType(event, id) {
         max_occupancy: parseInt(formData.get('max_occupancy')) || 0,
         extra_beds: parseInt(formData.get('extra_beds')) || 0,
         icon: formData.get('icon') || '🏠',
+        image_url: formData.get('image_url') || null,
         display_order: parseInt(formData.get('display_order')) || 0,
         is_active: parseInt(formData.get('is_active'))
     };

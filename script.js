@@ -366,7 +366,9 @@ async function renderRoomTypes() {
              data-extra-beds="${room.extra_beds != null ? room.extra_beds : 0}">
             <input type="radio" id="room-${room.name}" name="roomType" value="${room.name}" ${disabledAttr}>
             <label for="room-${room.name}">
-                <div class="room-icon">${room.icon || '🏠'}</div>
+                ${room.image_url 
+                    ? `<div class="room-icon room-icon-image"><img src="${room.image_url}" alt="${room.display_name}" loading="lazy"></div>` 
+                    : `<div class="room-icon">${room.icon || '🏠'}</div>`}
                 <div class="room-name">${room.display_name}</div>
                 <div class="room-price ${isUnavailable ? 'unavailable-price' : ''}">
                     ${priceDisplay}

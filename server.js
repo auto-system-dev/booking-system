@@ -16,6 +16,40 @@ const cron = require('node-cron');
 const backup = require('./backup');
 const csrf = require('csrf');
 const lineBot = require('./line-bot');
+const multer = require('multer');
+
+// 圖片上傳設定
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    console.log('✅ uploads 目錄已建立');
+}
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, uploadsDir);
+    },
+    filename: function (req, file, cb) {
+        const ext = path.extname(file.originalname).toLowerCase();
+        const uniqueName = `room_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`;
+        cb(null, uniqueName);
+    }
+});
+
+const uploadImage = multer({
+    storage: storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 最大 5MB
+    },
+    fileFilter: function (req, file, cb) {
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('僅支援 JPG、PNG、WebP、GIF 格式的圖片'));
+        }
+    }
+});
 
 // 預先載入 Resend（如果可用）
 let Resend = null;
@@ -4491,6 +4525,57 @@ app.put('/api/admin/room-types/:id', requireAuth, checkPermission('room_types.ed
             success: false,
             message: '更新房型失敗: ' + error.message
         });
+    }
+});
+
+// API: 上傳房型圖片
+app.post('/api/admin/room-types/upload-image', requireAuth, checkPermission('room_types.edit'), (req, res) => {
+    uploadImage.single('image')(req, res, function (err) {
+        if (err instanceof multer.MulterError) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ success: false, message: '圖片大小不可超過 5MB' });
+            }
+            return res.status(400).json({ success: false, message: '上傳失敗: ' + err.message });
+        } else if (err) {
+            return res.status(400).json({ success: false, message: err.message });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: '請選擇要上傳的圖片' });
+        }
+
+        const imageUrl = `/uploads/${req.file.filename}`;
+        console.log(`✅ 房型圖片已上傳: ${imageUrl}`);
+
+        res.json({
+            success: true,
+            message: '圖片上傳成功',
+            data: { image_url: imageUrl }
+        });
+    });
+});
+
+// API: 刪除房型圖片
+app.delete('/api/admin/room-types/delete-image', requireAuth, checkPermission('room_types.edit'), adminLimiter, async (req, res) => {
+    try {
+        const { image_url } = req.body;
+        if (!image_url) {
+            return res.status(400).json({ success: false, message: '請提供圖片路徑' });
+        }
+
+        // 安全檢查：確保路徑在 uploads 目錄下
+        const fileName = path.basename(image_url);
+        const filePath = path.join(uploadsDir, fileName);
+
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+            console.log(`🗑️ 房型圖片已刪除: ${fileName}`);
+        }
+
+        res.json({ success: true, message: '圖片已刪除' });
+    } catch (error) {
+        console.error('刪除圖片錯誤:', error);
+        res.status(500).json({ success: false, message: '刪除圖片失敗: ' + error.message });
     }
 });
 
@@ -10620,6 +10705,12 @@ async function startServer() {
         process.exit(1);
     }
 }
+
+// 靜態檔案服務 - uploads 目錄（房型照片等）
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+    maxAge: '7d',
+    etag: true
+}));
 
 // 靜態檔案服務（放在最後，避免覆蓋 API 路由）
 // 對後台相關檔案強制禁用快取，避免拿到舊/截斷檔導致前端 SyntaxError -> 白畫面
