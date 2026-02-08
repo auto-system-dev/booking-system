@@ -404,7 +404,7 @@ async function initPostgreSQL() {
                     ['standard', '標準雙人房', 2000, 2, 0, '🏠', 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80', 1],
                     ['deluxe', '豪華雙人房', 3500, 2, 0, '✨', 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80', 2],
                     ['suite', '尊爵套房', 5000, 2, 0, '👑', 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80', 3],
-                    ['family', '家庭四人房', 4500, 4, 0, '👨‍👩‍👧‍👦', 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=800&q=80', 4]
+                    ['family', '家庭四人房', 4500, 4, 0, '👨‍👩‍👧‍👦', 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800&q=80', 4]
                 ];
                 
                 for (const room of defaultRooms) {
@@ -421,14 +421,28 @@ async function initPostgreSQL() {
                 'standard': 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80',
                 'deluxe': 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80',
                 'suite': 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80',
-                'family': 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=800&q=80'
+                'family': 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800&q=80'
             };
+            
+            // 需要被替換的舊照片 URL（用於更新已過時的預設照片）
+            const oldImageUrls = [
+                'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=800&q=80'
+            ];
             
             for (const [roomName, imageUrl] of Object.entries(defaultImages)) {
                 try {
+                    // 更新空的或舊版預設照片
+                    let condition = '(image_url IS NULL OR image_url = $3';
+                    const params = [imageUrl, roomName, ''];
+                    oldImageUrls.forEach((oldUrl, idx) => {
+                        condition += ` OR image_url = $${idx + 4}`;
+                        params.push(oldUrl);
+                    });
+                    condition += ')';
+                    
                     await query(
-                        'UPDATE room_types SET image_url = $1 WHERE name = $2 AND (image_url IS NULL OR image_url = $3)',
-                        [imageUrl, roomName, '']
+                        `UPDATE room_types SET image_url = $1 WHERE name = $2 AND ${condition}`,
+                        params
                     );
                 } catch (err) {
                     // 靜默處理
@@ -2028,7 +2042,7 @@ function initSQLite() {
                                                     ['standard', '標準雙人房', 2000, 2, 0, '🏠', 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80', 1],
                                                     ['deluxe', '豪華雙人房', 3500, 2, 0, '✨', 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80', 2],
                                                     ['suite', '尊爵套房', 5000, 2, 0, '👑', 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80', 3],
-                                                    ['family', '家庭四人房', 4500, 4, 0, '👨‍👩‍👧‍👦', 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=800&q=80', 4]
+                                                    ['family', '家庭四人房', 4500, 4, 0, '👨‍👩‍👧‍👦', 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800&q=80', 4]
                                                 ];
                                                 
                                                 const stmt = db.prepare('INSERT INTO room_types (name, display_name, price, max_occupancy, extra_beds, icon, image_url, display_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
@@ -2044,7 +2058,7 @@ function initSQLite() {
                                                 'standard': 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80',
                                                 'deluxe': 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80',
                                                 'suite': 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80',
-                                                'family': 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=800&q=80'
+                                                'family': 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800&q=80'
                                             };
                                             
                                             Object.entries(defaultImages).forEach(([roomName, imageUrl]) => {
