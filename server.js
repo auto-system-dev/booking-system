@@ -2253,6 +2253,11 @@ async function logAction(req, action, resourceType = null, resourceId = null, de
     }
 }
 
+// 健康檢查端點（供 Railway 使用）
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // 首頁
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
