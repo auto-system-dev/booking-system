@@ -401,20 +401,40 @@ async function initPostgreSQL() {
             const roomCount = await queryOne('SELECT COUNT(*) as count FROM room_types');
             if (roomCount && parseInt(roomCount.count) === 0) {
                 const defaultRooms = [
-                    ['standard', '標準雙人房', 2000, 2, 0, '🏠', 1],
-                    ['deluxe', '豪華雙人房', 3500, 2, 0, '✨', 2],
-                    ['suite', '尊爵套房', 5000, 2, 0, '👑', 3],
-                    ['family', '家庭四人房', 4500, 4, 0, '👨‍👩‍👧‍👦', 4]
+                    ['standard', '標準雙人房', 2000, 2, 0, '🏠', 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80', 1],
+                    ['deluxe', '豪華雙人房', 3500, 2, 0, '✨', 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80', 2],
+                    ['suite', '尊爵套房', 5000, 2, 0, '👑', 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80', 3],
+                    ['family', '家庭四人房', 4500, 4, 0, '👨‍👩‍👧‍👦', 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=800&q=80', 4]
                 ];
                 
                 for (const room of defaultRooms) {
                     await query(
-                        'INSERT INTO room_types (name, display_name, price, max_occupancy, extra_beds, icon, display_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+                        'INSERT INTO room_types (name, display_name, price, max_occupancy, extra_beds, icon, image_url, display_order) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
                         room
                     );
                 }
                 console.log('✅ 預設房型已初始化');
             }
+            
+            // 為已有的房型補上預設照片（如果 image_url 為空）
+            const defaultImages = {
+                'standard': 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80',
+                'deluxe': 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80',
+                'suite': 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80',
+                'family': 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=800&q=80'
+            };
+            
+            for (const [roomName, imageUrl] of Object.entries(defaultImages)) {
+                try {
+                    await query(
+                        'UPDATE room_types SET image_url = $1 WHERE name = $2 AND (image_url IS NULL OR image_url = $3)',
+                        [imageUrl, roomName, '']
+                    );
+                } catch (err) {
+                    // 靜默處理
+                }
+            }
+            console.log('✅ 房型預設照片已檢查/補齊');
             
             // 建立系統設定表
             await query(`
@@ -2005,19 +2025,35 @@ function initSQLite() {
                                         db.get('SELECT COUNT(*) as count FROM room_types', [], (err, row) => {
                                             if (!err && row && row.count === 0) {
                                                 const defaultRooms = [
-                                                    ['standard', '標準雙人房', 2000, 2, 0, '🏠', 1],
-                                                    ['deluxe', '豪華雙人房', 3500, 2, 0, '✨', 2],
-                                                    ['suite', '尊爵套房', 5000, 2, 0, '👑', 3],
-                                                    ['family', '家庭四人房', 4500, 4, 0, '👨‍👩‍👧‍👦', 4]
+                                                    ['standard', '標準雙人房', 2000, 2, 0, '🏠', 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80', 1],
+                                                    ['deluxe', '豪華雙人房', 3500, 2, 0, '✨', 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80', 2],
+                                                    ['suite', '尊爵套房', 5000, 2, 0, '👑', 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80', 3],
+                                                    ['family', '家庭四人房', 4500, 4, 0, '👨‍👩‍👧‍👦', 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=800&q=80', 4]
                                                 ];
                                                 
-                                                const stmt = db.prepare('INSERT INTO room_types (name, display_name, price, max_occupancy, extra_beds, icon, display_order) VALUES (?, ?, ?, ?, ?, ?, ?)');
+                                                const stmt = db.prepare('INSERT INTO room_types (name, display_name, price, max_occupancy, extra_beds, icon, image_url, display_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
                                                 defaultRooms.forEach(room => {
                                                     stmt.run(room);
                                                 });
                                                 stmt.finalize();
                                                 console.log('✅ 預設房型已初始化');
                                             }
+                                            
+                                            // 為已有的房型補上預設照片（如果 image_url 為空）
+                                            const defaultImages = {
+                                                'standard': 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80',
+                                                'deluxe': 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80',
+                                                'suite': 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80',
+                                                'family': 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=800&q=80'
+                                            };
+                                            
+                                            Object.entries(defaultImages).forEach(([roomName, imageUrl]) => {
+                                                db.run(
+                                                    'UPDATE room_types SET image_url = ? WHERE name = ? AND (image_url IS NULL OR image_url = ?)',
+                                                    [imageUrl, roomName, '']
+                                                );
+                                            });
+                                            console.log('✅ 房型預設照片已檢查/補齊');
                                         });
                                     });
                                 });
