@@ -94,7 +94,7 @@
                 <!-- 權限管理系統（需要相應權限才會顯示） -->
                 <a href="#admin-management" class="nav-item permission-required" data-section="admin-management" data-permission="admins.view" onclick="handleNavClick(event, 'admin-management')">
                     <span class="nav-icon"><span class="material-symbols-outlined">manage_accounts</span></span>
-                    <span>管理員管理</span>
+                    <span>權限管理</span>
                 </a>
                 <a href="#logs" class="nav-item permission-required" data-section="logs" data-permission="logs.view" onclick="handleNavClick(event, 'logs')">
                     <span class="nav-icon"><span class="material-symbols-outlined">history</span></span>
@@ -1043,7 +1043,7 @@
             <!-- 管理員管理區（包含角色權限分頁） -->
             <section id="admin-management-section" class="content-section">
                 <div class="section-header">
-                    <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">manage_accounts</span> 管理員管理</h2>
+                    <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">manage_accounts</span> 權限管理</h2>
                     <div class="header-actions">
                         <button class="btn-primary permission-required" onclick="showAddAdminModal()" id="addAdminBtn" data-permission="admins.create">
                             <span class="material-symbols-outlined">person_add</span> 新增管理員

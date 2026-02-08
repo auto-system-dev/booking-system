@@ -8666,7 +8666,7 @@ function getModuleDisplayName(module) {
         'statistics': '統計資料',
         'settings': '系統設定',
         'email_templates': '郵件模板',
-        'admins': '管理員管理',
+        'admins': '權限管理',
         'roles': '角色權限',
         'logs': '操作日誌',
         'backup': '資料備份'
