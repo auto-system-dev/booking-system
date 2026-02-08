@@ -1,3 +1,14 @@
+// 全域錯誤處理（確保崩潰原因能被記錄）
+process.on('uncaughtException', (err) => {
+    console.error('❌ 未捕獲的異常:', err.message);
+    console.error(err.stack);
+    process.exit(1);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ 未處理的 Promise 拒絕:', reason);
+    process.exit(1);
+});
+
 // 載入環境變數（從 .env 檔案）
 require('dotenv').config();
 
