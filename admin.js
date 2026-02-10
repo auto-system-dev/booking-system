@@ -9693,8 +9693,12 @@ async function loadLandingSettings() {
             for (const [key, elementId] of Object.entries(landingFieldMap)) {
                 const el = document.getElementById(elementId);
                 if (el && data[key] !== undefined) {
-                    if (el.tagName === 'TEXTAREA') {
-                        el.value = data[key];
+                    // 勾選式設施清單 (checkbox grid)
+                    if (el.classList.contains('room-features-checkbox-grid')) {
+                        const selectedFeatures = data[key] ? data[key].split(',').map(f => f.trim()) : [];
+                        el.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                            cb.checked = selectedFeatures.includes(cb.value);
+                        });
                     } else {
                         el.value = data[key];
                     }
@@ -9782,7 +9786,16 @@ async function saveLandingSettings(tab) {
         const requests = keysToSave.map(key => {
             const elementId = landingFieldMap[key];
             const el = document.getElementById(elementId);
-            const value = el ? el.value : '';
+            let value = '';
+            if (el) {
+                // 勾選式設施清單 (checkbox grid)
+                if (el.classList.contains('room-features-checkbox-grid')) {
+                    const checked = el.querySelectorAll('input[type="checkbox"]:checked');
+                    value = Array.from(checked).map(cb => cb.value).join(',');
+                } else {
+                    value = el.value;
+                }
+            }
             const description = descMap[key] || `銷售頁設定 - ${key}`;
             return adminFetch(`/api/admin/settings/${key}`, {
                 method: 'PUT',

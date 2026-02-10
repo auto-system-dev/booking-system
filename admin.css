@@ -1810,3 +1810,57 @@ code {
     }
 }
 
+/* 房型設施勾選格 */
+.room-features-checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 6px 12px;
+    padding: 12px 15px;
+    background: #f8f9fa;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+.room-features-checkbox-grid p {
+    grid-column: 1 / -1;
+}
+
+.feature-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #555;
+    transition: all 0.2s ease;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.feature-checkbox:hover {
+    background: #e8f4fd;
+    color: #2C8EC4;
+}
+
+.feature-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    accent-color: #2C8EC4;
+    cursor: pointer;
+}
+
+.feature-checkbox input[type="checkbox"]:checked + .material-symbols-outlined {
+    color: #2C8EC4;
+}
+
+.feature-checkbox:has(input:checked) {
+    background: #e8f4fd;
+    color: #2C8EC4;
+    font-weight: 500;
+}
+

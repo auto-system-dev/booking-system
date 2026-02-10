@@ -206,9 +206,30 @@ function renderRoomCards(cfg) {
         '頂級': 'premium'
     };
 
+    // 設施名稱對應 Material Symbol 圖示
+    const featureIconMap = {
+        '單人床': 'single_bed', '雙人床': 'king_bed', '加大雙人床': 'king_bed',
+        '特大雙人床': 'king_bed', '上下鋪': 'bunk_bed', '和式床墊': 'airline_seat_flat',
+        '獨立衛浴': 'bathtub', '共用衛浴': 'shower', '浴缸': 'bathtub',
+        '淋浴設備': 'shower', '免治馬桶': 'wash', '私人湯池': 'hot_tub',
+        '私人陽台': 'balcony', '客廳空間': 'living', '小廚房': 'countertops',
+        '和室空間': 'floor', '庭院': 'yard', '山景視野': 'landscape',
+        '海景視野': 'water', '庭園景觀': 'park',
+        '免費 WiFi': 'wifi', '冷暖空調': 'ac_unit', '智慧電視': 'tv',
+        '冰箱': 'kitchen', '咖啡機': 'coffee_maker', '電熱水壺': 'water_drop',
+        '吹風機': 'air', '洗衣機': 'local_laundry_service', '微波爐': 'microwave',
+        '免費早餐': 'restaurant', '免費停車': 'local_parking', '寵物友善': 'pets',
+        '保險箱': 'lock', '行李寄放': 'luggage', '嬰兒床': 'crib',
+        '無障礙設施': 'accessible', '機場接送': 'airport_shuttle'
+    };
+
     grid.innerHTML = rooms.map(room => {
         const featureItems = room.features
-            ? room.features.split(',').map(f => `<span>${f.trim()}</span>`).join('')
+            ? room.features.split(',').map(f => {
+                const name = f.trim();
+                const icon = featureIconMap[name] || 'check_circle';
+                return `<span><span class="material-symbols-outlined">${icon}</span> ${name}</span>`;
+            }).join('')
             : '';
         const badgeClass = badgeClassMap[room.badge] || '';
         const priceNum = parseInt(room.price.replace(/[^\d]/g, '')) || 0;
