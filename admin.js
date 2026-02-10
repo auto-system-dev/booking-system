@@ -9693,17 +9693,13 @@ async function loadLandingSettings() {
             for (const [key, elementId] of Object.entries(landingFieldMap)) {
                 const el = document.getElementById(elementId);
                 if (el && data[key] !== undefined) {
-                    // 勾選式設施清單 (checkbox grid)
-                    if (el.classList.contains('room-features-checkbox-grid')) {
-                        const selectedFeatures = data[key] ? data[key].split(',').map(f => f.trim()) : [];
-                        el.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                            cb.checked = selectedFeatures.includes(cb.value);
-                        });
-                    } else {
-                        el.value = data[key];
-                    }
+                    el.value = data[key];
                 }
             }
+            // 還原 checkbox 勾選狀態（從 hidden input 的值）
+            restoreFeatureCheckboxes('landingRoom1Features');
+            restoreFeatureCheckboxes('landingRoom2Features');
+            restoreFeatureCheckboxes('landingRoom3Features');
             console.log('✅ 銷售頁設定已載入');
         } else {
             console.warn('⚠️ 載入銷售頁設定失敗:', result.message);
@@ -9788,13 +9784,7 @@ async function saveLandingSettings(tab) {
             const el = document.getElementById(elementId);
             let value = '';
             if (el) {
-                // 勾選式設施清單 (checkbox grid)
-                if (el.classList.contains('room-features-checkbox-grid')) {
-                    const checked = el.querySelectorAll('input[type="checkbox"]:checked');
-                    value = Array.from(checked).map(cb => cb.value).join(',');
-                } else {
-                    value = el.value;
-                }
+                value = el.value || '';
             }
             const description = descMap[key] || `銷售頁設定 - ${key}`;
             return adminFetch(`/api/admin/settings/${key}`, {
@@ -9822,6 +9812,31 @@ async function saveLandingSettings(tab) {
 }
 
 // 暴露銷售頁管理函數到全域
+// 將 checkbox 勾選狀態同步到 hidden input（checkbox 變動時呼叫）
+function syncFeatureCheckboxes(gridEl) {
+    const targetId = gridEl.getAttribute('data-target');
+    const hiddenInput = document.getElementById(targetId);
+    if (!hiddenInput) return;
+    const checked = gridEl.querySelectorAll('input[type="checkbox"]:checked');
+    hiddenInput.value = Array.from(checked).map(cb => cb.value).join(',');
+    console.log(`✅ syncFeatureCheckboxes → ${targetId}:`, hiddenInput.value);
+}
+
+// 從 hidden input 的值還原 checkbox 勾選狀態（載入設定後呼叫）
+function restoreFeatureCheckboxes(hiddenInputId) {
+    const hiddenInput = document.getElementById(hiddenInputId);
+    if (!hiddenInput || !hiddenInput.value) return;
+    const grid = document.querySelector(`[data-target="${hiddenInputId}"]`);
+    if (!grid) return;
+    const selected = hiddenInput.value.split(',').map(f => f.trim());
+    grid.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.checked = selected.includes(cb.value);
+    });
+    console.log(`✅ restoreFeatureCheckboxes → ${hiddenInputId}:`, selected);
+}
+
 window.switchLandingTab = switchLandingTab;
 window.loadLandingSettings = loadLandingSettings;
 window.saveLandingSettings = saveLandingSettings;
+window.syncFeatureCheckboxes = syncFeatureCheckboxes;
+window.restoreFeatureCheckboxes = restoreFeatureCheckboxes;
