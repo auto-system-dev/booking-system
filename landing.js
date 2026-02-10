@@ -201,15 +201,17 @@ function renderRoomCards(cfg) {
 
     const rooms = [];
     for (let i = 1; i <= 3; i++) {
-        const name = cfg[`landing_room_${i}_name`];
-        if (!name) continue;
+        const name = cfg[`landing_room_${i}_name`] || '';
+        const image = cfg[`landing_room_${i}_image`] || '';
+        const price = cfg[`landing_room_${i}_price`] || '';
+        const originalPrice = cfg[`landing_room_${i}_original_price`] || '';
+        const features = cfg[`landing_room_${i}_features`] || '';
+        const badge = cfg[`landing_room_${i}_badge`] || '';
+        // 只要有任何欄位有值就顯示此房型
+        if (!name && !image && !price && !features) continue;
         const roomData = {
-            name,
-            image: cfg[`landing_room_${i}_image`] || '',
-            price: cfg[`landing_room_${i}_price`] || '',
-            originalPrice: cfg[`landing_room_${i}_original_price`] || '',
-            features: cfg[`landing_room_${i}_features`] || '',
-            badge: cfg[`landing_room_${i}_badge`] || ''
+            name: name || `房型 ${i}`,
+            image, price, originalPrice, features, badge
         };
         console.log(`🏨 房型 ${i}:`, roomData.name, '| 設施:', roomData.features || '(空)');
         rooms.push(roomData);
