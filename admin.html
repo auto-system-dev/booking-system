@@ -100,6 +100,10 @@
                     <span class="nav-icon"><span class="material-symbols-outlined">history</span></span>
                     <span>操作日誌</span>
                 </a>
+                <a href="#landing-page" class="nav-item permission-required" data-section="landing-page" data-permission="settings.view" onclick="handleNavClick(event, 'landing-page')">
+                    <span class="nav-icon"><span class="material-symbols-outlined">web</span></span>
+                    <span>銷售頁管理</span>
+                </a>
                 <a href="#backups" class="nav-item permission-required" data-section="backups" data-permission="backup.view" onclick="handleNavClick(event, 'backups')">
                     <span class="nav-icon"><span class="material-symbols-outlined">backup</span></span>
                     <span>資料備份</span>
@@ -1207,6 +1211,533 @@
                     </table>
                 </div>
                 <div id="logsPagination" class="pagination" style="margin-top: 15px;"></div>
+            </section>
+
+            <!-- 銷售頁管理區 -->
+            <section id="landing-page-section" class="content-section">
+                <div class="section-header">
+                    <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">web</span> 銷售頁管理</h2>
+                    <div class="header-actions">
+                        <a href="landing.html" target="_blank" class="btn-secondary" style="text-decoration: none;">
+                            <span class="material-symbols-outlined">open_in_new</span> 預覽銷售頁
+                        </a>
+                        <button class="btn-refresh" onclick="loadLandingSettings()">
+                            <span class="material-symbols-outlined">refresh</span> 重新整理
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 分頁導航 -->
+                <div class="tab-container" style="margin-bottom: 20px;">
+                    <button class="tab-button active" onclick="switchLandingTab('basic')" id="landingTabBasic">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">edit</span>
+                        基本資訊
+                    </button>
+                    <button class="tab-button" onclick="switchLandingTab('features')" id="landingTabFeatures">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">star</span>
+                        特色賣點
+                    </button>
+                    <button class="tab-button" onclick="switchLandingTab('rooms')" id="landingTabRooms">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">king_bed</span>
+                        房型展示
+                    </button>
+                    <button class="tab-button" onclick="switchLandingTab('reviews')" id="landingTabReviews">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">reviews</span>
+                        客戶評價
+                    </button>
+                    <button class="tab-button" onclick="switchLandingTab('contact')" id="landingTabContact">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">location_on</span>
+                        聯絡與社群
+                    </button>
+                    <button class="tab-button" onclick="switchLandingTab('tracking')" id="landingTabTracking">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">monitoring</span>
+                        廣告追蹤
+                    </button>
+                </div>
+
+                <div class="settings-container">
+                    <!-- 基本資訊分頁 -->
+                    <div id="landingTabBasicContent" class="tab-content active">
+                        <div style="margin-top: 0;">
+                            <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #9b59b6;">
+                                <span class="material-symbols-outlined" style="font-size: 24px; color: #9b59b6; margin-right: 10px;">home</span>
+                                <h3 style="margin: 0; color: #2c3e50;">Hero 區塊設定</h3>
+                            </div>
+                            <div class="settings-card" style="margin-top: 0;">
+                                <div class="form-group">
+                                    <label>民宿名稱</label>
+                                    <input type="text" id="landingName" placeholder="例如：悠然山居民宿">
+                                    <small>顯示在導航列和頁尾的品牌名稱</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>主標題</label>
+                                    <input type="text" id="landingTitle" placeholder="例如：遠離塵囂 擁抱自然">
+                                    <small>Hero 區塊的大標題（支援用 &lt;br&gt; 換行）</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>副標題</label>
+                                    <textarea id="landingSubtitle" rows="2" placeholder="例如：坐落於青山綠水間的悠然山居，讓您在繁忙生活中找到片刻寧靜"></textarea>
+                                    <small>Hero 區塊的說明文字</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>醒目標籤</label>
+                                    <input type="text" id="landingBadge" placeholder="例如：限時優惠">
+                                    <small>Hero 區塊上方的小標籤</small>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                                    <div class="form-group">
+                                        <label>價格前綴</label>
+                                        <input type="text" id="landingPricePrefix" placeholder="例如：每晚只要">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>促銷價格</label>
+                                        <input type="text" id="landingPriceAmount" placeholder="例如：NT$ 2,800">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>原價</label>
+                                        <input type="text" id="landingPriceOriginal" placeholder="例如：原價 NT$ 3,500">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Hero 背景圖片 URL</label>
+                                    <input type="text" id="landingHeroImage" placeholder="https://images.unsplash.com/...">
+                                    <small>建議尺寸 1920x1080 以上的高品質圖片</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 30px;">
+                            <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #e67e22;">
+                                <span class="material-symbols-outlined" style="font-size: 24px; color: #e67e22; margin-right: 10px;">timer</span>
+                                <h3 style="margin: 0; color: #2c3e50;">限時優惠設定</h3>
+                            </div>
+                            <div class="settings-card" style="margin-top: 0;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div class="form-group">
+                                        <label>優惠倒數天數</label>
+                                        <div class="input-group">
+                                            <input type="number" id="landingCountdownDays" min="1" max="30" value="7" placeholder="7">
+                                            <span class="input-suffix">天</span>
+                                        </div>
+                                        <small>倒數計時器的天數</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>優惠說明文字</label>
+                                        <input type="text" id="landingCountdownText" placeholder="例如：限時早鳥優惠！享 8 折 優惠">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>CTA 按鈕文字</label>
+                                    <input type="text" id="landingCtaText" placeholder="例如：立即預訂">
+                                    <small>所有「立即訂房」按鈕的文字</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn-save" onclick="saveLandingSettings('basic')" style="margin-top: 20px;">
+                            <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">save</span>
+                            儲存基本資訊
+                        </button>
+                    </div>
+
+                    <!-- 特色賣點分頁 -->
+                    <div id="landingTabFeaturesContent" class="tab-content">
+                        <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #2ecc71;">
+                            <span class="material-symbols-outlined" style="font-size: 24px; color: #2ecc71; margin-right: 10px;">auto_awesome</span>
+                            <h3 style="margin: 0; color: #2c3e50;">四大特色賣點</h3>
+                        </div>
+                        <div id="landingFeaturesContainer">
+                            <div class="settings-card" style="margin-bottom: 15px;" data-feature="1">
+                                <h4 style="color: #2c3e50; margin-bottom: 15px;">特色 1</h4>
+                                <div style="display: grid; grid-template-columns: 120px 1fr; gap: 15px;">
+                                    <div class="form-group">
+                                        <label>圖示</label>
+                                        <input type="text" id="landingFeature1Icon" placeholder="landscape" value="landscape">
+                                        <small><a href="https://fonts.google.com/icons" target="_blank">圖示查詢</a></small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>標題</label>
+                                        <input type="text" id="landingFeature1Title" placeholder="例如：絕美山景">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>說明</label>
+                                    <textarea id="landingFeature1Desc" rows="2" placeholder="例如：每間房間都能欣賞到壯闊的山巒美景"></textarea>
+                                </div>
+                            </div>
+                            <div class="settings-card" style="margin-bottom: 15px;" data-feature="2">
+                                <h4 style="color: #2c3e50; margin-bottom: 15px;">特色 2</h4>
+                                <div style="display: grid; grid-template-columns: 120px 1fr; gap: 15px;">
+                                    <div class="form-group">
+                                        <label>圖示</label>
+                                        <input type="text" id="landingFeature2Icon" placeholder="spa" value="spa">
+                                        <small><a href="https://fonts.google.com/icons" target="_blank">圖示查詢</a></small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>標題</label>
+                                        <input type="text" id="landingFeature2Title" placeholder="例如：私人湯屋">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>說明</label>
+                                    <textarea id="landingFeature2Desc" rows="2" placeholder="例如：獨立溫泉湯屋，24 小時供應天然溫泉"></textarea>
+                                </div>
+                            </div>
+                            <div class="settings-card" style="margin-bottom: 15px;" data-feature="3">
+                                <h4 style="color: #2c3e50; margin-bottom: 15px;">特色 3</h4>
+                                <div style="display: grid; grid-template-columns: 120px 1fr; gap: 15px;">
+                                    <div class="form-group">
+                                        <label>圖示</label>
+                                        <input type="text" id="landingFeature3Icon" placeholder="restaurant" value="restaurant">
+                                        <small><a href="https://fonts.google.com/icons" target="_blank">圖示查詢</a></small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>標題</label>
+                                        <input type="text" id="landingFeature3Title" placeholder="例如：精緻早餐">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>說明</label>
+                                    <textarea id="landingFeature3Desc" rows="2" placeholder="例如：使用在地新鮮食材，每日現做的豐盛早餐"></textarea>
+                                </div>
+                            </div>
+                            <div class="settings-card" style="margin-bottom: 15px;" data-feature="4">
+                                <h4 style="color: #2c3e50; margin-bottom: 15px;">特色 4</h4>
+                                <div style="display: grid; grid-template-columns: 120px 1fr; gap: 15px;">
+                                    <div class="form-group">
+                                        <label>圖示</label>
+                                        <input type="text" id="landingFeature4Icon" placeholder="pets" value="pets">
+                                        <small><a href="https://fonts.google.com/icons" target="_blank">圖示查詢</a></small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>標題</label>
+                                        <input type="text" id="landingFeature4Title" placeholder="例如：寵物友善">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>說明</label>
+                                    <textarea id="landingFeature4Desc" rows="2" placeholder="例如：帶著毛小孩一起來度假"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn-save" onclick="saveLandingSettings('features')" style="margin-top: 10px;">
+                            <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">save</span>
+                            儲存特色賣點
+                        </button>
+                    </div>
+
+                    <!-- 房型展示分頁 -->
+                    <div id="landingTabRoomsContent" class="tab-content">
+                        <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
+                            <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">king_bed</span>
+                            <h3 style="margin: 0; color: #2c3e50;">房型展示卡片（最多 3 張）</h3>
+                        </div>
+                        <div style="background-color: #d1fae5; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+                            <p style="margin: 0; color: #059669; font-size: 14px;">
+                                <strong>💡 提示：</strong>此處設定銷售頁上的房型展示卡片，僅供行銷展示用。實際房型價格與庫存請到「房型管理」設定。
+                            </p>
+                        </div>
+                        <div id="landingRoomsContainer">
+                            <div class="settings-card" style="margin-bottom: 15px;" data-room="1">
+                                <h4 style="color: #2c3e50; margin-bottom: 15px;">房型卡片 1</h4>
+                                <div class="form-group">
+                                    <label>房型名稱</label>
+                                    <input type="text" id="landingRoom1Name" placeholder="例如：標準雙人房">
+                                </div>
+                                <div class="form-group">
+                                    <label>房型圖片 URL</label>
+                                    <input type="text" id="landingRoom1Image" placeholder="https://images.unsplash.com/...">
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div class="form-group">
+                                        <label>促銷價格</label>
+                                        <input type="text" id="landingRoom1Price" placeholder="例如：NT$ 2,800">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>原價</label>
+                                        <input type="text" id="landingRoom1OriginalPrice" placeholder="例如：NT$ 3,500">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>房型特色（以逗號分隔）</label>
+                                    <input type="text" id="landingRoom1Features" placeholder="例如：雙人床,獨立衛浴,免費 WiFi">
+                                </div>
+                                <div class="form-group">
+                                    <label>標籤</label>
+                                    <input type="text" id="landingRoom1Badge" placeholder="例如：熱門、超值、頂級">
+                                </div>
+                            </div>
+                            <div class="settings-card" style="margin-bottom: 15px;" data-room="2">
+                                <h4 style="color: #2c3e50; margin-bottom: 15px;">房型卡片 2</h4>
+                                <div class="form-group">
+                                    <label>房型名稱</label>
+                                    <input type="text" id="landingRoom2Name" placeholder="例如：豪華山景房">
+                                </div>
+                                <div class="form-group">
+                                    <label>房型圖片 URL</label>
+                                    <input type="text" id="landingRoom2Image" placeholder="https://images.unsplash.com/...">
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div class="form-group">
+                                        <label>促銷價格</label>
+                                        <input type="text" id="landingRoom2Price" placeholder="例如：NT$ 3,800">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>原價</label>
+                                        <input type="text" id="landingRoom2OriginalPrice" placeholder="例如：NT$ 4,500">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>房型特色（以逗號分隔）</label>
+                                    <input type="text" id="landingRoom2Features" placeholder="例如：加大雙人床,私人陽台,山景視野">
+                                </div>
+                                <div class="form-group">
+                                    <label>標籤</label>
+                                    <input type="text" id="landingRoom2Badge" placeholder="例如：熱門、超值、頂級">
+                                </div>
+                            </div>
+                            <div class="settings-card" style="margin-bottom: 15px;" data-room="3">
+                                <h4 style="color: #2c3e50; margin-bottom: 15px;">房型卡片 3</h4>
+                                <div class="form-group">
+                                    <label>房型名稱</label>
+                                    <input type="text" id="landingRoom3Name" placeholder="例如：溫泉套房">
+                                </div>
+                                <div class="form-group">
+                                    <label>房型圖片 URL</label>
+                                    <input type="text" id="landingRoom3Image" placeholder="https://images.unsplash.com/...">
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div class="form-group">
+                                        <label>促銷價格</label>
+                                        <input type="text" id="landingRoom3Price" placeholder="例如：NT$ 5,800">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>原價</label>
+                                        <input type="text" id="landingRoom3OriginalPrice" placeholder="例如：NT$ 6,800">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>房型特色（以逗號分隔）</label>
+                                    <input type="text" id="landingRoom3Features" placeholder="例如：特大雙人床,私人湯池,客廳空間">
+                                </div>
+                                <div class="form-group">
+                                    <label>標籤</label>
+                                    <input type="text" id="landingRoom3Badge" placeholder="例如：熱門、超值、頂級">
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn-save" onclick="saveLandingSettings('rooms')" style="margin-top: 10px;">
+                            <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">save</span>
+                            儲存房型展示
+                        </button>
+                    </div>
+
+                    <!-- 客戶評價分頁 -->
+                    <div id="landingTabReviewsContent" class="tab-content">
+                        <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #f39c12;">
+                            <span class="material-symbols-outlined" style="font-size: 24px; color: #f39c12; margin-right: 10px;">reviews</span>
+                            <h3 style="margin: 0; color: #2c3e50;">客戶好評（最多 3 則）</h3>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                            <div class="form-group">
+                                <label>評價總數顯示</label>
+                                <input type="text" id="landingReviewCount" placeholder="例如：500+">
+                            </div>
+                            <div class="form-group">
+                                <label>平均評分</label>
+                                <input type="text" id="landingReviewScore" placeholder="例如：4.9 / 5.0">
+                            </div>
+                        </div>
+                        <div id="landingReviewsContainer">
+                            <div class="settings-card" style="margin-bottom: 15px;" data-review="1">
+                                <h4 style="color: #2c3e50; margin-bottom: 15px;">評價 1</h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 100px; gap: 15px;">
+                                    <div class="form-group">
+                                        <label>評價者姓名</label>
+                                        <input type="text" id="landingReview1Name" placeholder="例如：林小姐">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>日期</label>
+                                        <input type="text" id="landingReview1Date" placeholder="例如：2026 年 1 月">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>評分</label>
+                                        <input type="text" id="landingReview1Rating" placeholder="5.0">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>評價內容</label>
+                                    <textarea id="landingReview1Text" rows="2" placeholder="例如：環境超棒！房間乾淨舒適..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>標籤（以逗號分隔）</label>
+                                    <input type="text" id="landingReview1Tags" placeholder="例如：環境優美,服務親切">
+                                </div>
+                            </div>
+                            <div class="settings-card" style="margin-bottom: 15px;" data-review="2">
+                                <h4 style="color: #2c3e50; margin-bottom: 15px;">評價 2</h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 100px; gap: 15px;">
+                                    <div class="form-group">
+                                        <label>評價者姓名</label>
+                                        <input type="text" id="landingReview2Name" placeholder="例如：陳先生">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>日期</label>
+                                        <input type="text" id="landingReview2Date" placeholder="例如：2026 年 1 月">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>評分</label>
+                                        <input type="text" id="landingReview2Rating" placeholder="5.0">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>評價內容</label>
+                                    <textarea id="landingReview2Text" rows="2" placeholder="例如：帶著狗狗一起入住，民宿很貼心..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>標籤（以逗號分隔）</label>
+                                    <input type="text" id="landingReview2Tags" placeholder="例如：寵物友善,溫泉推薦">
+                                </div>
+                            </div>
+                            <div class="settings-card" style="margin-bottom: 15px;" data-review="3">
+                                <h4 style="color: #2c3e50; margin-bottom: 15px;">評價 3</h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 100px; gap: 15px;">
+                                    <div class="form-group">
+                                        <label>評價者姓名</label>
+                                        <input type="text" id="landingReview3Name" placeholder="例如：王小姐">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>日期</label>
+                                        <input type="text" id="landingReview3Date" placeholder="例如：2025 年 12 月">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>評分</label>
+                                        <input type="text" id="landingReview3Rating" placeholder="4.9">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>評價內容</label>
+                                    <textarea id="landingReview3Text" rows="2" placeholder="例如：位置很好找，民宿主人超級熱情..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>標籤（以逗號分隔）</label>
+                                    <input type="text" id="landingReview3Tags" placeholder="例如：CP值高,主人熱情">
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn-save" onclick="saveLandingSettings('reviews')" style="margin-top: 10px;">
+                            <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">save</span>
+                            儲存客戶評價
+                        </button>
+                    </div>
+
+                    <!-- 聯絡與社群分頁 -->
+                    <div id="landingTabContactContent" class="tab-content">
+                        <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #e74c3c;">
+                            <span class="material-symbols-outlined" style="font-size: 24px; color: #e74c3c; margin-right: 10px;">location_on</span>
+                            <h3 style="margin: 0; color: #2c3e50;">交通與聯絡資訊</h3>
+                        </div>
+                        <div class="settings-card" style="margin-top: 0;">
+                            <div class="form-group">
+                                <label>完整地址</label>
+                                <input type="text" id="landingAddress" placeholder="例如：台灣某縣某鎮某路 123 號">
+                            </div>
+                            <div class="form-group">
+                                <label>自行開車說明</label>
+                                <input type="text" id="landingDriving" placeholder="例如：國道 3 號下交流道後約 15 分鐘">
+                            </div>
+                            <div class="form-group">
+                                <label>大眾運輸說明</label>
+                                <input type="text" id="landingTransit" placeholder="例如：火車站提供免費接駁服務（需預約）">
+                            </div>
+                            <div class="form-group">
+                                <label>聯絡電話</label>
+                                <input type="text" id="landingPhone" placeholder="例如：0912-345-678">
+                            </div>
+                            <div class="form-group">
+                                <label>Google Maps 嵌入網址</label>
+                                <input type="text" id="landingMapUrl" placeholder="https://www.google.com/maps/embed?pb=...">
+                                <small>到 Google Maps 搜尋您的地址 → 分享 → 嵌入地圖 → 複製 src 網址</small>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 30px;">
+                            <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
+                                <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">share</span>
+                                <h3 style="margin: 0; color: #2c3e50;">社群連結</h3>
+                            </div>
+                            <div class="settings-card" style="margin-top: 0;">
+                                <div class="form-group">
+                                    <label>Facebook 粉絲專頁連結</label>
+                                    <input type="text" id="landingSocialFb" placeholder="https://www.facebook.com/your-page">
+                                </div>
+                                <div class="form-group">
+                                    <label>Instagram 連結</label>
+                                    <input type="text" id="landingSocialIg" placeholder="https://www.instagram.com/your-account">
+                                </div>
+                                <div class="form-group">
+                                    <label>LINE 官方帳號連結</label>
+                                    <input type="text" id="landingSocialLine" placeholder="https://line.me/R/ti/p/...">
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn-save" onclick="saveLandingSettings('contact')" style="margin-top: 20px;">
+                            <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">save</span>
+                            儲存聯絡與社群
+                        </button>
+                    </div>
+
+                    <!-- 廣告追蹤分頁 -->
+                    <div id="landingTabTrackingContent" class="tab-content">
+                        <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #1abc9c;">
+                            <span class="material-symbols-outlined" style="font-size: 24px; color: #1abc9c; margin-right: 10px;">monitoring</span>
+                            <h3 style="margin: 0; color: #2c3e50;">Facebook Pixel 設定</h3>
+                        </div>
+                        <div class="settings-card" style="margin-top: 0;">
+                            <div style="background-color: #fef3cd; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+                                <p style="margin: 0; color: #856404; font-size: 14px;">
+                                    <strong>📌 設定說明：</strong>
+                                    到 <a href="https://business.facebook.com/events_manager" target="_blank" style="color: #856404; text-decoration: underline;">Facebook 事件管理工具</a> 建立 Pixel 並取得 Pixel ID。設定後銷售頁和訂房頁會自動追蹤 PageView、Lead、Purchase 等事件。
+                                </p>
+                            </div>
+                            <div class="form-group">
+                                <label>Facebook Pixel ID</label>
+                                <input type="text" id="landingFbPixelId" placeholder="例如：1234567890123456">
+                                <small>15-16 位數字，可從 Facebook 事件管理工具取得</small>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 30px;">
+                            <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #1abc9c;">
+                                <span class="material-symbols-outlined" style="font-size: 24px; color: #1abc9c; margin-right: 10px;">seo</span>
+                                <h3 style="margin: 0; color: #2c3e50;">SEO 設定</h3>
+                            </div>
+                            <div class="settings-card" style="margin-top: 0;">
+                                <div class="form-group">
+                                    <label>頁面標題（Title）</label>
+                                    <input type="text" id="landingSeoTitle" placeholder="例如：悠然山居民宿 | 遠離塵囂的完美假期">
+                                    <small>顯示在瀏覽器分頁和搜尋引擎結果</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>頁面描述（Meta Description）</label>
+                                    <textarea id="landingSeoDesc" rows="2" placeholder="例如：坐落於青山綠水間，提供您最舒適的住宿體驗。限時優惠中！"></textarea>
+                                    <small>顯示在搜尋引擎結果中（建議 60-160 字）</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>Open Graph 分享圖片 URL</label>
+                                    <input type="text" id="landingOgImage" placeholder="https://your-domain.com/images/og-image.jpg">
+                                    <small>Facebook 分享時顯示的圖片（建議 1200x630）</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn-save" onclick="saveLandingSettings('tracking')" style="margin-top: 20px;">
+                            <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">save</span>
+                            儲存廣告追蹤設定
+                        </button>
+                    </div>
+                </div>
             </section>
 
             <!-- 資料備份管理區 -->

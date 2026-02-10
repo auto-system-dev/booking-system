@@ -5007,6 +5007,29 @@ app.put('/api/admin/settings/:key', requireAuth, checkPermission('settings.edit'
     }
 });
 
+// API: 取得銷售頁設定（公開）
+app.get('/api/landing-settings', publicLimiter, async (req, res) => {
+    try {
+        const allSettings = await db.getAllSettings();
+        const landingSettings = {};
+        allSettings.forEach(setting => {
+            if (setting.key.startsWith('landing_')) {
+                landingSettings[setting.key] = setting.value;
+            }
+        });
+        res.json({
+            success: true,
+            data: landingSettings
+        });
+    } catch (error) {
+        console.error('取得銷售頁設定錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '取得銷售頁設定失敗'
+        });
+    }
+});
+
 // API: 建立支付表單（用於重新支付）
 app.post('/api/payment/create', paymentLimiter, async (req, res) => {
     try {

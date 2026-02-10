@@ -1,7 +1,322 @@
 /**
  * 悠然山居民宿 - 銷售頁腳本
- * 包含 Facebook 像素追蹤、倒數計時、導航互動等功能
+ * 從後台 API 動態載入設定，包含 Facebook 像素追蹤、倒數計時、導航互動等功能
  */
+
+// 全域設定變數
+let landingConfig = {};
+let countdownDays = 7;
+
+// ===== 從 API 載入設定並套用至頁面 =====
+async function loadLandingConfig() {
+    try {
+        const response = await fetch('/api/landing-settings');
+        const result = await response.json();
+
+        if (result.success && result.data) {
+            landingConfig = result.data;
+            applyConfig(landingConfig);
+            console.log('✅ 銷售頁設定已從後台載入');
+        } else {
+            console.warn('⚠️ 無法取得銷售頁設定，使用預設值');
+        }
+    } catch (error) {
+        console.warn('⚠️ 載入銷售頁設定失敗:', error.message);
+    }
+}
+
+// 將設定套用至 HTML 元素
+function applyConfig(cfg) {
+    // ===== 基本資訊 =====
+    const name = cfg.landing_name || '';
+    if (name) {
+        setText('navLogo', name);
+        setText('footerBrand', name);
+        const footerCopyright = document.getElementById('footerCopyright');
+        if (footerCopyright) footerCopyright.innerHTML = `&copy; ${new Date().getFullYear()} ${name}. All rights reserved.`;
+    }
+    if (cfg.landing_title) {
+        const titleEl = document.getElementById('heroTitle');
+        if (titleEl) titleEl.innerHTML = cfg.landing_title;
+    }
+    setText('heroSubtitle', cfg.landing_subtitle);
+    setText('heroBadge', cfg.landing_badge);
+    setText('heroPricePrefix', cfg.landing_price_prefix);
+    setText('heroPriceAmount', cfg.landing_price_amount);
+    setText('heroPriceOriginal', cfg.landing_price_original);
+
+    // Hero 背景圖片
+    if (cfg.landing_hero_image) {
+        const heroSection = document.getElementById('hero');
+        if (heroSection) {
+            heroSection.style.backgroundImage = `url('${cfg.landing_hero_image}')`;
+        }
+    }
+
+    // CTA 按鈕文字
+    const ctaText = cfg.landing_cta_text || '';
+    if (ctaText) {
+        setText('heroCtaText', ctaText);
+        setText('navCtaBtn', ctaText);
+        setText('finalCtaText', ctaText);
+        setText('floatingCtaText', ctaText);
+    }
+
+    // 倒數計時
+    if (cfg.landing_countdown_days) {
+        countdownDays = parseInt(cfg.landing_countdown_days) || 7;
+    }
+    if (cfg.landing_countdown_text) {
+        const cdText = document.getElementById('countdownText');
+        if (cdText) cdText.innerHTML = cfg.landing_countdown_text;
+    }
+
+    // ===== 特色賣點 =====
+    for (let i = 1; i <= 4; i++) {
+        const icon = cfg[`landing_feature_${i}_icon`];
+        const title = cfg[`landing_feature_${i}_title`];
+        const desc = cfg[`landing_feature_${i}_desc`];
+        if (icon) setText(`featureIcon${i}`, icon);
+        if (title) setText(`featureTitle${i}`, title);
+        if (desc) setText(`featureDesc${i}`, desc);
+    }
+
+    // ===== 房型展示 =====
+    renderRoomCards(cfg);
+
+    // ===== 客戶評價 =====
+    if (cfg.landing_review_count) {
+        setText('reviewTitle', `超過 ${cfg.landing_review_count} 位旅客的選擇`);
+    }
+    if (cfg.landing_review_score) {
+        setText('reviewScore', cfg.landing_review_score);
+    }
+    renderReviewCards(cfg);
+
+    // ===== 聯絡資訊 =====
+    setText('locationAddress', cfg.landing_address);
+    setText('locationDriving', cfg.landing_driving);
+    setText('locationTransit', cfg.landing_transit);
+    setText('locationPhone', cfg.landing_phone);
+
+    if (cfg.landing_map_url) {
+        const mapFrame = document.getElementById('locationMap');
+        if (mapFrame) mapFrame.src = cfg.landing_map_url;
+    }
+
+    // ===== 社群連結 =====
+    setLink('socialFb', cfg.landing_social_fb);
+    setLink('socialIg', cfg.landing_social_ig);
+    setLink('socialLine', cfg.landing_social_line);
+
+    // ===== Facebook Pixel =====
+    if (cfg.landing_fb_pixel_id && cfg.landing_fb_pixel_id !== 'YOUR_PIXEL_ID_HERE') {
+        initFacebookPixel(cfg.landing_fb_pixel_id);
+    }
+
+    // ===== SEO =====
+    if (cfg.landing_seo_title) {
+        document.title = cfg.landing_seo_title;
+        setMeta('ogTitle', cfg.landing_seo_title);
+    } else if (name) {
+        document.title = name;
+    }
+    if (cfg.landing_seo_desc) {
+        setMeta('metaDescription', cfg.landing_seo_desc);
+        setMeta('ogDescription', cfg.landing_seo_desc);
+    }
+    if (cfg.landing_og_image) {
+        setMeta('ogImage', cfg.landing_og_image);
+    }
+}
+
+// ===== 工具函數 =====
+function setText(id, value) {
+    if (!value) return;
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
+function setMeta(id, value) {
+    if (!value) return;
+    const el = document.getElementById(id);
+    if (el) el.setAttribute('content', value);
+}
+
+function setLink(id, url) {
+    if (!url) return;
+    const el = document.getElementById(id);
+    if (el) {
+        el.href = url;
+        el.style.display = '';
+        el.removeAttribute('style');
+    }
+}
+
+// ===== 動態生成房型卡片 =====
+function renderRoomCards(cfg) {
+    const grid = document.getElementById('roomsGrid');
+    if (!grid) return;
+
+    const rooms = [];
+    for (let i = 1; i <= 3; i++) {
+        const name = cfg[`landing_room_${i}_name`];
+        if (!name) continue;
+        rooms.push({
+            name,
+            image: cfg[`landing_room_${i}_image`] || '',
+            price: cfg[`landing_room_${i}_price`] || '',
+            originalPrice: cfg[`landing_room_${i}_original_price`] || '',
+            features: cfg[`landing_room_${i}_features`] || '',
+            badge: cfg[`landing_room_${i}_badge`] || ''
+        });
+    }
+
+    if (rooms.length === 0) {
+        // 使用預設房型
+        grid.innerHTML = `
+            <div class="room-card">
+                <div class="room-image">
+                    <img src="https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600" alt="標準雙人房" loading="lazy">
+                    <span class="room-badge">熱門</span>
+                </div>
+                <div class="room-info">
+                    <h3>標準雙人房</h3>
+                    <div class="room-features">
+                        <span><span class="material-symbols-outlined">king_bed</span> 雙人床</span>
+                        <span><span class="material-symbols-outlined">bathtub</span> 獨立衛浴</span>
+                        <span><span class="material-symbols-outlined">wifi</span> 免費 WiFi</span>
+                    </div>
+                    <div class="room-price-row">
+                        <div class="room-price">
+                            <span class="price-current">NT$ 2,800</span>
+                            <span class="price-old">NT$ 3,500</span>
+                        </div>
+                        <a href="index.html" class="room-book-btn" onclick="trackBookingClick()">預訂</a>
+                    </div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    const badgeClassMap = {
+        '熱門': '',
+        '超值': 'best-value',
+        '頂級': 'premium'
+    };
+
+    grid.innerHTML = rooms.map(room => {
+        const featureItems = room.features
+            ? room.features.split(',').map(f => `<span>${f.trim()}</span>`).join('')
+            : '';
+        const badgeClass = badgeClassMap[room.badge] || '';
+        const priceNum = parseInt(room.price.replace(/[^\d]/g, '')) || 0;
+
+        return `
+            <div class="room-card" onclick="trackViewContent('${room.name}', ${priceNum})">
+                <div class="room-image">
+                    ${room.image ? `<img src="${room.image}" alt="${room.name}" loading="lazy">` : '<div style="height:200px;background:#e0e0e0;display:flex;align-items:center;justify-content:center;color:#999;">尚無圖片</div>'}
+                    ${room.badge ? `<span class="room-badge ${badgeClass}">${room.badge}</span>` : ''}
+                </div>
+                <div class="room-info">
+                    <h3>${room.name}</h3>
+                    ${featureItems ? `<div class="room-features">${featureItems}</div>` : ''}
+                    <div class="room-price-row">
+                        <div class="room-price">
+                            ${room.price ? `<span class="price-current">${room.price}</span>` : ''}
+                            ${room.originalPrice ? `<span class="price-old">${room.originalPrice}</span>` : ''}
+                        </div>
+                        <a href="index.html" class="room-book-btn" onclick="event.stopPropagation(); trackBookingClick();">預訂</a>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ===== 動態生成評價卡片 =====
+function renderReviewCards(cfg) {
+    const grid = document.getElementById('reviewsGrid');
+    if (!grid) return;
+
+    const reviews = [];
+    for (let i = 1; i <= 3; i++) {
+        const name = cfg[`landing_review_${i}_name`];
+        if (!name) continue;
+        reviews.push({
+            name,
+            date: cfg[`landing_review_${i}_date`] || '',
+            rating: cfg[`landing_review_${i}_rating`] || '5.0',
+            text: cfg[`landing_review_${i}_text`] || '',
+            tags: cfg[`landing_review_${i}_tags`] || ''
+        });
+    }
+
+    if (reviews.length === 0) {
+        // 使用預設評價
+        grid.innerHTML = `
+            <div class="review-card">
+                <div class="review-header">
+                    <div class="reviewer-avatar">旅</div>
+                    <div class="reviewer-info">
+                        <span class="reviewer-name">旅客</span>
+                        <span class="review-date">近期</span>
+                    </div>
+                    <div class="review-rating">
+                        <span class="material-symbols-outlined filled">star</span>
+                        <span>5.0</span>
+                    </div>
+                </div>
+                <p class="review-text">「很棒的住宿體驗，推薦給大家！」</p>
+            </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = reviews.map(review => {
+        const avatar = review.name.charAt(0);
+        const tagItems = review.tags
+            ? review.tags.split(',').map(t => `<span>${t.trim()}</span>`).join('')
+            : '';
+
+        return `
+            <div class="review-card">
+                <div class="review-header">
+                    <div class="reviewer-avatar">${avatar}</div>
+                    <div class="reviewer-info">
+                        <span class="reviewer-name">${review.name}</span>
+                        ${review.date ? `<span class="review-date">${review.date}</span>` : ''}
+                    </div>
+                    <div class="review-rating">
+                        <span class="material-symbols-outlined filled">star</span>
+                        <span>${review.rating}</span>
+                    </div>
+                </div>
+                <p class="review-text">「${review.text}」</p>
+                ${tagItems ? `<div class="review-tags">${tagItems}</div>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+// ===== 動態載入 Facebook Pixel =====
+function initFacebookPixel(pixelId) {
+    if (!pixelId || typeof fbq !== 'undefined') return;
+
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+
+    fbq('init', pixelId);
+    fbq('track', 'PageView');
+    console.log('✅ Facebook Pixel 已初始化:', pixelId);
+}
 
 // ===== Facebook Pixel 追蹤函數 =====
 
@@ -132,18 +447,35 @@ if (navToggle && navMenu) {
 
 // ===== 倒數計時器 =====
 function initCountdown() {
-    // 設定優惠結束時間（可自訂，這裡設為 7 天後）
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 7);
-    endDate.setHours(23, 59, 59, 0);
+    // 使用 localStorage 儲存結束時間，確保重新整理不會重置
+    let endDateStr = localStorage.getItem('landing_countdown_end');
+    let endDate;
+
+    if (endDateStr) {
+        endDate = new Date(endDateStr);
+        // 如果已過期，重新設定
+        if (endDate <= new Date()) {
+            endDate = null;
+        }
+    }
+
+    if (!endDate) {
+        endDate = new Date();
+        endDate.setDate(endDate.getDate() + countdownDays);
+        endDate.setHours(23, 59, 59, 0);
+        localStorage.setItem('landing_countdown_end', endDate.toISOString());
+    }
     
     function updateCountdown() {
         const now = new Date();
         const diff = endDate - now;
         
         if (diff <= 0) {
-            // 優惠結束，重置為新的 7 天
-            endDate.setDate(endDate.getDate() + 7);
+            // 優惠結束，重置
+            endDate = new Date();
+            endDate.setDate(endDate.getDate() + countdownDays);
+            endDate.setHours(23, 59, 59, 0);
+            localStorage.setItem('landing_countdown_end', endDate.toISOString());
             return;
         }
         
@@ -275,24 +607,26 @@ function updateBookingLinks() {
 }
 
 // ===== 初始化 =====
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // 先載入後台設定
+    await loadLandingConfig();
+    
+    // 再初始化各元件
     initCountdown();
     initScrollAnimations();
     storeUTMParams();
     updateBookingLinks();
     
-    console.log('Landing page initialized');
+    console.log('✅ Landing page initialized');
     console.log('UTM Params:', getUTMParams());
 });
 
 // ===== 圖片懶載入優化 =====
 if ('loading' in HTMLImageElement.prototype) {
-    // 瀏覽器支援原生懶載入
     document.querySelectorAll('img[loading="lazy"]').forEach(img => {
         img.src = img.dataset.src || img.src;
     });
 } else {
-    // 使用 Intersection Observer 作為後備方案
     const lazyImages = document.querySelectorAll('img[loading="lazy"]');
     const imageObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -306,4 +640,3 @@ if ('loading' in HTMLImageElement.prototype) {
     
     lazyImages.forEach(img => imageObserver.observe(img));
 }
-

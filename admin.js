@@ -814,7 +814,8 @@ function switchSection(section) {
         'statistics': 'statistics.view',
         'admin-management': 'admins.view',
         'logs': 'logs.view',
-        'backups': 'backup.view'
+        'backups': 'backup.view',
+        'landing-page': 'settings.view'
     };
     
     // 檢查權限（僅在已登入後才檢查）
@@ -902,6 +903,10 @@ function switchSection(section) {
         loadLogs(1);
     } else if (section === 'backups') {
         loadBackups();
+    } else if (section === 'landing-page') {
+        loadLandingSettings();
+        const savedTab = localStorage.getItem('landingTab') || 'basic';
+        switchLandingTab(savedTab);
     }
 }
 
@@ -9578,3 +9583,232 @@ async function exportStatisticsCSV() {
 window.exportBookingsCSV = exportBookingsCSV;
 window.exportCustomersCSV = exportCustomersCSV;
 window.exportStatisticsCSV = exportStatisticsCSV;
+
+// ==================== 銷售頁管理 ====================
+
+// 銷售頁分頁切換
+function switchLandingTab(tab) {
+    // 移除所有分頁的 active
+    document.querySelectorAll('#landing-page-section .tab-button').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('#landing-page-section .tab-content').forEach(content => content.classList.remove('active'));
+
+    // 啟用選定的分頁
+    const tabBtn = document.getElementById(`landingTab${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
+    const tabContent = document.getElementById(`landingTab${tab.charAt(0).toUpperCase() + tab.slice(1)}Content`);
+    if (tabBtn) tabBtn.classList.add('active');
+    if (tabContent) tabContent.classList.add('active');
+
+    localStorage.setItem('landingTab', tab);
+}
+
+// 銷售頁設定欄位對應表
+const landingFieldMap = {
+    // 基本資訊
+    landing_name: 'landingName',
+    landing_title: 'landingTitle',
+    landing_subtitle: 'landingSubtitle',
+    landing_badge: 'landingBadge',
+    landing_price_prefix: 'landingPricePrefix',
+    landing_price_amount: 'landingPriceAmount',
+    landing_price_original: 'landingPriceOriginal',
+    landing_hero_image: 'landingHeroImage',
+    landing_countdown_days: 'landingCountdownDays',
+    landing_countdown_text: 'landingCountdownText',
+    landing_cta_text: 'landingCtaText',
+    // 特色賣點
+    landing_feature_1_icon: 'landingFeature1Icon',
+    landing_feature_1_title: 'landingFeature1Title',
+    landing_feature_1_desc: 'landingFeature1Desc',
+    landing_feature_2_icon: 'landingFeature2Icon',
+    landing_feature_2_title: 'landingFeature2Title',
+    landing_feature_2_desc: 'landingFeature2Desc',
+    landing_feature_3_icon: 'landingFeature3Icon',
+    landing_feature_3_title: 'landingFeature3Title',
+    landing_feature_3_desc: 'landingFeature3Desc',
+    landing_feature_4_icon: 'landingFeature4Icon',
+    landing_feature_4_title: 'landingFeature4Title',
+    landing_feature_4_desc: 'landingFeature4Desc',
+    // 房型展示
+    landing_room_1_name: 'landingRoom1Name',
+    landing_room_1_image: 'landingRoom1Image',
+    landing_room_1_price: 'landingRoom1Price',
+    landing_room_1_original_price: 'landingRoom1OriginalPrice',
+    landing_room_1_features: 'landingRoom1Features',
+    landing_room_1_badge: 'landingRoom1Badge',
+    landing_room_2_name: 'landingRoom2Name',
+    landing_room_2_image: 'landingRoom2Image',
+    landing_room_2_price: 'landingRoom2Price',
+    landing_room_2_original_price: 'landingRoom2OriginalPrice',
+    landing_room_2_features: 'landingRoom2Features',
+    landing_room_2_badge: 'landingRoom2Badge',
+    landing_room_3_name: 'landingRoom3Name',
+    landing_room_3_image: 'landingRoom3Image',
+    landing_room_3_price: 'landingRoom3Price',
+    landing_room_3_original_price: 'landingRoom3OriginalPrice',
+    landing_room_3_features: 'landingRoom3Features',
+    landing_room_3_badge: 'landingRoom3Badge',
+    // 客戶評價
+    landing_review_count: 'landingReviewCount',
+    landing_review_score: 'landingReviewScore',
+    landing_review_1_name: 'landingReview1Name',
+    landing_review_1_date: 'landingReview1Date',
+    landing_review_1_rating: 'landingReview1Rating',
+    landing_review_1_text: 'landingReview1Text',
+    landing_review_1_tags: 'landingReview1Tags',
+    landing_review_2_name: 'landingReview2Name',
+    landing_review_2_date: 'landingReview2Date',
+    landing_review_2_rating: 'landingReview2Rating',
+    landing_review_2_text: 'landingReview2Text',
+    landing_review_2_tags: 'landingReview2Tags',
+    landing_review_3_name: 'landingReview3Name',
+    landing_review_3_date: 'landingReview3Date',
+    landing_review_3_rating: 'landingReview3Rating',
+    landing_review_3_text: 'landingReview3Text',
+    landing_review_3_tags: 'landingReview3Tags',
+    // 聯絡與社群
+    landing_address: 'landingAddress',
+    landing_driving: 'landingDriving',
+    landing_transit: 'landingTransit',
+    landing_phone: 'landingPhone',
+    landing_map_url: 'landingMapUrl',
+    landing_social_fb: 'landingSocialFb',
+    landing_social_ig: 'landingSocialIg',
+    landing_social_line: 'landingSocialLine',
+    // 廣告追蹤
+    landing_fb_pixel_id: 'landingFbPixelId',
+    landing_seo_title: 'landingSeoTitle',
+    landing_seo_desc: 'landingSeoDesc',
+    landing_og_image: 'landingOgImage'
+};
+
+// 載入銷售頁設定
+async function loadLandingSettings() {
+    try {
+        const response = await fetch('/api/landing-settings');
+        const result = await response.json();
+
+        if (result.success) {
+            const data = result.data;
+            // 將每個設定值填入對應的表單欄位
+            for (const [key, elementId] of Object.entries(landingFieldMap)) {
+                const el = document.getElementById(elementId);
+                if (el && data[key] !== undefined) {
+                    if (el.tagName === 'TEXTAREA') {
+                        el.value = data[key];
+                    } else {
+                        el.value = data[key];
+                    }
+                }
+            }
+            console.log('✅ 銷售頁設定已載入');
+        } else {
+            console.warn('⚠️ 載入銷售頁設定失敗:', result.message);
+        }
+    } catch (error) {
+        console.error('❌ 載入銷售頁設定錯誤:', error);
+        showError('載入銷售頁設定時發生錯誤：' + error.message);
+    }
+}
+
+// 儲存銷售頁設定（按分頁儲存）
+async function saveLandingSettings(tab) {
+    // 根據分頁決定要儲存的欄位
+    let keysToSave = [];
+    switch (tab) {
+        case 'basic':
+            keysToSave = Object.keys(landingFieldMap).filter(k =>
+                ['landing_name', 'landing_title', 'landing_subtitle', 'landing_badge',
+                 'landing_price_prefix', 'landing_price_amount', 'landing_price_original',
+                 'landing_hero_image', 'landing_countdown_days', 'landing_countdown_text',
+                 'landing_cta_text'].includes(k)
+            );
+            break;
+        case 'features':
+            keysToSave = Object.keys(landingFieldMap).filter(k => k.startsWith('landing_feature_'));
+            break;
+        case 'rooms':
+            keysToSave = Object.keys(landingFieldMap).filter(k => k.startsWith('landing_room_'));
+            break;
+        case 'reviews':
+            keysToSave = Object.keys(landingFieldMap).filter(k =>
+                k.startsWith('landing_review_') || k === 'landing_review_count' || k === 'landing_review_score'
+            );
+            break;
+        case 'contact':
+            keysToSave = Object.keys(landingFieldMap).filter(k =>
+                ['landing_address', 'landing_driving', 'landing_transit', 'landing_phone',
+                 'landing_map_url', 'landing_social_fb', 'landing_social_ig', 'landing_social_line'].includes(k)
+            );
+            break;
+        case 'tracking':
+            keysToSave = Object.keys(landingFieldMap).filter(k =>
+                ['landing_fb_pixel_id', 'landing_seo_title', 'landing_seo_desc', 'landing_og_image'].includes(k)
+            );
+            break;
+    }
+
+    if (keysToSave.length === 0) {
+        showError('沒有需要儲存的欄位');
+        return;
+    }
+
+    try {
+        const descMap = {
+            landing_name: '銷售頁-民宿名稱',
+            landing_title: '銷售頁-主標題',
+            landing_subtitle: '銷售頁-副標題',
+            landing_badge: '銷售頁-醒目標籤',
+            landing_price_prefix: '銷售頁-價格前綴',
+            landing_price_amount: '銷售頁-促銷價格',
+            landing_price_original: '銷售頁-原價',
+            landing_hero_image: '銷售頁-Hero 背景圖片',
+            landing_countdown_days: '銷售頁-倒數天數',
+            landing_countdown_text: '銷售頁-優惠說明',
+            landing_cta_text: '銷售頁-CTA 按鈕文字',
+            landing_fb_pixel_id: '銷售頁-FB Pixel ID',
+            landing_seo_title: '銷售頁-SEO 標題',
+            landing_seo_desc: '銷售頁-SEO 描述',
+            landing_og_image: '銷售頁-OG 分享圖片',
+            landing_address: '銷售頁-地址',
+            landing_driving: '銷售頁-自行開車',
+            landing_transit: '銷售頁-大眾運輸',
+            landing_phone: '銷售頁-聯絡電話',
+            landing_map_url: '銷售頁-地圖網址',
+            landing_social_fb: '銷售頁-Facebook',
+            landing_social_ig: '銷售頁-Instagram',
+            landing_social_line: '銷售頁-LINE'
+        };
+
+        const requests = keysToSave.map(key => {
+            const elementId = landingFieldMap[key];
+            const el = document.getElementById(elementId);
+            const value = el ? el.value : '';
+            const description = descMap[key] || `銷售頁設定 - ${key}`;
+            return adminFetch(`/api/admin/settings/${key}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ value, description })
+            });
+        });
+
+        const responses = await Promise.all(requests);
+        const results = await Promise.all(responses.map(r => r.json()));
+        const allSuccess = results.every(r => r.success);
+
+        if (allSuccess) {
+            showSuccess('銷售頁設定已儲存');
+            setTimeout(() => loadLandingSettings(), 300);
+        } else {
+            const failedResult = results.find(r => !r.success);
+            showError('儲存部分失敗：' + (failedResult?.message || '請稍後再試'));
+        }
+    } catch (error) {
+        console.error('儲存銷售頁設定錯誤:', error);
+        showError('儲存時發生錯誤：' + error.message);
+    }
+}
+
+// 暴露銷售頁管理函數到全域
+window.switchLandingTab = switchLandingTab;
+window.loadLandingSettings = loadLandingSettings;
+window.saveLandingSettings = saveLandingSettings;
