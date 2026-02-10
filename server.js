@@ -5007,6 +5007,33 @@ app.put('/api/admin/settings/:key', requireAuth, checkPermission('settings.edit'
     }
 });
 
+// API: 上傳銷售頁圖片（共用房型上傳的 multer 設定）
+app.post('/api/admin/landing/upload-image', requireAuth, (req, res) => {
+    uploadImage.single('image')(req, res, function (err) {
+        if (err instanceof multer.MulterError) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ success: false, message: '圖片大小不可超過 5MB' });
+            }
+            return res.status(400).json({ success: false, message: '上傳失敗: ' + err.message });
+        } else if (err) {
+            return res.status(400).json({ success: false, message: err.message });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: '請選擇要上傳的圖片' });
+        }
+
+        const imageUrl = `/uploads/${req.file.filename}`;
+        console.log(`✅ 銷售頁圖片已上傳: ${imageUrl}`);
+
+        res.json({
+            success: true,
+            message: '圖片上傳成功',
+            data: { image_url: imageUrl }
+        });
+    });
+});
+
 // API: 取得銷售頁設定（公開）
 app.get('/api/landing-settings', publicLimiter, async (req, res) => {
     try {

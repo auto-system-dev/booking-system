@@ -1299,9 +1299,16 @@
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label>Hero 背景圖片 URL</label>
-                                    <input type="text" id="landingHeroImage" placeholder="https://images.unsplash.com/...">
-                                    <small>建議尺寸 1920x1080 以上的高品質圖片</small>
+                                    <label>Hero 背景圖片</label>
+                                    <input type="hidden" id="landingHeroImage" value="">
+                                    <div id="heroImageUploadArea" style="border: 2px dashed #ccc; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.3s; background: #fafafa; position: relative;" onclick="document.getElementById('heroImageInput').click()">
+                                        <div id="heroImagePreview">
+                                            <span class="material-symbols-outlined" style="font-size: 48px; color: #aaa; display: block; margin-bottom: 8px;">add_photo_alternate</span>
+                                            <p style="color: #888; margin: 0;">點擊上傳 Hero 背景圖片</p>
+                                            <small style="color: #aaa;">支援 JPG、PNG、WebP，建議尺寸 1920x1080 以上，最大 5MB</small>
+                                        </div>
+                                    </div>
+                                    <input type="file" id="heroImageInput" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handleHeroImageUpload(this)">
                                 </div>
                             </div>
                         </div>

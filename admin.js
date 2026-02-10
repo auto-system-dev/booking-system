@@ -9678,6 +9678,11 @@ async function loadLandingSettings() {
                     el.value = data[key];
                 }
             }
+            // 還原 Hero 背景圖片預覽
+            const heroImageUrl = data['landing_hero_image'];
+            if (heroImageUrl) {
+                showHeroImagePreview(heroImageUrl);
+            }
             // 載入房型展示（從房型管理 + settings 合併）
             loadLandingRoomTypes(data);
             console.log('✅ 銷售頁設定已載入');
@@ -9999,8 +10004,87 @@ function restoreFeatureCheckboxes(hiddenInputId) {
     console.log(`✅ restoreFeatureCheckboxes → ${hiddenInputId}:`, selected);
 }
 
+// ===== Hero 圖片上傳 =====
+async function handleHeroImageUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+        showError('圖片大小不可超過 5MB');
+        input.value = '';
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const uploadArea = document.getElementById('heroImageUploadArea');
+    const originalContent = uploadArea.innerHTML;
+
+    uploadArea.innerHTML = `
+        <div style="padding: 20px; text-align: center;">
+            <span class="material-symbols-outlined" style="font-size: 36px; color: #667eea; animation: spin 1s linear infinite;">progress_activity</span>
+            <p style="color: #667eea; margin: 8px 0 0;">上傳中...</p>
+        </div>
+    `;
+
+    try {
+        const response = await adminFetch('/api/admin/landing/upload-image', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            const imageUrl = result.data.image_url;
+            document.getElementById('landingHeroImage').value = imageUrl;
+            showHeroImagePreview(imageUrl);
+            showSuccess('Hero 背景圖片上傳成功');
+        } else {
+            showError('上傳失敗：' + (result.message || '未知錯誤'));
+            uploadArea.innerHTML = originalContent;
+        }
+    } catch (error) {
+        console.error('上傳 Hero 圖片錯誤:', error);
+        showError('上傳圖片時發生錯誤：' + error.message);
+        uploadArea.innerHTML = originalContent;
+    }
+
+    input.value = '';
+}
+
+function showHeroImagePreview(imageUrl) {
+    const uploadArea = document.getElementById('heroImageUploadArea');
+    if (!uploadArea) return;
+    uploadArea.innerHTML = `
+        <div id="heroImagePreview" style="position: relative; display: inline-block; width: 100%;">
+            <img src="${imageUrl}" style="width: 100%; max-height: 250px; border-radius: 8px; object-fit: cover;">
+            <button type="button" onclick="event.stopPropagation(); removeHeroImage();" style="position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; border: none; background: #e74c3c; color: white; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">✕</button>
+        </div>
+    `;
+}
+
+function removeHeroImage() {
+    document.getElementById('landingHeroImage').value = '';
+    const uploadArea = document.getElementById('heroImageUploadArea');
+    if (uploadArea) {
+        uploadArea.innerHTML = `
+            <div id="heroImagePreview">
+                <span class="material-symbols-outlined" style="font-size: 48px; color: #aaa; display: block; margin-bottom: 8px;">add_photo_alternate</span>
+                <p style="color: #888; margin: 0;">點擊上傳 Hero 背景圖片</p>
+                <small style="color: #aaa;">支援 JPG、PNG、WebP，建議尺寸 1920x1080 以上，最大 5MB</small>
+            </div>
+        `;
+    }
+    document.getElementById('heroImageInput').value = '';
+}
+
 window.switchLandingTab = switchLandingTab;
 window.loadLandingSettings = loadLandingSettings;
 window.saveLandingSettings = saveLandingSettings;
+window.saveLandingRoomFeatures = saveLandingRoomFeatures;
 window.syncFeatureCheckboxes = syncFeatureCheckboxes;
 window.restoreFeatureCheckboxes = restoreFeatureCheckboxes;
+window.handleHeroImageUpload = handleHeroImageUpload;
+window.removeHeroImage = removeHeroImage;
