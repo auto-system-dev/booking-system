@@ -164,7 +164,7 @@ function setLink(id, url) {
 // ===== 設施名稱對應 Material Symbol 圖示（全域） =====
 const featureIconMap = {
     '單人床': 'single_bed', '雙人床': 'king_bed', '加大雙人床': 'king_bed',
-    '特大雙人床': 'king_bed', '上下鋪': 'bunk_bed', '和式床墊': 'airline_seat_flat',
+    '特大雙人床': 'king_bed', '上下鋪': 'single_bed', '和式床墊': 'airline_seat_flat',
     '獨立衛浴': 'bathtub', '共用衛浴': 'shower', '浴缸': 'bathtub',
     '淋浴設備': 'shower', '免治馬桶': 'wash', '私人湯池': 'hot_tub',
     '私人陽台': 'balcony', '客廳空間': 'living', '小廚房': 'countertops',
