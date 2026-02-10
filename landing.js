@@ -15,6 +15,9 @@ async function loadLandingConfig() {
 
         if (result.success && result.data) {
             landingConfig = result.data;
+            // 列出所有房型相關設定以便除錯
+            const roomKeys = Object.keys(landingConfig).filter(k => k.includes('room'));
+            console.log('📋 API 回傳房型設定:', roomKeys.map(k => `${k}=${landingConfig[k] || '(空)'}`).join(', '));
             applyConfig(landingConfig);
             console.log('✅ 銷售頁設定已從後台載入');
         } else {
@@ -109,9 +112,14 @@ function applyConfig(cfg) {
     setLink('socialIg', cfg.landing_social_ig);
     setLink('socialLine', cfg.landing_social_line);
 
-    // ===== Facebook Pixel =====
-    if (cfg.landing_fb_pixel_id && cfg.landing_fb_pixel_id !== 'YOUR_PIXEL_ID_HERE') {
-        initFacebookPixel(cfg.landing_fb_pixel_id);
+    // ===== Facebook Pixel（僅在 Pixel ID 為有效數字時載入）=====
+    const pixelId = cfg.landing_fb_pixel_id;
+    if (pixelId && pixelId !== 'YOUR_PIXEL_ID_HERE' && /^\d+$/.test(pixelId)) {
+        initFacebookPixel(pixelId);
+    } else if (pixelId && !/^\d+$/.test(pixelId)) {
+        console.warn('⚠️ Facebook Pixel ID 格式不正確（應為純數字）:', pixelId);
+    } else {
+        console.log('ℹ️ Facebook Pixel 未設定，跳過初始化');
     }
 
     // ===== SEO =====
@@ -153,27 +161,62 @@ function setLink(id, url) {
     }
 }
 
+// ===== 設施名稱對應 Material Symbol 圖示（全域） =====
+const featureIconMap = {
+    '單人床': 'single_bed', '雙人床': 'king_bed', '加大雙人床': 'king_bed',
+    '特大雙人床': 'king_bed', '上下鋪': 'bunk_bed', '和式床墊': 'airline_seat_flat',
+    '獨立衛浴': 'bathtub', '共用衛浴': 'shower', '浴缸': 'bathtub',
+    '淋浴設備': 'shower', '免治馬桶': 'wash', '私人湯池': 'hot_tub',
+    '私人陽台': 'balcony', '客廳空間': 'living', '小廚房': 'countertops',
+    '和室空間': 'floor', '庭院': 'yard', '山景視野': 'landscape',
+    '海景視野': 'water', '庭園景觀': 'park',
+    '免費 WiFi': 'wifi', '冷暖空調': 'ac_unit', '智慧電視': 'tv',
+    '冰箱': 'kitchen', '咖啡機': 'coffee_maker', '電熱水壺': 'water_drop',
+    '吹風機': 'air', '洗衣機': 'local_laundry_service', '微波爐': 'microwave',
+    '免費早餐': 'restaurant', '免費停車': 'local_parking', '寵物友善': 'pets',
+    '保險箱': 'lock', '行李寄放': 'luggage', '嬰兒床': 'crib',
+    '無障礙設施': 'accessible', '機場接送': 'airport_shuttle'
+};
+
+// 將逗號分隔的設施字串轉為帶圖示的 HTML
+function buildFeatureHTML(featuresStr) {
+    if (!featuresStr || !featuresStr.trim()) return '';
+    return featuresStr.split(',')
+        .map(f => f.trim())
+        .filter(f => f.length > 0)
+        .map(name => {
+            const icon = featureIconMap[name] || 'check_circle';
+            return `<span><span class="material-symbols-outlined">${icon}</span> ${name}</span>`;
+        })
+        .join('');
+}
+
 // ===== 動態生成房型卡片 =====
 function renderRoomCards(cfg) {
     const grid = document.getElementById('roomsGrid');
-    if (!grid) return;
+    if (!grid) {
+        console.warn('⚠️ roomsGrid 元素不存在');
+        return;
+    }
 
     const rooms = [];
     for (let i = 1; i <= 3; i++) {
         const name = cfg[`landing_room_${i}_name`];
         if (!name) continue;
-        rooms.push({
+        const roomData = {
             name,
             image: cfg[`landing_room_${i}_image`] || '',
             price: cfg[`landing_room_${i}_price`] || '',
             originalPrice: cfg[`landing_room_${i}_original_price`] || '',
             features: cfg[`landing_room_${i}_features`] || '',
             badge: cfg[`landing_room_${i}_badge`] || ''
-        });
+        };
+        console.log(`🏨 房型 ${i}:`, roomData.name, '| 設施:', roomData.features || '(空)');
+        rooms.push(roomData);
     }
 
     if (rooms.length === 0) {
-        // 使用預設房型
+        console.log('ℹ️ 無自訂房型，使用預設房型卡片');
         grid.innerHTML = `
             <div class="room-card">
                 <div class="room-image">
@@ -206,33 +249,10 @@ function renderRoomCards(cfg) {
         '頂級': 'premium'
     };
 
-    // 設施名稱對應 Material Symbol 圖示
-    const featureIconMap = {
-        '單人床': 'single_bed', '雙人床': 'king_bed', '加大雙人床': 'king_bed',
-        '特大雙人床': 'king_bed', '上下鋪': 'bunk_bed', '和式床墊': 'airline_seat_flat',
-        '獨立衛浴': 'bathtub', '共用衛浴': 'shower', '浴缸': 'bathtub',
-        '淋浴設備': 'shower', '免治馬桶': 'wash', '私人湯池': 'hot_tub',
-        '私人陽台': 'balcony', '客廳空間': 'living', '小廚房': 'countertops',
-        '和室空間': 'floor', '庭院': 'yard', '山景視野': 'landscape',
-        '海景視野': 'water', '庭園景觀': 'park',
-        '免費 WiFi': 'wifi', '冷暖空調': 'ac_unit', '智慧電視': 'tv',
-        '冰箱': 'kitchen', '咖啡機': 'coffee_maker', '電熱水壺': 'water_drop',
-        '吹風機': 'air', '洗衣機': 'local_laundry_service', '微波爐': 'microwave',
-        '免費早餐': 'restaurant', '免費停車': 'local_parking', '寵物友善': 'pets',
-        '保險箱': 'lock', '行李寄放': 'luggage', '嬰兒床': 'crib',
-        '無障礙設施': 'accessible', '機場接送': 'airport_shuttle'
-    };
-
     grid.innerHTML = rooms.map(room => {
-        const featureItems = room.features
-            ? room.features.split(',').map(f => {
-                const name = f.trim();
-                const icon = featureIconMap[name] || 'check_circle';
-                return `<span><span class="material-symbols-outlined">${icon}</span> ${name}</span>`;
-            }).join('')
-            : '';
+        const featureItems = buildFeatureHTML(room.features);
         const badgeClass = badgeClassMap[room.badge] || '';
-        const priceNum = parseInt(room.price.replace(/[^\d]/g, '')) || 0;
+        const priceNum = parseInt((room.price || '0').replace(/[^\d]/g, '')) || 0;
 
         return `
             <div class="room-card" onclick="trackViewContent('${room.name}', ${priceNum})">
@@ -254,6 +274,7 @@ function renderRoomCards(cfg) {
             </div>
         `;
     }).join('');
+    console.log('✅ 房型卡片已渲染，共', rooms.length, '張');
 }
 
 // ===== 動態生成評價卡片 =====
@@ -323,20 +344,24 @@ function renderReviewCards(cfg) {
 
 // ===== 動態載入 Facebook Pixel =====
 function initFacebookPixel(pixelId) {
-    if (!pixelId || typeof fbq !== 'undefined') return;
+    try {
+        if (!pixelId || typeof fbq !== 'undefined') return;
 
-    !function(f,b,e,v,n,t,s)
-    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-    n.queue=[];t=b.createElement(e);t.async=!0;
-    t.src=v;s=b.getElementsByTagName(e)[0];
-    s.parentNode.insertBefore(t,s)}(window, document,'script',
-    'https://connect.facebook.net/en_US/fbevents.js');
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
 
-    fbq('init', pixelId);
-    fbq('track', 'PageView');
-    console.log('✅ Facebook Pixel 已初始化:', pixelId);
+        fbq('init', pixelId);
+        fbq('track', 'PageView');
+        console.log('✅ Facebook Pixel 已初始化:', pixelId);
+    } catch (error) {
+        console.warn('⚠️ Facebook Pixel 初始化失敗:', error.message);
+    }
 }
 
 // ===== Facebook Pixel 追蹤函數 =====

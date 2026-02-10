@@ -7,15 +7,14 @@
     <link rel="preload" href="Background%20image.jpg" as="image">
     <link rel="stylesheet" href="style.css">
     
-    <!-- Facebook Pixel（從後台設定動態載入） -->
+    <!-- Facebook Pixel（從後台設定動態載入，僅在有有效 Pixel ID 時載入） -->
     <script>
-        // 從 API 取得 Pixel ID 後自動初始化
         (async function() {
             try {
                 const res = await fetch('/api/landing-settings');
                 const result = await res.json();
                 const pixelId = result.success && result.data && result.data.landing_fb_pixel_id;
-                if (pixelId && pixelId !== 'YOUR_PIXEL_ID_HERE') {
+                if (pixelId && pixelId !== 'YOUR_PIXEL_ID_HERE' && /^\d+$/.test(pixelId)) {
                     !function(f,b,e,v,n,t,s)
                     {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
                     n.callMethod.apply(n,arguments):n.queue.push(arguments)};
