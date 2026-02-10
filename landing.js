@@ -15,9 +15,8 @@ async function loadLandingConfig() {
 
         if (result.success && result.data) {
             landingConfig = result.data;
-            // 列出所有房型相關設定以便除錯
-            const roomKeys = Object.keys(landingConfig).filter(k => k.includes('room'));
-            console.log('📋 API 回傳房型設定:', roomKeys.map(k => `${k}=${landingConfig[k] || '(空)'}`).join(', '));
+            landingConfig._roomTypes = result.roomTypes || [];
+            console.log('📋 API 回傳房型數量:', landingConfig._roomTypes.length);
             applyConfig(landingConfig);
             console.log('✅ 銷售頁設定已從後台載入');
         } else {
@@ -191,7 +190,7 @@ function buildFeatureHTML(featuresStr) {
         .join('');
 }
 
-// ===== 動態生成房型卡片 =====
+// ===== 動態生成房型卡片（從房型管理 + 設施設定合併） =====
 function renderRoomCards(cfg) {
     const grid = document.getElementById('roomsGrid');
     if (!grid) {
@@ -199,26 +198,11 @@ function renderRoomCards(cfg) {
         return;
     }
 
-    const rooms = [];
-    for (let i = 1; i <= 3; i++) {
-        const name = cfg[`landing_room_${i}_name`] || '';
-        const image = cfg[`landing_room_${i}_image`] || '';
-        const price = cfg[`landing_room_${i}_price`] || '';
-        const originalPrice = cfg[`landing_room_${i}_original_price`] || '';
-        const features = cfg[`landing_room_${i}_features`] || '';
-        const badge = cfg[`landing_room_${i}_badge`] || '';
-        // 只要有任何欄位有值就顯示此房型
-        if (!name && !image && !price && !features) continue;
-        const roomData = {
-            name: name || `房型 ${i}`,
-            image, price, originalPrice, features, badge
-        };
-        console.log(`🏨 房型 ${i}:`, roomData.name, '| 設施:', roomData.features || '(空)');
-        rooms.push(roomData);
-    }
+    // 使用 API 回傳的 roomTypes（來自房型管理）
+    const roomTypes = cfg._roomTypes || [];
 
-    if (rooms.length === 0) {
-        console.log('ℹ️ 無自訂房型，使用預設房型卡片');
+    if (roomTypes.length === 0) {
+        console.log('ℹ️ 無房型資料，使用預設房型卡片');
         grid.innerHTML = `
             <div class="room-card">
                 <div class="room-image">
@@ -251,24 +235,31 @@ function renderRoomCards(cfg) {
         '頂級': 'premium'
     };
 
-    grid.innerHTML = rooms.map(room => {
-        const featureItems = buildFeatureHTML(room.features);
-        const badgeClass = badgeClassMap[room.badge] || '';
-        const priceNum = parseInt((room.price || '0').replace(/[^\d]/g, '')) || 0;
+    grid.innerHTML = roomTypes.map(room => {
+        // 從 settings 讀取該房型的設施和標籤
+        const features = cfg[`landing_roomtype_${room.id}_features`] || '';
+        const badge = cfg[`landing_roomtype_${room.id}_badge`] || '';
+        const featureItems = buildFeatureHTML(features);
+        const badgeClass = badgeClassMap[badge] || '';
+        const price = room.price || 0;
+        const holidaySurcharge = room.holiday_surcharge || 0;
+        const displayName = room.display_name || room.name || '房型';
+
+        console.log(`🏨 ${displayName} (ID:${room.id}) | 價格: ${price} | 設施: ${features || '(未設定)'}`);
 
         return `
-            <div class="room-card" onclick="trackViewContent('${room.name}', ${priceNum})">
+            <div class="room-card" onclick="trackViewContent('${displayName}', ${price})">
                 <div class="room-image">
-                    ${room.image ? `<img src="${room.image}" alt="${room.name}" loading="lazy">` : '<div style="height:200px;background:#e0e0e0;display:flex;align-items:center;justify-content:center;color:#999;">尚無圖片</div>'}
-                    ${room.badge ? `<span class="room-badge ${badgeClass}">${room.badge}</span>` : ''}
+                    ${room.image_url ? `<img src="${room.image_url}" alt="${displayName}" loading="lazy">` : '<div style="height:200px;background:#e0e0e0;display:flex;align-items:center;justify-content:center;color:#999;">尚無圖片</div>'}
+                    ${badge ? `<span class="room-badge ${badgeClass}">${badge}</span>` : ''}
                 </div>
                 <div class="room-info">
-                    <h3>${room.name}</h3>
+                    <h3>${displayName}</h3>
                     ${featureItems ? `<div class="room-features">${featureItems}</div>` : ''}
                     <div class="room-price-row">
                         <div class="room-price">
-                            ${room.price ? `<span class="price-current">${room.price}</span>` : ''}
-                            ${room.originalPrice ? `<span class="price-old">${room.originalPrice}</span>` : ''}
+                            <span class="price-current">NT$ ${price.toLocaleString()}</span>
+                            ${holidaySurcharge > 0 ? `<span class="price-old">假日 NT$ ${(price + holidaySurcharge).toLocaleString()}</span>` : ''}
                         </div>
                         <a href="index.html" class="room-book-btn" onclick="event.stopPropagation(); trackBookingClick();">預訂</a>
                     </div>
@@ -276,7 +267,7 @@ function renderRoomCards(cfg) {
             </div>
         `;
     }).join('');
-    console.log('✅ 房型卡片已渲染，共', rooms.length, '張');
+    console.log('✅ 房型卡片已渲染，共', roomTypes.length, '張');
 }
 
 // ===== 動態生成評價卡片 =====

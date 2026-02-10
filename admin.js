@@ -9628,25 +9628,7 @@ const landingFieldMap = {
     landing_feature_4_icon: 'landingFeature4Icon',
     landing_feature_4_title: 'landingFeature4Title',
     landing_feature_4_desc: 'landingFeature4Desc',
-    // 房型展示
-    landing_room_1_name: 'landingRoom1Name',
-    landing_room_1_image: 'landingRoom1Image',
-    landing_room_1_price: 'landingRoom1Price',
-    landing_room_1_original_price: 'landingRoom1OriginalPrice',
-    landing_room_1_features: 'landingRoom1Features',
-    landing_room_1_badge: 'landingRoom1Badge',
-    landing_room_2_name: 'landingRoom2Name',
-    landing_room_2_image: 'landingRoom2Image',
-    landing_room_2_price: 'landingRoom2Price',
-    landing_room_2_original_price: 'landingRoom2OriginalPrice',
-    landing_room_2_features: 'landingRoom2Features',
-    landing_room_2_badge: 'landingRoom2Badge',
-    landing_room_3_name: 'landingRoom3Name',
-    landing_room_3_image: 'landingRoom3Image',
-    landing_room_3_price: 'landingRoom3Price',
-    landing_room_3_original_price: 'landingRoom3OriginalPrice',
-    landing_room_3_features: 'landingRoom3Features',
-    landing_room_3_badge: 'landingRoom3Badge',
+    // 房型展示 — 名稱/圖片/價格從房型管理自動同步，此處只存設施和標籤（由 saveLandingRoomFeatures 處理）
     // 客戶評價
     landing_review_count: 'landingReviewCount',
     landing_review_score: 'landingReviewScore',
@@ -9696,10 +9678,8 @@ async function loadLandingSettings() {
                     el.value = data[key];
                 }
             }
-            // 還原 checkbox 勾選狀態（從 hidden input 的值）
-            restoreFeatureCheckboxes('landingRoom1Features');
-            restoreFeatureCheckboxes('landingRoom2Features');
-            restoreFeatureCheckboxes('landingRoom3Features');
+            // 載入房型展示（從房型管理 + settings 合併）
+            loadLandingRoomTypes(data);
             console.log('✅ 銷售頁設定已載入');
         } else {
             console.warn('⚠️ 載入銷售頁設定失敗:', result.message);
@@ -9707,6 +9687,189 @@ async function loadLandingSettings() {
     } catch (error) {
         console.error('❌ 載入銷售頁設定錯誤:', error);
         showError('載入銷售頁設定時發生錯誤：' + error.message);
+    }
+}
+
+// 載入房型管理資料並動態生成房型展示 UI
+async function loadLandingRoomTypes(landingData) {
+    const container = document.getElementById('landingRoomsContainer');
+    if (!container) return;
+
+    try {
+        const response = await adminFetch('/api/admin/room-types');
+        const result = await response.json();
+
+        if (!result.success || !result.data || result.data.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #888;">
+                    <span class="material-symbols-outlined" style="font-size: 48px; display: block; margin-bottom: 10px;">info</span>
+                    <p>尚未建立任何房型，請先到「房型管理」新增房型。</p>
+                </div>`;
+            return;
+        }
+
+        // 只顯示啟用中的房型
+        const activeRooms = result.data.filter(r => r.is_active === 1);
+        if (activeRooms.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #888;">
+                    <span class="material-symbols-outlined" style="font-size: 48px; display: block; margin-bottom: 10px;">info</span>
+                    <p>目前沒有啟用中的房型，請到「房型管理」啟用房型。</p>
+                </div>`;
+            return;
+        }
+
+        // checkbox 清單 HTML（共用模板）
+        const checkboxGridHTML = (roomId) => `
+            <input type="hidden" id="landingRoomFeatures_${roomId}" value="">
+            <div class="room-features-checkbox-grid" data-target="landingRoomFeatures_${roomId}" onchange="syncFeatureCheckboxes(this)">
+                <p style="font-size: 13px; color: #888; margin: 5px 0 10px 0;">🛏 床型</p>
+                <label class="feature-checkbox"><input type="checkbox" value="單人床"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">single_bed</span>單人床</label>
+                <label class="feature-checkbox"><input type="checkbox" value="雙人床"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">king_bed</span>雙人床</label>
+                <label class="feature-checkbox"><input type="checkbox" value="加大雙人床"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">king_bed</span>加大雙人床</label>
+                <label class="feature-checkbox"><input type="checkbox" value="特大雙人床"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">king_bed</span>特大雙人床</label>
+                <label class="feature-checkbox"><input type="checkbox" value="上下鋪"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">single_bed</span>上下鋪</label>
+                <label class="feature-checkbox"><input type="checkbox" value="和式床墊"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">airline_seat_flat</span>和式床墊</label>
+                <p style="font-size: 13px; color: #888; margin: 10px 0 10px 0; grid-column: 1 / -1;">🚿 衛浴</p>
+                <label class="feature-checkbox"><input type="checkbox" value="獨立衛浴"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">bathtub</span>獨立衛浴</label>
+                <label class="feature-checkbox"><input type="checkbox" value="共用衛浴"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">shower</span>共用衛浴</label>
+                <label class="feature-checkbox"><input type="checkbox" value="浴缸"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">bathtub</span>浴缸</label>
+                <label class="feature-checkbox"><input type="checkbox" value="淋浴設備"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">shower</span>淋浴設備</label>
+                <label class="feature-checkbox"><input type="checkbox" value="免治馬桶"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">wash</span>免治馬桶</label>
+                <label class="feature-checkbox"><input type="checkbox" value="私人湯池"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">hot_tub</span>私人湯池</label>
+                <p style="font-size: 13px; color: #888; margin: 10px 0 10px 0; grid-column: 1 / -1;">🏠 空間與景觀</p>
+                <label class="feature-checkbox"><input type="checkbox" value="私人陽台"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">balcony</span>私人陽台</label>
+                <label class="feature-checkbox"><input type="checkbox" value="客廳空間"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">living</span>客廳空間</label>
+                <label class="feature-checkbox"><input type="checkbox" value="小廚房"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">countertops</span>小廚房</label>
+                <label class="feature-checkbox"><input type="checkbox" value="和室空間"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">floor</span>和室空間</label>
+                <label class="feature-checkbox"><input type="checkbox" value="庭院"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">yard</span>庭院</label>
+                <label class="feature-checkbox"><input type="checkbox" value="山景視野"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">landscape</span>山景視野</label>
+                <label class="feature-checkbox"><input type="checkbox" value="海景視野"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">water</span>海景視野</label>
+                <label class="feature-checkbox"><input type="checkbox" value="庭園景觀"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">park</span>庭園景觀</label>
+                <p style="font-size: 13px; color: #888; margin: 10px 0 10px 0; grid-column: 1 / -1;">📺 電器設備</p>
+                <label class="feature-checkbox"><input type="checkbox" value="免費 WiFi"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">wifi</span>免費 WiFi</label>
+                <label class="feature-checkbox"><input type="checkbox" value="冷暖空調"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">ac_unit</span>冷暖空調</label>
+                <label class="feature-checkbox"><input type="checkbox" value="智慧電視"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">tv</span>智慧電視</label>
+                <label class="feature-checkbox"><input type="checkbox" value="冰箱"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">kitchen</span>冰箱</label>
+                <label class="feature-checkbox"><input type="checkbox" value="咖啡機"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">coffee_maker</span>咖啡機</label>
+                <label class="feature-checkbox"><input type="checkbox" value="電熱水壺"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">water_drop</span>電熱水壺</label>
+                <label class="feature-checkbox"><input type="checkbox" value="吹風機"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">air</span>吹風機</label>
+                <label class="feature-checkbox"><input type="checkbox" value="洗衣機"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">local_laundry_service</span>洗衣機</label>
+                <label class="feature-checkbox"><input type="checkbox" value="微波爐"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">microwave</span>微波爐</label>
+                <p style="font-size: 13px; color: #888; margin: 10px 0 10px 0; grid-column: 1 / -1;">🎁 其他服務</p>
+                <label class="feature-checkbox"><input type="checkbox" value="免費早餐"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">restaurant</span>免費早餐</label>
+                <label class="feature-checkbox"><input type="checkbox" value="免費停車"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">local_parking</span>免費停車</label>
+                <label class="feature-checkbox"><input type="checkbox" value="寵物友善"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">pets</span>寵物友善</label>
+                <label class="feature-checkbox"><input type="checkbox" value="保險箱"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">lock</span>保險箱</label>
+                <label class="feature-checkbox"><input type="checkbox" value="行李寄放"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">luggage</span>行李寄放</label>
+                <label class="feature-checkbox"><input type="checkbox" value="嬰兒床"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">crib</span>嬰兒床</label>
+                <label class="feature-checkbox"><input type="checkbox" value="無障礙設施"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">accessible</span>無障礙設施</label>
+                <label class="feature-checkbox"><input type="checkbox" value="機場接送"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">airport_shuttle</span>機場接送</label>
+            </div>`;
+
+        // 為每個房型生成卡片
+        container.innerHTML = activeRooms.map(room => {
+            const imgHtml = room.image_url
+                ? `<img src="${escapeHtml(room.image_url)}" alt="${escapeHtml(room.display_name)}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid #eee;">`
+                : `<span style="font-size:36px;">${room.icon || '🏠'}</span>`;
+
+            return `
+            <div class="settings-card" style="margin-bottom: 15px;" data-room-id="${room.id}">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                    ${imgHtml}
+                    <div>
+                        <h4 style="color: #2c3e50; margin: 0 0 4px 0;">${escapeHtml(room.display_name)}</h4>
+                        <p style="margin: 0; color: #888; font-size: 13px;">
+                            平日 NT$ ${(room.price || 0).toLocaleString()}
+                            ${room.holiday_surcharge ? ` ／ 假日 NT$ ${((room.price || 0) + (room.holiday_surcharge || 0)).toLocaleString()}` : ''}
+                            ・最多 ${room.max_occupancy || 0} 人
+                        </p>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>銷售頁標籤</label>
+                    <input type="text" id="landingRoomBadge_${room.id}" placeholder="例如：熱門、超值、頂級" value="">
+                </div>
+                <div class="form-group">
+                    <label>展示設施（勾選項目）</label>
+                    ${checkboxGridHTML(room.id)}
+                </div>
+            </div>`;
+        }).join('');
+
+        // 還原已儲存的設施和標籤
+        activeRooms.forEach(room => {
+            const featuresKey = `landing_roomtype_${room.id}_features`;
+            const badgeKey = `landing_roomtype_${room.id}_badge`;
+            // 還原設施
+            const hiddenInput = document.getElementById(`landingRoomFeatures_${room.id}`);
+            if (hiddenInput && landingData[featuresKey]) {
+                hiddenInput.value = landingData[featuresKey];
+                restoreFeatureCheckboxes(`landingRoomFeatures_${room.id}`);
+            }
+            // 還原標籤
+            const badgeInput = document.getElementById(`landingRoomBadge_${room.id}`);
+            if (badgeInput && landingData[badgeKey]) {
+                badgeInput.value = landingData[badgeKey];
+            }
+        });
+
+        console.log(`✅ 已載入 ${activeRooms.length} 個房型的展示設定`);
+    } catch (error) {
+        console.error('❌ 載入房型展示錯誤:', error);
+        container.innerHTML = `<p style="color: #e74c3c; text-align: center;">載入房型資料失敗：${error.message}</p>`;
+    }
+}
+
+// 儲存房型展示設定（設施 + 標籤）
+async function saveLandingRoomFeatures() {
+    const container = document.getElementById('landingRoomsContainer');
+    if (!container) return;
+
+    const cards = container.querySelectorAll('[data-room-id]');
+    if (cards.length === 0) {
+        showError('沒有房型資料可儲存');
+        return;
+    }
+
+    try {
+        const requests = [];
+        cards.forEach(card => {
+            const roomId = card.getAttribute('data-room-id');
+            // 設施
+            const featuresInput = document.getElementById(`landingRoomFeatures_${roomId}`);
+            const featuresValue = featuresInput ? featuresInput.value : '';
+            requests.push(
+                adminFetch(`/api/admin/settings/landing_roomtype_${roomId}_features`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ value: featuresValue, description: `房型ID${roomId}的銷售頁展示設施` })
+                })
+            );
+            // 標籤
+            const badgeInput = document.getElementById(`landingRoomBadge_${roomId}`);
+            const badgeValue = badgeInput ? badgeInput.value : '';
+            requests.push(
+                adminFetch(`/api/admin/settings/landing_roomtype_${roomId}_badge`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ value: badgeValue, description: `房型ID${roomId}的銷售頁標籤` })
+                })
+            );
+        });
+
+        const responses = await Promise.all(requests);
+        const results = await Promise.all(responses.map(r => r.json()));
+        const allSuccess = results.every(r => r.success);
+
+        if (allSuccess) {
+            showSuccess('房型展示設定已儲存');
+        } else {
+            showError('部分設定儲存失敗，請重試');
+        }
+    } catch (error) {
+        console.error('❌ 儲存房型展示錯誤:', error);
+        showError('儲存失敗：' + error.message);
     }
 }
 
@@ -9727,8 +9890,9 @@ async function saveLandingSettings(tab) {
             keysToSave = Object.keys(landingFieldMap).filter(k => k.startsWith('landing_feature_'));
             break;
         case 'rooms':
-            keysToSave = Object.keys(landingFieldMap).filter(k => k.startsWith('landing_room_'));
-            break;
+            // 房型展示已改由 saveLandingRoomFeatures() 獨立處理
+            saveLandingRoomFeatures();
+            return;
         case 'reviews':
             keysToSave = Object.keys(landingFieldMap).filter(k =>
                 k.startsWith('landing_review_') || k === 'landing_review_count' || k === 'landing_review_score'
