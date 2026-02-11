@@ -104,6 +104,23 @@ const PORT = process.env.PORT || 3000;
 // Railway 使用代理，需要信任代理以正確處理 HTTPS 和 Cookie
 app.set('trust proxy', 1);
 
+// 健康檢查端點（放在 session middleware 之前，避免被 session 錯誤影響）
+app.get('/health', async (req, res) => {
+    const health = { status: 'ok', timestamp: new Date().toISOString() };
+    try {
+        const roomTypes = await db.getAllRoomTypesAdmin();
+        health.database = 'connected';
+        health.roomTypeCount = roomTypes ? roomTypes.length : 0;
+        if (roomTypes && roomTypes.length > 0) {
+            health.columns = Object.keys(roomTypes[0]);
+        }
+    } catch (dbErr) {
+        health.database = 'error';
+        health.dbError = dbErr.message;
+    }
+    res.status(200).json(health);
+});
+
 // Session 設定
 // 檢測是否在 Railway 環境（Railway 使用 HTTPS）
 // Railway 通常會有 PORT 環境變數，且使用 HTTPS
@@ -2272,32 +2289,7 @@ async function logAction(req, action, resourceType = null, resourceId = null, de
     }
 }
 
-// 健康檢查端點（供 Railway 使用）
-app.get('/health', async (req, res) => {
-    try {
-        // 基本檢查
-        const health = { status: 'ok', timestamp: new Date().toISOString() };
-        
-        // 資料庫連線檢查
-        try {
-            const roomTypes = await db.getAllRoomTypesAdmin();
-            health.database = 'connected';
-            health.roomTypeCount = roomTypes ? roomTypes.length : 0;
-            // 檢查 original_price 欄位是否存在
-            if (roomTypes && roomTypes.length > 0) {
-                health.hasOriginalPrice = 'original_price' in roomTypes[0];
-                health.sampleColumns = Object.keys(roomTypes[0]);
-            }
-        } catch (dbErr) {
-            health.database = 'error';
-            health.dbError = dbErr.message;
-        }
-        
-        res.status(200).json(health);
-    } catch (err) {
-        res.status(200).json({ status: 'ok', timestamp: new Date().toISOString(), error: err.message });
-    }
-});
+// 健康檢查端點已移至 session middleware 之前（第 108 行附近）
 
 // 首頁
 app.get('/', (req, res) => {
