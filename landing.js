@@ -39,6 +39,16 @@ async function loadLandingConfig() {
     }
 }
 
+// 將 HEX 顏色轉為 RGB 數值
+function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : { r: 26, g: 58, b: 74 };
+}
+
 // 套用配色主題到 CSS 變數
 function applyTheme(themeId) {
     const theme = landingThemes[themeId] || landingThemes['default'];
@@ -51,6 +61,19 @@ function applyTheme(themeId) {
     root.style.setProperty('--bg-dark', theme.primary);
     root.style.setProperty('--text-dark', theme.text_dark);
     root.style.setProperty('--text-light', theme.text_light);
+
+    // 設定帶透明度的顏色變數（導航列、Hero overlay、陰影等用）
+    const pRgb = hexToRgb(theme.primary);
+    const aRgb = hexToRgb(theme.accent);
+    root.style.setProperty('--primary-alpha-95', `rgba(${pRgb.r}, ${pRgb.g}, ${pRgb.b}, 0.95)`);
+    root.style.setProperty('--primary-alpha-85', `rgba(${pRgb.r}, ${pRgb.g}, ${pRgb.b}, 0.85)`);
+    root.style.setProperty('--primary-alpha-75', `rgba(${pRgb.r}, ${pRgb.g}, ${pRgb.b}, 0.75)`);
+    root.style.setProperty('--primary-alpha-60', `rgba(${pRgb.r}, ${pRgb.g}, ${pRgb.b}, 0.6)`);
+    root.style.setProperty('--primary-alpha-08', `rgba(${pRgb.r}, ${pRgb.g}, ${pRgb.b}, 0.08)`);
+    root.style.setProperty('--accent-shadow', `rgba(${aRgb.r}, ${aRgb.g}, ${aRgb.b}, 0.4)`);
+    root.style.setProperty('--accent-shadow-lg', `rgba(${aRgb.r}, ${aRgb.g}, ${aRgb.b}, 0.5)`);
+    root.style.setProperty('--accent-alpha-10', `rgba(${aRgb.r}, ${aRgb.g}, ${aRgb.b}, 0.1)`);
+
     console.log(`🎨 已套用配色主題: ${themeId}`);
 }
 

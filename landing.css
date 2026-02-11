@@ -63,7 +63,7 @@ body {
 }
 
 .navbar.scrolled {
-    background: rgba(26, 58, 74, 0.95);
+    background: var(--primary-alpha-95, rgba(26, 58, 74, 0.95));
     backdrop-filter: blur(10px);
     padding: 12px 0;
     box-shadow: var(--shadow-md);
@@ -135,7 +135,7 @@ body {
 .nav-cta:hover {
     background: var(--accent-hover);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(201, 169, 98, 0.4);
+    box-shadow: 0 4px 12px var(--accent-shadow, rgba(201, 169, 98, 0.4));
 }
 
 .nav-toggle {
@@ -174,9 +174,9 @@ body {
     inset: 0;
     background: linear-gradient(
         135deg,
-        rgba(26, 58, 74, 0.85) 0%,
-        rgba(26, 58, 74, 0.6) 50%,
-        rgba(26, 58, 74, 0.75) 100%
+        var(--primary-alpha-85, rgba(26, 58, 74, 0.85)) 0%,
+        var(--primary-alpha-60, rgba(26, 58, 74, 0.6)) 50%,
+        var(--primary-alpha-75, rgba(26, 58, 74, 0.75)) 100%
     );
 }
 
@@ -273,13 +273,13 @@ body {
     font-size: 18px;
     font-weight: 700;
     transition: var(--transition);
-    box-shadow: 0 4px 20px rgba(201, 169, 98, 0.4);
+    box-shadow: 0 4px 20px var(--accent-shadow, rgba(201, 169, 98, 0.4));
 }
 
 .hero-cta:hover {
     background: var(--accent-hover);
     transform: translateY(-3px);
-    box-shadow: 0 8px 30px rgba(201, 169, 98, 0.5);
+    box-shadow: 0 8px 30px var(--accent-shadow-lg, rgba(201, 169, 98, 0.5));
 }
 
 .hero-cta .material-symbols-outlined {
@@ -754,7 +754,7 @@ section {
 }
 
 .review-tags span {
-    background: rgba(26, 58, 74, 0.08);
+    background: var(--primary-alpha-08, rgba(26, 58, 74, 0.08));
     color: var(--primary);
     padding: 4px 12px;
     border-radius: 100px;
@@ -885,7 +885,7 @@ section {
     left: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle, rgba(201, 169, 98, 0.1) 0%, transparent 60%);
+    background: radial-gradient(circle, var(--accent-alpha-10, rgba(201, 169, 98, 0.1)) 0%, transparent 60%);
     animation: rotate 20s linear infinite;
 }
 
@@ -924,13 +924,13 @@ section {
     font-size: 18px;
     font-weight: 700;
     transition: var(--transition);
-    box-shadow: 0 4px 20px rgba(201, 169, 98, 0.4);
+    box-shadow: 0 4px 20px var(--accent-shadow, rgba(201, 169, 98, 0.4));
 }
 
 .cta-button:hover {
     background: var(--accent-hover);
     transform: translateY(-3px);
-    box-shadow: 0 8px 30px rgba(201, 169, 98, 0.5);
+    box-shadow: 0 8px 30px var(--accent-shadow-lg, rgba(201, 169, 98, 0.5));
 }
 
 .cta-guarantee {
@@ -1050,7 +1050,7 @@ section {
 
 .floating-cta-btn:hover {
     transform: scale(1.05);
-    box-shadow: 0 8px 30px rgba(201, 169, 98, 0.5);
+    box-shadow: 0 8px 30px var(--accent-shadow-lg, rgba(201, 169, 98, 0.5));
 }
 
 /* ===== 響應式設計 ===== */
