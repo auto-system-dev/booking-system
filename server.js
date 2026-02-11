@@ -4522,6 +4522,13 @@ app.put('/api/admin/room-types/:id', requireAuth, checkPermission('room_types.ed
         const { id } = req.params;
         const roomData = req.body;
         
+        console.log(`📝 更新房型 ID=${id}, 資料:`, JSON.stringify({
+            display_name: roomData.display_name,
+            price: roomData.price,
+            original_price: roomData.original_price,
+            holiday_surcharge: roomData.holiday_surcharge
+        }));
+        
         const result = await db.updateRoomType(id, roomData);
         
         if (result > 0) {
@@ -4536,7 +4543,8 @@ app.put('/api/admin/room-types/:id', requireAuth, checkPermission('room_types.ed
             });
         }
     } catch (error) {
-        console.error('更新房型錯誤:', error);
+        console.error('❌ 更新房型錯誤:', error.message);
+        console.error('❌ 錯誤堆疊:', error.stack);
         res.status(500).json({
             success: false,
             message: '更新房型失敗: ' + error.message

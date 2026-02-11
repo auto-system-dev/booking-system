@@ -292,6 +292,7 @@ async function initPostgreSQL() {
                     name VARCHAR(255) UNIQUE NOT NULL,
                     display_name VARCHAR(255) NOT NULL,
                     price INTEGER NOT NULL,
+                    original_price INTEGER DEFAULT 0,
                     holiday_surcharge INTEGER DEFAULT 0,
                     max_occupancy INTEGER DEFAULT 0,
                     extra_beds INTEGER DEFAULT 0,
@@ -305,8 +306,7 @@ async function initPostgreSQL() {
             `);
             console.log('✅ 房型設定表已準備就緒');
             
-            // 檢查並添加欄位（如果不存在）- holiday_surcharge, max_occupancy, extra_beds 已在 CREATE TABLE 中定義
-            // 但為了兼容舊資料表，仍需要檢查並添加（如果不存在）
+            // 檢查並添加欄位（如果不存在）- 使用 ADD COLUMN IF NOT EXISTS（PostgreSQL 9.6+）
             const roomTypeColumnsToAdd = [
                 { name: 'holiday_surcharge', type: 'INTEGER', default: '0' },
                 { name: 'max_occupancy', type: 'INTEGER', default: '0' },
@@ -317,33 +317,26 @@ async function initPostgreSQL() {
             
             for (const col of roomTypeColumnsToAdd) {
                 try {
-                    // 先檢查欄位是否存在
-                    const checkResult = await query(`
-                        SELECT column_name 
-                        FROM information_schema.columns 
-                        WHERE table_name = 'room_types' 
-                        AND column_name = $1
-                    `, [col.name]);
-                    
-                    if (!checkResult.rows || checkResult.rows.length === 0) {
-                        // 欄位不存在，添加它
-                        await query(`ALTER TABLE room_types ADD COLUMN ${col.name} ${col.type} DEFAULT ${col.default}`);
-                        console.log(`✅ 已添加 ${col.name} 欄位`);
-                    }
-                    // 如果欄位已存在，靜默跳過（不顯示訊息）
-                } catch (err) {
-                    // 如果檢查失敗，嘗試直接添加（兼容舊邏輯）
-                    try {
-                        await query(`ALTER TABLE room_types ADD COLUMN ${col.name} ${col.type} DEFAULT ${col.default}`);
-                        console.log(`✅ 已添加 ${col.name} 欄位`);
-                    } catch (addErr) {
-                        // 如果錯誤訊息包含 "already exists"，靜默處理
-                        if (!addErr.message || (!addErr.message.includes('already exists') && !addErr.message.includes('duplicate column'))) {
-                            console.warn(`⚠️  添加 ${col.name} 欄位時發生錯誤:`, addErr.message);
+                    await query(`ALTER TABLE room_types ADD COLUMN IF NOT EXISTS ${col.name} ${col.type} DEFAULT ${col.default}`);
+                } catch (addErr) {
+                    // 如果 ADD COLUMN IF NOT EXISTS 不支援，使用舊方式
+                    if (addErr.message && !addErr.message.includes('already exists') && !addErr.message.includes('duplicate column')) {
+                        try {
+                            const checkResult = await query(`
+                                SELECT column_name FROM information_schema.columns 
+                                WHERE table_name = 'room_types' AND column_name = $1
+                            `, [col.name]);
+                            if (!checkResult.rows || checkResult.rows.length === 0) {
+                                await query(`ALTER TABLE room_types ADD COLUMN ${col.name} ${col.type} DEFAULT ${col.default}`);
+                                console.log(`✅ 已添加 room_types.${col.name} 欄位`);
+                            }
+                        } catch (innerErr) {
+                            console.warn(`⚠️  添加 room_types.${col.name} 欄位時發生錯誤:`, innerErr.message);
                         }
                     }
                 }
             }
+            console.log('✅ room_types 欄位遷移完成');
             
             // 建立假日日期表
             await query(`
