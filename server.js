@@ -2195,28 +2195,29 @@ function requireAuth(req, res, next) {
 // 權限檢查中間件
 function checkPermission(permissionCode) {
     return async (req, res, next) => {
-        if (!req.session || !req.session.admin) {
-            return res.status(401).json({ success: false, message: '未登入' });
-        }
-        
-        const adminId = req.session.admin.id;
-        const permissions = req.session.admin.permissions || [];
-        
-        // 先從 session 中檢查權限（效能優化）
-        if (permissions.includes(permissionCode)) {
-            return next();
-        }
-        
-        // 如果 session 中沒有權限列表，從資料庫檢查
-        const hasPermission = await db.hasPermission(adminId, permissionCode);
-        
-        if (hasPermission) {
-            // 更新 session 中的權限列表
-            if (!req.session.admin.permissions) {
-                req.session.admin.permissions = await db.getAdminPermissions(adminId);
+        try {
+            if (!req.session || !req.session.admin) {
+                return res.status(401).json({ success: false, message: '未登入' });
             }
-            return next();
-        }
+            
+            const adminId = req.session.admin.id;
+            const permissions = req.session.admin.permissions || [];
+            
+            // 先從 session 中檢查權限（效能優化）
+            if (permissions.includes(permissionCode)) {
+                return next();
+            }
+            
+            // 如果 session 中沒有權限列表，從資料庫檢查
+            const hasPermission = await db.hasPermission(adminId, permissionCode);
+            
+            if (hasPermission) {
+                // 更新 session 中的權限列表
+                if (!req.session.admin.permissions) {
+                    req.session.admin.permissions = await db.getAdminPermissions(adminId);
+                }
+                return next();
+            }
         
         // 記錄權限檢查失敗日誌
         await db.logAdminAction({
@@ -2234,6 +2235,13 @@ function checkPermission(permissionCode) {
             success: false, 
             message: '您沒有權限執行此操作' 
         });
+        } catch (error) {
+            console.error('❌ checkPermission 中間件錯誤:', error.message);
+            return res.status(500).json({
+                success: false,
+                message: '權限檢查失敗: ' + error.message
+            });
+        }
     };
 }
 
@@ -2265,8 +2273,30 @@ async function logAction(req, action, resourceType = null, resourceId = null, de
 }
 
 // 健康檢查端點（供 Railway 使用）
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+    try {
+        // 基本檢查
+        const health = { status: 'ok', timestamp: new Date().toISOString() };
+        
+        // 資料庫連線檢查
+        try {
+            const roomTypes = await db.getAllRoomTypesAdmin();
+            health.database = 'connected';
+            health.roomTypeCount = roomTypes ? roomTypes.length : 0;
+            // 檢查 original_price 欄位是否存在
+            if (roomTypes && roomTypes.length > 0) {
+                health.hasOriginalPrice = 'original_price' in roomTypes[0];
+                health.sampleColumns = Object.keys(roomTypes[0]);
+            }
+        } catch (dbErr) {
+            health.database = 'error';
+            health.dbError = dbErr.message;
+        }
+        
+        res.status(200).json(health);
+    } catch (err) {
+        res.status(200).json({ status: 'ok', timestamp: new Date().toISOString(), error: err.message });
+    }
 });
 
 // 首頁
