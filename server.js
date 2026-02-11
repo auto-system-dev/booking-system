@@ -1,12 +1,12 @@
-// 全域錯誤處理（確保崩潰原因能被記錄）
+// 全域錯誤處理（記錄錯誤但不立即退出，避免反覆崩潰）
 process.on('uncaughtException', (err) => {
     console.error('❌ 未捕獲的異常:', err.message);
     console.error(err.stack);
-    process.exit(1);
+    // 不立即退出，讓 Railway 保持運行
 });
 process.on('unhandledRejection', (reason, promise) => {
     console.error('❌ 未處理的 Promise 拒絕:', reason);
-    process.exit(1);
+    // 不立即退出，讓 Railway 保持運行
 });
 
 // 載入環境變數（從 .env 檔案）
@@ -10812,19 +10812,6 @@ app.use(errorHandler);
 // 啟動應用程式
 startServer().catch((error) => {
     console.error('❌ 應用程式啟動失敗:', error);
-    console.error('錯誤堆疊:', error.stack);
-    process.exit(1);
-});
-
-// 處理未捕獲的錯誤
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('❌ 未處理的 Promise 拒絕:', reason);
-    console.error('Promise:', promise);
-    console.error('錯誤堆疊:', reason?.stack);
-});
-
-process.on('uncaughtException', (error) => {
-    console.error('❌ 未捕獲的異常:', error);
     console.error('錯誤堆疊:', error.stack);
     process.exit(1);
 });
