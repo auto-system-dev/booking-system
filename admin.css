@@ -1864,3 +1864,72 @@ code {
     font-weight: 500;
 }
 
+/* ===== 色系主題卡片 ===== */
+.theme-card {
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    background: #fff;
+}
+.theme-card:hover {
+    border-color: #9b59b6;
+    box-shadow: 0 4px 16px rgba(155, 89, 182, 0.15);
+    transform: translateY(-2px);
+}
+.theme-card.selected {
+    border-color: #9b59b6;
+    box-shadow: 0 4px 16px rgba(155, 89, 182, 0.25);
+}
+.theme-preview {
+    overflow: hidden;
+}
+.theme-preview-header {
+    padding: 14px 16px;
+    text-align: center;
+    font-size: 15px;
+}
+.theme-preview-body {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    justify-content: center;
+}
+.theme-swatch {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.theme-info {
+    padding: 12px 16px;
+    border-top: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.theme-info strong {
+    font-size: 15px;
+    color: #2c3e50;
+}
+.theme-info small {
+    color: #888;
+    font-size: 13px;
+}
+.theme-check {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: none;
+}
+.theme-check .material-symbols-outlined {
+    font-size: 28px;
+    color: #9b59b6;
+    font-variation-settings: 'FILL' 1;
+}
+.theme-card.selected .theme-check {
+    display: block;
+}
+

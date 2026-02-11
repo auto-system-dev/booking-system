@@ -7,6 +7,18 @@
 let landingConfig = {};
 let countdownDays = 7;
 
+// 預設配色主題定義
+const landingThemes = {
+    default: { primary: '#1a3a4a', primary_light: '#2d5a6e', accent: '#c9a962', accent_hover: '#b8954d', bg_cream: '#f8f6f3', text_dark: '#2d3436', text_light: '#636e72' },
+    forest:  { primary: '#2d5016', primary_light: '#4a7a2e', accent: '#d4a853', accent_hover: '#c09640', bg_cream: '#f5f7f2', text_dark: '#2d3426', text_light: '#5a6b52' },
+    mountain:{ primary: '#3d4f5f', primary_light: '#5a7186', accent: '#e8b960', accent_hover: '#d4a64d', bg_cream: '#f4f5f7', text_dark: '#2c3440', text_light: '#6b7a88' },
+    sakura:  { primary: '#8b4557', primary_light: '#a8637a', accent: '#f0c987', accent_hover: '#e0b870', bg_cream: '#fdf6f0', text_dark: '#3d2832', text_light: '#8a6a72' },
+    sunset:  { primary: '#5a3e2b', primary_light: '#7d5a3f', accent: '#e8a54b', accent_hover: '#d49438', bg_cream: '#faf5ef', text_dark: '#3a2a1e', text_light: '#8a7060' },
+    ocean:   { primary: '#1e5799', primary_light: '#3a7bc8', accent: '#ffd700', accent_hover: '#e6c200', bg_cream: '#f0f5fa', text_dark: '#1a2a3a', text_light: '#5a6a7a' },
+    autumn:  { primary: '#5c4033', primary_light: '#7d5e50', accent: '#c9a962', accent_hover: '#b8954d', bg_cream: '#f9f4ef', text_dark: '#3a2e26', text_light: '#7a6a5a' },
+    minimal: { primary: '#1a1a2e', primary_light: '#33334d', accent: '#e2b259', accent_hover: '#d0a048', bg_cream: '#f5f5f5', text_dark: '#1a1a1a', text_light: '#666666' }
+};
+
 // ===== 從 API 載入設定並套用至頁面 =====
 async function loadLandingConfig() {
     try {
@@ -27,8 +39,28 @@ async function loadLandingConfig() {
     }
 }
 
+// 套用配色主題到 CSS 變數
+function applyTheme(themeId) {
+    const theme = landingThemes[themeId] || landingThemes['default'];
+    const root = document.documentElement;
+    root.style.setProperty('--primary', theme.primary);
+    root.style.setProperty('--primary-light', theme.primary_light);
+    root.style.setProperty('--accent', theme.accent);
+    root.style.setProperty('--accent-hover', theme.accent_hover);
+    root.style.setProperty('--bg-cream', theme.bg_cream);
+    root.style.setProperty('--bg-dark', theme.primary);
+    root.style.setProperty('--text-dark', theme.text_dark);
+    root.style.setProperty('--text-light', theme.text_light);
+    console.log(`🎨 已套用配色主題: ${themeId}`);
+}
+
 // 將設定套用至 HTML 元素
 function applyConfig(cfg) {
+    // ===== 配色主題 =====
+    if (cfg.landing_theme) {
+        applyTheme(cfg.landing_theme);
+    }
+
     // ===== 基本資訊 =====
     const name = cfg.landing_name || '';
     if (name) {

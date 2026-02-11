@@ -9685,6 +9685,8 @@ async function loadLandingSettings() {
             }
             // 載入房型展示（從房型管理 + settings 合併）
             loadLandingRoomTypes(data);
+            // 還原色系主題
+            restoreLandingTheme(data['landing_theme']);
             console.log('✅ 銷售頁設定已載入');
         } else {
             console.warn('⚠️ 載入銷售頁設定失敗:', result.message);
@@ -10080,6 +10082,133 @@ function removeHeroImage() {
     document.getElementById('heroImageInput').value = '';
 }
 
+// ===== 色系主題管理 =====
+
+// 預設配色主題定義
+const landingThemes = {
+    default: {
+        name: '深海沉靜',
+        primary: '#1a3a4a',
+        primary_light: '#2d5a6e',
+        accent: '#c9a962',
+        accent_hover: '#b8954d',
+        bg_cream: '#f8f6f3',
+        text_dark: '#2d3436',
+        text_light: '#636e72'
+    },
+    forest: {
+        name: '森林綠意',
+        primary: '#2d5016',
+        primary_light: '#4a7a2e',
+        accent: '#d4a853',
+        accent_hover: '#c09640',
+        bg_cream: '#f5f7f2',
+        text_dark: '#2d3426',
+        text_light: '#5a6b52'
+    },
+    mountain: {
+        name: '山嵐灰調',
+        primary: '#3d4f5f',
+        primary_light: '#5a7186',
+        accent: '#e8b960',
+        accent_hover: '#d4a64d',
+        bg_cream: '#f4f5f7',
+        text_dark: '#2c3440',
+        text_light: '#6b7a88'
+    },
+    sakura: {
+        name: '櫻花暖粉',
+        primary: '#8b4557',
+        primary_light: '#a8637a',
+        accent: '#f0c987',
+        accent_hover: '#e0b870',
+        bg_cream: '#fdf6f0',
+        text_dark: '#3d2832',
+        text_light: '#8a6a72'
+    },
+    sunset: {
+        name: '夕陽暖橘',
+        primary: '#5a3e2b',
+        primary_light: '#7d5a3f',
+        accent: '#e8a54b',
+        accent_hover: '#d49438',
+        bg_cream: '#faf5ef',
+        text_dark: '#3a2a1e',
+        text_light: '#8a7060'
+    },
+    ocean: {
+        name: '海洋藍調',
+        primary: '#1e5799',
+        primary_light: '#3a7bc8',
+        accent: '#ffd700',
+        accent_hover: '#e6c200',
+        bg_cream: '#f0f5fa',
+        text_dark: '#1a2a3a',
+        text_light: '#5a6a7a'
+    },
+    autumn: {
+        name: '秋日暖棕',
+        primary: '#5c4033',
+        primary_light: '#7d5e50',
+        accent: '#c9a962',
+        accent_hover: '#b8954d',
+        bg_cream: '#f9f4ef',
+        text_dark: '#3a2e26',
+        text_light: '#7a6a5a'
+    },
+    minimal: {
+        name: '極簡黑白',
+        primary: '#1a1a2e',
+        primary_light: '#33334d',
+        accent: '#e2b259',
+        accent_hover: '#d0a048',
+        bg_cream: '#f5f5f5',
+        text_dark: '#1a1a1a',
+        text_light: '#666666'
+    }
+};
+
+// 選擇主題（UI 更新）
+function selectTheme(themeId) {
+    // 移除所有 selected
+    document.querySelectorAll('#themeCardsGrid .theme-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    // 設定選中
+    const selectedCard = document.querySelector(`#themeCardsGrid .theme-card[data-theme="${themeId}"]`);
+    if (selectedCard) selectedCard.classList.add('selected');
+    // 更新 hidden input
+    const hiddenInput = document.getElementById('landingThemeId');
+    if (hiddenInput) hiddenInput.value = themeId;
+}
+
+// 儲存主題設定
+async function saveLandingTheme() {
+    const themeId = document.getElementById('landingThemeId')?.value || 'default';
+    try {
+        const response = await adminFetch('/api/admin/settings/landing_theme', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value: themeId, description: '銷售頁-配色主題' })
+        });
+        const result = await response.json();
+        if (result.success) {
+            showSuccess(`配色主題「${landingThemes[themeId]?.name || themeId}」已儲存`);
+        } else {
+            showError('儲存色系設定失敗：' + (result.message || '請稍後再試'));
+        }
+    } catch (error) {
+        console.error('儲存色系設定錯誤:', error);
+        showError('儲存時發生錯誤：' + error.message);
+    }
+}
+
+// 載入已儲存的主題（在 loadLandingSettings 中呼叫）
+function restoreLandingTheme(themeId) {
+    if (!themeId || !landingThemes[themeId]) themeId = 'default';
+    selectTheme(themeId);
+}
+
 window.switchLandingTab = switchLandingTab;
 window.loadLandingSettings = loadLandingSettings;
 window.saveLandingSettings = saveLandingSettings;
@@ -10088,3 +10217,5 @@ window.syncFeatureCheckboxes = syncFeatureCheckboxes;
 window.restoreFeatureCheckboxes = restoreFeatureCheckboxes;
 window.handleHeroImageUpload = handleHeroImageUpload;
 window.removeHeroImage = removeHeroImage;
+window.selectTheme = selectTheme;
+window.saveLandingTheme = saveLandingTheme;

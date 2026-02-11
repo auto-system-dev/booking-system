@@ -1253,6 +1253,10 @@
                         <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">monitoring</span>
                         廣告追蹤
                     </button>
+                    <button class="tab-button" onclick="switchLandingTab('theme')" id="landingTabTheme">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">palette</span>
+                        色系設定
+                    </button>
                 </div>
 
                 <div class="settings-container">
@@ -1660,6 +1664,188 @@
                             <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">save</span>
                             儲存廣告追蹤設定
                         </button>
+                    </div>
+
+                    <!-- 色系設定分頁 -->
+                    <div id="landingTabThemeContent" class="tab-content">
+                        <div style="margin-top: 0;">
+                            <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #9b59b6;">
+                                <span class="material-symbols-outlined" style="font-size: 24px; color: #9b59b6; margin-right: 10px;">palette</span>
+                                <h3 style="margin: 0; color: #2c3e50;">銷售頁配色主題</h3>
+                            </div>
+                            <p style="color: #666; margin-bottom: 20px; font-size: 14px;">選擇一套配色主題，即時套用到銷售頁。選擇後請點擊下方「儲存色系設定」按鈕。</p>
+
+                            <input type="hidden" id="landingThemeId" value="default">
+
+                            <div id="themeCardsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;">
+
+                                <!-- 深海沉靜（預設） -->
+                                <div class="theme-card selected" data-theme="default" onclick="selectTheme('default')">
+                                    <div class="theme-preview">
+                                        <div class="theme-preview-header" style="background: #1a3a4a;">
+                                            <span style="color: #c9a962; font-weight: 600;">🌊 深海沉靜</span>
+                                        </div>
+                                        <div class="theme-preview-body" style="background: #f8f6f3;">
+                                            <div class="theme-swatch" style="background: #1a3a4a;"></div>
+                                            <div class="theme-swatch" style="background: #2d5a6e;"></div>
+                                            <div class="theme-swatch" style="background: #c9a962;"></div>
+                                            <div class="theme-swatch" style="background: #f8f6f3; border: 1px solid #ddd;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="theme-info">
+                                        <strong>深海沉靜</strong>
+                                        <small>沉穩深青 × 典雅金色</small>
+                                    </div>
+                                    <div class="theme-check"><span class="material-symbols-outlined">check_circle</span></div>
+                                </div>
+
+                                <!-- 森林綠意 -->
+                                <div class="theme-card" data-theme="forest" onclick="selectTheme('forest')">
+                                    <div class="theme-preview">
+                                        <div class="theme-preview-header" style="background: #2d5016;">
+                                            <span style="color: #d4a853; font-weight: 600;">🌿 森林綠意</span>
+                                        </div>
+                                        <div class="theme-preview-body" style="background: #f5f7f2;">
+                                            <div class="theme-swatch" style="background: #2d5016;"></div>
+                                            <div class="theme-swatch" style="background: #4a7a2e;"></div>
+                                            <div class="theme-swatch" style="background: #d4a853;"></div>
+                                            <div class="theme-swatch" style="background: #f5f7f2; border: 1px solid #ddd;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="theme-info">
+                                        <strong>森林綠意</strong>
+                                        <small>自然森綠 × 溫暖金黃</small>
+                                    </div>
+                                    <div class="theme-check"><span class="material-symbols-outlined">check_circle</span></div>
+                                </div>
+
+                                <!-- 山嵐灰調 -->
+                                <div class="theme-card" data-theme="mountain" onclick="selectTheme('mountain')">
+                                    <div class="theme-preview">
+                                        <div class="theme-preview-header" style="background: #3d4f5f;">
+                                            <span style="color: #e8b960; font-weight: 600;">🏔️ 山嵐灰調</span>
+                                        </div>
+                                        <div class="theme-preview-body" style="background: #f4f5f7;">
+                                            <div class="theme-swatch" style="background: #3d4f5f;"></div>
+                                            <div class="theme-swatch" style="background: #5a7186;"></div>
+                                            <div class="theme-swatch" style="background: #e8b960;"></div>
+                                            <div class="theme-swatch" style="background: #f4f5f7; border: 1px solid #ddd;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="theme-info">
+                                        <strong>山嵐灰調</strong>
+                                        <small>沉穩灰藍 × 明亮金黃</small>
+                                    </div>
+                                    <div class="theme-check"><span class="material-symbols-outlined">check_circle</span></div>
+                                </div>
+
+                                <!-- 櫻花暖粉 -->
+                                <div class="theme-card" data-theme="sakura" onclick="selectTheme('sakura')">
+                                    <div class="theme-preview">
+                                        <div class="theme-preview-header" style="background: #8b4557;">
+                                            <span style="color: #f0c987; font-weight: 600;">🌸 櫻花暖粉</span>
+                                        </div>
+                                        <div class="theme-preview-body" style="background: #fdf6f0;">
+                                            <div class="theme-swatch" style="background: #8b4557;"></div>
+                                            <div class="theme-swatch" style="background: #a8637a;"></div>
+                                            <div class="theme-swatch" style="background: #f0c987;"></div>
+                                            <div class="theme-swatch" style="background: #fdf6f0; border: 1px solid #ddd;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="theme-info">
+                                        <strong>櫻花暖粉</strong>
+                                        <small>溫暖玫紅 × 柔和金色</small>
+                                    </div>
+                                    <div class="theme-check"><span class="material-symbols-outlined">check_circle</span></div>
+                                </div>
+
+                                <!-- 夕陽暖橘 -->
+                                <div class="theme-card" data-theme="sunset" onclick="selectTheme('sunset')">
+                                    <div class="theme-preview">
+                                        <div class="theme-preview-header" style="background: #5a3e2b;">
+                                            <span style="color: #e8a54b; font-weight: 600;">🌅 夕陽暖橘</span>
+                                        </div>
+                                        <div class="theme-preview-body" style="background: #faf5ef;">
+                                            <div class="theme-swatch" style="background: #5a3e2b;"></div>
+                                            <div class="theme-swatch" style="background: #7d5a3f;"></div>
+                                            <div class="theme-swatch" style="background: #e8a54b;"></div>
+                                            <div class="theme-swatch" style="background: #faf5ef; border: 1px solid #ddd;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="theme-info">
+                                        <strong>夕陽暖橘</strong>
+                                        <small>溫暖深棕 × 活力暖橘</small>
+                                    </div>
+                                    <div class="theme-check"><span class="material-symbols-outlined">check_circle</span></div>
+                                </div>
+
+                                <!-- 海洋藍調 -->
+                                <div class="theme-card" data-theme="ocean" onclick="selectTheme('ocean')">
+                                    <div class="theme-preview">
+                                        <div class="theme-preview-header" style="background: #1e5799;">
+                                            <span style="color: #ffd700; font-weight: 600;">🏖️ 海洋藍調</span>
+                                        </div>
+                                        <div class="theme-preview-body" style="background: #f0f5fa;">
+                                            <div class="theme-swatch" style="background: #1e5799;"></div>
+                                            <div class="theme-swatch" style="background: #3a7bc8;"></div>
+                                            <div class="theme-swatch" style="background: #ffd700;"></div>
+                                            <div class="theme-swatch" style="background: #f0f5fa; border: 1px solid #ddd;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="theme-info">
+                                        <strong>海洋藍調</strong>
+                                        <small>清爽蔚藍 × 明亮金黃</small>
+                                    </div>
+                                    <div class="theme-check"><span class="material-symbols-outlined">check_circle</span></div>
+                                </div>
+
+                                <!-- 秋日暖棕 -->
+                                <div class="theme-card" data-theme="autumn" onclick="selectTheme('autumn')">
+                                    <div class="theme-preview">
+                                        <div class="theme-preview-header" style="background: #5c4033;">
+                                            <span style="color: #c9a962; font-weight: 600;">🍂 秋日暖棕</span>
+                                        </div>
+                                        <div class="theme-preview-body" style="background: #f9f4ef;">
+                                            <div class="theme-swatch" style="background: #5c4033;"></div>
+                                            <div class="theme-swatch" style="background: #7d5e50;"></div>
+                                            <div class="theme-swatch" style="background: #c9a962;"></div>
+                                            <div class="theme-swatch" style="background: #f9f4ef; border: 1px solid #ddd;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="theme-info">
+                                        <strong>秋日暖棕</strong>
+                                        <small>復古深棕 × 典雅金色</small>
+                                    </div>
+                                    <div class="theme-check"><span class="material-symbols-outlined">check_circle</span></div>
+                                </div>
+
+                                <!-- 極簡黑白 -->
+                                <div class="theme-card" data-theme="minimal" onclick="selectTheme('minimal')">
+                                    <div class="theme-preview">
+                                        <div class="theme-preview-header" style="background: #1a1a2e;">
+                                            <span style="color: #e2b259; font-weight: 600;">⬛ 極簡黑白</span>
+                                        </div>
+                                        <div class="theme-preview-body" style="background: #f5f5f5;">
+                                            <div class="theme-swatch" style="background: #1a1a2e;"></div>
+                                            <div class="theme-swatch" style="background: #33334d;"></div>
+                                            <div class="theme-swatch" style="background: #e2b259;"></div>
+                                            <div class="theme-swatch" style="background: #f5f5f5; border: 1px solid #ddd;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="theme-info">
+                                        <strong>極簡黑白</strong>
+                                        <small>現代深黑 × 奢華金色</small>
+                                    </div>
+                                    <div class="theme-check"><span class="material-symbols-outlined">check_circle</span></div>
+                                </div>
+
+                            </div>
+
+                            <button class="btn-save" onclick="saveLandingTheme()" style="margin-top: 25px;">
+                                <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">save</span>
+                                儲存色系設定
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>
