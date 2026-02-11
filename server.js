@@ -4496,10 +4496,11 @@ app.get('/api/admin/room-types', requireAuth, checkPermission('room_types.view')
             data: roomTypes
         });
     } catch (error) {
-        console.error('取得房型列表錯誤:', error);
+        console.error('取得房型列表錯誤:', error.message);
+        console.error('錯誤堆疊:', error.stack);
         res.status(500).json({
             success: false,
-            message: '取得房型列表失敗: ' + error.message
+            message: '取得房型列表失敗: ' + (error.message || '伺服器內部錯誤，請稍後再試')
         });
     }
 });

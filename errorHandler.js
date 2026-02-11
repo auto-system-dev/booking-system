@@ -73,7 +73,8 @@ function getFriendlyMessage(error) {
     
     // 資料庫錯誤
     if (errorMessage.includes('database') || errorMessage.includes('sql') || 
-        errorMessage.includes('connection') || errorMessage.includes('query')) {
+        errorMessage.includes('connection') || errorMessage.includes('query') ||
+        errorMessage.includes('relation') || errorMessage.includes('column')) {
         if (errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
             return ERROR_MESSAGES.duplicate;
         }
@@ -82,6 +83,10 @@ function getFriendlyMessage(error) {
         }
         if (errorMessage.includes('connection') || errorMessage.includes('timeout')) {
             return ERROR_MESSAGES.connection;
+        }
+        // PostgreSQL: relation "table_name" does not exist 或 column 不存在
+        if (errorMessage.includes('does not exist') || errorMessage.includes('do not exist')) {
+            return '資料表或欄位不存在，請確認資料庫已正確初始化（Railway: 檢查 DATABASE_URL 與部署日誌）';
         }
         return ERROR_MESSAGES.database;
     }
