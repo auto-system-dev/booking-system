@@ -3178,7 +3178,7 @@ function renderRoomTypes() {
             <td>${room.display_name}</td>
             <td>${room.max_occupancy ?? 0}</td>
             <td>${room.extra_beds ?? 0}</td>
-            <td>NT$ ${room.price.toLocaleString()}</td>
+            <td>NT$ ${room.price.toLocaleString()}${room.original_price ? `<br><small style="color:#aaa;text-decoration:line-through;">NT$ ${room.original_price.toLocaleString()}</small>` : ''}</td>
             <td>${room.holiday_surcharge ? (room.holiday_surcharge > 0 ? '+' : '') + 'NT$ ' + room.holiday_surcharge.toLocaleString() : 'NT$ 0'}</td>
             <td>
                 <span class="status-badge ${room.is_active === 1 ? 'status-sent' : 'status-unsent'}">
@@ -3247,6 +3247,11 @@ function showRoomTypeModal(room) {
                 <label>平日價格（每晚）</label>
                 <input type="number" name="price" value="${isEdit ? room.price : ''}" min="0" step="1" required>
                 <small>平日（週一至週五）的基礎價格</small>
+            </div>
+            <div class="form-group">
+                <label>原價（每晚）</label>
+                <input type="number" name="original_price" value="${isEdit ? (room.original_price || 0) : 0}" min="0" step="1">
+                <small>銷售頁顯示的原始定價（會以刪除線顯示），設為 0 則不顯示原價</small>
             </div>
             <div class="form-group">
                 <label>假日加價（每晚）</label>
@@ -3396,6 +3401,7 @@ async function saveRoomType(event, id) {
         name: formData.get('name'),
         display_name: formData.get('display_name'),
         price: parseInt(formData.get('price')),
+        original_price: parseInt(formData.get('original_price')) || 0,
         holiday_surcharge: parseInt(formData.get('holiday_surcharge')) || 0,
         max_occupancy: parseInt(formData.get('max_occupancy')) || 0,
         extra_beds: parseInt(formData.get('extra_beds')) || 0,
@@ -9788,6 +9794,7 @@ async function loadLandingRoomTypes(landingData) {
                         <h4 style="color: #2c3e50; margin: 0 0 4px 0;">${escapeHtml(room.display_name)}</h4>
                         <p style="margin: 0; color: #888; font-size: 13px;">
                             平日 NT$ ${(room.price || 0).toLocaleString()}
+                            ${room.original_price ? ` <span style="text-decoration:line-through;color:#bbb;">原價 NT$ ${room.original_price.toLocaleString()}</span>` : ''}
                             ${room.holiday_surcharge ? ` ／ 假日 NT$ ${((room.price || 0) + (room.holiday_surcharge || 0)).toLocaleString()}` : ''}
                             ・最多 ${room.max_occupancy || 0} 人
                         </p>

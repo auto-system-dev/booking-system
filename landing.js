@@ -297,10 +297,11 @@ function renderRoomCards(cfg) {
         const featureItems = buildFeatureHTML(features);
         const badgeClass = badgeClassMap[badge] || '';
         const price = room.price || 0;
+        const originalPrice = room.original_price || 0;
         const holidaySurcharge = room.holiday_surcharge || 0;
         const displayName = room.display_name || room.name || '房型';
 
-        console.log(`🏨 ${displayName} (ID:${room.id}) | 價格: ${price} | 設施: ${features || '(未設定)'}`);
+        console.log(`🏨 ${displayName} (ID:${room.id}) | 價格: ${price} | 原價: ${originalPrice} | 設施: ${features || '(未設定)'}`);
 
         return `
             <div class="room-card" onclick="trackViewContent('${displayName}', ${price})">
@@ -314,7 +315,7 @@ function renderRoomCards(cfg) {
                     <div class="room-price-row">
                         <div class="room-price">
                             <span class="price-current">NT$ ${price.toLocaleString()}</span>
-                            ${holidaySurcharge > 0 ? `<span class="price-old">假日 NT$ ${(price + holidaySurcharge).toLocaleString()}</span>` : ''}
+                            ${originalPrice > 0 ? `<span class="price-old">NT$ ${originalPrice.toLocaleString()}</span>` : ''}
                         </div>
                         <a href="index.html" class="room-book-btn" onclick="event.stopPropagation(); trackBookingClick();">預訂</a>
                     </div>
