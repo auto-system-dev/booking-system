@@ -1,3 +1,6 @@
+// Railway 啟動日誌：確保最早輸出，方便排查 Deploy Logs 空白問題
+console.log('🔄 [Railway] Node.js 進程已啟動，載入模組中...');
+
 // 全域錯誤處理（記錄錯誤但不立即退出，避免反覆崩潰）
 process.on('uncaughtException', (err) => {
     console.error('❌ 未捕獲的異常:', err.message);
@@ -1201,31 +1204,80 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
         
         // 計算折扣金額和折後總額（在發送郵件之前）
         let discountAmount = 0;
+        let earlyBirdDiscountAmount = 0;
+        let earlyBirdRule = null;
         let discountedTotal = totalAmount;
+        
+        // 1. 先計算早鳥優惠折扣（自動套用）
+        try {
+            const earlyBirdResult = await db.calculateEarlyBirdDiscount(checkInDate, roomType, totalAmount);
+            if (earlyBirdResult.applicable) {
+                earlyBirdDiscountAmount = earlyBirdResult.discount_amount;
+                earlyBirdRule = earlyBirdResult.rule;
+                console.log(`🐦 早鳥優惠已套用: ${earlyBirdRule.name}, 折扣=${earlyBirdDiscountAmount}`);
+            }
+        } catch (earlyBirdError) {
+            console.warn('⚠️  計算早鳥優惠失敗:', earlyBirdError.message);
+        }
+        
+        // 2. 計算優惠代碼折扣
+        let promoDiscountAmount = 0;
         if (promoCode) {
             try {
                 const promoCodeData = await db.getPromoCodeByCode(promoCode);
                 if (promoCodeData) {
-                    // 計算折扣金額（應該與前端計算的一致）
-                    if (promoCodeData.discount_type === 'fixed') {
-                        discountAmount = promoCodeData.discount_value;
-                    } else if (promoCodeData.discount_type === 'percent') {
-                        discountAmount = totalAmount * (promoCodeData.discount_value / 100);
-                        if (promoCodeData.max_discount && discountAmount > promoCodeData.max_discount) {
-                            discountAmount = promoCodeData.max_discount;
+                    // 檢查是否可以與早鳥優惠疊加
+                    const canCombine = promoCodeData.can_combine_with_early_bird === 1;
+                    
+                    if (earlyBirdDiscountAmount > 0 && !canCombine) {
+                        // 不能疊加時，取較大的折扣
+                        let promoCalc = 0;
+                        if (promoCodeData.discount_type === 'fixed') {
+                            promoCalc = promoCodeData.discount_value;
+                        } else if (promoCodeData.discount_type === 'percent') {
+                            promoCalc = totalAmount * (promoCodeData.discount_value / 100);
+                            if (promoCodeData.max_discount && promoCalc > promoCodeData.max_discount) {
+                                promoCalc = promoCodeData.max_discount;
+                            }
+                        }
+                        
+                        if (promoCalc > earlyBirdDiscountAmount) {
+                            // 優惠代碼折扣更大，使用優惠代碼
+                            promoDiscountAmount = promoCalc;
+                            earlyBirdDiscountAmount = 0;
+                            earlyBirdRule = null;
+                            console.log('💰 優惠代碼折扣更大，使用優惠代碼');
+                        } else {
+                            console.log('🐦 早鳥優惠折扣更大，保留早鳥優惠');
+                        }
+                    } else {
+                        // 可以疊加或沒有早鳥優惠
+                        if (promoCodeData.discount_type === 'fixed') {
+                            promoDiscountAmount = promoCodeData.discount_value;
+                        } else if (promoCodeData.discount_type === 'percent') {
+                            promoDiscountAmount = totalAmount * (promoCodeData.discount_value / 100);
+                            if (promoCodeData.max_discount && promoDiscountAmount > promoCodeData.max_discount) {
+                                promoDiscountAmount = promoCodeData.max_discount;
+                            }
                         }
                     }
-                    discountedTotal = Math.max(0, totalAmount - discountAmount);
                 }
             } catch (promoError) {
-                console.warn('⚠️  計算折扣金額失敗:', promoError.message);
+                console.warn('⚠️  計算優惠代碼折扣失敗:', promoError.message);
             }
         }
+        
+        // 3. 合計折扣
+        discountAmount = Math.round(earlyBirdDiscountAmount + promoDiscountAmount);
+        discountedTotal = Math.max(0, totalAmount - discountAmount);
         
         // 將折扣資訊加入到 bookingData（用於郵件模板）
         bookingData.discountAmount = discountAmount;
         bookingData.discountedTotal = discountedTotal;
         bookingData.originalAmount = totalAmount; // 原始總金額（用於計算折後總額）
+        bookingData.earlyBirdDiscount = earlyBirdDiscountAmount;
+        bookingData.earlyBirdRule = earlyBirdRule;
+        bookingData.promoDiscount = promoDiscountAmount;
         
         // 發送通知郵件給管理員（所有付款方式都需要）
         // 優先使用資料庫設定，其次使用環境變數，最後使用預設值
@@ -3538,6 +3590,7 @@ app.post('/api/promo-codes/validate', publicLimiter, async (req, res) => {
                     discount_amount: validation.discount_amount,
                     original_amount: validation.original_amount,
                     final_amount: validation.final_amount,
+                    can_combine_with_early_bird: validation.promo_code.can_combine_with_early_bird || 0,
                     message: validation.message
                 }
             });
@@ -3746,6 +3799,170 @@ app.delete('/api/admin/promo-codes/:id', requireAuth, checkPermission('promo_cod
         res.status(500).json({
             success: false,
             message: '刪除優惠代碼失敗：' + error.message
+        });
+    }
+});
+
+// ==================== 早鳥/晚鳥優惠管理 API ====================
+
+// API: 檢查早鳥優惠（公開 API，用於前台自動計算）
+app.post('/api/early-bird/check', publicLimiter, async (req, res) => {
+    try {
+        const { checkInDate, roomTypeName, totalAmount } = req.body;
+        
+        if (!checkInDate || !totalAmount) {
+            return res.status(400).json({
+                success: false,
+                message: '請提供入住日期和金額'
+            });
+        }
+        
+        const result = await db.calculateEarlyBirdDiscount(checkInDate, roomTypeName, totalAmount);
+        
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        console.error('檢查早鳥優惠錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '檢查早鳥優惠失敗：' + error.message
+        });
+    }
+});
+
+// API: 取得所有早鳥優惠規則（管理後台）
+app.get('/api/admin/early-bird-settings', requireAuth, checkPermission('promo_codes.view'), adminLimiter, async (req, res) => {
+    try {
+        const settings = await db.getAllEarlyBirdSettings();
+        res.json({
+            success: true,
+            data: settings
+        });
+    } catch (error) {
+        console.error('取得早鳥優惠設定錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '取得早鳥優惠設定失敗：' + error.message
+        });
+    }
+});
+
+// API: 取得單一早鳥優惠規則
+app.get('/api/admin/early-bird-settings/:id', requireAuth, checkPermission('promo_codes.view'), adminLimiter, async (req, res) => {
+    try {
+        const setting = await db.getEarlyBirdSettingById(parseInt(req.params.id));
+        if (!setting) {
+            return res.status(404).json({ success: false, message: '找不到此優惠規則' });
+        }
+        res.json({ success: true, data: setting });
+    } catch (error) {
+        console.error('取得早鳥優惠設定錯誤:', error);
+        res.status(500).json({ success: false, message: '取得早鳥優惠設定失敗：' + error.message });
+    }
+});
+
+// API: 建立早鳥優惠規則
+app.post('/api/admin/early-bird-settings', requireAuth, checkPermission('promo_codes.create'), adminLimiter, async (req, res) => {
+    try {
+        const setting = await db.createEarlyBirdSetting(req.body);
+        
+        // 記錄操作日誌
+        try {
+            await db.logAdminAction(
+                req.session.admin.id,
+                req.session.admin.username,
+                '建立早鳥優惠',
+                'early_bird_settings',
+                setting.id ? String(setting.id) : null,
+                `建立早鳥優惠規則：${req.body.name}`,
+                req.ip,
+                req.headers['user-agent']
+            );
+        } catch (logError) {
+            console.warn('記錄操作日誌失敗:', logError.message);
+        }
+        
+        res.json({
+            success: true,
+            message: '早鳥優惠規則已建立',
+            data: setting
+        });
+    } catch (error) {
+        console.error('建立早鳥優惠設定錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '建立早鳥優惠設定失敗：' + error.message
+        });
+    }
+});
+
+// API: 更新早鳥優惠規則
+app.put('/api/admin/early-bird-settings/:id', requireAuth, checkPermission('promo_codes.edit'), adminLimiter, async (req, res) => {
+    try {
+        const setting = await db.updateEarlyBirdSetting(parseInt(req.params.id), req.body);
+        
+        // 記錄操作日誌
+        try {
+            await db.logAdminAction(
+                req.session.admin.id,
+                req.session.admin.username,
+                '更新早鳥優惠',
+                'early_bird_settings',
+                req.params.id,
+                `更新早鳥優惠規則：${req.body.name}`,
+                req.ip,
+                req.headers['user-agent']
+            );
+        } catch (logError) {
+            console.warn('記錄操作日誌失敗:', logError.message);
+        }
+        
+        res.json({
+            success: true,
+            message: '早鳥優惠規則已更新',
+            data: setting
+        });
+    } catch (error) {
+        console.error('更新早鳥優惠設定錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '更新早鳥優惠設定失敗：' + error.message
+        });
+    }
+});
+
+// API: 刪除早鳥優惠規則
+app.delete('/api/admin/early-bird-settings/:id', requireAuth, checkPermission('promo_codes.delete'), adminLimiter, async (req, res) => {
+    try {
+        await db.deleteEarlyBirdSetting(parseInt(req.params.id));
+        
+        // 記錄操作日誌
+        try {
+            await db.logAdminAction(
+                req.session.admin.id,
+                req.session.admin.username,
+                '刪除早鳥優惠',
+                'early_bird_settings',
+                req.params.id,
+                `刪除早鳥優惠規則`,
+                req.ip,
+                req.headers['user-agent']
+            );
+        } catch (logError) {
+            console.warn('記錄操作日誌失敗:', logError.message);
+        }
+        
+        res.json({
+            success: true,
+            message: '早鳥優惠規則已刪除'
+        });
+    } catch (error) {
+        console.error('刪除早鳥優惠設定錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '刪除早鳥優惠設定失敗：' + error.message
         });
     }
 });
@@ -10842,8 +11059,9 @@ app.use(errorHandler);
 
 // 啟動應用程式
 startServer().catch((error) => {
-    console.error('❌ 應用程式啟動失敗:', error);
-    console.error('錯誤堆疊:', error.stack);
-    process.exit(1);
+    console.error('❌ 應用程式啟動失敗:', error.message);
+    console.error('錯誤詳情:', error.stack);
+    // 延遲退出，確保 Railway 有時間捕捉 stderr 日誌
+    setTimeout(() => process.exit(1), 2000);
 });
 

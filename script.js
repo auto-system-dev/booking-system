@@ -10,6 +10,7 @@ let guestCounts = { adults: 2, children: 0 };
 let capacityModalData = { capacity: 0, totalGuests: 0 };
 let lineUserId = null; // LINE User ID（如果從 LIFF 開啟）
 let appliedPromoCode = null; // 已套用的優惠代碼
+let earlyBirdDiscount = null; // 已偵測的早鳥優惠
 
 // ===== Facebook Pixel 追蹤函數 =====
 
@@ -612,6 +613,50 @@ function calculateNights() {
     }
 }
 
+// 檢查早鳥優惠
+async function checkEarlyBirdDiscount(checkInDate, roomTypeName, totalAmount) {
+    try {
+        const response = await fetch('/api/early-bird/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ checkInDate, roomTypeName, totalAmount })
+        });
+        const result = await response.json();
+        
+        if (result.success && result.data && result.data.applicable) {
+            earlyBirdDiscount = result.data;
+            console.log('🐦 早鳥優惠可用:', earlyBirdDiscount);
+            return earlyBirdDiscount;
+        } else {
+            earlyBirdDiscount = null;
+            return null;
+        }
+    } catch (error) {
+        console.error('檢查早鳥優惠錯誤:', error);
+        earlyBirdDiscount = null;
+        return null;
+    }
+}
+
+// 計算早鳥折扣金額
+function calculateEarlyBirdDiscountAmount(totalAmount) {
+    if (!earlyBirdDiscount || !earlyBirdDiscount.rule) return 0;
+    
+    const rule = earlyBirdDiscount.rule;
+    let discountAmount = 0;
+    
+    if (rule.discount_type === 'fixed') {
+        discountAmount = rule.discount_value;
+    } else if (rule.discount_type === 'percent') {
+        discountAmount = totalAmount * (rule.discount_value / 100);
+        if (rule.max_discount && discountAmount > rule.max_discount) {
+            discountAmount = rule.max_discount;
+        }
+    }
+    
+    return Math.round(discountAmount);
+}
+
 // 計算價格（考慮平日/假日）
 async function calculatePrice() {
     const selectedRoom = document.querySelector('input[name="roomType"]:checked');
@@ -622,102 +667,95 @@ async function calculatePrice() {
 
     const checkInDate = document.getElementById('checkInDate').value;
     const checkOutDate = document.getElementById('checkOutDate').value;
+    const roomTypeName = selectedRoom.closest('.room-option').querySelector('.room-name').textContent.trim();
     
     // 計算加購商品總金額（只有在啟用時才計算，考慮數量）
     const addonsTotal = enableAddons ? selectedAddons.reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0) : 0;
     
+    // 內部函數：計算折扣並更新顯示
+    function applyDiscountsAndDisplay(pricePerNight, nights, roomTotal) {
+        let totalAmount = roomTotal + addonsTotal;
+        const originalTotal = totalAmount;
+        
+        // 1. 計算早鳥折扣
+        let ebDiscountAmount = 0;
+        if (earlyBirdDiscount && earlyBirdDiscount.applicable) {
+            ebDiscountAmount = calculateEarlyBirdDiscountAmount(totalAmount);
+        }
+        
+        // 2. 計算優惠代碼折扣
+        let promoDiscountAmount = 0;
+        if (appliedPromoCode) {
+            // 檢查是否可疊加
+            const canCombine = appliedPromoCode.can_combine_with_early_bird === 1;
+            if (ebDiscountAmount > 0 && !canCombine) {
+                // 不能疊加，取較大的
+                const promoCalc = calculatePromoCodeDiscount(appliedPromoCode, totalAmount);
+                if (promoCalc > ebDiscountAmount) {
+                    promoDiscountAmount = promoCalc;
+                    ebDiscountAmount = 0;
+                }
+            } else {
+                promoDiscountAmount = calculatePromoCodeDiscount(appliedPromoCode, totalAmount);
+            }
+        }
+        
+        const totalDiscount = ebDiscountAmount + promoDiscountAmount;
+        totalAmount = Math.max(0, totalAmount - totalDiscount);
+        
+        const paymentAmount = document.querySelector('input[name="paymentAmount"]:checked').value;
+        const depositRate = depositPercentage / 100;
+        const paymentType = paymentAmount === 'deposit' ? depositRate : 1;
+        const finalAmount = totalAmount * paymentType;
+        
+        updatePriceDisplay(pricePerNight, nights, originalTotal, totalDiscount, paymentAmount, finalAmount, addonsTotal, null, ebDiscountAmount, promoDiscountAmount);
+    }
+    
     if (!checkInDate || !checkOutDate) {
-        // 如果沒有選擇日期，使用舊的計算方式（不考慮假日）
+        // 如果沒有選擇日期，使用舊的計算方式（不考慮假日），也不檢查早鳥
+        earlyBirdDiscount = null;
         const roomOption = selectedRoom.closest('.room-option');
         const pricePerNight = parseInt(roomOption.dataset.price);
         const nights = calculateNights();
         const roomTotal = pricePerNight * nights;
-            let totalAmount = roomTotal + addonsTotal;
-            
-            // 計算優惠代碼折扣（根據當前總金額重新計算）
-            let discountAmount = 0;
-            if (appliedPromoCode) {
-                discountAmount = calculatePromoCodeDiscount(appliedPromoCode, totalAmount);
-                totalAmount = Math.max(0, totalAmount - discountAmount);
-            }
-            
-            const paymentAmount = document.querySelector('input[name="paymentAmount"]:checked').value;
-            const depositRate = depositPercentage / 100;
-            const paymentType = paymentAmount === 'deposit' ? depositRate : 1;
-            const finalAmount = totalAmount * paymentType;
-
-            updatePriceDisplay(pricePerNight, nights, roomTotal + addonsTotal, discountAmount, paymentAmount, finalAmount, addonsTotal);
+        applyDiscountsAndDisplay(pricePerNight, nights, roomTotal);
         return;
     }
 
+    // 檢查早鳥優惠（非同步，但不影響價格計算速度）
+    // 先使用預估金額檢查，之後會在 API 回來後重新計算
+    const roomOption = selectedRoom.closest('.room-option');
+    const estimatedPrice = parseInt(roomOption.dataset.price);
+    const estimatedNights = calculateNights();
+    const estimatedTotal = estimatedPrice * estimatedNights + addonsTotal;
+    
+    // 非阻塞檢查早鳥優惠
+    checkEarlyBirdDiscount(checkInDate, roomTypeName, estimatedTotal);
+
     // 使用新的 API 計算價格（考慮假日）
     try {
-        const roomTypeName = selectedRoom.closest('.room-option').querySelector('.room-name').textContent.trim();
         const response = await fetch(`/api/calculate-price?checkInDate=${checkInDate}&checkOutDate=${checkOutDate}&roomTypeName=${encodeURIComponent(roomTypeName)}`);
         const result = await response.json();
         
         if (result.success) {
             const { totalAmount: roomTotal, averagePricePerNight, nights } = result.data;
-            let totalAmount = roomTotal + addonsTotal;
             
-            // 計算優惠代碼折扣（根據當前總金額重新計算）
-            let discountAmount = 0;
-            if (appliedPromoCode) {
-                discountAmount = calculatePromoCodeDiscount(appliedPromoCode, totalAmount);
-                totalAmount = Math.max(0, totalAmount - discountAmount);
-            }
-            
-            const paymentAmount = document.querySelector('input[name="paymentAmount"]:checked').value;
-            const depositRate = depositPercentage / 100;
-            const paymentType = paymentAmount === 'deposit' ? depositRate : 1;
-            const finalAmount = totalAmount * paymentType;
-
-            updatePriceDisplay(averagePricePerNight, nights, roomTotal + addonsTotal, discountAmount, paymentAmount, finalAmount, addonsTotal);
+            // 用精確金額重新檢查早鳥優惠
+            await checkEarlyBirdDiscount(checkInDate, roomTypeName, roomTotal + addonsTotal);
+            applyDiscountsAndDisplay(averagePricePerNight, nights, roomTotal);
         } else {
             console.error('計算價格失敗:', result.message);
-            // 如果 API 失敗，使用舊的計算方式
-            const roomOption = selectedRoom.closest('.room-option');
             const pricePerNight = parseInt(roomOption.dataset.price);
             const nights = calculateNights();
             const roomTotal = pricePerNight * nights;
-            let totalAmount = roomTotal + addonsTotal;
-            
-            // 計算優惠代碼折扣（根據當前總金額重新計算）
-            let discountAmount = 0;
-            if (appliedPromoCode) {
-                discountAmount = calculatePromoCodeDiscount(appliedPromoCode, totalAmount);
-                totalAmount = Math.max(0, totalAmount - discountAmount);
-            }
-            
-            const paymentAmount = document.querySelector('input[name="paymentAmount"]:checked').value;
-            const depositRate = depositPercentage / 100;
-            const paymentType = paymentAmount === 'deposit' ? depositRate : 1;
-            const finalAmount = totalAmount * paymentType;
-
-            updatePriceDisplay(pricePerNight, nights, roomTotal + addonsTotal, discountAmount, paymentAmount, finalAmount, addonsTotal);
+            applyDiscountsAndDisplay(pricePerNight, nights, roomTotal);
         }
     } catch (error) {
         console.error('計算價格錯誤:', error);
-        // 如果發生錯誤，使用舊的計算方式
-        const roomOption = selectedRoom.closest('.room-option');
         const pricePerNight = parseInt(roomOption.dataset.price);
         const nights = calculateNights();
         const roomTotal = pricePerNight * nights;
-            let totalAmount = roomTotal + addonsTotal;
-            
-            // 計算優惠代碼折扣（根據當前總金額重新計算）
-            let discountAmount = 0;
-            if (appliedPromoCode) {
-                discountAmount = calculatePromoCodeDiscount(appliedPromoCode, totalAmount);
-                totalAmount = Math.max(0, totalAmount - discountAmount);
-            }
-            
-            const paymentAmount = document.querySelector('input[name="paymentAmount"]:checked').value;
-            const depositRate = depositPercentage / 100;
-            const paymentType = paymentAmount === 'deposit' ? depositRate : 1;
-            const finalAmount = totalAmount * paymentType;
-
-            updatePriceDisplay(pricePerNight, nights, roomTotal + addonsTotal, discountAmount, paymentAmount, finalAmount, addonsTotal);
+        applyDiscountsAndDisplay(pricePerNight, nights, roomTotal);
     }
 }
 
@@ -880,7 +918,7 @@ function calculatePromoCodeDiscount(promoCode, totalAmount) {
 }
 
 // 更新價格顯示
-function updatePriceDisplay(pricePerNight, nights, totalAmount, discountAmount = 0, paymentType, finalAmount = 0, addonsTotal = 0, depositPercent = null) {
+function updatePriceDisplay(pricePerNight, nights, totalAmount, discountAmount = 0, paymentType, finalAmount = 0, addonsTotal = 0, depositPercent = null, earlyBirdAmount = 0, promoAmount = 0) {
     // 如果沒有提供 depositPercent，使用全域變數
     if (depositPercent === null) {
         depositPercent = depositPercentage;
@@ -908,19 +946,90 @@ function updatePriceDisplay(pricePerNight, nights, totalAmount, discountAmount =
     // 顯示總金額（原始總金額，折扣前）
     html += `<div style="margin-bottom: 5px; color: #333;">總金額：NT$ ${totalAmount.toLocaleString()}</div>`;
     
-    // 顯示折扣
-    if (discountAmount > 0 && appliedPromoCode) {
-        html += `<div style="margin-bottom: 5px; color: #10b981; font-weight: 600;">優惠折扣（${appliedPromoCode.name}）：-NT$ ${discountAmount.toLocaleString()}</div>`;
-        const finalTotal = totalAmount - discountAmount;
+    // 顯示早鳥優惠折扣
+    if (earlyBirdAmount > 0 && earlyBirdDiscount && earlyBirdDiscount.rule) {
+        const ruleName = earlyBirdDiscount.rule.name;
+        const daysInfo = earlyBirdDiscount.days_before_checkin;
+        html += `<div style="margin-bottom: 5px; color: #f59e0b; font-weight: 600;">
+            <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle;">nest_eco_leaf</span>
+            早鳥優惠（${ruleName}，提前${daysInfo}天）：-NT$ ${earlyBirdAmount.toLocaleString()}
+        </div>`;
+    }
+    
+    // 顯示優惠代碼折扣
+    if (promoAmount > 0 && appliedPromoCode) {
+        html += `<div style="margin-bottom: 5px; color: #10b981; font-weight: 600;">優惠折扣（${appliedPromoCode.name}）：-NT$ ${promoAmount.toLocaleString()}</div>`;
+    }
+    
+    // 顯示折抵後金額
+    const totalDiscountAmount = (earlyBirdAmount || 0) + (promoAmount || 0);
+    if (totalDiscountAmount > 0) {
+        const finalTotal = totalAmount - totalDiscountAmount;
         html += `<div style="font-weight: 700; font-size: 18px; color: #2C8EC4; border-top: 2px solid #ddd; padding-top: 5px; margin-top: 5px;">折抵後金額：NT$ ${finalTotal.toLocaleString()}</div>`;
     }
-    // 沒有折扣時，不需要再顯示一次總金額（因為上面已經顯示了）
     
     totalAmountElement.innerHTML = html || `NT$ ${totalAmount.toLocaleString()}`;
     
     const paymentLabel = paymentType === 'deposit' ? `應付訂金 (${depositPercent}%)` : '應付全額';
     document.getElementById('paymentTypeLabel').textContent = paymentLabel;
     document.getElementById('paymentAmount').textContent = `NT$ ${finalAmount.toLocaleString()}`;
+    
+    // 更新早鳥優惠提示區塊
+    updateEarlyBirdNotice();
+}
+
+// 更新早鳥優惠提示區塊
+function updateEarlyBirdNotice() {
+    let noticeEl = document.getElementById('earlyBirdNotice');
+    
+    // 如果元素不存在，在優惠代碼區之前建立
+    if (!noticeEl) {
+        const promoSection = document.getElementById('promoCodeSection');
+        if (promoSection) {
+            noticeEl = document.createElement('div');
+            noticeEl.id = 'earlyBirdNotice';
+            noticeEl.className = 'form-section';
+            promoSection.parentNode.insertBefore(noticeEl, promoSection);
+        } else {
+            return;
+        }
+    }
+    
+    if (earlyBirdDiscount && earlyBirdDiscount.applicable && earlyBirdDiscount.rule) {
+        const rule = earlyBirdDiscount.rule;
+        const days = earlyBirdDiscount.days_before_checkin;
+        
+        let discountText = '';
+        if (rule.discount_type === 'percent') {
+            const offPercent = (100 - rule.discount_value) / 10;
+            discountText = `享 ${offPercent} 折優惠`;
+            if (rule.max_discount) {
+                discountText += `（最高折抵 NT$ ${rule.max_discount.toLocaleString()}）`;
+            }
+        } else {
+            discountText = `折抵 NT$ ${parseInt(rule.discount_value).toLocaleString()}`;
+        }
+        
+        noticeEl.innerHTML = `
+            <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border: 1px solid #f59e0b; border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 12px;">
+                <span class="material-symbols-outlined" style="font-size: 32px; color: #d97706;">nest_eco_leaf</span>
+                <div>
+                    <div style="font-weight: 700; color: #92400e; font-size: 15px; margin-bottom: 4px;">
+                        🎉 恭喜！您符合早鳥優惠
+                    </div>
+                    <div style="color: #78350f; font-size: 14px;">
+                        您提前 <strong>${days}</strong> 天預訂，${discountText}
+                    </div>
+                    <div style="color: #92400e; font-size: 12px; margin-top: 4px;">
+                        ${rule.name}${rule.description ? ' — ' + rule.description : ''}（系統自動套用，無需輸入代碼）
+                    </div>
+                </div>
+            </div>`;
+        noticeEl.style.display = 'block';
+    } else {
+        noticeEl.style.display = 'none';
+        noticeEl.innerHTML = '';
+    }
 }
 
 // 檢查房間可用性
@@ -1217,12 +1326,29 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     
     let totalAmount = roomTotal + addonsTotal;
     
-    // 計算優惠代碼折扣
-    let discountAmount = 0;
-    if (appliedPromoCode) {
-        discountAmount = appliedPromoCode.discount_amount || 0;
-        totalAmount = Math.max(0, totalAmount - discountAmount);
+    // 計算早鳥優惠折扣
+    let ebDiscount = 0;
+    if (earlyBirdDiscount && earlyBirdDiscount.applicable) {
+        ebDiscount = calculateEarlyBirdDiscountAmount(totalAmount);
     }
+    
+    // 計算優惠代碼折扣
+    let promoDiscount = 0;
+    if (appliedPromoCode) {
+        const canCombine = appliedPromoCode.can_combine_with_early_bird === 1;
+        if (ebDiscount > 0 && !canCombine) {
+            const promoCalc = appliedPromoCode.discount_amount || 0;
+            if (promoCalc > ebDiscount) {
+                promoDiscount = promoCalc;
+                ebDiscount = 0;
+            }
+        } else {
+            promoDiscount = appliedPromoCode.discount_amount || 0;
+        }
+    }
+    
+    const discountAmount = ebDiscount + promoDiscount;
+    totalAmount = Math.max(0, totalAmount - discountAmount);
     
     const depositRate = depositPercentage / 100;
     const paymentType = formData.paymentAmount === 'deposit' ? depositRate : 1;
@@ -1235,6 +1361,7 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     formData.addons = enableAddons ? selectedAddons : []; // 加購商品陣列（只有在啟用時才包含，包含數量）
     formData.addonsTotal = addonsTotal; // 加購商品總金額
     formData.promoCode = appliedPromoCode ? appliedPromoCode.code : null; // 優惠代碼（如果有）
+    formData.earlyBirdRuleId = earlyBirdDiscount && earlyBirdDiscount.applicable ? earlyBirdDiscount.rule.id : null; // 早鳥優惠規則ID
     
     // 如果有 LINE User ID，加入表單資料中
     if (lineUserId) {

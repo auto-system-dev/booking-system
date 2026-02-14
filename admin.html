@@ -79,6 +79,10 @@
                     <span class="nav-icon"><span class="material-symbols-outlined">local_offer</span></span>
                     <span>優惠代碼</span>
                 </a>
+                <a href="#early-bird" class="nav-item permission-required" data-section="early-bird" data-permission="promo_codes.view" onclick="handleNavClick(event, 'early-bird')">
+                    <span class="nav-icon"><span class="material-symbols-outlined">nest_eco_leaf</span></span>
+                    <span>早鳥優惠</span>
+                </a>
                 <a href="#settings" class="nav-item permission-required" data-section="settings" data-permission="settings.view" onclick="handleNavClick(event, 'settings')">
                     <span class="nav-icon"><span class="material-symbols-outlined">settings</span></span>
                     <span>系統設定</span>
@@ -702,6 +706,155 @@
                     </table>
                 </div>
             </section>
+
+            <!-- 早鳥優惠管理區 -->
+            <section id="early-bird-section" class="content-section">
+                <div class="section-header">
+                    <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">nest_eco_leaf</span> 早鳥/晚鳥優惠管理</h2>
+                    <div class="header-actions">
+                        <button class="btn-primary permission-required" data-permission="promo_codes.create" onclick="showAddEarlyBirdModal()">
+                            <span class="material-symbols-outlined">add</span> 新增優惠規則
+                        </button>
+                        <button class="btn-refresh" onclick="loadEarlyBirdSettings()">
+                            <span class="material-symbols-outlined">refresh</span> 重新整理
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 說明區塊 -->
+                <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                        <span class="material-symbols-outlined" style="color: #0284c7; font-size: 22px; margin-top: 2px;">info</span>
+                        <div style="font-size: 14px; color: #475569; line-height: 1.6;">
+                            <strong style="color: #0284c7;">早鳥/晚鳥優惠說明：</strong><br>
+                            系統會根據「訂房日」距「入住日」的天數，自動套用符合條件的優惠折扣。<br>
+                            例如：提前 30 天以上訂房享 8 折、提前 14 天以上享 9 折。<br>
+                            當多條規則同時符合時，系統會套用<strong>優先級最高</strong>的規則。<br>
+                            若同時使用優惠代碼，系統會根據「是否可疊加」的設定自動處理。
+                        </div>
+                    </div>
+                </div>
+
+                <div class="room-types-container">
+                    <table class="bookings-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left;">規則名稱</th>
+                                <th style="text-align: center;">折扣類型</th>
+                                <th style="text-align: right;">折扣值</th>
+                                <th style="text-align: center;">提前天數</th>
+                                <th style="text-align: left;">適用房型</th>
+                                <th style="text-align: left;">有效期間</th>
+                                <th style="text-align: center;">優先級</th>
+                                <th style="text-align: center;">狀態</th>
+                                <th style="text-align: center;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="earlyBirdTableBody">
+                            <tr>
+                                <td colspan="9" class="loading">載入中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <!-- 早鳥優惠 Modal -->
+            <div id="earlyBirdModal" class="modal" style="display: none;">
+                <div class="modal-content" style="max-width: 600px;">
+                    <div class="modal-header">
+                        <h3 id="earlyBirdModalTitle">新增早鳥優惠規則</h3>
+                        <button class="modal-close" onclick="closeEarlyBirdModal()">&times;</button>
+                    </div>
+                    <form id="earlyBirdForm" onsubmit="saveEarlyBirdSetting(event)">
+                        <input type="hidden" id="earlyBirdId">
+                        
+                        <div class="form-group">
+                            <label for="earlyBirdName">規則名稱 <span style="color: #e74c3c;">*</span></label>
+                            <input type="text" id="earlyBirdName" required placeholder="例如：提前30天早鳥優惠">
+                        </div>
+                        
+                        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div class="form-group">
+                                <label for="earlyBirdDiscountType">折扣類型 <span style="color: #e74c3c;">*</span></label>
+                                <select id="earlyBirdDiscountType" required onchange="toggleEarlyBirdMaxDiscount()">
+                                    <option value="percent">百分比折扣 (%)</option>
+                                    <option value="fixed">固定金額 (NT$)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="earlyBirdDiscountValue">折扣值 <span style="color: #e74c3c;">*</span></label>
+                                <input type="number" id="earlyBirdDiscountValue" required min="0" step="0.01" placeholder="例如：20（表示打8折）">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group" id="earlyBirdMaxDiscountGroup">
+                            <label for="earlyBirdMaxDiscount">最高折扣金額（百分比折扣專用，選填）</label>
+                            <input type="number" id="earlyBirdMaxDiscount" min="0" placeholder="例如：500（表示最多折NT$500）">
+                        </div>
+                        
+                        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div class="form-group">
+                                <label for="earlyBirdMinDays">最少提前天數 <span style="color: #e74c3c;">*</span></label>
+                                <input type="number" id="earlyBirdMinDays" required min="0" value="0" placeholder="例如：14">
+                                <small style="color: #888;">入住日前至少需提前幾天訂房</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="earlyBirdMaxDays">最多提前天數（選填）</label>
+                                <input type="number" id="earlyBirdMaxDays" min="0" placeholder="例如：60（留空表示不限）">
+                                <small style="color: #888;">留空表示不設上限</small>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="earlyBirdRoomTypes">適用房型</label>
+                            <div id="earlyBirdRoomTypesCheckboxes" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
+                                <!-- 動態載入房型 -->
+                                <span style="color: #888;">載入中...</span>
+                            </div>
+                            <small style="color: #888;">不勾選表示適用所有房型</small>
+                        </div>
+                        
+                        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div class="form-group">
+                                <label for="earlyBirdStartDate">生效日期（選填）</label>
+                                <input type="date" id="earlyBirdStartDate">
+                                <small style="color: #888;">留空表示立即生效</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="earlyBirdEndDate">結束日期（選填）</label>
+                                <input type="date" id="earlyBirdEndDate">
+                                <small style="color: #888;">留空表示永不過期</small>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div class="form-group">
+                                <label for="earlyBirdPriority">優先級</label>
+                                <input type="number" id="earlyBirdPriority" min="0" value="0" placeholder="數字越大優先級越高">
+                                <small style="color: #888;">多條規則同時符合時，優先使用數字最大的</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="earlyBirdIsActive">狀態</label>
+                                <select id="earlyBirdIsActive">
+                                    <option value="1">啟用</option>
+                                    <option value="0">停用</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="earlyBirdDescription">說明（選填）</label>
+                            <textarea id="earlyBirdDescription" rows="2" placeholder="此優惠規則的補充說明..."></textarea>
+                        </div>
+                        
+                        <div class="modal-actions" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                            <button type="button" class="btn-secondary" onclick="closeEarlyBirdModal()">取消</button>
+                            <button type="submit" class="btn-primary">儲存</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
 
             <!-- 系統設定區 -->
             <section id="settings-section" class="content-section">
@@ -2072,6 +2225,13 @@
                             <input type="checkbox" id="promoCodeIsActive" checked style="width: 20px; height: 20px;">
                             <span>啟用此優惠代碼</span>
                         </label>
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="promoCodeCanCombineEarlyBird" style="width: 20px; height: 20px;">
+                            <span>可與早鳥優惠疊加使用</span>
+                        </label>
+                        <small style="color: #888; margin-top: 4px; display: block;">勾選後，此優惠代碼可與早鳥優惠同時使用（折扣會疊加計算）。不勾選則系統自動取較大的折扣。</small>
                     </div>
                     <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
                         <button type="button" class="btn-primary btn-danger" onclick="closePromoCodeModal()">取消</button>

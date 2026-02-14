@@ -815,7 +815,8 @@ function switchSection(section) {
         'admin-management': 'admins.view',
         'logs': 'logs.view',
         'backups': 'backup.view',
-        'landing-page': 'settings.view'
+        'landing-page': 'settings.view',
+        'early-bird': 'promo_codes.view'
     };
     
     // 檢查權限（僅在已登入後才檢查）
@@ -907,6 +908,8 @@ function switchSection(section) {
         loadLandingSettings();
         const savedTab = localStorage.getItem('landingTab') || 'basic';
         switchLandingTab(savedTab);
+    } else if (section === 'early-bird') {
+        loadEarlyBirdSettings();
     }
 }
 
@@ -8065,6 +8068,7 @@ function showAddPromoCodeModal() {
     document.getElementById('promoCodeId').value = '';
     document.getElementById('promoCodeForm').reset();
     document.getElementById('promoCodeIsActive').checked = true;
+    document.getElementById('promoCodeCanCombineEarlyBird').checked = false;
     document.getElementById('promoCodeDiscountType').value = 'fixed';
     updatePromoCodeDiscountType();
     document.getElementById('promoCodeModal').style.display = 'block';
@@ -8119,6 +8123,10 @@ async function editPromoCode(id) {
             // 確保 is_active 正確處理（可能是 0/1 或 true/false）
             const isActive = code.is_active !== undefined ? (parseInt(code.is_active) === 1 || code.is_active === true) : true;
             document.getElementById('promoCodeIsActive').checked = isActive;
+            
+            // 設定「可與早鳥優惠疊加」
+            const canCombineEB = code.can_combine_with_early_bird !== undefined ? (parseInt(code.can_combine_with_early_bird) === 1) : false;
+            document.getElementById('promoCodeCanCombineEarlyBird').checked = canCombineEB;
             
             updatePromoCodeDiscountType();
             document.getElementById('promoCodeModal').style.display = 'block';
@@ -8177,7 +8185,7 @@ async function savePromoCode(event) {
                 start_date,
                 end_date,
                 is_active,
-                can_combine_with_early_bird: 0,
+                can_combine_with_early_bird: document.getElementById('promoCodeCanCombineEarlyBird').checked ? 1 : 0,
                 can_combine_with_late_bird: 0
             })
         });
@@ -10226,3 +10234,292 @@ window.handleHeroImageUpload = handleHeroImageUpload;
 window.removeHeroImage = removeHeroImage;
 window.selectTheme = selectTheme;
 window.saveLandingTheme = saveLandingTheme;
+
+// ==================== 早鳥/晚鳥優惠管理 ====================
+
+// 載入早鳥優惠設定
+async function loadEarlyBirdSettings() {
+    try {
+        const response = await adminFetch('/api/admin/early-bird-settings');
+        const result = await response.json();
+        
+        if (result.success) {
+            renderEarlyBirdTable(result.data);
+        } else {
+            showError('載入早鳥優惠設定失敗：' + result.message);
+        }
+    } catch (error) {
+        console.error('載入早鳥優惠設定錯誤:', error);
+        showError('載入早鳥優惠設定失敗');
+    }
+}
+
+// 渲染早鳥優惠表格
+function renderEarlyBirdTable(settings) {
+    const tbody = document.getElementById('earlyBirdTableBody');
+    if (!tbody) return;
+    
+    if (!settings || settings.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #888; padding: 40px;">
+            <span class="material-symbols-outlined" style="font-size: 48px; display: block; margin-bottom: 10px; color: #ccc;">nest_eco_leaf</span>
+            尚未設定早鳥/晚鳥優惠規則<br>
+            <small>點擊上方「新增優惠規則」開始設定</small>
+        </td></tr>`;
+        return;
+    }
+    
+    tbody.innerHTML = settings.map(s => {
+        const discountTypeText = s.discount_type === 'percent' ? '百分比' : '固定金額';
+        const discountValueText = s.discount_type === 'percent' 
+            ? `${s.discount_value}%（打 ${(100 - s.discount_value) / 10} 折）`
+            : `NT$ ${parseInt(s.discount_value).toLocaleString()}`;
+        
+        const daysText = s.max_days_before 
+            ? `${s.min_days_before} ~ ${s.max_days_before} 天`
+            : `≥ ${s.min_days_before} 天`;
+        
+        let roomTypesText = '所有房型';
+        if (s.applicable_room_types) {
+            try {
+                const types = JSON.parse(s.applicable_room_types);
+                if (Array.isArray(types) && types.length > 0) {
+                    roomTypesText = types.join('、');
+                }
+            } catch (e) {}
+        }
+        
+        let dateText = '永久有效';
+        if (s.start_date || s.end_date) {
+            const start = s.start_date ? s.start_date.split('T')[0] : '不限';
+            const end = s.end_date ? s.end_date.split('T')[0] : '不限';
+            dateText = `${start} ~ ${end}`;
+        }
+        
+        const statusClass = s.is_active ? 'status-confirmed' : 'status-cancelled';
+        const statusText = s.is_active ? '啟用' : '停用';
+        
+        return `<tr>
+            <td style="text-align: left;">
+                <strong>${escapeHtml(s.name)}</strong>
+                ${s.description ? `<br><small style="color: #888;">${escapeHtml(s.description)}</small>` : ''}
+            </td>
+            <td style="text-align: center;">${discountTypeText}</td>
+            <td style="text-align: right;">${discountValueText}</td>
+            <td style="text-align: center;">${daysText}</td>
+            <td style="text-align: left; font-size: 13px;">${escapeHtml(roomTypesText)}</td>
+            <td style="text-align: left; font-size: 13px;">${dateText}</td>
+            <td style="text-align: center;">${s.priority}</td>
+            <td style="text-align: center;"><span class="booking-status ${statusClass}">${statusText}</span></td>
+            <td style="text-align: center; white-space: nowrap;">
+                <button class="btn-action btn-edit" title="編輯" onclick="editEarlyBirdSetting(${s.id})">
+                    <span class="material-symbols-outlined">edit</span>
+                </button>
+                <button class="btn-action btn-delete" title="刪除" onclick="deleteEarlyBirdSetting(${s.id}, '${escapeHtml(s.name)}')">
+                    <span class="material-symbols-outlined">delete</span>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+// 載入房型到 Modal 的核取方塊
+async function loadRoomTypesForEarlyBird(selectedRoomTypes) {
+    const container = document.getElementById('earlyBirdRoomTypesCheckboxes');
+    if (!container) return;
+    
+    try {
+        const response = await adminFetch('/api/admin/room-types');
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            const roomTypes = result.data;
+            if (roomTypes.length === 0) {
+                container.innerHTML = '<span style="color: #888;">尚無房型</span>';
+                return;
+            }
+            
+            let selected = [];
+            if (selectedRoomTypes) {
+                try {
+                    selected = JSON.parse(selectedRoomTypes);
+                } catch (e) {
+                    selected = [];
+                }
+            }
+            
+            container.innerHTML = roomTypes.map(rt => {
+                const checked = selected.includes(rt.name) ? 'checked' : '';
+                return `<label style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: #f8f9fa; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                    <input type="checkbox" name="earlyBirdRoomType" value="${escapeHtml(rt.name)}" ${checked}>
+                    ${escapeHtml(rt.name)}
+                </label>`;
+            }).join('');
+        }
+    } catch (error) {
+        console.error('載入房型失敗:', error);
+        container.innerHTML = '<span style="color: #e74c3c;">載入房型失敗</span>';
+    }
+}
+
+// 顯示新增 Modal
+function showAddEarlyBirdModal() {
+    document.getElementById('earlyBirdModalTitle').textContent = '新增早鳥優惠規則';
+    document.getElementById('earlyBirdForm').reset();
+    document.getElementById('earlyBirdId').value = '';
+    document.getElementById('earlyBirdMinDays').value = '0';
+    document.getElementById('earlyBirdPriority').value = '0';
+    document.getElementById('earlyBirdIsActive').value = '1';
+    toggleEarlyBirdMaxDiscount();
+    loadRoomTypesForEarlyBird(null);
+    document.getElementById('earlyBirdModal').style.display = 'flex';
+}
+
+// 編輯早鳥優惠
+async function editEarlyBirdSetting(id) {
+    try {
+        const response = await adminFetch(`/api/admin/early-bird-settings/${id}`);
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            const s = result.data;
+            document.getElementById('earlyBirdModalTitle').textContent = '編輯早鳥優惠規則';
+            document.getElementById('earlyBirdId').value = s.id;
+            document.getElementById('earlyBirdName').value = s.name || '';
+            document.getElementById('earlyBirdDiscountType').value = s.discount_type || 'percent';
+            document.getElementById('earlyBirdDiscountValue').value = s.discount_value || '';
+            document.getElementById('earlyBirdMaxDiscount').value = s.max_discount || '';
+            document.getElementById('earlyBirdMinDays').value = s.min_days_before ?? 0;
+            document.getElementById('earlyBirdMaxDays').value = s.max_days_before ?? '';
+            document.getElementById('earlyBirdStartDate').value = s.start_date ? s.start_date.split('T')[0] : '';
+            document.getElementById('earlyBirdEndDate').value = s.end_date ? s.end_date.split('T')[0] : '';
+            document.getElementById('earlyBirdPriority').value = s.priority ?? 0;
+            document.getElementById('earlyBirdIsActive').value = s.is_active ? '1' : '0';
+            document.getElementById('earlyBirdDescription').value = s.description || '';
+            
+            toggleEarlyBirdMaxDiscount();
+            await loadRoomTypesForEarlyBird(s.applicable_room_types);
+            
+            document.getElementById('earlyBirdModal').style.display = 'flex';
+        } else {
+            showError('載入優惠規則失敗');
+        }
+    } catch (error) {
+        console.error('編輯早鳥優惠錯誤:', error);
+        showError('載入優惠規則失敗');
+    }
+}
+
+// 關閉 Modal
+function closeEarlyBirdModal() {
+    document.getElementById('earlyBirdModal').style.display = 'none';
+}
+
+// 切換最高折扣欄位顯示
+function toggleEarlyBirdMaxDiscount() {
+    const discountType = document.getElementById('earlyBirdDiscountType').value;
+    const maxDiscountGroup = document.getElementById('earlyBirdMaxDiscountGroup');
+    if (maxDiscountGroup) {
+        maxDiscountGroup.style.display = discountType === 'percent' ? 'block' : 'none';
+    }
+}
+
+// 儲存早鳥優惠設定
+async function saveEarlyBirdSetting(event) {
+    event.preventDefault();
+    
+    const id = document.getElementById('earlyBirdId').value;
+    const isEdit = !!id;
+    
+    // 收集選中的房型
+    const selectedRoomTypes = [];
+    document.querySelectorAll('input[name="earlyBirdRoomType"]:checked').forEach(cb => {
+        selectedRoomTypes.push(cb.value);
+    });
+    
+    const data = {
+        name: document.getElementById('earlyBirdName').value.trim(),
+        discount_type: document.getElementById('earlyBirdDiscountType').value,
+        discount_value: parseFloat(document.getElementById('earlyBirdDiscountValue').value),
+        min_days_before: parseInt(document.getElementById('earlyBirdMinDays').value) || 0,
+        max_days_before: document.getElementById('earlyBirdMaxDays').value ? parseInt(document.getElementById('earlyBirdMaxDays').value) : null,
+        max_discount: document.getElementById('earlyBirdMaxDiscount').value ? parseInt(document.getElementById('earlyBirdMaxDiscount').value) : null,
+        applicable_room_types: selectedRoomTypes.length > 0 ? selectedRoomTypes : null,
+        is_active: parseInt(document.getElementById('earlyBirdIsActive').value),
+        priority: parseInt(document.getElementById('earlyBirdPriority').value) || 0,
+        start_date: document.getElementById('earlyBirdStartDate').value || null,
+        end_date: document.getElementById('earlyBirdEndDate').value || null,
+        description: document.getElementById('earlyBirdDescription').value.trim() || null
+    };
+    
+    // 驗證
+    if (!data.name) {
+        showError('請輸入規則名稱');
+        return;
+    }
+    if (!data.discount_value || data.discount_value <= 0) {
+        showError('請輸入有效的折扣值');
+        return;
+    }
+    if (data.discount_type === 'percent' && data.discount_value > 100) {
+        showError('百分比折扣不能超過 100%');
+        return;
+    }
+    
+    try {
+        const url = isEdit 
+            ? `/api/admin/early-bird-settings/${id}`
+            : '/api/admin/early-bird-settings';
+        const method = isEdit ? 'PUT' : 'POST';
+        
+        const response = await adminFetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess(isEdit ? '早鳥優惠規則已更新' : '早鳥優惠規則已建立');
+            closeEarlyBirdModal();
+            loadEarlyBirdSettings();
+        } else {
+            showError(result.message || '操作失敗');
+        }
+    } catch (error) {
+        console.error('儲存早鳥優惠設定錯誤:', error);
+        showError('儲存失敗：' + error.message);
+    }
+}
+
+// 刪除早鳥優惠
+async function deleteEarlyBirdSetting(id, name) {
+    if (!confirm(`確定要刪除早鳥優惠規則「${name}」嗎？`)) return;
+    
+    try {
+        const response = await adminFetch(`/api/admin/early-bird-settings/${id}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('早鳥優惠規則已刪除');
+            loadEarlyBirdSettings();
+        } else {
+            showError(result.message || '刪除失敗');
+        }
+    } catch (error) {
+        console.error('刪除早鳥優惠設定錯誤:', error);
+        showError('刪除失敗：' + error.message);
+    }
+}
+
+// 匯出到全域
+window.loadEarlyBirdSettings = loadEarlyBirdSettings;
+window.showAddEarlyBirdModal = showAddEarlyBirdModal;
+window.editEarlyBirdSetting = editEarlyBirdSetting;
+window.closeEarlyBirdModal = closeEarlyBirdModal;
+window.saveEarlyBirdSetting = saveEarlyBirdSetting;
+window.deleteEarlyBirdSetting = deleteEarlyBirdSetting;
+window.toggleEarlyBirdMaxDiscount = toggleEarlyBirdMaxDiscount;

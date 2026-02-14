@@ -636,6 +636,28 @@ async function initPostgreSQL() {
             `);
             console.log('✅ 優惠代碼使用記錄表已準備就緒');
             
+            // 建立早鳥/晚鳥優惠設定表
+            await query(`
+                CREATE TABLE IF NOT EXISTS early_bird_settings (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    discount_type VARCHAR(20) NOT NULL DEFAULT 'percent',
+                    discount_value DECIMAL(10,2) NOT NULL,
+                    min_days_before INTEGER NOT NULL DEFAULT 0,
+                    max_days_before INTEGER DEFAULT NULL,
+                    max_discount INTEGER DEFAULT NULL,
+                    applicable_room_types TEXT DEFAULT NULL,
+                    is_active INTEGER DEFAULT 1,
+                    priority INTEGER DEFAULT 0,
+                    start_date DATE DEFAULT NULL,
+                    end_date DATE DEFAULT NULL,
+                    description TEXT DEFAULT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ 早鳥/晚鳥優惠設定表已準備就緒');
+            
             // ==================== 權限管理系統 ====================
             
             // 建立角色表
@@ -2260,6 +2282,33 @@ function initSQLite() {
                                                                     console.log('✅ 優惠代碼使用記錄表已準備就緒');
                                                                 }
                                                             });
+                                                        }
+                                                    });
+                                                    
+                                                    // 建立早鳥/晚鳥優惠設定表
+                                                    db.run(`
+                                                        CREATE TABLE IF NOT EXISTS early_bird_settings (
+                                                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                            name TEXT NOT NULL,
+                                                            discount_type TEXT NOT NULL DEFAULT 'percent',
+                                                            discount_value REAL NOT NULL,
+                                                            min_days_before INTEGER NOT NULL DEFAULT 0,
+                                                            max_days_before INTEGER DEFAULT NULL,
+                                                            max_discount INTEGER DEFAULT NULL,
+                                                            applicable_room_types TEXT DEFAULT NULL,
+                                                            is_active INTEGER DEFAULT 1,
+                                                            priority INTEGER DEFAULT 0,
+                                                            start_date DATE DEFAULT NULL,
+                                                            end_date DATE DEFAULT NULL,
+                                                            description TEXT DEFAULT NULL,
+                                                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                                            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                                                        )
+                                                    `, (err) => {
+                                                        if (err) {
+                                                            console.warn('⚠️  建立 early_bird_settings 表時發生錯誤:', err.message);
+                                                        } else {
+                                                            console.log('✅ 早鳥/晚鳥優惠設定表已準備就緒');
                                                         }
                                                     });
                                                     
@@ -4010,6 +4059,218 @@ async function getPromoCodeUsageStats(promoCodeId) {
     } catch (error) {
         console.error('❌ 查詢優惠代碼使用統計失敗:', error.message);
         throw error;
+    }
+}
+
+// ==================== 早鳥/晚鳥優惠管理 ====================
+
+// 取得所有早鳥優惠規則
+async function getAllEarlyBirdSettings() {
+    try {
+        const sql = `SELECT * FROM early_bird_settings ORDER BY priority DESC, min_days_before DESC`;
+        const result = await query(sql);
+        return result.rows;
+    } catch (error) {
+        console.error('❌ 查詢早鳥優惠設定失敗:', error.message);
+        throw error;
+    }
+}
+
+// 取得單一早鳥優惠規則
+async function getEarlyBirdSettingById(id) {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT * FROM early_bird_settings WHERE id = $1`
+            : `SELECT * FROM early_bird_settings WHERE id = ?`;
+        return await queryOne(sql, [id]);
+    } catch (error) {
+        console.error('❌ 查詢早鳥優惠設定失敗:', error.message);
+        throw error;
+    }
+}
+
+// 建立早鳥優惠規則
+async function createEarlyBirdSetting(data) {
+    try {
+        const sql = usePostgreSQL
+            ? `INSERT INTO early_bird_settings (name, discount_type, discount_value, min_days_before, max_days_before, max_discount, applicable_room_types, is_active, priority, start_date, end_date, description)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`
+            : `INSERT INTO early_bird_settings (name, discount_type, discount_value, min_days_before, max_days_before, max_discount, applicable_room_types, is_active, priority, start_date, end_date, description)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        
+        const params = [
+            data.name,
+            data.discount_type || 'percent',
+            data.discount_value,
+            data.min_days_before || 0,
+            data.max_days_before || null,
+            data.max_discount || null,
+            data.applicable_room_types ? JSON.stringify(data.applicable_room_types) : null,
+            data.is_active !== undefined ? data.is_active : 1,
+            data.priority || 0,
+            data.start_date || null,
+            data.end_date || null,
+            data.description || null
+        ];
+        
+        if (usePostgreSQL) {
+            return await queryOne(sql, params);
+        } else {
+            const result = await query(sql, params);
+            return await getEarlyBirdSettingById(result.lastID);
+        }
+    } catch (error) {
+        console.error('❌ 建立早鳥優惠設定失敗:', error.message);
+        throw error;
+    }
+}
+
+// 更新早鳥優惠規則
+async function updateEarlyBirdSetting(id, data) {
+    try {
+        const sql = usePostgreSQL
+            ? `UPDATE early_bird_settings SET 
+                name = $1, discount_type = $2, discount_value = $3, 
+                min_days_before = $4, max_days_before = $5, max_discount = $6,
+                applicable_room_types = $7, is_active = $8, priority = $9, 
+                start_date = $10, end_date = $11, description = $12,
+                updated_at = CURRENT_TIMESTAMP
+               WHERE id = $13 RETURNING *`
+            : `UPDATE early_bird_settings SET 
+                name = ?, discount_type = ?, discount_value = ?, 
+                min_days_before = ?, max_days_before = ?, max_discount = ?,
+                applicable_room_types = ?, is_active = ?, priority = ?, 
+                start_date = ?, end_date = ?, description = ?,
+                updated_at = CURRENT_TIMESTAMP
+               WHERE id = ?`;
+        
+        const params = [
+            data.name,
+            data.discount_type || 'percent',
+            data.discount_value,
+            data.min_days_before || 0,
+            data.max_days_before || null,
+            data.max_discount || null,
+            data.applicable_room_types ? JSON.stringify(data.applicable_room_types) : null,
+            data.is_active !== undefined ? data.is_active : 1,
+            data.priority || 0,
+            data.start_date || null,
+            data.end_date || null,
+            data.description || null,
+            id
+        ];
+        
+        if (usePostgreSQL) {
+            return await queryOne(sql, params);
+        } else {
+            await query(sql, params);
+            return await getEarlyBirdSettingById(id);
+        }
+    } catch (error) {
+        console.error('❌ 更新早鳥優惠設定失敗:', error.message);
+        throw error;
+    }
+}
+
+// 刪除早鳥優惠規則
+async function deleteEarlyBirdSetting(id) {
+    try {
+        const sql = usePostgreSQL
+            ? `DELETE FROM early_bird_settings WHERE id = $1`
+            : `DELETE FROM early_bird_settings WHERE id = ?`;
+        await query(sql, [id]);
+        return true;
+    } catch (error) {
+        console.error('❌ 刪除早鳥優惠設定失敗:', error.message);
+        throw error;
+    }
+}
+
+// 計算早鳥/晚鳥折扣（核心邏輯）
+// checkInDate: 入住日期 (YYYY-MM-DD)
+// roomTypeName: 房型名稱（用於判斷適用房型）
+// totalAmount: 原始總金額
+async function calculateEarlyBirdDiscount(checkInDate, roomTypeName, totalAmount) {
+    try {
+        // 計算提前天數
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const checkIn = new Date(checkInDate);
+        checkIn.setHours(0, 0, 0, 0);
+        const daysBeforeCheckIn = Math.floor((checkIn - today) / (1000 * 60 * 60 * 24));
+        
+        console.log(`🐦 早鳥優惠計算: 入住日=${checkInDate}, 提前天數=${daysBeforeCheckIn}, 房型=${roomTypeName}, 金額=${totalAmount}`);
+        
+        // 取得所有啟用的規則
+        const allRules = await getAllEarlyBirdSettings();
+        const activeRules = allRules.filter(rule => {
+            if (!rule.is_active) return false;
+            
+            // 檢查規則有效期間
+            const now = new Date();
+            if (rule.start_date && new Date(rule.start_date) > now) return false;
+            if (rule.end_date && new Date(rule.end_date) < now) return false;
+            
+            // 檢查提前天數是否在範圍內
+            if (daysBeforeCheckIn < rule.min_days_before) return false;
+            if (rule.max_days_before !== null && daysBeforeCheckIn > rule.max_days_before) return false;
+            
+            // 檢查適用房型
+            if (rule.applicable_room_types) {
+                try {
+                    const roomTypes = JSON.parse(rule.applicable_room_types);
+                    if (Array.isArray(roomTypes) && roomTypes.length > 0) {
+                        if (!roomTypes.includes(roomTypeName)) return false;
+                    }
+                } catch (e) {
+                    // 解析失敗，視為適用所有房型
+                }
+            }
+            
+            return true;
+        });
+        
+        if (activeRules.length === 0) {
+            console.log('🐦 沒有符合條件的早鳥優惠規則');
+            return { applicable: false, discount_amount: 0, rule: null };
+        }
+        
+        // 取優先級最高的規則（已排序）
+        const bestRule = activeRules[0];
+        
+        // 計算折扣金額
+        let discountAmount = 0;
+        if (bestRule.discount_type === 'fixed') {
+            discountAmount = bestRule.discount_value;
+        } else if (bestRule.discount_type === 'percent') {
+            discountAmount = totalAmount * (bestRule.discount_value / 100);
+            if (bestRule.max_discount && discountAmount > bestRule.max_discount) {
+                discountAmount = bestRule.max_discount;
+            }
+        }
+        
+        discountAmount = Math.round(discountAmount);
+        
+        console.log(`🐦 套用早鳥優惠: ${bestRule.name}, 折扣=${discountAmount}, 規則ID=${bestRule.id}`);
+        
+        return {
+            applicable: true,
+            discount_amount: discountAmount,
+            rule: {
+                id: bestRule.id,
+                name: bestRule.name,
+                discount_type: bestRule.discount_type,
+                discount_value: bestRule.discount_value,
+                max_discount: bestRule.max_discount,
+                min_days_before: bestRule.min_days_before,
+                max_days_before: bestRule.max_days_before,
+                description: bestRule.description
+            },
+            days_before_checkin: daysBeforeCheckIn
+        };
+    } catch (error) {
+        console.error('❌ 計算早鳥優惠失敗:', error.message);
+        return { applicable: false, discount_amount: 0, rule: null };
     }
 }
 
@@ -6150,6 +6411,13 @@ module.exports = {
     deletePromoCode,
     recordPromoCodeUsage,
     getPromoCodeUsageStats,
+    // 早鳥/晚鳥優惠管理
+    getAllEarlyBirdSettings,
+    getEarlyBirdSettingById,
+    createEarlyBirdSetting,
+    updateEarlyBirdSetting,
+    deleteEarlyBirdSetting,
+    calculateEarlyBirdDiscount,
     // 加購商品管理
     getAllAddons,
     getAllAddonsAdmin,
