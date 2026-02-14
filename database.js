@@ -2644,6 +2644,8 @@ async function getBookingById(bookingId) {
         // 確保 discount_amount 是數字
         booking.discount_amount = parseFloat(booking.discount_amount || 0);
         
+        console.log(`📊 getBookingById [${bookingId}]: discount_amount=${booking.discount_amount}, promoUsage=${!!promoUsage}, total_amount=${booking.total_amount}, final_amount=${booking.final_amount}, payment_amount=${booking.payment_amount}, discount_description=${booking.discount_description}`);
+        
         // 嘗試從現有資料推算折扣金額（用於舊訂單沒有 discount_amount 的情況）
         if (booking.discount_amount === 0 && !promoUsage) {
             const paymentAmountStr = booking.payment_amount || '';
@@ -2654,14 +2656,20 @@ async function getBookingById(bookingId) {
                 paymentRate = parseInt(depositMatch[1]) / 100;
             }
             
-            const expectedFinalWithoutDiscount = Math.round(booking.total_amount * paymentRate);
-            const actualFinal = parseInt(booking.final_amount) || 0;
+            const totalAmt = parseFloat(booking.total_amount) || 0;
+            const actualFinal = parseFloat(booking.final_amount) || 0;
+            const expectedFinalWithoutDiscount = Math.round(totalAmt * paymentRate);
+            
+            console.log(`📊 折扣反推計算: paymentRate=${paymentRate}, totalAmt=${totalAmt}, actualFinal=${actualFinal}, expectedFinal=${expectedFinalWithoutDiscount}`);
             
             if (expectedFinalWithoutDiscount > actualFinal && actualFinal > 0) {
                 // 有折扣，反推折扣金額
                 const discountedTotal = Math.round(actualFinal / paymentRate);
-                booking.discount_amount = booking.total_amount - discountedTotal;
-                booking.original_amount = booking.total_amount;
+                booking.discount_amount = totalAmt - discountedTotal;
+                booking.original_amount = totalAmt;
+                console.log(`📊 反推結果: discountedTotal=${discountedTotal}, discount_amount=${booking.discount_amount}`);
+            } else {
+                console.log(`📊 無需反推折扣（expectedFinal=${expectedFinalWithoutDiscount} <= actualFinal=${actualFinal}）`);
             }
         }
         

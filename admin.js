@@ -1962,6 +1962,16 @@ async function viewBookingDetail(bookingId) {
         const result = await response.json();
         
         if (result.success) {
+            console.log('📋 訂房詳情資料:', {
+                booking_id: result.data.booking_id,
+                total_amount: result.data.total_amount,
+                final_amount: result.data.final_amount,
+                discount_amount: result.data.discount_amount,
+                original_amount: result.data.original_amount,
+                discount_description: result.data.discount_description,
+                promo_code: result.data.promo_code,
+                payment_amount: result.data.payment_amount
+            });
             showBookingModal(result.data);
         } else {
             showError('載入訂房詳情失敗');

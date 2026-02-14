@@ -3310,6 +3310,7 @@ app.get('/api/bookings/:bookingId', publicLimiter, async (req, res) => {
         const booking = await db.getBookingById(bookingId);
         
         if (booking) {
+            console.log(`📋 查詢訂房 ${bookingId}: discount_amount=${booking.discount_amount}, original_amount=${booking.original_amount}, discount_description=${booking.discount_description}`);
             res.json({
                 success: true,
                 data: booking
