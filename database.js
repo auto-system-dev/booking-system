@@ -4203,30 +4203,52 @@ async function calculateEarlyBirdDiscount(checkInDate, roomTypeName, totalAmount
         
         // 取得所有啟用的規則
         const allRules = await getAllEarlyBirdSettings();
+        console.log(`🐦 共有 ${allRules.length} 條規則`);
         const activeRules = allRules.filter(rule => {
-            if (!rule.is_active) return false;
+            // is_active 可能是字串 "0"/"1" 或數字 0/1
+            const isActive = parseInt(rule.is_active) === 1;
+            if (!isActive) {
+                console.log(`🐦 規則「${rule.name}」已停用，跳過`);
+                return false;
+            }
             
             // 檢查規則有效期間
             const now = new Date();
-            if (rule.start_date && new Date(rule.start_date) > now) return false;
-            if (rule.end_date && new Date(rule.end_date) < now) return false;
+            if (rule.start_date && new Date(rule.start_date) > now) {
+                console.log(`🐦 規則「${rule.name}」尚未生效 (start_date=${rule.start_date})`);
+                return false;
+            }
+            if (rule.end_date && new Date(rule.end_date) < now) {
+                console.log(`🐦 規則「${rule.name}」已過期 (end_date=${rule.end_date})`);
+                return false;
+            }
             
             // 檢查提前天數是否在範圍內
-            if (daysBeforeCheckIn < rule.min_days_before) return false;
-            if (rule.max_days_before !== null && daysBeforeCheckIn > rule.max_days_before) return false;
+            if (daysBeforeCheckIn < rule.min_days_before) {
+                console.log(`🐦 規則「${rule.name}」不符合: 提前${daysBeforeCheckIn}天 < 最少${rule.min_days_before}天`);
+                return false;
+            }
+            if (rule.max_days_before !== null && rule.max_days_before !== undefined && daysBeforeCheckIn > rule.max_days_before) {
+                console.log(`🐦 規則「${rule.name}」不符合: 提前${daysBeforeCheckIn}天 > 最多${rule.max_days_before}天`);
+                return false;
+            }
             
             // 檢查適用房型
             if (rule.applicable_room_types) {
                 try {
                     const roomTypes = JSON.parse(rule.applicable_room_types);
                     if (Array.isArray(roomTypes) && roomTypes.length > 0) {
-                        if (!roomTypes.includes(roomTypeName)) return false;
+                        if (!roomTypes.includes(roomTypeName)) {
+                            console.log(`🐦 規則「${rule.name}」不適用房型: ${roomTypeName} 不在 [${roomTypes.join(',')}]`);
+                            return false;
+                        }
                     }
                 } catch (e) {
                     // 解析失敗，視為適用所有房型
                 }
             }
             
+            console.log(`🐦 規則「${rule.name}」符合條件！`);
             return true;
         });
         

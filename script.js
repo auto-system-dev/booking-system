@@ -616,23 +616,33 @@ function calculateNights() {
 // 檢查早鳥優惠
 async function checkEarlyBirdDiscount(checkInDate, roomTypeName, totalAmount) {
     try {
+        console.log('🐦 檢查早鳥優惠...', { checkInDate, roomTypeName, totalAmount });
         const response = await fetch('/api/early-bird/check', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ checkInDate, roomTypeName, totalAmount })
         });
-        const result = await response.json();
         
-        if (result.success && result.data && result.data.applicable) {
-            earlyBirdDiscount = result.data;
-            console.log('🐦 早鳥優惠可用:', earlyBirdDiscount);
-            return earlyBirdDiscount;
-        } else {
+        if (!response.ok) {
+            console.error('🐦 早鳥優惠 API 錯誤:', response.status, response.statusText);
             earlyBirdDiscount = null;
             return null;
         }
+        
+        const result = await response.json();
+        console.log('🐦 早鳥優惠 API 回應:', JSON.stringify(result));
+        
+        if (result.success && result.data && result.data.applicable) {
+            earlyBirdDiscount = result.data;
+            console.log('🐦 早鳥優惠可用:', earlyBirdDiscount.rule.name, '折扣:', earlyBirdDiscount.discount_amount);
+            return earlyBirdDiscount;
+        } else {
+            earlyBirdDiscount = null;
+            console.log('🐦 無符合的早鳥優惠');
+            return null;
+        }
     } catch (error) {
-        console.error('檢查早鳥優惠錯誤:', error);
+        console.error('🐦 檢查早鳥優惠錯誤:', error);
         earlyBirdDiscount = null;
         return null;
     }
@@ -679,8 +689,10 @@ async function calculatePrice() {
         
         // 1. 計算早鳥折扣
         let ebDiscountAmount = 0;
+        console.log('🐦 applyDiscountsAndDisplay - earlyBirdDiscount:', earlyBirdDiscount ? JSON.stringify(earlyBirdDiscount) : 'null');
         if (earlyBirdDiscount && earlyBirdDiscount.applicable) {
             ebDiscountAmount = calculateEarlyBirdDiscountAmount(totalAmount);
+            console.log('🐦 早鳥折扣金額:', ebDiscountAmount);
         }
         
         // 2. 計算優惠代碼折扣
@@ -722,15 +734,7 @@ async function calculatePrice() {
         return;
     }
 
-    // 檢查早鳥優惠（非同步，但不影響價格計算速度）
-    // 先使用預估金額檢查，之後會在 API 回來後重新計算
     const roomOption = selectedRoom.closest('.room-option');
-    const estimatedPrice = parseInt(roomOption.dataset.price);
-    const estimatedNights = calculateNights();
-    const estimatedTotal = estimatedPrice * estimatedNights + addonsTotal;
-    
-    // 非阻塞檢查早鳥優惠
-    checkEarlyBirdDiscount(checkInDate, roomTypeName, estimatedTotal);
 
     // 使用新的 API 計算價格（考慮假日）
     try {
@@ -740,7 +744,7 @@ async function calculatePrice() {
         if (result.success) {
             const { totalAmount: roomTotal, averagePricePerNight, nights } = result.data;
             
-            // 用精確金額重新檢查早鳥優惠
+            // 檢查早鳥優惠（使用精確金額）
             await checkEarlyBirdDiscount(checkInDate, roomTypeName, roomTotal + addonsTotal);
             applyDiscountsAndDisplay(averagePricePerNight, nights, roomTotal);
         } else {
@@ -748,6 +752,8 @@ async function calculatePrice() {
             const pricePerNight = parseInt(roomOption.dataset.price);
             const nights = calculateNights();
             const roomTotal = pricePerNight * nights;
+            // 用基礎價格檢查早鳥優惠
+            await checkEarlyBirdDiscount(checkInDate, roomTypeName, roomTotal + addonsTotal);
             applyDiscountsAndDisplay(pricePerNight, nights, roomTotal);
         }
     } catch (error) {
@@ -755,6 +761,8 @@ async function calculatePrice() {
         const pricePerNight = parseInt(roomOption.dataset.price);
         const nights = calculateNights();
         const roomTotal = pricePerNight * nights;
+        // 用基礎價格檢查早鳥優惠
+        await checkEarlyBirdDiscount(checkInDate, roomTypeName, roomTotal + addonsTotal);
         applyDiscountsAndDisplay(pricePerNight, nights, roomTotal);
     }
 }
