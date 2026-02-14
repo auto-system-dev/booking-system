@@ -189,6 +189,8 @@ async function initPostgreSQL() {
                     email_sent VARCHAR(255) DEFAULT '0',
                     payment_status VARCHAR(255) DEFAULT 'pending',
                     status VARCHAR(255) DEFAULT 'active',
+                    discount_amount DECIMAL(10,2) DEFAULT 0,
+                    discount_description TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
@@ -250,7 +252,9 @@ async function initPostgreSQL() {
                 { name: 'adults', type: 'INTEGER', default: '0' },
                 { name: 'children', type: 'INTEGER', default: '0' },
                 { name: 'payment_deadline', type: 'TEXT', default: null },
-                { name: 'days_reserved', type: 'INTEGER', default: null }
+                { name: 'days_reserved', type: 'INTEGER', default: null },
+                { name: 'discount_amount', type: 'DECIMAL(10,2)', default: '0' },
+                { name: 'discount_description', type: 'TEXT', default: null }
             ];
             
             for (const col of columnsToAdd) {
@@ -1907,6 +1911,18 @@ function initSQLite() {
                                 console.log('✅ 資料表欄位已更新');
                             }
                             
+                            // 新增 discount_amount 和 discount_description 欄位
+                            db.run(`ALTER TABLE bookings ADD COLUMN discount_amount DECIMAL(10,2) DEFAULT 0`, (err) => {
+                                if (err && !err.message.includes('duplicate column')) {
+                                    console.warn('⚠️  新增 discount_amount 欄位時發生錯誤:', err.message);
+                                }
+                            });
+                            db.run(`ALTER TABLE bookings ADD COLUMN discount_description TEXT`, (err) => {
+                                if (err && !err.message.includes('duplicate column')) {
+                                    console.warn('⚠️  新增 discount_description 欄位時發生錯誤:', err.message);
+                                }
+                            });
+                            
                             // 建立房型設定表
                             db.run(`
                             CREATE TABLE IF NOT EXISTS room_types (
@@ -2435,8 +2451,9 @@ async function saveBooking(bookingData) {
                 payment_amount, payment_method,
                 price_per_night, nights, total_amount, final_amount,
                 booking_date, email_sent, payment_status, status, addons, addons_total,
-                payment_deadline, days_reserved, line_user_id
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+                payment_deadline, days_reserved, line_user_id,
+                discount_amount, discount_description
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
             RETURNING id
         ` : `
             INSERT INTO bookings (
@@ -2446,12 +2463,23 @@ async function saveBooking(bookingData) {
                 payment_amount, payment_method,
                 price_per_night, nights, total_amount, final_amount,
                 booking_date, email_sent, payment_status, status, addons, addons_total,
-                payment_deadline, days_reserved, line_user_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                payment_deadline, days_reserved, line_user_id,
+                discount_amount, discount_description
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         
         const addonsJson = bookingData.addons ? JSON.stringify(bookingData.addons) : null;
         const addonsTotal = bookingData.addonsTotal || 0;
+        
+        // 組合折扣說明
+        let discountDesc = '';
+        if (bookingData.earlyBirdRule) {
+            discountDesc += `早鳥優惠（${bookingData.earlyBirdRule.name}）：-NT$${bookingData.earlyBirdDiscount || 0}`;
+        }
+        if (bookingData.promoDiscount > 0 && bookingData.promoCode) {
+            if (discountDesc) discountDesc += '；';
+            discountDesc += `優惠代碼（${bookingData.promoCode}）：-NT$${bookingData.promoDiscount}`;
+        }
         
         const values = [
             bookingData.bookingId,
@@ -2470,14 +2498,16 @@ async function saveBooking(bookingData) {
             bookingData.totalAmount,
             bookingData.finalAmount,
             bookingData.bookingDate,
-            bookingData.emailSent || '0',  // 支援字串格式（郵件類型）或 '0'（未發送）
+            bookingData.emailSent || '0',
             bookingData.paymentStatus || 'pending',
             bookingData.status || 'active',
             bookingData.addons ? JSON.stringify(bookingData.addons) : null,
             bookingData.addonsTotal || 0,
             bookingData.paymentDeadline || null,
             bookingData.daysReserved || null,
-            bookingData.lineUserId || null
+            bookingData.lineUserId || null,
+            bookingData.discountAmount || 0,
+            discountDesc || null
         ];
         
         const result = await query(sql, values);
@@ -2604,8 +2634,35 @@ async function getBookingById(bookingId) {
         if (promoUsage) {
             booking.promo_code = promoUsage.promo_code;
             booking.promo_code_name = promoUsage.promo_code_name;
-            booking.discount_amount = parseFloat(promoUsage.discount_amount || 0);
+            // 優先使用 bookings 表的 discount_amount（包含早鳥+優惠代碼），否則用 promo_code_usages 的
+            if (!booking.discount_amount || parseFloat(booking.discount_amount) === 0) {
+                booking.discount_amount = parseFloat(promoUsage.discount_amount || 0);
+            }
             booking.original_amount = parseFloat(promoUsage.original_amount || booking.total_amount);
+        }
+        
+        // 確保 discount_amount 是數字
+        booking.discount_amount = parseFloat(booking.discount_amount || 0);
+        
+        // 嘗試從現有資料推算折扣金額（用於舊訂單沒有 discount_amount 的情況）
+        if (booking.discount_amount === 0 && !promoUsage) {
+            const paymentAmountStr = booking.payment_amount || '';
+            let paymentRate = 1; // 預設全額
+            
+            const depositMatch = paymentAmountStr.match(/(\d+)%/);
+            if (depositMatch) {
+                paymentRate = parseInt(depositMatch[1]) / 100;
+            }
+            
+            const expectedFinalWithoutDiscount = Math.round(booking.total_amount * paymentRate);
+            const actualFinal = parseInt(booking.final_amount) || 0;
+            
+            if (expectedFinalWithoutDiscount > actualFinal && actualFinal > 0) {
+                // 有折扣，反推折扣金額
+                const discountedTotal = Math.round(actualFinal / paymentRate);
+                booking.discount_amount = booking.total_amount - discountedTotal;
+                booking.original_amount = booking.total_amount;
+            }
         }
         
         return booking;

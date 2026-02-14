@@ -2032,14 +2032,22 @@ function showBookingModal(booking) {
             <span class="detail-label">總金額</span>
             <span class="detail-value">NT$ ${(booking.original_amount || booking.total_amount).toLocaleString()}</span>
         </div>
+        ${(booking.discount_amount > 0 || booking.promo_code || booking.discount_description) ? `
+        ${booking.discount_description ? `
+        <div class="detail-row">
+            <span class="detail-label">折扣明細</span>
+            <span class="detail-value" style="color: #888; font-size: 13px;">${escapeHtml(booking.discount_description)}</span>
+        </div>
+        ` : ''}
         ${booking.promo_code ? `
         <div class="detail-row">
             <span class="detail-label">優惠代碼</span>
             <span class="detail-value">${escapeHtml(booking.promo_code)} - ${escapeHtml(booking.promo_code_name || '')}</span>
         </div>
+        ` : ''}
         <div class="detail-row">
             <span class="detail-label">優惠折扣</span>
-            <span class="detail-value" style="color: #10b981; font-weight: 600;">-NT$ ${(booking.discount_amount || 0).toLocaleString()}</span>
+            <span class="detail-value" style="color: #f59e0b; font-weight: 600;">-NT$ ${(booking.discount_amount || 0).toLocaleString()}</span>
         </div>
         <div class="detail-row">
             <span class="detail-label">折後總額</span>
@@ -2835,18 +2843,26 @@ function showEditModal(booking) {
                     <span>總金額：</span>
                     <strong id="editTotalAmount">NT$ ${originalAmount.toLocaleString()}</strong>
                 </div>
+                ${(discountAmount > 0 || booking.promo_code || booking.discount_description) ? `
+                ${booking.discount_description ? `
+                <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                    <span>折扣明細：</span>
+                    <strong style="color: #888; font-size: 13px;">${escapeHtml(booking.discount_description)}</strong>
+                </div>
+                ` : ''}
                 ${booking.promo_code ? `
                 <div style="display: flex; justify-content: space-between; margin: 5px 0;">
                     <span>優惠代碼：</span>
                     <strong style="color: #667eea;">${escapeHtml(booking.promo_code)} - ${escapeHtml(booking.promo_code_name || '')}</strong>
                 </div>
+                ` : ''}
                 <div style="display: flex; justify-content: space-between; margin: 5px 0;">
                     <span>優惠折扣：</span>
-                    <strong style="color: #10b981;">-NT$ ${(booking.discount_amount || 0).toLocaleString()}</strong>
+                    <strong id="editDiscountAmount" style="color: #f59e0b;">-NT$ ${(booking.discount_amount || 0).toLocaleString()}</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin: 5px 0; padding-top: 5px; border-top: 1px solid #ddd;">
                     <span>折後總額：</span>
-                    <strong style="font-weight: 600;">NT$ ${discountedTotal.toLocaleString()}</strong>
+                    <strong id="editDiscountedTotal" style="font-weight: 600;">NT$ ${discountedTotal.toLocaleString()}</strong>
                 </div>
                 ` : ''}
                 <div style="display: flex; justify-content: space-between; margin: 5px 0; color: #e74c3c; font-size: 18px;">
@@ -2954,6 +2970,15 @@ function calculateEditPrice() {
         // 如果有優惠折扣，顯示原始總金額；否則顯示當前總金額
         const displayTotalAmount = discountAmount > 0 ? originalAmount : totalAmount;
         document.getElementById('editTotalAmount').textContent = `NT$ ${displayTotalAmount.toLocaleString()}`;
+        // 更新折扣和折後總額顯示（如果元素存在）
+        const editDiscountAmountEl = document.getElementById('editDiscountAmount');
+        if (editDiscountAmountEl) {
+            editDiscountAmountEl.textContent = `-NT$ ${discountAmount.toLocaleString()}`;
+        }
+        const editDiscountedTotalEl = document.getElementById('editDiscountedTotal');
+        if (editDiscountedTotalEl) {
+            editDiscountedTotalEl.textContent = `NT$ ${discountedTotal.toLocaleString()}`;
+        }
         document.getElementById('editPaymentTypeLabel').textContent = `${isDeposit ? `應付訂金 (${depositPercentage}%)` : '應付全額'}：`;
         document.getElementById('editFinalAmount').textContent = `NT$ ${finalAmount.toLocaleString()}`;
     } else {

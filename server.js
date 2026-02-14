@@ -1278,6 +1278,7 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
         bookingData.earlyBirdDiscount = earlyBirdDiscountAmount;
         bookingData.earlyBirdRule = earlyBirdRule;
         bookingData.promoDiscount = promoDiscountAmount;
+        bookingData.promoCode = promoCode || null; // 優惠代碼字串（用於折扣說明）
         
         // 發送通知郵件給管理員（所有付款方式都需要）
         // 優先使用資料庫設定，其次使用環境變數，最後使用預設值
