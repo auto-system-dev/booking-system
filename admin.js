@@ -10240,6 +10240,20 @@ window.saveLandingTheme = saveLandingTheme;
 // 載入早鳥優惠設定
 async function loadEarlyBirdSettings() {
     try {
+        // 先載入房型名稱對照表（用於表格顯示中文名稱）
+        try {
+            const rtResponse = await adminFetch('/api/admin/room-types');
+            const rtResult = await rtResponse.json();
+            if (rtResult.success && rtResult.data) {
+                window._earlyBirdRoomTypeMap = {};
+                rtResult.data.forEach(rt => {
+                    window._earlyBirdRoomTypeMap[rt.name] = rt.display_name || rt.name;
+                });
+            }
+        } catch (e) {
+            console.warn('載入房型對照表失敗:', e);
+        }
+        
         const response = await adminFetch('/api/admin/early-bird-settings');
         const result = await response.json();
         
@@ -10283,7 +10297,11 @@ function renderEarlyBirdTable(settings) {
             try {
                 const types = JSON.parse(s.applicable_room_types);
                 if (Array.isArray(types) && types.length > 0) {
-                    roomTypesText = types.join('、');
+                    // 嘗試從已載入的房型列表取得顯示名稱
+                    roomTypesText = types.map(t => {
+                        const rt = window._earlyBirdRoomTypeMap && window._earlyBirdRoomTypeMap[t];
+                        return rt ? rt : t;
+                    }).join('、');
                 }
             } catch (e) {}
         }
@@ -10349,9 +10367,10 @@ async function loadRoomTypesForEarlyBird(selectedRoomTypes) {
             
             container.innerHTML = roomTypes.map(rt => {
                 const checked = selected.includes(rt.name) ? 'checked' : '';
+                const displayName = rt.display_name || rt.name;
                 return `<label style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: #f8f9fa; border-radius: 6px; cursor: pointer; font-size: 14px;">
                     <input type="checkbox" name="earlyBirdRoomType" value="${escapeHtml(rt.name)}" ${checked}>
-                    ${escapeHtml(rt.name)}
+                    ${escapeHtml(displayName)}
                 </label>`;
             }).join('');
         }

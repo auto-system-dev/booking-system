@@ -678,6 +678,7 @@ async function calculatePrice() {
     const checkInDate = document.getElementById('checkInDate').value;
     const checkOutDate = document.getElementById('checkOutDate').value;
     const roomTypeName = selectedRoom.closest('.room-option').querySelector('.room-name').textContent.trim();
+    const roomTypeValue = selectedRoom.value; // 資料庫內部名稱（用於早鳥優惠比對）
     
     // 計算加購商品總金額（只有在啟用時才計算，考慮數量）
     const addonsTotal = enableAddons ? selectedAddons.reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0) : 0;
@@ -744,8 +745,8 @@ async function calculatePrice() {
         if (result.success) {
             const { totalAmount: roomTotal, averagePricePerNight, nights } = result.data;
             
-            // 檢查早鳥優惠（使用精確金額）
-            await checkEarlyBirdDiscount(checkInDate, roomTypeName, roomTotal + addonsTotal);
+            // 檢查早鳥優惠（使用精確金額，傳入資料庫名稱）
+            await checkEarlyBirdDiscount(checkInDate, roomTypeValue, roomTotal + addonsTotal);
             applyDiscountsAndDisplay(averagePricePerNight, nights, roomTotal);
         } else {
             console.error('計算價格失敗:', result.message);
@@ -753,7 +754,7 @@ async function calculatePrice() {
             const nights = calculateNights();
             const roomTotal = pricePerNight * nights;
             // 用基礎價格檢查早鳥優惠
-            await checkEarlyBirdDiscount(checkInDate, roomTypeName, roomTotal + addonsTotal);
+            await checkEarlyBirdDiscount(checkInDate, roomTypeValue, roomTotal + addonsTotal);
             applyDiscountsAndDisplay(pricePerNight, nights, roomTotal);
         }
     } catch (error) {
@@ -762,7 +763,7 @@ async function calculatePrice() {
         const nights = calculateNights();
         const roomTotal = pricePerNight * nights;
         // 用基礎價格檢查早鳥優惠
-        await checkEarlyBirdDiscount(checkInDate, roomTypeName, roomTotal + addonsTotal);
+        await checkEarlyBirdDiscount(checkInDate, roomTypeValue, roomTotal + addonsTotal);
         applyDiscountsAndDisplay(pricePerNight, nights, roomTotal);
     }
 }
