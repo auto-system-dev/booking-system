@@ -3333,12 +3333,12 @@ function showRoomTypeModal(room) {
             <div class="form-group">
                 <label>銷售頁顯示</label>
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <label class="toggle-switch" style="position: relative; display: inline-block; width: 50px; height: 26px;">
-                        <input type="checkbox" name="show_on_landing" value="1" ${!isEdit || room.show_on_landing === 1 ? 'checked' : ''} style="opacity: 0; width: 0; height: 0;">
-                        <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${!isEdit || room.show_on_landing === 1 ? '#27ae60' : '#ccc'}; transition: 0.3s; border-radius: 26px;" onclick="this.previousElementSibling.checked = !this.previousElementSibling.checked; this.style.backgroundColor = this.previousElementSibling.checked ? '#27ae60' : '#ccc'; this.querySelector('span').style.transform = this.previousElementSibling.checked ? 'translateX(24px)' : 'translateX(0)';">
+                    <div style="position: relative; display: inline-block; width: 50px; height: 26px;">
+                        <input type="checkbox" name="show_on_landing" value="1" ${!isEdit || room.show_on_landing === 1 ? 'checked' : ''} style="opacity: 0; width: 0; height: 0; position: absolute;" onchange="const s=this.nextElementSibling; s.style.backgroundColor=this.checked?'#27ae60':'#ccc'; s.querySelector('span').style.transform=this.checked?'translateX(24px)':'translateX(0)'; this.parentElement.nextElementSibling.textContent=this.checked?'顯示在銷售頁':'不顯示在銷售頁';">
+                        <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${!isEdit || room.show_on_landing === 1 ? '#27ae60' : '#ccc'}; transition: 0.3s; border-radius: 26px;" onclick="const cb=this.previousElementSibling; cb.checked=!cb.checked; cb.dispatchEvent(new Event('change'));">
                             <span style="position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: 0.3s; border-radius: 50%; transform: ${!isEdit || room.show_on_landing === 1 ? 'translateX(24px)' : 'translateX(0)'};"></span>
                         </span>
-                    </label>
+                    </div>
                     <span style="color: #666; font-size: 14px;">${!isEdit || room.show_on_landing === 1 ? '顯示在銷售頁' : '不顯示在銷售頁'}</span>
                 </div>
                 <small>開啟後此房型會出現在銷售頁的房型展示區</small>
