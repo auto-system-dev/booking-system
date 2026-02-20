@@ -822,11 +822,9 @@ body {
     border-top: 1px solid #e0e0e0;
 }
 
-.sidebar-footer #adminInfo {
-    margin-bottom: 10px;
-    color: #666;
-    font-size: 14px;
-    display: block;
+.sidebar-footer #adminInfo,
+.sidebar-footer #adminRole {
+    display: inline;
 }
 
 /* 舊的響應式設計已由底部的手機版響應式設計取代 */
