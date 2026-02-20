@@ -3200,7 +3200,7 @@ function renderRoomTypes() {
     const filteredRoomTypes = allRoomTypes;
     
     if (filteredRoomTypes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="loading">沒有房型資料</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" class="loading">沒有房型資料</td></tr>';
         return;
     }
     
@@ -3218,6 +3218,11 @@ function renderRoomTypes() {
             <td>${room.extra_beds ?? 0}</td>
             <td>NT$ ${room.price.toLocaleString()}${room.original_price ? `<br><small style="color:#aaa;text-decoration:line-through;">NT$ ${room.original_price.toLocaleString()}</small>` : ''}</td>
             <td>${room.holiday_surcharge ? (room.holiday_surcharge > 0 ? '+' : '') + 'NT$ ' + room.holiday_surcharge.toLocaleString() : 'NT$ 0'}</td>
+            <td>
+                <span class="status-badge ${room.show_on_landing === 1 ? 'status-sent' : 'status-unsent'}" style="font-size: 12px;">
+                    ${room.show_on_landing === 1 ? 'ON' : 'OFF'}
+                </span>
+            </td>
             <td>
                 <span class="status-badge ${room.is_active === 1 ? 'status-sent' : 'status-unsent'}">
                     ${room.is_active === 1 ? '啟用' : '停用'}
@@ -3324,6 +3329,19 @@ function showRoomTypeModal(room) {
             <div class="form-group">
                 <label>顯示順序</label>
                 <input type="number" name="display_order" value="${isEdit ? room.display_order : 0}" min="0" step="1">
+            </div>
+            <div class="form-group">
+                <label>銷售頁顯示</label>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label class="toggle-switch" style="position: relative; display: inline-block; width: 50px; height: 26px;">
+                        <input type="checkbox" name="show_on_landing" value="1" ${!isEdit || room.show_on_landing === 1 ? 'checked' : ''} style="opacity: 0; width: 0; height: 0;">
+                        <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${!isEdit || room.show_on_landing === 1 ? '#27ae60' : '#ccc'}; transition: 0.3s; border-radius: 26px;" onclick="this.previousElementSibling.checked = !this.previousElementSibling.checked; this.style.backgroundColor = this.previousElementSibling.checked ? '#27ae60' : '#ccc'; this.querySelector('span').style.transform = this.previousElementSibling.checked ? 'translateX(24px)' : 'translateX(0)';">
+                            <span style="position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: 0.3s; border-radius: 50%; transform: ${!isEdit || room.show_on_landing === 1 ? 'translateX(24px)' : 'translateX(0)'};"></span>
+                        </span>
+                    </label>
+                    <span style="color: #666; font-size: 14px;">${!isEdit || room.show_on_landing === 1 ? '顯示在銷售頁' : '不顯示在銷售頁'}</span>
+                </div>
+                <small>開啟後此房型會出現在銷售頁的房型展示區</small>
             </div>
             <div class="form-group">
                 <label>狀態</label>
@@ -3445,6 +3463,7 @@ async function saveRoomType(event, id) {
         extra_beds: parseInt(formData.get('extra_beds')) || 0,
         icon: formData.get('icon') || '🏠',
         image_url: formData.get('image_url') || null,
+        show_on_landing: formData.get('show_on_landing') ? 1 : 0,
         display_order: parseInt(formData.get('display_order')) || 0,
         is_active: parseInt(formData.get('is_active'))
     };

@@ -5294,12 +5294,13 @@ app.get('/api/landing-settings', publicLimiter, async (req, res) => {
                 landingSettings[setting.key] = setting.value;
             }
         });
-        // 同時回傳啟用中的房型資料，供銷售頁使用
-        const roomTypes = await db.getAllRoomTypes();
+        // 同時回傳啟用中且設為顯示在銷售頁的房型資料
+        const allRoomTypes = await db.getAllRoomTypes();
+        const landingRoomTypes = (allRoomTypes || []).filter(r => r.show_on_landing === 1);
         res.json({
             success: true,
             data: landingSettings,
-            roomTypes: roomTypes || []
+            roomTypes: landingRoomTypes
         });
     } catch (error) {
         console.error('取得銷售頁設定錯誤:', error);

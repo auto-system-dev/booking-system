@@ -302,6 +302,7 @@ async function initPostgreSQL() {
                     extra_beds INTEGER DEFAULT 0,
                     icon VARCHAR(255) DEFAULT '🏠',
                     image_url TEXT DEFAULT NULL,
+                    show_on_landing INTEGER DEFAULT 1,
                     display_order INTEGER DEFAULT 0,
                     is_active INTEGER DEFAULT 1,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -316,7 +317,8 @@ async function initPostgreSQL() {
                 { name: 'max_occupancy', type: 'INTEGER', default: '0' },
                 { name: 'extra_beds', type: 'INTEGER', default: '0' },
                 { name: 'image_url', type: 'TEXT', default: "NULL" },
-                { name: 'original_price', type: 'INTEGER', default: '0' }
+                { name: 'original_price', type: 'INTEGER', default: '0' },
+                { name: 'show_on_landing', type: 'INTEGER', default: '1' }
             ];
             
             for (const col of roomTypeColumnsToAdd) {
@@ -1935,6 +1937,7 @@ function initSQLite() {
                                 extra_beds INTEGER DEFAULT 0,
                                 icon TEXT DEFAULT '🏠',
                                 image_url TEXT DEFAULT NULL,
+                                show_on_landing INTEGER DEFAULT 1,
                                 display_order INTEGER DEFAULT 0,
                                 is_active INTEGER DEFAULT 1,
                                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -1973,6 +1976,13 @@ function initSQLite() {
                                                     console.warn('⚠️  添加 image_url 欄位時發生錯誤:', err.message);
                                                 } else {
                                                     console.log('✅ 已添加 image_url 欄位');
+                                                }
+                                            });
+                                            db.run(`ALTER TABLE room_types ADD COLUMN show_on_landing INTEGER DEFAULT 1`, (err) => {
+                                                if (err && !err.message.includes('duplicate column')) {
+                                                    console.warn('⚠️  添加 show_on_landing 欄位時發生錯誤:', err.message);
+                                                } else {
+                                                    console.log('✅ 已添加 show_on_landing 欄位');
                                                 }
                                             });
                                         });
@@ -4755,12 +4765,12 @@ async function getRoomTypeById(id) {
 async function createRoomType(roomData) {
     try {
         const sql = usePostgreSQL ? `
-            INSERT INTO room_types (name, display_name, price, original_price, holiday_surcharge, max_occupancy, extra_beds, icon, image_url, display_order, is_active) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            INSERT INTO room_types (name, display_name, price, original_price, holiday_surcharge, max_occupancy, extra_beds, icon, image_url, show_on_landing, display_order, is_active) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             RETURNING id
         ` : `
-            INSERT INTO room_types (name, display_name, price, original_price, holiday_surcharge, max_occupancy, extra_beds, icon, image_url, display_order, is_active) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO room_types (name, display_name, price, original_price, holiday_surcharge, max_occupancy, extra_beds, icon, image_url, show_on_landing, display_order, is_active) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         
         const values = [
@@ -4773,6 +4783,7 @@ async function createRoomType(roomData) {
             roomData.extra_beds !== undefined ? roomData.extra_beds : 0,
             roomData.icon || '🏠',
             roomData.image_url || null,
+            roomData.show_on_landing !== undefined ? roomData.show_on_landing : 1,
             roomData.display_order || 0,
             roomData.is_active !== undefined ? roomData.is_active : 1
         ];
@@ -4792,11 +4803,11 @@ async function updateRoomType(id, roomData) {
     try {
         const sql = usePostgreSQL ? `
             UPDATE room_types 
-            SET display_name = $1, price = $2, original_price = $3, holiday_surcharge = $4, max_occupancy = $5, extra_beds = $6, icon = $7, image_url = $8, display_order = $9, is_active = $10, updated_at = CURRENT_TIMESTAMP
-            WHERE id = $11
+            SET display_name = $1, price = $2, original_price = $3, holiday_surcharge = $4, max_occupancy = $5, extra_beds = $6, icon = $7, image_url = $8, show_on_landing = $9, display_order = $10, is_active = $11, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $12
         ` : `
             UPDATE room_types 
-            SET display_name = ?, price = ?, original_price = ?, holiday_surcharge = ?, max_occupancy = ?, extra_beds = ?, icon = ?, image_url = ?, display_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
+            SET display_name = ?, price = ?, original_price = ?, holiday_surcharge = ?, max_occupancy = ?, extra_beds = ?, icon = ?, image_url = ?, show_on_landing = ?, display_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         `;
         
@@ -4809,6 +4820,7 @@ async function updateRoomType(id, roomData) {
             roomData.extra_beds !== undefined ? roomData.extra_beds : 0,
             roomData.icon || '🏠',
             roomData.image_url !== undefined ? roomData.image_url : null,
+            roomData.show_on_landing !== undefined ? roomData.show_on_landing : 1,
             roomData.display_order || 0,
             roomData.is_active !== undefined ? roomData.is_active : 1,
             id
