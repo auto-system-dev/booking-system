@@ -3219,8 +3219,8 @@ function renderRoomTypes() {
             <td>NT$ ${room.price.toLocaleString()}${room.original_price ? `<br><small style="color:#aaa;text-decoration:line-through;">NT$ ${room.original_price.toLocaleString()}</small>` : ''}</td>
             <td>${room.holiday_surcharge ? (room.holiday_surcharge > 0 ? '+' : '') + 'NT$ ' + room.holiday_surcharge.toLocaleString() : 'NT$ 0'}</td>
             <td>
-                <span class="status-badge ${room.show_on_landing === 1 ? 'status-sent' : 'status-unsent'}" style="font-size: 12px;">
-                    ${room.show_on_landing === 1 ? 'ON' : 'OFF'}
+                <span class="status-badge ${room.show_on_landing === 1 ? 'status-sent' : 'status-unsent'}">
+                    ${room.show_on_landing === 1 ? '啟用' : '停用'}
                 </span>
             </td>
             <td>
