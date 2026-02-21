@@ -290,8 +290,10 @@ function renderRoomCards(cfg) {
         '頂級': 'premium'
     };
 
+    // 儲存圖庫資料供 lightbox 使用
+    window._roomGalleryData = {};
+    
     grid.innerHTML = roomTypes.map(room => {
-        // 從 settings 讀取該房型的設施和標籤
         const features = cfg[`landing_roomtype_${room.id}_features`] || '';
         const badge = cfg[`landing_roomtype_${room.id}_badge`] || '';
         const featureItems = buildFeatureHTML(features);
@@ -301,13 +303,24 @@ function renderRoomCards(cfg) {
         const holidaySurcharge = room.holiday_surcharge || 0;
         const displayName = room.display_name || room.name || '房型';
 
-        console.log(`🏨 ${displayName} (ID:${room.id}) | 價格: ${price} | 原價: ${originalPrice} | 設施: ${features || '(未設定)'}`);
+        // 組合所有圖片：主圖 + 圖庫
+        const allImages = [];
+        if (room.image_url) allImages.push(room.image_url);
+        if (room.gallery_images && room.gallery_images.length > 0) {
+            room.gallery_images.forEach(url => { if (url !== room.image_url) allImages.push(url); });
+        }
+        window._roomGalleryData[room.id] = { images: allImages, name: displayName };
+        
+        const hasGallery = allImages.length > 1;
+
+        console.log(`🏨 ${displayName} (ID:${room.id}) | 價格: ${price} | 原價: ${originalPrice} | 圖庫: ${allImages.length}張`);
 
         return `
             <div class="room-card" onclick="trackViewContent('${displayName}', ${price})">
-                <div class="room-image">
+                <div class="room-image" onclick="event.stopPropagation(); ${hasGallery ? `openRoomGallery(${room.id})` : ''};" style="${hasGallery ? 'cursor:pointer;' : ''}">
                     ${room.image_url ? `<img src="${room.image_url}" alt="${displayName}" loading="lazy">` : '<div style="height:200px;background:#e0e0e0;display:flex;align-items:center;justify-content:center;color:#999;">尚無圖片</div>'}
                     ${badge ? `<span class="room-badge ${badgeClass}">${badge}</span>` : ''}
+                    ${hasGallery ? `<span class="room-gallery-hint"><span class="material-symbols-outlined">photo_library</span> ${allImages.length} 張照片</span>` : ''}
                 </div>
                 <div class="room-info">
                     <h3>${displayName}</h3>
@@ -735,3 +748,94 @@ if ('loading' in HTMLImageElement.prototype) {
     
     lazyImages.forEach(img => imageObserver.observe(img));
 }
+
+// ===== 房型圖庫 Lightbox =====
+let _galleryCurrentIndex = 0;
+let _galleryImages = [];
+
+function openRoomGallery(roomId) {
+    const data = window._roomGalleryData && window._roomGalleryData[roomId];
+    if (!data || data.images.length === 0) return;
+    
+    _galleryImages = data.images;
+    _galleryCurrentIndex = 0;
+    
+    const overlay = document.getElementById('galleryLightbox');
+    if (!overlay) return;
+    
+    document.getElementById('galleryTitle').textContent = data.name;
+    updateGalleryDisplay();
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeGalleryLightbox() {
+    const overlay = document.getElementById('galleryLightbox');
+    if (overlay) overlay.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+function galleryPrev() {
+    if (_galleryImages.length === 0) return;
+    _galleryCurrentIndex = (_galleryCurrentIndex - 1 + _galleryImages.length) % _galleryImages.length;
+    updateGalleryDisplay();
+}
+
+function galleryNext() {
+    if (_galleryImages.length === 0) return;
+    _galleryCurrentIndex = (_galleryCurrentIndex + 1) % _galleryImages.length;
+    updateGalleryDisplay();
+}
+
+function updateGalleryDisplay() {
+    const mainImg = document.getElementById('galleryMainImage');
+    const counter = document.getElementById('galleryCounter');
+    const thumbs = document.getElementById('galleryThumbnails');
+    if (!mainImg) return;
+    
+    mainImg.src = _galleryImages[_galleryCurrentIndex];
+    if (counter) counter.textContent = `${_galleryCurrentIndex + 1} / ${_galleryImages.length}`;
+    
+    if (thumbs) {
+        thumbs.innerHTML = _galleryImages.map((url, i) => 
+            `<div class="gallery-thumb ${i === _galleryCurrentIndex ? 'active' : ''}" onclick="galleryGoTo(${i})">
+                <img src="${url}" alt="" loading="lazy">
+            </div>`
+        ).join('');
+    }
+}
+
+function galleryGoTo(index) {
+    _galleryCurrentIndex = index;
+    updateGalleryDisplay();
+}
+
+// 鍵盤操作
+document.addEventListener('keydown', (e) => {
+    const overlay = document.getElementById('galleryLightbox');
+    if (!overlay || !overlay.classList.contains('active')) return;
+    if (e.key === 'Escape') closeGalleryLightbox();
+    if (e.key === 'ArrowLeft') galleryPrev();
+    if (e.key === 'ArrowRight') galleryNext();
+});
+
+// 觸控滑動支援
+(function() {
+    let touchStartX = 0;
+    document.addEventListener('touchstart', (e) => {
+        const overlay = document.getElementById('galleryLightbox');
+        if (!overlay || !overlay.classList.contains('active')) return;
+        touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+    
+    document.addEventListener('touchend', (e) => {
+        const overlay = document.getElementById('galleryLightbox');
+        if (!overlay || !overlay.classList.contains('active')) return;
+        const touchEndX = e.changedTouches[0].clientX;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 50) {
+            if (diff > 0) galleryNext();
+            else galleryPrev();
+        }
+    }, { passive: true });
+})();

@@ -345,6 +345,32 @@
         </a>
     </div>
 
+    <!-- 圖庫 Lightbox -->
+    <div id="galleryLightbox" class="gallery-lightbox">
+        <div class="gallery-lightbox-overlay" onclick="closeGalleryLightbox()"></div>
+        <div class="gallery-lightbox-container">
+            <button class="gallery-close-btn" onclick="closeGalleryLightbox()">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            <div class="gallery-header">
+                <h3 id="galleryTitle"></h3>
+                <span id="galleryCounter" class="gallery-counter"></span>
+            </div>
+            <div class="gallery-main">
+                <button class="gallery-nav-btn gallery-prev-btn" onclick="galleryPrev()">
+                    <span class="material-symbols-outlined">chevron_left</span>
+                </button>
+                <div class="gallery-image-wrapper">
+                    <img id="galleryMainImage" src="" alt="房型照片">
+                </div>
+                <button class="gallery-nav-btn gallery-next-btn" onclick="galleryNext()">
+                    <span class="material-symbols-outlined">chevron_right</span>
+                </button>
+            </div>
+            <div id="galleryThumbnails" class="gallery-thumbnails"></div>
+        </div>
+    </div>
+
     <script src="landing.js"></script>
 </body>
 </html>

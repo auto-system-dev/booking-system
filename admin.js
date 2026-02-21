@@ -3319,8 +3319,22 @@ function showRoomTypeModal(room) {
                 </div>
                 <input type="file" id="roomImageInput" accept="image/jpeg,image/png,image/webp,image/gif" style="display: none;" onchange="handleRoomImageUpload(this)">
                 <input type="hidden" name="image_url" id="roomImageUrl" value="${escapeHtml(currentImageUrl)}">
-                <small>上傳房型照片，將在前台訂房頁面顯示（若無照片則顯示圖示）</small>
+                <small>上傳房型主照片，將在前台訂房頁面與銷售頁顯示</small>
             </div>
+            ${isEdit ? `
+            <div class="form-group">
+                <label>圖庫照片（銷售頁點擊可瀏覽）</label>
+                <div id="galleryImagesContainer" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; min-height: 40px;">
+                    <div style="color: #aaa; font-size: 13px;">載入中...</div>
+                </div>
+                <div id="galleryUploadArea" style="border: 2px dashed #ccc; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.3s; background: #fafafa;" onclick="document.getElementById('galleryImageInput').click()">
+                    <span class="material-symbols-outlined" style="font-size: 32px; color: #aaa;">add_photo_alternate</span>
+                    <p style="color: #888; margin: 4px 0 0; font-size: 13px;">點擊新增圖庫照片</p>
+                </div>
+                <input type="file" id="galleryImageInput" accept="image/jpeg,image/png,image/webp,image/gif" style="display: none;" onchange="handleGalleryImageUpload(this, ${room.id})">
+                <small>可上傳多張照片，訪客在銷售頁點擊房型圖片後可瀏覽所有照片</small>
+            </div>
+            ` : ''}
             <div class="form-group">
                 <label>圖示（Emoji，備用）</label>
                 <input type="text" name="icon" value="${isEdit ? escapeHtml(room.icon) : '🏠'}" maxlength="10">
@@ -3358,6 +3372,97 @@ function showRoomTypeModal(room) {
     `;
     
     modal.classList.add('active');
+    
+    if (isEdit) {
+        loadGalleryImages(room.id);
+    }
+}
+
+// 載入房型圖庫照片
+async function loadGalleryImages(roomTypeId) {
+    try {
+        const response = await adminFetch(`/api/admin/room-types/${roomTypeId}/gallery`);
+        const result = await response.json();
+        const container = document.getElementById('galleryImagesContainer');
+        if (!container) return;
+        
+        if (result.success && result.data && result.data.length > 0) {
+            container.innerHTML = result.data.map(img => `
+                <div style="position: relative; display: inline-block; width: 120px; height: 90px; border-radius: 8px; overflow: hidden; border: 1px solid #e0e0e0;">
+                    <img src="${escapeHtml(img.image_url)}" style="width: 100%; height: 100%; object-fit: cover;">
+                    <button type="button" onclick="event.stopPropagation(); deleteGalleryImage(${img.id}, ${roomTypeId});" style="position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; border: none; background: rgba(231,76,60,0.9); color: white; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;">✕</button>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<div style="color: #aaa; font-size: 13px;">尚無圖庫照片</div>';
+        }
+    } catch (error) {
+        console.error('載入圖庫失敗:', error);
+        const container = document.getElementById('galleryImagesContainer');
+        if (container) container.innerHTML = '<div style="color: #e74c3c; font-size: 13px;">載入失敗</div>';
+    }
+}
+
+// 上傳圖庫照片
+async function handleGalleryImageUpload(input, roomTypeId) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    if (file.size > 5 * 1024 * 1024) {
+        showError('圖片大小不可超過 5MB');
+        input.value = '';
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    const uploadArea = document.getElementById('galleryUploadArea');
+    const originalContent = uploadArea.innerHTML;
+    uploadArea.innerHTML = '<div style="padding: 8px;"><span class="material-symbols-outlined" style="font-size: 24px; color: #667eea; animation: spin 1s linear infinite;">progress_activity</span><p style="color: #667eea; margin: 4px 0 0; font-size: 13px;">上傳中...</p></div>';
+    
+    try {
+        const response = await adminFetch(`/api/admin/room-types/${roomTypeId}/gallery`, {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('圖庫照片已新增');
+            await loadGalleryImages(roomTypeId);
+        } else {
+            showError('上傳失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('上傳圖庫照片錯誤:', error);
+        showError('上傳圖庫照片時發生錯誤');
+    }
+    
+    uploadArea.innerHTML = originalContent;
+    input.value = '';
+}
+
+// 刪除圖庫照片
+async function deleteGalleryImage(imageId, roomTypeId) {
+    if (!confirm('確定要刪除這張圖庫照片嗎？')) return;
+    
+    try {
+        const response = await adminFetch(`/api/admin/room-types/gallery/${imageId}`, {
+            method: 'DELETE'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess('圖庫照片已刪除');
+            await loadGalleryImages(roomTypeId);
+        } else {
+            showError('刪除失敗：' + (result.message || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('刪除圖庫照片錯誤:', error);
+        showError('刪除圖庫照片時發生錯誤');
+    }
 }
 
 // 處理房型圖片上傳

@@ -344,6 +344,18 @@ async function initPostgreSQL() {
             }
             console.log('✅ room_types 欄位遷移完成');
             
+            // 建立房型圖庫表（多張照片）
+            await query(`
+                CREATE TABLE IF NOT EXISTS room_type_images (
+                    id SERIAL PRIMARY KEY,
+                    room_type_id INTEGER NOT NULL,
+                    image_url TEXT NOT NULL,
+                    display_order INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ 房型圖庫表已準備就緒');
+            
             // 建立假日日期表
             await query(`
                 CREATE TABLE IF NOT EXISTS holidays (
@@ -1986,6 +1998,23 @@ function initSQLite() {
                                                 }
                                             });
                                         });
+                                    });
+                                    
+                                    // 建立房型圖庫表（多張照片）
+                                    db.run(`
+                                        CREATE TABLE IF NOT EXISTS room_type_images (
+                                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                            room_type_id INTEGER NOT NULL,
+                                            image_url TEXT NOT NULL,
+                                            display_order INTEGER DEFAULT 0,
+                                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                                        )
+                                    `, (err) => {
+                                        if (err) {
+                                            console.warn('⚠️  建立 room_type_images 表時發生錯誤:', err.message);
+                                        } else {
+                                            console.log('✅ 房型圖庫表已準備就緒');
+                                        }
                                     });
                                     
                                     // 建立假日日期表
@@ -5031,6 +5060,73 @@ async function deleteRoomType(id) {
     }
 }
 
+// ==================== 房型圖庫管理 ====================
+
+async function getRoomTypeGalleryImages(roomTypeId) {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT * FROM room_type_images WHERE room_type_id = $1 ORDER BY display_order ASC, id ASC`
+            : `SELECT * FROM room_type_images WHERE room_type_id = ? ORDER BY display_order ASC, id ASC`;
+        const result = await query(sql, [roomTypeId]);
+        return result.rows;
+    } catch (error) {
+        console.error('❌ 查詢房型圖庫失敗:', error.message);
+        throw error;
+    }
+}
+
+async function getAllRoomTypeGalleryImages() {
+    try {
+        const sql = `SELECT * FROM room_type_images ORDER BY room_type_id ASC, display_order ASC, id ASC`;
+        const result = await query(sql);
+        return result.rows;
+    } catch (error) {
+        console.error('❌ 查詢所有房型圖庫失敗:', error.message);
+        throw error;
+    }
+}
+
+async function addRoomTypeGalleryImage(roomTypeId, imageUrl, displayOrder = 0) {
+    try {
+        const sql = usePostgreSQL
+            ? `INSERT INTO room_type_images (room_type_id, image_url, display_order) VALUES ($1, $2, $3) RETURNING id`
+            : `INSERT INTO room_type_images (room_type_id, image_url, display_order) VALUES (?, ?, ?)`;
+        const result = await query(sql, [roomTypeId, imageUrl, displayOrder]);
+        const newId = result.lastID || result.rows?.[0]?.id;
+        console.log(`✅ 圖庫圖片已新增 (ID: ${newId})`);
+        return newId;
+    } catch (error) {
+        console.error('❌ 新增圖庫圖片失敗:', error.message);
+        throw error;
+    }
+}
+
+async function deleteRoomTypeGalleryImage(imageId) {
+    try {
+        const sql = usePostgreSQL
+            ? `DELETE FROM room_type_images WHERE id = $1`
+            : `DELETE FROM room_type_images WHERE id = ?`;
+        const result = await query(sql, [imageId]);
+        console.log(`✅ 圖庫圖片已刪除 (ID: ${imageId})`);
+        return result.changes;
+    } catch (error) {
+        console.error('❌ 刪除圖庫圖片失敗:', error.message);
+        throw error;
+    }
+}
+
+async function updateRoomTypeGalleryOrder(imageId, displayOrder) {
+    try {
+        const sql = usePostgreSQL
+            ? `UPDATE room_type_images SET display_order = $1 WHERE id = $2`
+            : `UPDATE room_type_images SET display_order = ? WHERE id = ?`;
+        await query(sql, [displayOrder, imageId]);
+    } catch (error) {
+        console.error('❌ 更新圖庫排序失敗:', error.message);
+        throw error;
+    }
+}
+
 // ==================== 系統設定管理 ====================
 
 // 取得設定值
@@ -6462,6 +6558,12 @@ module.exports = {
     createRoomType,
     updateRoomType,
     deleteRoomType,
+    // 房型圖庫
+    getRoomTypeGalleryImages,
+    getAllRoomTypeGalleryImages,
+    addRoomTypeGalleryImage,
+    deleteRoomTypeGalleryImage,
+    updateRoomTypeGalleryOrder,
     // 假日管理
     getAllHolidays,
     isHoliday,

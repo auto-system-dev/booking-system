@@ -4845,6 +4845,77 @@ app.delete('/api/admin/room-types/delete-image', requireAuth, checkPermission('r
     }
 });
 
+// ==================== 房型圖庫 API ====================
+
+// API: 取得房型圖庫
+app.get('/api/admin/room-types/:id/gallery', requireAuth, checkPermission('room_types.view'), adminLimiter, async (req, res) => {
+    try {
+        const images = await db.getRoomTypeGalleryImages(parseInt(req.params.id));
+        res.json({ success: true, data: images });
+    } catch (error) {
+        console.error('取得房型圖庫錯誤:', error);
+        res.status(500).json({ success: false, message: '取得圖庫失敗: ' + error.message });
+    }
+});
+
+// API: 上傳房型圖庫圖片
+app.post('/api/admin/room-types/:id/gallery', requireAuth, checkPermission('room_types.edit'), (req, res) => {
+    uploadImage.single('image')(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ success: false, message: '圖片大小不可超過 5MB' });
+            }
+            return res.status(400).json({ success: false, message: '上傳失敗: ' + err.message });
+        } else if (err) {
+            return res.status(400).json({ success: false, message: err.message });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: '請選擇要上傳的圖片' });
+        }
+
+        try {
+            const roomTypeId = parseInt(req.params.id);
+            const imageUrl = `/uploads/${req.file.filename}`;
+            const existing = await db.getRoomTypeGalleryImages(roomTypeId);
+            const displayOrder = existing.length;
+            const newId = await db.addRoomTypeGalleryImage(roomTypeId, imageUrl, displayOrder);
+            console.log(`✅ 圖庫圖片已上傳: ${imageUrl} (房型ID: ${roomTypeId})`);
+            res.json({
+                success: true,
+                message: '圖庫圖片上傳成功',
+                data: { id: newId, image_url: imageUrl, display_order: displayOrder }
+            });
+        } catch (error) {
+            console.error('上傳圖庫圖片錯誤:', error);
+            res.status(500).json({ success: false, message: '上傳失敗: ' + error.message });
+        }
+    });
+});
+
+// API: 刪除房型圖庫圖片
+app.delete('/api/admin/room-types/gallery/:imageId', requireAuth, checkPermission('room_types.edit'), adminLimiter, async (req, res) => {
+    try {
+        const imageId = parseInt(req.params.imageId);
+        const allImages = await db.getAllRoomTypeGalleryImages();
+        const target = allImages.find(img => img.id === imageId);
+
+        if (target && target.image_url.startsWith('/uploads/')) {
+            const fileName = path.basename(target.image_url);
+            const filePath = path.join(uploadsDir, fileName);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+        }
+
+        await db.deleteRoomTypeGalleryImage(imageId);
+        res.json({ success: true, message: '圖庫圖片已刪除' });
+    } catch (error) {
+        console.error('刪除圖庫圖片錯誤:', error);
+        res.status(500).json({ success: false, message: '刪除圖庫圖片失敗: ' + error.message });
+    }
+});
+
 // ==================== 假日管理 API ====================
 
 // API: 取得所有假日
@@ -5297,6 +5368,18 @@ app.get('/api/landing-settings', publicLimiter, async (req, res) => {
         // 同時回傳啟用中且設為顯示在銷售頁的房型資料
         const allRoomTypes = await db.getAllRoomTypes();
         const landingRoomTypes = (allRoomTypes || []).filter(r => r.show_on_landing === 1);
+        
+        // 取得所有圖庫圖片，按房型分組
+        const allGalleryImages = await db.getAllRoomTypeGalleryImages();
+        const galleryMap = {};
+        (allGalleryImages || []).forEach(img => {
+            if (!galleryMap[img.room_type_id]) galleryMap[img.room_type_id] = [];
+            galleryMap[img.room_type_id].push(img.image_url);
+        });
+        landingRoomTypes.forEach(room => {
+            room.gallery_images = galleryMap[room.id] || [];
+        });
+        
         res.json({
             success: true,
             data: landingSettings,
