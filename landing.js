@@ -399,23 +399,28 @@ function renderReviewCards(cfg) {
     }
 
     if (reviews.length === 0) {
-        // 使用預設評價
-        grid.innerHTML = `
+        const defaultReviews = [
+            { name: '林小姐', date: '2026 年 1 月', rating: '5.0', text: '環境超棒！房間乾淨又舒適，主人非常親切熱情，早餐也很豐盛。下次還會再來！', tags: '環境優美,服務親切' },
+            { name: '陳先生', date: '2026 年 1 月', rating: '5.0', text: '帶著家人一起入住，孩子們玩得很開心。設備齊全，地點方便，CP 值很高！', tags: '適合家庭,設備齊全' },
+            { name: '王小姐', date: '2025 年 12 月', rating: '4.9', text: '位置很好找，房間寬敞明亮，窗外風景很美。整體住宿體驗非常棒，大力推薦！', tags: '景觀優美,交通方便' }
+        ];
+        grid.innerHTML = defaultReviews.map(r => `
             <div class="review-card">
                 <div class="review-header">
-                    <div class="reviewer-avatar">旅</div>
+                    <div class="reviewer-avatar">${r.name.charAt(0)}</div>
                     <div class="reviewer-info">
-                        <span class="reviewer-name">旅客</span>
-                        <span class="review-date">近期</span>
+                        <span class="reviewer-name">${r.name}</span>
+                        <span class="review-date">${r.date}</span>
                     </div>
                     <div class="review-rating">
                         <span class="material-symbols-outlined filled">star</span>
-                        <span>5.0</span>
+                        <span>${r.rating}</span>
                     </div>
                 </div>
-                <p class="review-text">「很棒的住宿體驗，推薦給大家！」</p>
+                <p class="review-text">「${r.text}」</p>
+                <div class="review-tags">${r.tags.split(',').map(t => `<span>${t.trim()}</span>`).join('')}</div>
             </div>
-        `;
+        `).join('');
         return;
     }
 
