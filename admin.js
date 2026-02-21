@@ -9925,6 +9925,11 @@ async function loadLandingRoomTypes(landingData) {
                 <label class="feature-checkbox"><input type="checkbox" value="淋浴設備"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">shower</span>淋浴設備</label>
                 <label class="feature-checkbox"><input type="checkbox" value="免治馬桶"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">wash</span>免治馬桶</label>
                 <label class="feature-checkbox"><input type="checkbox" value="私人湯池"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">hot_tub</span>私人湯池</label>
+                <p style="font-size: 13px; color: #888; margin: 10px 0 10px 0; grid-column: 1 / -1;">🏠 景觀</p>
+                <label class="feature-checkbox"><input type="checkbox" value="私人陽台"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">balcony</span>私人陽台</label>
+                <label class="feature-checkbox"><input type="checkbox" value="山景視野"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">landscape</span>山景視野</label>
+                <label class="feature-checkbox"><input type="checkbox" value="海景視野"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">water</span>海景視野</label>
+                <label class="feature-checkbox"><input type="checkbox" value="庭園景觀"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">park</span>庭園景觀</label>
             </div>`;
 
         // 為每個房型生成卡片
