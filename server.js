@@ -546,6 +546,29 @@ const sanitizeInput = (req, res, next) => {
                 return;
             }
             
+            // 銷售頁設定的 value 欄位可能包含 URL（如 Google Maps 嵌入網址），跳過 SQL Injection 檢測
+            const isLandingSettingsRequest = req.path && 
+                req.path.includes('/api/admin/settings/landing_');
+            
+            if (isLandingSettingsRequest && req.body.value) {
+                const { value, ...rest } = req.body;
+                req.body = {
+                    ...sanitizeObject(rest, {
+                        checkSQLInjection: true,
+                        checkXSS: true
+                    }),
+                    value: value
+                };
+                if (req.query) {
+                    req.query = sanitizeObject(req.query, { checkSQLInjection: true, checkXSS: true });
+                }
+                if (req.params) {
+                    req.params = sanitizeObject(req.params, { checkSQLInjection: true, checkXSS: true });
+                }
+                next();
+                return;
+            }
+            
             if (req.body.value && isWeekdaySettingsRequest) {
                 // 驗證是否為有效的 JSON 格式
                 try {
