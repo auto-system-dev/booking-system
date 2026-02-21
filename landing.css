@@ -1073,6 +1073,10 @@ section {
 }
 
 @media (max-width: 768px) {
+    .hero-scroll {
+        display: none;
+    }
+
     .nav-menu {
         position: fixed;
         top: 0;
