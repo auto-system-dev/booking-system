@@ -1395,6 +1395,10 @@
                         <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">king_bed</span>
                         房型展示
                     </button>
+                    <button class="tab-button" onclick="switchLandingTab('facilities')" id="landingTabFacilities">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">apartment</span>
+                        民宿設施
+                    </button>
                     <button class="tab-button" onclick="switchLandingTab('reviews')" id="landingTabReviews">
                         <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">reviews</span>
                         客戶評價
@@ -1599,7 +1603,7 @@
                         </div>
                         <div style="background-color: #d1fae5; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
                             <p style="margin: 0; color: #059669; font-size: 14px;">
-                                <strong>💡 提示：</strong>房型名稱、圖片、價格自動從「房型管理」同步。此處僅需設定各房型的<strong>展示設施</strong>和<strong>標籤</strong>即可。
+                                <strong>💡 提示：</strong>房型名稱、圖片、價格自動從「房型管理」同步。此處設定各房型的<strong>床型、衛浴</strong>和<strong>標籤</strong>。空間/電器/其他服務請到「民宿設施」分頁設定。
                             </p>
                         </div>
                         <div id="landingRoomsContainer">
@@ -1611,6 +1615,54 @@
                         <button class="btn-save" onclick="saveLandingRoomFeatures()" style="margin-top: 10px;">
                             <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">save</span>
                             儲存房型展示設定
+                        </button>
+                    </div>
+
+                    <!-- 民宿設施分頁 -->
+                    <div id="landingTabFacilitiesContent" class="tab-content">
+                        <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #8b5cf6;">
+                            <span class="material-symbols-outlined" style="font-size: 24px; color: #8b5cf6; margin-right: 10px;">apartment</span>
+                            <h3 style="margin: 0; color: #2c3e50;">民宿設施設定</h3>
+                        </div>
+                        <div style="background-color: #ede9fe; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+                            <p style="margin: 0; color: #6d28d9; font-size: 14px;">
+                                <strong>💡 提示：</strong>勾選的設施會顯示在銷售頁的「完善設施」區塊，適用於整間民宿（非個別房型）。
+                            </p>
+                        </div>
+                        <input type="hidden" id="landingFacilities" value="">
+                        <div class="room-features-checkbox-grid" data-target="landingFacilities" onchange="syncFeatureCheckboxes(this)">
+                            <p style="font-size: 13px; color: #888; margin: 5px 0 10px 0;">🏠 空間與景觀</p>
+                            <label class="feature-checkbox"><input type="checkbox" value="私人陽台"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">balcony</span>私人陽台</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="客廳空間"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">living</span>客廳空間</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="小廚房"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">countertops</span>小廚房</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="和室空間"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">floor</span>和室空間</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="庭院"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">yard</span>庭院</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="山景視野"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">landscape</span>山景視野</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="海景視野"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">water</span>海景視野</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="庭園景觀"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">park</span>庭園景觀</label>
+                            <p style="font-size: 13px; color: #888; margin: 10px 0 10px 0; grid-column: 1 / -1;">📺 電器設備</p>
+                            <label class="feature-checkbox"><input type="checkbox" value="免費 WiFi"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">wifi</span>免費 WiFi</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="冷暖空調"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">ac_unit</span>冷暖空調</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="智慧電視"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">tv</span>智慧電視</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="冰箱"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">kitchen</span>冰箱</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="咖啡機"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">coffee_maker</span>咖啡機</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="電熱水壺"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">water_drop</span>電熱水壺</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="吹風機"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">air</span>吹風機</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="洗衣機"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">local_laundry_service</span>洗衣機</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="微波爐"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">microwave</span>微波爐</label>
+                            <p style="font-size: 13px; color: #888; margin: 10px 0 10px 0; grid-column: 1 / -1;">🎁 其他服務</p>
+                            <label class="feature-checkbox"><input type="checkbox" value="免費早餐"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">restaurant</span>免費早餐</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="免費停車"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">local_parking</span>免費停車</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="寵物友善"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">pets</span>寵物友善</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="保險箱"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">lock</span>保險箱</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="行李寄放"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">luggage</span>行李寄放</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="嬰兒床"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">crib</span>嬰兒床</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="無障礙設施"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">accessible</span>無障礙設施</label>
+                            <label class="feature-checkbox"><input type="checkbox" value="機場接送"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">airport_shuttle</span>機場接送</label>
+                        </div>
+                        <button class="btn-save" onclick="saveLandingSettings('facilities')" style="margin-top: 20px;">
+                            <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">save</span>
+                            儲存民宿設施
                         </button>
                     </div>
 

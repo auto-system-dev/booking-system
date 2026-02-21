@@ -141,6 +141,9 @@ function applyConfig(cfg) {
     // ===== 房型展示 =====
     renderRoomCards(cfg);
 
+    // ===== 民宿設施 =====
+    renderAmenities(cfg);
+
     // ===== 客戶評價 =====
     if (cfg.landing_review_count) {
         setText('reviewTitle', `超過 ${cfg.landing_review_count} 位旅客的選擇`);
@@ -243,6 +246,29 @@ function buildFeatureHTML(featuresStr) {
             return `<span><span class="material-symbols-outlined">${icon}</span> ${name}</span>`;
         })
         .join('');
+}
+
+// ===== 動態生成民宿設施區塊 =====
+function renderAmenities(cfg) {
+    const grid = document.getElementById('amenitiesGrid');
+    if (!grid) return;
+
+    const facilitiesStr = cfg.landing_facilities || '';
+    if (!facilitiesStr.trim()) {
+        // 沒有設定時隱藏整個設施區塊
+        const section = document.getElementById('amenities');
+        if (section) section.style.display = 'none';
+        return;
+    }
+
+    const items = facilitiesStr.split(',').map(f => f.trim()).filter(f => f.length > 0);
+    grid.innerHTML = items.map(name => {
+        const icon = featureIconMap[name] || 'check_circle';
+        return `<div class="amenity-item">
+            <span class="material-symbols-outlined">${icon}</span>
+            <span>${name}</span>
+        </div>`;
+    }).join('');
 }
 
 // ===== 動態生成房型卡片（從房型管理 + 設施設定合併） =====
