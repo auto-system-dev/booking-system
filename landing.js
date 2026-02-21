@@ -156,8 +156,16 @@ function applyConfig(cfg) {
     // ===== 聯絡資訊 =====
     setText('locationAddress', cfg.landing_address);
     setText('locationDriving', cfg.landing_driving);
-    setText('locationTransit', cfg.landing_transit);
     setText('locationPhone', cfg.landing_phone);
+
+    // 大眾運輸：有資料才顯示
+    const transitCard = document.getElementById('transitCard');
+    if (cfg.landing_transit && cfg.landing_transit.trim()) {
+        setText('locationTransit', cfg.landing_transit);
+        if (transitCard) transitCard.style.display = '';
+    } else {
+        if (transitCard) transitCard.style.display = 'none';
+    }
 
     if (cfg.landing_map_url) {
         const mapFrame = document.getElementById('locationMap');
