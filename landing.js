@@ -235,12 +235,19 @@ const featureIconMap = {
     '無障礙設施': 'accessible', '機場接送': 'airport_shuttle'
 };
 
-// 將逗號分隔的設施字串轉為帶圖示的 HTML
+// 民宿設施項目（不應顯示在個別房型卡片中）
+const propertyFacilities = new Set([
+    '客廳空間', '小廚房', '和室空間', '庭院',
+    '免費 WiFi', '冷暖空調', '智慧電視', '冰箱', '咖啡機', '電熱水壺', '吹風機', '洗衣機', '微波爐',
+    '免費早餐', '免費停車', '寵物友善', '保險箱', '行李寄放', '嬰兒床', '無障礙設施', '機場接送'
+]);
+
+// 將逗號分隔的設施字串轉為帶圖示的 HTML（自動過濾掉民宿設施）
 function buildFeatureHTML(featuresStr) {
     if (!featuresStr || !featuresStr.trim()) return '';
     return featuresStr.split(',')
         .map(f => f.trim())
-        .filter(f => f.length > 0)
+        .filter(f => f.length > 0 && !propertyFacilities.has(f))
         .map(name => {
             const icon = featureIconMap[name] || 'check_circle';
             return `<span><span class="material-symbols-outlined">${icon}</span> ${name}</span>`;
