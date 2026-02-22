@@ -31,27 +31,19 @@ const backup = require('./backup');
 const csrf = require('csrf');
 const lineBot = require('./line-bot');
 const multer = require('multer');
+const storage = require('./storage');
 
-// 圖片上傳設定（支援環境變數，適用於 Railway Volume 掛載）
+// 本地 uploads 目錄（當未設定 R2 時作為回退儲存）
 const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-    console.log('✅ uploads 目錄已建立');
+if (!storage.isCloudStorage) {
+    if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+        console.log('✅ uploads 目錄已建立');
+    }
 }
 
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadsDir);
-    },
-    filename: function (req, file, cb) {
-        const ext = path.extname(file.originalname).toLowerCase();
-        const uniqueName = `room_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`;
-        cb(null, uniqueName);
-    }
-});
-
 const uploadImage = multer({
-    storage: storage,
+    storage: multer.memoryStorage(),
     limits: {
         fileSize: 5 * 1024 * 1024 // 最大 5MB
     },
@@ -4819,7 +4811,7 @@ app.put('/api/admin/room-types/:id', requireAuth, checkPermission('room_types.ed
 
 // API: 上傳房型圖片
 app.post('/api/admin/room-types/upload-image', requireAuth, checkPermission('room_types.edit'), (req, res) => {
-    uploadImage.single('image')(req, res, function (err) {
+    uploadImage.single('image')(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
             if (err.code === 'LIMIT_FILE_SIZE') {
                 return res.status(400).json({ success: false, message: '圖片大小不可超過 5MB' });
@@ -4833,14 +4825,20 @@ app.post('/api/admin/room-types/upload-image', requireAuth, checkPermission('roo
             return res.status(400).json({ success: false, message: '請選擇要上傳的圖片' });
         }
 
-        const imageUrl = `/uploads/${req.file.filename}`;
-        console.log(`✅ 房型圖片已上傳: ${imageUrl}`);
+        try {
+            const fileName = storage.generateFileName(req.file.originalname, 'room');
+            const imageUrl = await storage.uploadFile(req.file.buffer, fileName, req.file.mimetype);
+            console.log(`✅ 房型圖片已上傳: ${imageUrl}`);
 
-        res.json({
-            success: true,
-            message: '圖片上傳成功',
-            data: { image_url: imageUrl }
-        });
+            res.json({
+                success: true,
+                message: '圖片上傳成功',
+                data: { image_url: imageUrl }
+            });
+        } catch (error) {
+            console.error('上傳圖片錯誤:', error);
+            res.status(500).json({ success: false, message: '上傳圖片失敗: ' + error.message });
+        }
     });
 });
 
@@ -4852,14 +4850,8 @@ app.delete('/api/admin/room-types/delete-image', requireAuth, checkPermission('r
             return res.status(400).json({ success: false, message: '請提供圖片路徑' });
         }
 
-        // 安全檢查：確保路徑在 uploads 目錄下
-        const fileName = path.basename(image_url);
-        const filePath = path.join(uploadsDir, fileName);
-
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-            console.log(`🗑️ 房型圖片已刪除: ${fileName}`);
-        }
+        await storage.deleteFile(image_url);
+        console.log(`🗑️ 房型圖片已刪除: ${image_url}`);
 
         res.json({ success: true, message: '圖片已刪除' });
     } catch (error) {
@@ -4899,7 +4891,8 @@ app.post('/api/admin/room-types/:id/gallery', requireAuth, checkPermission('room
 
         try {
             const roomTypeId = parseInt(req.params.id);
-            const imageUrl = `/uploads/${req.file.filename}`;
+            const fileName = storage.generateFileName(req.file.originalname, 'gallery');
+            const imageUrl = await storage.uploadFile(req.file.buffer, fileName, req.file.mimetype);
             const existing = await db.getRoomTypeGalleryImages(roomTypeId);
             const displayOrder = existing.length;
             const newId = await db.addRoomTypeGalleryImage(roomTypeId, imageUrl, displayOrder);
@@ -4923,12 +4916,8 @@ app.delete('/api/admin/room-types/gallery/:imageId', requireAuth, checkPermissio
         const allImages = await db.getAllRoomTypeGalleryImages();
         const target = allImages.find(img => img.id === imageId);
 
-        if (target && target.image_url.startsWith('/uploads/')) {
-            const fileName = path.basename(target.image_url);
-            const filePath = path.join(uploadsDir, fileName);
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
+        if (target && target.image_url) {
+            await storage.deleteFile(target.image_url);
         }
 
         await db.deleteRoomTypeGalleryImage(imageId);
@@ -5353,7 +5342,7 @@ app.put('/api/admin/settings/:key', requireAuth, checkPermission('settings.edit'
 
 // API: 上傳銷售頁圖片（共用房型上傳的 multer 設定）
 app.post('/api/admin/landing/upload-image', requireAuth, (req, res) => {
-    uploadImage.single('image')(req, res, function (err) {
+    uploadImage.single('image')(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
             if (err.code === 'LIMIT_FILE_SIZE') {
                 return res.status(400).json({ success: false, message: '圖片大小不可超過 5MB' });
@@ -5367,14 +5356,20 @@ app.post('/api/admin/landing/upload-image', requireAuth, (req, res) => {
             return res.status(400).json({ success: false, message: '請選擇要上傳的圖片' });
         }
 
-        const imageUrl = `/uploads/${req.file.filename}`;
-        console.log(`✅ 銷售頁圖片已上傳: ${imageUrl}`);
+        try {
+            const fileName = storage.generateFileName(req.file.originalname, 'landing');
+            const imageUrl = await storage.uploadFile(req.file.buffer, fileName, req.file.mimetype);
+            console.log(`✅ 銷售頁圖片已上傳: ${imageUrl}`);
 
-        res.json({
-            success: true,
-            message: '圖片上傳成功',
-            data: { image_url: imageUrl }
-        });
+            res.json({
+                success: true,
+                message: '圖片上傳成功',
+                data: { image_url: imageUrl }
+            });
+        } catch (error) {
+            console.error('上傳銷售頁圖片錯誤:', error);
+            res.status(500).json({ success: false, message: '上傳圖片失敗: ' + error.message });
+        }
     });
 });
 
@@ -11080,7 +11075,7 @@ async function startServer() {
             console.log(`📧 Email: ${process.env.EMAIL_USER || 'cheng701107@gmail.com'}`);
             console.log(`💾 資料庫: PostgreSQL`);
             console.log(`📁 備份目錄: ${process.env.BACKUP_DIR || './backups'}`);
-            console.log(`🖼️ 圖片目錄: ${process.env.UPLOADS_DIR || './uploads'}`);
+            console.log(`🖼️ 圖片儲存: ${storage.isCloudStorage ? 'Cloudflare R2' : (process.env.UPLOADS_DIR || './uploads')}`);
             console.log('========================================\n');
             console.log('等待請求中...\n');
             
@@ -11133,7 +11128,7 @@ async function startServer() {
     }
 }
 
-// 靜態檔案服務 - uploads 目錄（房型照片等，支援 Railway Volume 掛載）
+// 靜態檔案服務 - uploads 目錄（保留以支援尚未遷移到 R2 的舊圖片）
 app.use('/uploads', express.static(uploadsDir, {
     maxAge: '7d',
     etag: true
