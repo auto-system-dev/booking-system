@@ -169,6 +169,8 @@ function applyConfig(cfg) {
 
     // ===== 聯絡資訊 =====
     setText('locationSectionTitle', cfg.landing_location_title);
+    setText('finalCtaTitle', cfg.landing_final_cta_title);
+    setText('finalCtaDesc', cfg.landing_final_cta_desc);
     setText('locationAddress', cfg.landing_address);
     setText('locationDriving', cfg.landing_driving);
     setText('locationPhone', cfg.landing_phone);

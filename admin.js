@@ -9801,6 +9801,8 @@ const landingFieldMap = {
     landing_rooms_title: 'landingRoomsTitle',
     landing_rooms_subtitle: 'landingRoomsSubtitle',
     landing_location_title: 'landingLocationTitle',
+    landing_final_cta_title: 'landingFinalCtaTitle',
+    landing_final_cta_desc: 'landingFinalCtaDesc',
     // 特色賣點
     landing_feature_1_icon: 'landingFeature1Icon',
     landing_feature_1_title: 'landingFeature1Title',
@@ -10120,7 +10122,7 @@ async function saveLandingSettings(tab) {
             keysToSave = Object.keys(landingFieldMap).filter(k =>
                 ['landing_address', 'landing_driving', 'landing_transit', 'landing_phone',
                  'landing_map_url', 'landing_social_fb', 'landing_social_ig', 'landing_social_line',
-                 'landing_location_title'].includes(k)
+                 'landing_location_title', 'landing_final_cta_title', 'landing_final_cta_desc'].includes(k)
             );
             break;
         case 'tracking':
@@ -10161,6 +10163,8 @@ async function saveLandingSettings(tab) {
             landing_rooms_title: '銷售頁-房型展示主標題',
             landing_rooms_subtitle: '銷售頁-房型展示副標題',
             landing_location_title: '銷售頁-交通資訊主標題',
+            landing_final_cta_title: '銷售頁-最終CTA主標題',
+            landing_final_cta_desc: '銷售頁-最終CTA副標題',
             landing_fb_pixel_id: '銷售頁-FB Pixel ID',
             landing_seo_title: '銷售頁-SEO 標題',
             landing_seo_desc: '銷售頁-SEO 描述',
