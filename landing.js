@@ -129,6 +129,8 @@ function applyConfig(cfg) {
     }
 
     // ===== 特色賣點 =====
+    setText('featuresSectionTitle', cfg.landing_features_title);
+    setText('featuresSectionSubtitle', cfg.landing_features_subtitle);
     for (let i = 1; i <= 4; i++) {
         const icon = cfg[`landing_feature_${i}_icon`];
         const title = cfg[`landing_feature_${i}_title`];
@@ -139,6 +141,8 @@ function applyConfig(cfg) {
     }
 
     // ===== 房型展示 =====
+    setText('roomsSectionTitle', cfg.landing_rooms_title);
+    setText('roomsSectionSubtitle', cfg.landing_rooms_subtitle);
     renderRoomCards(cfg);
 
     // ===== 民宿設施 =====
@@ -154,6 +158,7 @@ function applyConfig(cfg) {
     renderReviewCards(cfg);
 
     // ===== 聯絡資訊 =====
+    setText('locationSectionTitle', cfg.landing_location_title);
     setText('locationAddress', cfg.landing_address);
     setText('locationDriving', cfg.landing_driving);
     setText('locationPhone', cfg.landing_phone);

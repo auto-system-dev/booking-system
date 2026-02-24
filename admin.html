@@ -1511,6 +1511,18 @@
 
                     <!-- 特色賣點分頁 -->
                     <div id="landingTabFeaturesContent" class="tab-content">
+                        <div class="settings-card" style="margin-bottom: 20px;">
+                            <h4 style="color: #2c3e50; margin-bottom: 15px;">區塊標題文案</h4>
+                            <div class="form-group">
+                                <label>主標題</label>
+                                <input type="text" id="landingFeaturesTitle" placeholder="例如：獨一無二的住宿體驗">
+                            </div>
+                            <div class="form-group">
+                                <label>副標題</label>
+                                <input type="text" id="landingFeaturesSubtitle" placeholder="例如：我們用心打造每一個細節，只為給您最完美的假期">
+                            </div>
+                            <small style="color: #666;">留空時會沿用銷售頁預設文案。</small>
+                        </div>
                         <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #2ecc71;">
                             <span class="material-symbols-outlined" style="font-size: 24px; color: #2ecc71; margin-right: 10px;">auto_awesome</span>
                             <h3 style="margin: 0; color: #2c3e50;">四大特色賣點</h3>
@@ -1597,6 +1609,18 @@
 
                     <!-- 房型展示分頁 -->
                     <div id="landingTabRoomsContent" class="tab-content">
+                        <div class="settings-card" style="margin-bottom: 20px;">
+                            <h4 style="color: #2c3e50; margin-bottom: 15px;">區塊標題文案</h4>
+                            <div class="form-group">
+                                <label>主標題</label>
+                                <input type="text" id="landingRoomsTitle" placeholder="例如：為您準備的完美空間">
+                            </div>
+                            <div class="form-group">
+                                <label>副標題</label>
+                                <input type="text" id="landingRoomsSubtitle" placeholder="例如：每一間房間都經過精心設計，給您賓至如歸的感受">
+                            </div>
+                            <small style="color: #666;">留空時會沿用銷售頁預設文案。</small>
+                        </div>
                         <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
                             <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">king_bed</span>
                             <h3 style="margin: 0; color: #2c3e50;">房型展示設定</h3>
@@ -1612,7 +1636,7 @@
                                 載入房型資料中...
                             </p>
                         </div>
-                        <button class="btn-save" onclick="saveLandingRoomFeatures()" style="margin-top: 10px;">
+                        <button class="btn-save" onclick="saveLandingSettings('rooms')" style="margin-top: 10px;">
                             <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">save</span>
                             儲存房型展示設定
                         </button>
@@ -1763,6 +1787,14 @@
 
                     <!-- 聯絡與社群分頁 -->
                     <div id="landingTabContactContent" class="tab-content">
+                        <div class="settings-card" style="margin-bottom: 20px;">
+                            <h4 style="color: #2c3e50; margin-bottom: 15px;">區塊標題文案</h4>
+                            <div class="form-group">
+                                <label>交通資訊主標題</label>
+                                <input type="text" id="landingLocationTitle" placeholder="例如：輕鬆抵達">
+                            </div>
+                            <small style="color: #666;">留空時會沿用銷售頁預設文案。</small>
+                        </div>
                         <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #e74c3c;">
                             <span class="material-symbols-outlined" style="font-size: 24px; color: #e74c3c; margin-right: 10px;">location_on</span>
                             <h3 style="margin: 0; color: #2c3e50;">交通與聯絡資訊</h3>

@@ -9788,6 +9788,11 @@ const landingFieldMap = {
     landing_countdown_days: 'landingCountdownDays',
     landing_countdown_text: 'landingCountdownText',
     landing_cta_text: 'landingCtaText',
+    landing_features_title: 'landingFeaturesTitle',
+    landing_features_subtitle: 'landingFeaturesSubtitle',
+    landing_rooms_title: 'landingRoomsTitle',
+    landing_rooms_subtitle: 'landingRoomsSubtitle',
+    landing_location_title: 'landingLocationTitle',
     // 特色賣點
     landing_feature_1_icon: 'landingFeature1Icon',
     landing_feature_1_title: 'landingFeature1Title',
@@ -9988,14 +9993,14 @@ async function loadLandingRoomTypes(landingData) {
 }
 
 // 儲存房型展示設定（設施 + 標籤）
-async function saveLandingRoomFeatures() {
+async function saveLandingRoomFeatures(silent = false) {
     const container = document.getElementById('landingRoomsContainer');
     if (!container) return;
 
     const cards = container.querySelectorAll('[data-room-id]');
     if (cards.length === 0) {
-        showError('沒有房型資料可儲存');
-        return;
+        if (!silent) showError('沒有房型資料可儲存');
+        return false;
     }
 
     try {
@@ -10029,13 +10034,16 @@ async function saveLandingRoomFeatures() {
         const allSuccess = results.every(r => r.success);
 
         if (allSuccess) {
-            showSuccess('房型展示設定已儲存');
+            if (!silent) showSuccess('房型展示設定已儲存');
+            return true;
         } else {
-            showError('部分設定儲存失敗，請重試');
+            if (!silent) showError('部分設定儲存失敗，請重試');
+            return false;
         }
     } catch (error) {
         console.error('❌ 儲存房型展示錯誤:', error);
-        showError('儲存失敗：' + error.message);
+        if (!silent) showError('儲存失敗：' + error.message);
+        return false;
     }
 }
 
@@ -10076,11 +10084,20 @@ async function saveLandingSettings(tab) {
             );
             break;
         case 'features':
-            keysToSave = Object.keys(landingFieldMap).filter(k => k.startsWith('landing_feature_'));
+            keysToSave = Object.keys(landingFieldMap).filter(k =>
+                k.startsWith('landing_feature_') || ['landing_features_title', 'landing_features_subtitle'].includes(k)
+            );
             break;
         case 'rooms':
-            saveLandingRoomFeatures();
-            return;
+            {
+                const roomSaved = await saveLandingRoomFeatures(true);
+                if (!roomSaved) {
+                    showError('房型展示設定儲存失敗，請重試');
+                    return;
+                }
+                keysToSave = ['landing_rooms_title', 'landing_rooms_subtitle'];
+            }
+            break;
         case 'facilities':
             saveLandingFacilities();
             return;
@@ -10092,7 +10109,8 @@ async function saveLandingSettings(tab) {
         case 'contact':
             keysToSave = Object.keys(landingFieldMap).filter(k =>
                 ['landing_address', 'landing_driving', 'landing_transit', 'landing_phone',
-                 'landing_map_url', 'landing_social_fb', 'landing_social_ig', 'landing_social_line'].includes(k)
+                 'landing_map_url', 'landing_social_fb', 'landing_social_ig', 'landing_social_line',
+                 'landing_location_title'].includes(k)
             );
             break;
         case 'tracking':
@@ -10120,6 +10138,11 @@ async function saveLandingSettings(tab) {
             landing_countdown_days: '銷售頁-倒數天數',
             landing_countdown_text: '銷售頁-優惠說明',
             landing_cta_text: '銷售頁-CTA 按鈕文字',
+            landing_features_title: '銷售頁-特色賣點主標題',
+            landing_features_subtitle: '銷售頁-特色賣點副標題',
+            landing_rooms_title: '銷售頁-房型展示主標題',
+            landing_rooms_subtitle: '銷售頁-房型展示副標題',
+            landing_location_title: '銷售頁-交通資訊主標題',
             landing_fb_pixel_id: '銷售頁-FB Pixel ID',
             landing_seo_title: '銷售頁-SEO 標題',
             landing_seo_desc: '銷售頁-SEO 描述',
