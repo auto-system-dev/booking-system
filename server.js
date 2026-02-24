@@ -655,10 +655,10 @@ let emailServiceProvider = 'gmail'; // 郵件服務提供商：'resend' 或 'gma
 let configuredSenderEmail = ''; // 後台設定的寄件信箱
 
 async function getRequiredEmailUser(context = '') {
-    const emailUser = (await db.getSetting('email_user') || '').trim();
+    const emailUser = ((await db.getSetting('email_user')) || process.env.EMAIL_USER || '').trim();
     if (!emailUser) {
         const contextLabel = context ? `（${context}）` : '';
-        throw new Error(`未設定後台寄件信箱 email_user${contextLabel}`);
+        throw new Error(`未設定後台寄件信箱 email_user / EMAIL_USER${contextLabel}`);
     }
     return emailUser;
 }
