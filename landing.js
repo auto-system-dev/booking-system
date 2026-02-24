@@ -120,6 +120,10 @@ function applyConfig(cfg) {
     }
 
     // Hero 與最終 CTA 信任文案
+    setText('heroTrustIcon1', cfg.landing_hero_trust_icon_1);
+    setText('heroTrustIcon2', cfg.landing_hero_trust_icon_2);
+    setText('heroTrustIcon3', cfg.landing_hero_trust_icon_3);
+    setText('finalGuaranteeIcon', cfg.landing_final_guarantee_icon);
     setText('heroTrust1', cfg.landing_hero_trust_1);
     setText('heroTrust2', cfg.landing_hero_trust_2);
     setText('heroTrust3', cfg.landing_hero_trust_3);
