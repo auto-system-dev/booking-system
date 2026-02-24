@@ -119,11 +119,11 @@ function applyConfig(cfg) {
         setText('floatingCtaText', ctaText);
     }
 
-    // Hero 與最終 CTA 信任文案
-    setText('heroTrustIcon1', cfg.landing_hero_trust_icon_1);
-    setText('heroTrustIcon2', cfg.landing_hero_trust_icon_2);
-    setText('heroTrustIcon3', cfg.landing_hero_trust_icon_3);
-    setText('finalGuaranteeIcon', cfg.landing_final_guarantee_icon);
+    // Hero 與最終 CTA 信任文案（圖示名稱自動修正：空白 -> 底線、小寫）
+    setIcon('heroTrustIcon1', cfg.landing_hero_trust_icon_1);
+    setIcon('heroTrustIcon2', cfg.landing_hero_trust_icon_2);
+    setIcon('heroTrustIcon3', cfg.landing_hero_trust_icon_3);
+    setIcon('finalGuaranteeIcon', cfg.landing_final_guarantee_icon);
     setText('heroTrust1', cfg.landing_hero_trust_1);
     setText('heroTrust2', cfg.landing_hero_trust_2);
     setText('heroTrust3', cfg.landing_hero_trust_3);
@@ -145,7 +145,7 @@ function applyConfig(cfg) {
         const icon = cfg[`landing_feature_${i}_icon`];
         const title = cfg[`landing_feature_${i}_title`];
         const desc = cfg[`landing_feature_${i}_desc`];
-        if (icon) setText(`featureIcon${i}`, icon);
+        if (icon) setIcon(`featureIcon${i}`, icon);
         if (title) setText(`featureTitle${i}`, title);
         if (desc) setText(`featureDesc${i}`, desc);
     }
@@ -223,6 +223,24 @@ function setText(id, value) {
     if (!value) return;
     const el = document.getElementById(id);
     if (el) el.textContent = value;
+}
+
+function normalizeIconName(value) {
+    if (!value || typeof value !== 'string') return '';
+    return value
+        .trim()
+        .toLowerCase()
+        .replace(/[ -]+/g, '_')
+        .replace(/[^a-z0-9_]/g, '')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '');
+}
+
+function setIcon(id, value) {
+    const normalized = normalizeIconName(value);
+    if (!normalized) return;
+    const el = document.getElementById(id);
+    if (el) el.textContent = normalized;
 }
 
 function setMeta(id, value) {
