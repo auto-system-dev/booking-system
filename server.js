@@ -9678,6 +9678,21 @@ async function replaceTemplateVariables(template, booking, bankInfo = null, addi
     
     // templateKey 已在上面聲明，這裡不需要重複聲明
     const isCheckinReminder = templateKey === 'checkin_reminder';
+
+    // 入住提醒：解析區塊設定，供條件與內容替換使用
+    let checkinBlockSettings = {};
+    if (isCheckinReminder) {
+        try {
+            if (template.block_settings) {
+                checkinBlockSettings = typeof template.block_settings === 'string'
+                    ? JSON.parse(template.block_settings)
+                    : template.block_settings;
+            }
+        } catch (error) {
+            console.warn('⚠️ 解析入住提醒 block_settings 失敗，改用預設值:', error.message);
+            checkinBlockSettings = {};
+        }
+    }
     
     // 對於入住提醒郵件，如果缺少完整結構，嘗試從資料庫讀取原始模板結構
     if ((!hasFullHtmlStructure || !hasStyleTag || !hasBodyTag) && isCheckinReminder) {
@@ -10209,6 +10224,35 @@ ${htmlEnd}`;
     const roomType = booking.room_type || booking.roomType || '';
     const guestPhone = booking.guest_phone || booking.guestPhone || '';
     const guestEmail = booking.guest_email || booking.guestEmail || '';
+
+    // 入住提醒區塊內容與顯示開關
+    const defaultBookingInfoContent = `<div class="info-row">
+    <span class="info-label">訂房編號</span>
+    <span class="info-value"><strong>{{bookingId}}</strong></span>
+</div>
+<div class="info-row">
+    <span class="info-label">入住日期</span>
+    <span class="info-value">{{checkInDate}}</span>
+</div>
+<div class="info-row">
+    <span class="info-label">退房日期</span>
+    <span class="info-value">{{checkOutDate}}</span>
+</div>
+<div class="info-row" style="border-bottom: none;">
+    <span class="info-label">房型</span>
+    <span class="info-value">{{roomType}}</span>
+</div>`;
+    const bookingInfoContent = (isCheckinReminder &&
+        checkinBlockSettings.booking_info &&
+        typeof checkinBlockSettings.booking_info.content === 'string' &&
+        checkinBlockSettings.booking_info.content.trim() !== '')
+        ? checkinBlockSettings.booking_info.content
+        : defaultBookingInfoContent;
+    const showBookingInfo = !isCheckinReminder || checkinBlockSettings.booking_info?.enabled !== false;
+    const showTransport = !isCheckinReminder || checkinBlockSettings.transport?.enabled !== false;
+    const showParking = !isCheckinReminder || checkinBlockSettings.parking?.enabled !== false;
+    const showNotes = !isCheckinReminder || checkinBlockSettings.notes?.enabled !== false;
+    const showContact = !isCheckinReminder || checkinBlockSettings.contact?.enabled !== false;
     
     const variables = {
         '{{guestName}}': guestName,
@@ -10240,6 +10284,7 @@ ${htmlEnd}`;
         '{{guestEmail}}': guestEmail,
         '{{bookingDate}}': bookingDate,
         '{{bookingDateTime}}': bookingDateTime,
+        '{{bookingInfoContent}}': bookingInfoContent,
         '{{paymentStatus}}': paymentStatus,
         '{{isOnlineCardPaid}}': isOnlineCardPaid ? 'true' : 'false',
         '{{amountLabel}}': amountLabel, // 已付金額 或 應付金額
@@ -10394,6 +10439,15 @@ ${htmlEnd}`;
     // 處理折扣條件（discountAmount > 0）
     const hasDiscount = discountAmount > 0;
     content = processConditionalBlock(content, hasDiscount, 'hasDiscount');
+
+    // 入住提醒區塊條件
+    if (isCheckinReminder) {
+        content = processConditionalBlock(content, showBookingInfo, 'showBookingInfo');
+        content = processConditionalBlock(content, showTransport, 'showTransport');
+        content = processConditionalBlock(content, showParking, 'showParking');
+        content = processConditionalBlock(content, showNotes, 'showNotes');
+        content = processConditionalBlock(content, showContact, 'showContact');
+    }
     
     
     // 判斷是否有匯款資訊（檢查至少有一個非空欄位）
