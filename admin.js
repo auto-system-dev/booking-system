@@ -9788,6 +9788,10 @@ const landingFieldMap = {
     landing_countdown_days: 'landingCountdownDays',
     landing_countdown_text: 'landingCountdownText',
     landing_cta_text: 'landingCtaText',
+    landing_hero_trust_1: 'landingHeroTrust1',
+    landing_hero_trust_2: 'landingHeroTrust2',
+    landing_hero_trust_3: 'landingHeroTrust3',
+    landing_final_guarantee: 'landingFinalGuarantee',
     landing_features_title: 'landingFeaturesTitle',
     landing_features_subtitle: 'landingFeaturesSubtitle',
     landing_rooms_title: 'landingRoomsTitle',
@@ -10080,7 +10084,8 @@ async function saveLandingSettings(tab) {
                 ['landing_name', 'landing_title', 'landing_subtitle', 'landing_badge',
                  'landing_price_prefix', 'landing_price_amount', 'landing_price_original',
                  'landing_hero_image', 'landing_countdown_days', 'landing_countdown_text',
-                 'landing_cta_text'].includes(k)
+                 'landing_cta_text', 'landing_hero_trust_1', 'landing_hero_trust_2',
+                 'landing_hero_trust_3', 'landing_final_guarantee'].includes(k)
             );
             break;
         case 'features':
@@ -10138,6 +10143,10 @@ async function saveLandingSettings(tab) {
             landing_countdown_days: '銷售頁-倒數天數',
             landing_countdown_text: '銷售頁-優惠說明',
             landing_cta_text: '銷售頁-CTA 按鈕文字',
+            landing_hero_trust_1: '銷售頁-Hero 信任文案1',
+            landing_hero_trust_2: '銷售頁-Hero 信任文案2',
+            landing_hero_trust_3: '銷售頁-Hero 信任文案3',
+            landing_final_guarantee: '銷售頁-最終CTA信任文案',
             landing_features_title: '銷售頁-特色賣點主標題',
             landing_features_subtitle: '銷售頁-特色賣點副標題',
             landing_rooms_title: '銷售頁-房型展示主標題',

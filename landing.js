@@ -119,6 +119,12 @@ function applyConfig(cfg) {
         setText('floatingCtaText', ctaText);
     }
 
+    // Hero 與最終 CTA 信任文案
+    setText('heroTrust1', cfg.landing_hero_trust_1);
+    setText('heroTrust2', cfg.landing_hero_trust_2);
+    setText('heroTrust3', cfg.landing_hero_trust_3);
+    setText('finalGuaranteeText', cfg.landing_final_guarantee);
+
     // 倒數計時
     if (cfg.landing_countdown_days) {
         countdownDays = parseInt(cfg.landing_countdown_days) || 7;
