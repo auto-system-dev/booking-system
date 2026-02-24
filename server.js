@@ -652,13 +652,24 @@ let oauth2Client = null; // OAuth2 客戶端
 let gmail = null; // Gmail API 客戶端
 let resendClient = null; // Resend 客戶端
 let emailServiceProvider = 'gmail'; // 郵件服務提供商：'resend' 或 'gmail'
+let configuredSenderEmail = ''; // 後台設定的寄件信箱
+
+async function getRequiredEmailUser(context = '') {
+    const emailUser = (await db.getSetting('email_user') || '').trim();
+    if (!emailUser) {
+        const contextLabel = context ? `（${context}）` : '';
+        throw new Error(`未設定後台寄件信箱 email_user${contextLabel}`);
+    }
+    return emailUser;
+}
 
 // 初始化郵件服務（優先使用資料庫設定）
 async function initEmailService() {
     try {
-        // 優先使用資料庫設定，其次使用環境變數
+        // 優先使用資料庫設定
         const resendApiKey = await db.getSetting('resend_api_key') || process.env.RESEND_API_KEY;
-        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
+        const emailUser = await getRequiredEmailUser('初始化郵件服務');
+        configuredSenderEmail = emailUser;
         const emailPass = process.env.EMAIL_PASS || 'vtik qvij ravh lirg';
         const gmailClientID = await db.getSetting('gmail_client_id') || process.env.GMAIL_CLIENT_ID;
         const gmailClientSecret = await db.getSetting('gmail_client_secret') || process.env.GMAIL_CLIENT_SECRET;
@@ -797,7 +808,7 @@ async function initEmailService() {
             console.log('📧 郵件服務已設定（OAuth2 認證）');
             console.log('   使用帳號:', emailUser);
             console.log('   認證方式: OAuth2');
-            console.log('   設定來源:', await db.getSetting('email_user') ? '資料庫' : '環境變數');
+            console.log('   設定來源: 後台設定 (email_user)');
             
             // Gmail API 備用方案（當 SMTP 連接失敗時使用）
             gmail = google.gmail({ version: 'v1', auth: oauth2Client });
@@ -902,20 +913,12 @@ async function initEmailService() {
             
             console.log('📧 郵件服務已設定（應用程式密碼）');
             console.log('   使用帳號:', emailUser);
-            console.log('   設定來源:', await db.getSetting('email_user') ? '資料庫' : '環境變數');
+            console.log('   設定來源: 後台設定 (email_user)');
             console.log('   ⚠️  建議使用 OAuth2 認證以解決連接超時問題');
         }
     } catch (error) {
         console.error('❌ 初始化郵件服務失敗:', error);
-        // 使用預設設定
-        transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: process.env.EMAIL_USER || 'cheng701107@gmail.com',
-                pass: process.env.EMAIL_PASS || 'vtik qvij ravh lirg'
-            }
-        });
-        console.log('⚠️  使用預設郵件設定');
+        throw error;
     }
 }
 
@@ -928,7 +931,7 @@ async function sendEmail(mailOptions) {
                 console.log('📧 使用 Resend 發送郵件...');
                 
                 // 從 mailOptions.from 提取發件人信箱（Resend 需要驗證過的網域或信箱）
-                const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
+                const emailUser = await getRequiredEmailUser('Resend 發送');
                 let fromEmail = mailOptions.from || emailUser;
                 
                 // 檢查是否有設定旅館名稱，如果有，使用「名稱 <email>」格式
@@ -1299,7 +1302,7 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
         // 優先使用資料庫設定，其次使用環境變數，最後使用預設值
         const adminEmail = await db.getSetting('admin_email') || process.env.ADMIN_EMAIL || 'cheng701107@gmail.com';
         // 確保 emailUser 與 OAuth2 認證帳號一致（Gmail API 要求）
-        let emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
+        let emailUser = await getRequiredEmailUser('建立訂房寄信');
         
         // 驗證 emailUser 是否與 OAuth2 認證帳號一致
         if (sendEmailViaGmailAPI && transporter && transporter.options && transporter.options.auth) {
@@ -4506,10 +4509,7 @@ app.put('/api/bookings/:bookingId', requireAuth, checkPermission('bookings.edit'
                     if (updatedBooking && updatedBooking.payment_method === '匯款轉帳') {
                         console.log(`📧 準備寄送收款信給 ${updatedBooking.guest_email} (${updatedBooking.booking_id})`);
                         
-                        const emailUser =
-                            (await db.getSetting('email_user')) ||
-                            process.env.EMAIL_USER ||
-                            'cheng701107@gmail.com';
+                        const emailUser = await getRequiredEmailUser('手動更新付款狀態寄信');
                         
                         // 使用模板系統生成郵件
                         let mailOptions;
@@ -5618,7 +5618,7 @@ const handlePaymentResult = async (req, res) => {
                                         addonsList: addonsList
                                     };
                                     
-                                    const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
+                                    const emailUser = await getRequiredEmailUser('信用卡付款完成寄信');
                                     const customerMailOptions = {
                                         from: emailUser,
                                         to: booking.guest_email,
@@ -5818,7 +5818,7 @@ const handlePaymentResult = async (req, res) => {
                         };
                         
                         // 發送確認郵件 - 使用數據庫模板
-                        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
+                        const emailUser = await getRequiredEmailUser('綠界回傳寄送訂房確認');
                         let customerMailOptions = null;
                         try {
                             const { subject, content } = await generateEmailFromTemplate('booking_confirmation', bookingData);
@@ -6127,7 +6127,7 @@ app.get('/api/admin/email-service-status', requireAuth, checkPermission('email_t
         const resendClientInitialized = resendClient !== null;
         
         // 檢查發件人信箱
-        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || '';
+        const emailUser = (await db.getSetting('email_user') || '').trim();
         
         // 檢查當前郵件服務提供商
         const currentProvider = emailServiceProvider;
@@ -6372,7 +6372,7 @@ app.post('/api/email-templates/:key/test', requireAuth, checkPermission('email_t
         const { email, useEditorContent } = req.body;
         
         // 獲取 emailUser 設定
-        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
+        const emailUser = await getRequiredEmailUser('發送測試郵件');
         
         if (!email) {
             return res.status(400).json({
@@ -10632,7 +10632,7 @@ async function sendPaymentReminderEmails() {
             accountName: await db.getSetting('account_name') || ''
         };
         
-        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
+        const emailUser = await getRequiredEmailUser('匯款提醒排程');
         
         for (const booking of bookings) {
             try {
@@ -10797,7 +10797,7 @@ async function cancelExpiredReservations() {
         }
         
         const now = new Date();
-        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
+        const emailUser = await getRequiredEmailUser('自動取消通知');
         let cancelledCount = 0;
         let emailSentCount = 0;
         let emailFailedCount = 0;
@@ -10915,7 +10915,7 @@ async function sendCheckinReminderEmails() {
         const bookings = await db.getBookingsForCheckinReminder(daysBeforeCheckin);
         console.log(`找到 ${bookings.length} 筆需要發送入住提醒的訂房`);
         
-        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
+        const emailUser = await getRequiredEmailUser('入住提醒排程');
         
         // 取得旅館資訊（如果有的話）
         const hotelEmail = await db.getSetting('hotel_email') || '';
@@ -11034,7 +11034,7 @@ async function sendFeedbackRequestEmails() {
         const bookings = await db.getBookingsForFeedbackRequest(daysAfterCheckout);
         console.log(`找到 ${bookings.length} 筆需要發送回訪信的訂房`);
         
-        const emailUser = await db.getSetting('email_user') || process.env.EMAIL_USER || 'cheng701107@gmail.com';
+        const emailUser = await getRequiredEmailUser('回訪信排程');
         
         // 取得旅館資訊（如果有的話）
         const hotelEmail = await db.getSetting('hotel_email') || '';
@@ -11126,7 +11126,7 @@ async function startServer() {
             console.log('🚀 訂房系統伺服器已啟動');
             console.log(`📍 端口: ${PORT}`);
             console.log(`🌐 監聽地址: 0.0.0.0:${PORT}`);
-            console.log(`📧 Email: ${process.env.EMAIL_USER || 'cheng701107@gmail.com'}`);
+            console.log(`📧 Email: ${configuredSenderEmail || '未設定（請至後台設定 email_user）'}`);
             console.log(`💾 資料庫: PostgreSQL`);
             console.log(`📁 備份目錄: ${process.env.BACKUP_DIR || './backups'}`);
             console.log(`🖼️ 圖片儲存: ${storage.isCloudStorage ? 'Cloudflare R2' : (process.env.UPLOADS_DIR || './uploads')}`);
