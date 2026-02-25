@@ -3679,6 +3679,16 @@ async function deleteRoomType(id) {
 let allAddons = [];
 let showOnlyActiveAddons = true; // 預設只顯示啟用的加購商品
 
+// 同步「前台啟用設定」開關外觀（與銷售頁顯示開關一致）
+function updateAddonsFrontendToggleUI(isEnabled) {
+    const track = document.getElementById('enableAddonsFrontendTrack');
+    const thumb = document.getElementById('enableAddonsFrontendThumb');
+    const text = document.getElementById('enableAddonsFrontendText');
+    if (track) track.style.backgroundColor = isEnabled ? '#27ae60' : '#ccc';
+    if (thumb) thumb.style.transform = isEnabled ? 'translateX(24px)' : 'translateX(0)';
+    if (text) text.textContent = isEnabled ? '啟用前台加購商品功能' : '未啟用前台加購商品功能';
+}
+
 // 載入加購商品列表
 async function loadAddons() {
     try {
@@ -3705,6 +3715,7 @@ async function loadAddons() {
             if (checkbox) {
                 checkbox.checked = enableAddons;
             }
+            updateAddonsFrontendToggleUI(enableAddons);
         }
     } catch (error) {
         console.error('載入加購商品列表錯誤:', error);
@@ -3729,6 +3740,7 @@ async function toggleAddonsFrontend(isEnabled) {
         const result = await response.json();
         
         if (result.success) {
+            updateAddonsFrontendToggleUI(isEnabled);
             showSuccess(isEnabled ? '前台加購商品功能已啟用' : '前台加購商品功能已停用');
         } else {
             showError(result.message || '更新失敗');
@@ -3737,6 +3749,7 @@ async function toggleAddonsFrontend(isEnabled) {
             if (checkbox) {
                 checkbox.checked = !isEnabled;
             }
+            updateAddonsFrontendToggleUI(!isEnabled);
         }
     } catch (error) {
         console.error('切換前台加購商品啟用狀態錯誤:', error);
@@ -3746,6 +3759,7 @@ async function toggleAddonsFrontend(isEnabled) {
         if (checkbox) {
             checkbox.checked = !isEnabled;
         }
+        updateAddonsFrontendToggleUI(!isEnabled);
     }
 }
 
