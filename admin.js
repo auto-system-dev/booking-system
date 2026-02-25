@@ -757,6 +757,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     } else if (urlHash === '#addons') {
         switchSection('addons');
         loadAddons();
+    } else if (urlHash === '#promotions') {
+        switchSection('promotions');
+    } else if (urlHash === '#promo-codes') {
+        switchSection('promotions');
+        switchPromotionTab('promo-codes');
+    } else if (urlHash === '#early-bird') {
+        switchSection('promotions');
+        switchPromotionTab('early-bird');
     } else if (urlHash === '#holidays') {
         switchSection('holidays');
         loadHolidays();
@@ -808,15 +816,14 @@ function switchSection(section) {
         'customers': 'customers.view',
         'room-types': 'room_types.view',
         'addons': 'addons.view',
-        'promo-codes': 'promo_codes.view',
+        'promotions': 'promo_codes.view',
         'settings': 'settings.view',
         'email-templates': 'email_templates.view',
         'statistics': 'statistics.view',
         'admin-management': 'admins.view',
         'logs': 'logs.view',
         'backups': 'backup.view',
-        'landing-page': 'settings.view',
-        'early-bird': 'promo_codes.view'
+        'landing-page': 'settings.view'
     };
     
     // 檢查權限（僅在已登入後才檢查）
@@ -874,8 +881,9 @@ function switchSection(section) {
         }
     } else if (section === 'addons') {
         loadAddons();
-    } else if (section === 'promo-codes') {
-        loadPromoCodes();
+    } else if (section === 'promotions') {
+        const savedTab = localStorage.getItem('promotionTab') || 'promo-codes';
+        switchPromotionTab(savedTab);
     } else if (section === 'settings') {
         loadSettings();
         // 恢復上次選擇的分頁
@@ -908,8 +916,35 @@ function switchSection(section) {
         loadLandingSettings();
         const savedTab = localStorage.getItem('landingTab') || 'basic';
         switchLandingTab(savedTab);
-    } else if (section === 'early-bird') {
+    }
+}
+
+// 切換優惠活動分頁（優惠代碼 / 早鳥優惠）
+function switchPromotionTab(tab) {
+    localStorage.setItem('promotionTab', tab);
+
+    const section = document.getElementById('promotions-section');
+    if (!section) return;
+
+    section.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    const promoTabBtn = document.getElementById('promotionPromoCodesTab');
+    const earlyBirdTabBtn = document.getElementById('promotionEarlyBirdTab');
+    const promoContent = document.getElementById('promotionPromoCodesTabContent');
+    const earlyBirdContent = document.getElementById('promotionEarlyBirdTabContent');
+
+    if (tab === 'early-bird') {
+        if (earlyBirdTabBtn) earlyBirdTabBtn.classList.add('active');
+        if (promoContent) promoContent.style.display = 'none';
+        if (earlyBirdContent) earlyBirdContent.style.display = 'block';
         loadEarlyBirdSettings();
+    } else {
+        if (promoTabBtn) promoTabBtn.classList.add('active');
+        if (promoContent) promoContent.style.display = 'block';
+        if (earlyBirdContent) earlyBirdContent.style.display = 'none';
+        loadPromoCodes();
     }
 }
 
@@ -8436,6 +8471,7 @@ window.toggleMobileSidebar = toggleMobileSidebar;
 window.closeMobileSidebar = closeMobileSidebar;
 window.handleNavClick = handleNavClick;
 window.switchSection = switchSection;
+window.switchPromotionTab = switchPromotionTab;
 
 // ==================== 權限管理系統 ====================
 

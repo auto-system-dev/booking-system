@@ -75,13 +75,9 @@
                     <span class="nav-icon"><span class="material-symbols-outlined">add_shopping_cart</span></span>
                     <span>加購商品</span>
                 </a>
-                <a href="#promo-codes" class="nav-item permission-required" data-section="promo-codes" data-permission="promo_codes.view" onclick="handleNavClick(event, 'promo-codes')">
-                    <span class="nav-icon"><span class="material-symbols-outlined">local_offer</span></span>
-                    <span>優惠代碼</span>
-                </a>
-                <a href="#early-bird" class="nav-item permission-required" data-section="early-bird" data-permission="promo_codes.view" onclick="handleNavClick(event, 'early-bird')">
-                    <span class="nav-icon"><span class="material-symbols-outlined">nest_eco_leaf</span></span>
-                    <span>早鳥優惠</span>
+                <a href="#promotions" class="nav-item permission-required" data-section="promotions" data-permission="promo_codes.view" onclick="handleNavClick(event, 'promotions')">
+                    <span class="nav-icon"><span class="material-symbols-outlined">campaign</span></span>
+                    <span>優惠活動</span>
                 </a>
                 <a href="#settings" class="nav-item permission-required" data-section="settings" data-permission="settings.view" onclick="handleNavClick(event, 'settings')">
                     <span class="nav-icon"><span class="material-symbols-outlined">settings</span></span>
@@ -668,93 +664,108 @@
                 </div>
             </section>
 
-            <!-- 優惠代碼管理區 -->
-            <section id="promo-codes-section" class="content-section">
+            <!-- 優惠活動管理區 -->
+            <section id="promotions-section" class="content-section">
                 <div class="section-header">
-                    <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">local_offer</span> 優惠代碼管理</h2>
-                    <div class="header-actions">
-                        <button class="btn-primary permission-required" id="addPromoCodeBtn" data-permission="promo_codes.create" onclick="showAddPromoCodeModal()">
-                            <span class="material-symbols-outlined">add</span> 新增優惠代碼
-                        </button>
-                        <button class="btn-refresh" onclick="loadPromoCodes()">
-                            <span class="material-symbols-outlined">refresh</span> 重新整理
-                        </button>
-                    </div>
+                    <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">campaign</span> 優惠活動管理</h2>
                 </div>
 
-                <div class="room-types-container">
-                    <table class="bookings-table">
-                        <thead>
-                            <tr>
-                                <th style="text-align: left;">優惠代碼</th>
-                                <th style="text-align: left;">優惠名稱</th>
-                                <th style="text-align: center;">折扣類型</th>
-                                <th style="text-align: right;">折扣值</th>
-                                <th style="text-align: right;">最低消費</th>
-                                <th style="text-align: center;">使用次數</th>
-                                <th style="text-align: left;">有效期</th>
-                                <th style="text-align: center;">狀態</th>
-                                <th style="text-align: center;">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="promoCodesTableBody">
-                            <tr>
-                                <td colspan="9" class="loading">載入中...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="tab-container" style="margin-bottom: 20px;">
+                    <button class="tab-button active" onclick="switchPromotionTab('promo-codes')" id="promotionPromoCodesTab">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">local_offer</span>
+                        優惠代碼
+                    </button>
+                    <button class="tab-button" onclick="switchPromotionTab('early-bird')" id="promotionEarlyBirdTab">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">nest_eco_leaf</span>
+                        早鳥優惠
+                    </button>
                 </div>
-            </section>
 
-            <!-- 早鳥優惠管理區 -->
-            <section id="early-bird-section" class="content-section">
-                <div class="section-header">
-                    <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">nest_eco_leaf</span> 早鳥/晚鳥優惠管理</h2>
-                    <div class="header-actions">
-                        <button class="btn-primary permission-required" data-permission="promo_codes.create" onclick="showAddEarlyBirdModal()">
-                            <span class="material-symbols-outlined">add</span> 新增優惠規則
-                        </button>
-                        <button class="btn-refresh" onclick="loadEarlyBirdSettings()">
-                            <span class="material-symbols-outlined">refresh</span> 重新整理
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- 說明區塊 -->
-                <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
-                    <div style="display: flex; align-items: flex-start; gap: 10px;">
-                        <span class="material-symbols-outlined" style="color: #0284c7; font-size: 22px; margin-top: 2px;">info</span>
-                        <div style="font-size: 14px; color: #475569; line-height: 1.6;">
-                            <strong style="color: #0284c7;">早鳥/晚鳥優惠說明：</strong><br>
-                            系統會根據「訂房日」距「入住日」的天數，自動套用符合條件的優惠折扣。<br>
-                            例如：提前 30 天以上訂房享 8 折、提前 14 天以上享 9 折。<br>
-                            當多條規則同時符合時，系統會套用<strong>優先級最高</strong>的規則。<br>
-                            若同時使用優惠代碼，系統會根據「是否可疊加」的設定自動處理。
+                <div id="promotionPromoCodesTabContent" class="tab-content" style="display: block;">
+                    <div class="section-header" style="padding: 0; margin-bottom: 16px;">
+                        <h3 style="margin: 0;">優惠代碼</h3>
+                        <div class="header-actions">
+                            <button class="btn-primary permission-required" id="addPromoCodeBtn" data-permission="promo_codes.create" onclick="showAddPromoCodeModal()">
+                                <span class="material-symbols-outlined">add</span> 新增優惠代碼
+                            </button>
+                            <button class="btn-refresh" onclick="loadPromoCodes()">
+                                <span class="material-symbols-outlined">refresh</span> 重新整理
+                            </button>
                         </div>
                     </div>
+
+                    <div class="room-types-container">
+                        <table class="bookings-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;">優惠代碼</th>
+                                    <th style="text-align: left;">優惠名稱</th>
+                                    <th style="text-align: center;">折扣類型</th>
+                                    <th style="text-align: right;">折扣值</th>
+                                    <th style="text-align: right;">最低消費</th>
+                                    <th style="text-align: center;">使用次數</th>
+                                    <th style="text-align: left;">有效期</th>
+                                    <th style="text-align: center;">狀態</th>
+                                    <th style="text-align: center;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="promoCodesTableBody">
+                                <tr>
+                                    <td colspan="9" class="loading">載入中...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
-                <div class="room-types-container">
-                    <table class="bookings-table">
-                        <thead>
-                            <tr>
-                                <th style="text-align: left;">規則名稱</th>
-                                <th style="text-align: center;">折扣類型</th>
-                                <th style="text-align: right;">折扣值</th>
-                                <th style="text-align: center;">提前天數</th>
-                                <th style="text-align: left;">適用房型</th>
-                                <th style="text-align: left;">有效期間</th>
-                                <th style="text-align: center;">優先級</th>
-                                <th style="text-align: center;">狀態</th>
-                                <th style="text-align: center;">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="earlyBirdTableBody">
-                            <tr>
-                                <td colspan="9" class="loading">載入中...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div id="promotionEarlyBirdTabContent" class="tab-content" style="display: none;">
+                    <div class="section-header" style="padding: 0; margin-bottom: 16px;">
+                        <h3 style="margin: 0;">早鳥優惠</h3>
+                        <div class="header-actions">
+                            <button class="btn-primary permission-required" data-permission="promo_codes.create" onclick="showAddEarlyBirdModal()">
+                                <span class="material-symbols-outlined">add</span> 新增優惠規則
+                            </button>
+                            <button class="btn-refresh" onclick="loadEarlyBirdSettings()">
+                                <span class="material-symbols-outlined">refresh</span> 重新整理
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                        <div style="display: flex; align-items: flex-start; gap: 10px;">
+                            <span class="material-symbols-outlined" style="color: #0284c7; font-size: 22px; margin-top: 2px;">info</span>
+                            <div style="font-size: 14px; color: #475569; line-height: 1.6;">
+                                <strong style="color: #0284c7;">早鳥/晚鳥優惠說明：</strong><br>
+                                系統會根據「訂房日」距「入住日」的天數，自動套用符合條件的優惠折扣。<br>
+                                例如：提前 30 天以上訂房享 8 折、提前 14 天以上享 9 折。<br>
+                                當多條規則同時符合時，系統會套用<strong>優先級最高</strong>的規則。<br>
+                                若同時使用優惠代碼，系統會根據「是否可疊加」的設定自動處理。
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="room-types-container">
+                        <table class="bookings-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;">規則名稱</th>
+                                    <th style="text-align: center;">折扣類型</th>
+                                    <th style="text-align: right;">折扣值</th>
+                                    <th style="text-align: center;">提前天數</th>
+                                    <th style="text-align: left;">適用房型</th>
+                                    <th style="text-align: left;">有效期間</th>
+                                    <th style="text-align: center;">優先級</th>
+                                    <th style="text-align: center;">狀態</th>
+                                    <th style="text-align: center;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="earlyBirdTableBody">
+                                <tr>
+                                    <td colspan="9" class="loading">載入中...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
             
