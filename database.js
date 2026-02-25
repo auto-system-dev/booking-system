@@ -5830,6 +5830,95 @@ async function getLogFilterOptions() {
     }
 }
 
+// 清理過舊操作日誌（安全版，限制單次刪除量）
+async function cleanupAdminLogs(options = {}) {
+    try {
+        const parseIntWithDefault = (value, defaultValue) => {
+            const parsed = parseInt(value, 10);
+            return Number.isInteger(parsed) && parsed > 0 ? parsed : defaultValue;
+        };
+
+        const retentionDaysRaw = options.retentionDays ?? process.env.ADMIN_LOG_RETENTION_DAYS;
+        const minRetentionDaysRaw = process.env.ADMIN_LOG_MIN_RETENTION_DAYS;
+        const maxDeletePerRunRaw = options.maxDeletePerRun ?? process.env.ADMIN_LOG_MAX_DELETE_PER_RUN;
+        const maxBatchesPerRunRaw = options.maxBatchesPerRun ?? process.env.ADMIN_LOG_MAX_BATCHES_PER_RUN;
+        const dryRun = options.dryRun === true;
+
+        const retentionDays = parseIntWithDefault(retentionDaysRaw, 180);
+        const minRetentionDays = parseIntWithDefault(minRetentionDaysRaw, 30);
+        const safeRetentionDays = Math.max(retentionDays, minRetentionDays);
+        const maxDeletePerRun = parseIntWithDefault(maxDeletePerRunRaw, 2000);
+        const maxBatchesPerRun = parseIntWithDefault(maxBatchesPerRunRaw, 10);
+
+        const countSql = usePostgreSQL
+            ? `SELECT COUNT(*) as count
+               FROM admin_logs
+               WHERE created_at < NOW() - ($1::int * INTERVAL '1 day')`
+            : `SELECT COUNT(*) as count
+               FROM admin_logs
+               WHERE datetime(created_at) < datetime('now', '-' || ? || ' days')`;
+        const countRow = await queryOne(countSql, [safeRetentionDays]);
+        const totalCandidates = parseInt(countRow?.count, 10) || 0;
+
+        if (dryRun) {
+            return {
+                retentionDays: safeRetentionDays,
+                    cutoffDate: new Date(Date.now() - safeRetentionDays * 24 * 60 * 60 * 1000).toISOString(),
+                totalCandidates,
+                deletedCount: 0,
+                runCount: 0,
+                dryRun: true
+            };
+        }
+
+        let deletedCount = 0;
+        let runCount = 0;
+
+        for (let i = 0; i < maxBatchesPerRun; i++) {
+            const deleteSql = usePostgreSQL
+                ? `WITH target_rows AS (
+                       SELECT id
+                       FROM admin_logs
+                       WHERE created_at < NOW() - ($1::int * INTERVAL '1 day')
+                       ORDER BY created_at ASC
+                       LIMIT $2
+                   )
+                   DELETE FROM admin_logs
+                   WHERE id IN (SELECT id FROM target_rows)`
+                : `DELETE FROM admin_logs
+                   WHERE id IN (
+                       SELECT id
+                       FROM admin_logs
+                       WHERE datetime(created_at) < datetime('now', '-' || ? || ' days')
+                       ORDER BY created_at ASC
+                       LIMIT ?
+                   )`;
+
+            const deleteResult = await query(deleteSql, [safeRetentionDays, maxDeletePerRun]);
+            const deletedThisRun = deleteResult.changes || 0;
+            deletedCount += deletedThisRun;
+            runCount += 1;
+
+            if (deletedThisRun < maxDeletePerRun) {
+                break;
+            }
+        }
+
+        return {
+            retentionDays: safeRetentionDays,
+            cutoffDate: new Date(Date.now() - safeRetentionDays * 24 * 60 * 60 * 1000).toISOString(),
+            totalCandidates,
+            deletedCount,
+            runCount,
+            dryRun: false,
+            hasRemainingCandidates: deletedCount < totalCandidates
+        };
+    } catch (error) {
+        console.error('❌ 清理操作日誌失敗:', error.message);
+        throw error;
+    }
+}
+
 // ==================== 權限管理系統函數 ====================
 
 // 初始化預設角色和權限
@@ -6636,6 +6725,7 @@ module.exports = {
     getAdminLogs,
     getAdminLogsCount,
     getLogFilterOptions,
+    cleanupAdminLogs,
     // 個資保護
     anonymizeCustomerData,
     deleteCustomerData,

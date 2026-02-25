@@ -11098,6 +11098,27 @@ async function sendFeedbackRequestEmails() {
     }
 }
 
+function isAdminLogCleanupEnabled() {
+    const rawValue = (process.env.ADMIN_LOG_AUTO_CLEANUP_ENABLED || 'true').toLowerCase();
+    return !['false', '0', 'no', 'off'].includes(rawValue);
+}
+
+async function runAdminLogCleanup(trigger) {
+    try {
+        const result = await db.cleanupAdminLogs();
+        console.log(
+            `✅ 操作日誌清理完成 [${trigger}] ` +
+            `(保留 ${result.retentionDays} 天, 候選 ${result.totalCandidates} 筆, 已刪除 ${result.deletedCount} 筆, 批次 ${result.runCount})`
+        );
+
+        if (result.hasRemainingCandidates) {
+            console.log('ℹ️  仍有舊日誌待清理，將於下次排程繼續清理');
+        }
+    } catch (error) {
+        console.error(`❌ 操作日誌清理失敗 [${trigger}]:`, error.message);
+    }
+}
+
 // 啟動伺服器
 async function startServer() {
     try {
@@ -11113,6 +11134,17 @@ async function startServer() {
         console.log('💾 初始化資料庫...');
         await db.initDatabase();
         console.log('✅ 資料庫初始化完成');
+
+        if (isAdminLogCleanupEnabled()) {
+            // 避免影響服務啟動速度，啟動後延遲執行一次清理
+            setTimeout(() => {
+                runAdminLogCleanup('startup').catch((error) => {
+                    console.error('❌ 啟動後操作日誌清理失敗:', error.message);
+                });
+            }, 5000);
+        } else {
+            console.log('ℹ️  已停用操作日誌自動清理（ADMIN_LOG_AUTO_CLEANUP_ENABLED=false）');
+        }
         
         // 初始化郵件服務（優先使用資料庫設定）
         console.log('📧 初始化郵件服務...');
@@ -11175,6 +11207,16 @@ async function startServer() {
                 timezone: timezone
             });
             console.log('✅ 資料庫備份定時任務已啟動（每天 02:00 台灣時間，保留 30 天）');
+
+            if (isAdminLogCleanupEnabled()) {
+                // 每天凌晨 03:15 清理一次過舊操作日誌（避開 02:00 備份時段）
+                cron.schedule('15 3 * * *', async () => {
+                    await runAdminLogCleanup('daily-cron');
+                }, {
+                    timezone: timezone
+                });
+                console.log('✅ 操作日誌自動清理任務已啟動（每天 03:15 台灣時間）');
+            }
         });
     } catch (error) {
         console.error('❌ 伺服器啟動失敗:', error);
