@@ -10564,7 +10564,6 @@ function renderEarlyBirdTable(settings) {
             dateText = `${start} ~ ${end}`;
         }
         
-        const statusClass = s.is_active ? 'status-confirmed' : 'status-cancelled';
         const statusText = s.is_active ? '啟用' : '停用';
         
         return `<tr>
@@ -10578,14 +10577,16 @@ function renderEarlyBirdTable(settings) {
             <td style="text-align: left; font-size: 13px;">${escapeHtml(roomTypesText)}</td>
             <td style="text-align: left; font-size: 13px;">${dateText}</td>
             <td style="text-align: center;">${s.priority}</td>
-            <td style="text-align: center;"><span class="booking-status ${statusClass}">${statusText}</span></td>
-            <td style="text-align: center; white-space: nowrap;">
-                <button class="btn-action btn-edit" title="編輯" onclick="editEarlyBirdSetting(${s.id})">
-                    <span class="material-symbols-outlined">edit</span>
-                </button>
-                <button class="btn-action btn-delete" title="刪除" onclick="deleteEarlyBirdSetting(${s.id}, '${escapeHtml(s.name)}')">
-                    <span class="material-symbols-outlined">delete</span>
-                </button>
+            <td style="text-align: center;">
+                <span class="status-badge ${s.is_active ? 'status-sent' : 'status-unsent'}">
+                    ${statusText}
+                </span>
+            </td>
+            <td style="text-align: center;">
+                <div class="action-buttons">
+                    ${hasPermission('promo_codes.edit') ? `<button class="btn-edit" onclick="editEarlyBirdSetting(${s.id})">編輯</button>` : ''}
+                    ${hasPermission('promo_codes.delete') ? `<button class="btn-delete" onclick="deleteEarlyBirdSetting(${s.id}, '${escapeHtml(s.name)}')">刪除</button>` : ''}
+                </div>
             </td>
         </tr>`;
     }).join('');
