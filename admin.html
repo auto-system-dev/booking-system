@@ -196,7 +196,7 @@
                 <div class="section-header">
                     <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">event_note</span> 訂房記錄管理</h2>
                     <div class="header-actions">
-                        <button class="btn-secondary permission-required" data-permission="bookings.export" onclick="exportBookingsCSV()" title="匯出訂房資料 CSV">
+                        <button class="btn-refresh permission-required" data-permission="bookings.export" onclick="exportBookingsCSV()" title="匯出訂房資料 CSV">
                             <span class="material-symbols-outlined">download</span> 匯出 CSV
                         </button>
                         <button class="btn-refresh" onclick="reloadCurrentBookingView()">
@@ -308,7 +308,7 @@
                 <div class="section-header">
                     <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">people</span> 客戶管理</h2>
                     <div class="header-actions">
-                        <button class="btn-secondary permission-required" data-permission="customers.export" id="customerExportBtn" onclick="exportCustomersCSV()" style="display: none;" title="匯出客戶資料 CSV">
+                        <button class="btn-refresh permission-required" data-permission="customers.export" id="customerExportBtn" onclick="exportCustomersCSV()" style="display: none;" title="匯出客戶資料 CSV">
                             <span class="material-symbols-outlined">download</span> 匯出 CSV
                         </button>
                         <button class="btn-refresh" id="customerRefreshBtn" onclick="loadCustomers()" style="display: none;">
@@ -419,7 +419,7 @@
                         <button class="btn-refresh" onclick="resetStatisticsFilter()">
                             <span class="material-symbols-outlined">refresh</span> 全部期間
                         </button>
-                        <button class="btn-secondary permission-required" data-permission="statistics.export" onclick="exportStatisticsCSV()" title="匯出統計報表 CSV">
+                        <button class="btn-refresh permission-required" data-permission="statistics.export" onclick="exportStatisticsCSV()" title="匯出統計報表 CSV">
                             <span class="material-symbols-outlined">download</span> 匯出
                         </button>
                     </div>
