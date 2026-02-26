@@ -1545,7 +1545,7 @@ function renderMemberLevels(levels) {
                 ${level.discount_percent > 0 ? `<span style="color: #10b981; font-weight: 600;">${level.discount_percent}%</span>` : '<span style="color: #999;">無折扣</span>'}
             </td>
             <td style="text-align: center;">
-                <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; ${isActive ? 'background: #d1fae5; color: #059669;' : 'background: #fee2e2; color: #dc2626;'}">
+                <span class="status-badge ${isActive ? 'status-sent' : 'status-unsent'}">
                     ${isActive ? '啟用' : '停用'}
                 </span>
             </td>
