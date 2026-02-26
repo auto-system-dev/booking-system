@@ -3574,7 +3574,7 @@ async function getAllMemberLevels() {
             min_bookings: parseInt(level.min_bookings || 0),
             discount_percent: parseFloat(level.discount_percent || 0),
             display_order: parseInt(level.display_order || 0),
-            is_active: parseInt(level.is_active || 1)
+            is_active: level.is_active !== undefined && level.is_active !== null ? parseInt(level.is_active, 10) : 1
         }));
     } catch (error) {
         console.error('❌ 查詢會員等級列表失敗:', error.message);
@@ -3599,7 +3599,7 @@ async function getMemberLevelById(id) {
             min_bookings: parseInt(result.min_bookings || 0),
             discount_percent: parseFloat(result.discount_percent || 0),
             display_order: parseInt(result.display_order || 0),
-            is_active: parseInt(result.is_active || 1)
+            is_active: result.is_active !== undefined && result.is_active !== null ? parseInt(result.is_active, 10) : 1
         };
     } catch (error) {
         console.error('❌ 查詢會員等級失敗:', error.message);
