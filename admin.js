@@ -1531,7 +1531,9 @@ function renderMemberLevels(levels) {
     // 按 display_order 排序
     const sortedLevels = [...levels].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
     
-    tbody.innerHTML = sortedLevels.map(level => `
+    tbody.innerHTML = sortedLevels.map(level => {
+        const isActive = parseInt(level.is_active, 10) === 1 || level.is_active === true;
+        return `
         <tr>
             <td style="text-align: center;">${level.display_order || 0}</td>
             <td style="text-align: left;">
@@ -1543,8 +1545,8 @@ function renderMemberLevels(levels) {
                 ${level.discount_percent > 0 ? `<span style="color: #10b981; font-weight: 600;">${level.discount_percent}%</span>` : '<span style="color: #999;">無折扣</span>'}
             </td>
             <td style="text-align: center;">
-                <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; ${level.is_active ? 'background: #d1fae5; color: #059669;' : 'background: #fee2e2; color: #dc2626;'}">
-                    ${level.is_active ? '啟用' : '停用'}
+                <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; ${isActive ? 'background: #d1fae5; color: #059669;' : 'background: #fee2e2; color: #dc2626;'}">
+                    ${isActive ? '啟用' : '停用'}
                 </span>
             </td>
             <td style="text-align: center;">
@@ -1554,7 +1556,18 @@ function renderMemberLevels(levels) {
                 </div>
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
+}
+
+// 同步會員等級啟用開關外觀（與加購商品前台啟用開關一致）
+function updateMemberLevelToggleUI(isEnabled) {
+    const track = document.getElementById('memberLevelIsActiveTrack');
+    const thumb = document.getElementById('memberLevelIsActiveThumb');
+    const text = document.getElementById('memberLevelIsActiveText');
+    if (track) track.style.backgroundColor = isEnabled ? '#27ae60' : '#ccc';
+    if (thumb) thumb.style.transform = isEnabled ? 'translateX(24px)' : 'translateX(0)';
+    if (text) text.textContent = isEnabled ? '啟用此等級' : '停用此等級';
 }
 
 // 顯示新增會員等級模態框
@@ -1563,6 +1576,7 @@ function showAddMemberLevelModal() {
     document.getElementById('memberLevelId').value = '';
     document.getElementById('memberLevelForm').reset();
     document.getElementById('memberLevelIsActive').checked = true;
+    updateMemberLevelToggleUI(true);
     document.getElementById('memberLevelDisplayOrder').value = '';
     document.getElementById('memberLevelModal').style.display = 'block';
 }
@@ -1587,7 +1601,9 @@ async function editMemberLevel(id) {
             document.getElementById('memberLevelMinBookings').value = level.min_bookings || 0;
             document.getElementById('memberLevelDiscount').value = level.discount_percent || 0;
             document.getElementById('memberLevelDisplayOrder').value = level.display_order || 0;
-            document.getElementById('memberLevelIsActive').checked = level.is_active !== undefined ? level.is_active : 1;
+            const isActive = parseInt(level.is_active, 10) === 1 || level.is_active === true;
+            document.getElementById('memberLevelIsActive').checked = isActive;
+            updateMemberLevelToggleUI(isActive);
             document.getElementById('memberLevelModal').style.display = 'block';
         } else {
             showError('載入會員等級失敗：' + (result.message || '未知錯誤'));

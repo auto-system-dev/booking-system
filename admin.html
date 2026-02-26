@@ -2275,10 +2275,15 @@
                         <small>數字越小越優先顯示（等級從低到高）</small>
                     </div>
                     <div class="form-group">
-                        <label style="display: flex; align-items: center; gap: 10px;">
-                            <input type="checkbox" id="memberLevelIsActive" checked style="width: 20px; height: 20px;">
-                            <span>啟用此等級</span>
-                        </label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="position: relative; display: inline-block; width: 50px; height: 26px;">
+                                <input type="checkbox" id="memberLevelIsActive" checked style="opacity: 0; width: 0; height: 0; position: absolute;" onchange="updateMemberLevelToggleUI(this.checked)">
+                                <span id="memberLevelIsActiveTrack" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #27ae60; transition: 0.3s; border-radius: 26px;" onclick="const cb=this.previousElementSibling; cb.checked=!cb.checked; cb.dispatchEvent(new Event('change'));">
+                                    <span id="memberLevelIsActiveThumb" style="position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: 0.3s; border-radius: 50%; transform: translateX(24px);"></span>
+                                </span>
+                            </div>
+                            <span id="memberLevelIsActiveText" style="color: #666; font-size: 14px;">啟用此等級</span>
+                        </div>
                     </div>
                     <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
                         <button type="button" class="btn-primary btn-danger" onclick="closeMemberLevelModal()">取消</button>
