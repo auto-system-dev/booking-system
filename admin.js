@@ -4051,6 +4051,22 @@ async function changePassword() {
     }
 }
 
+// 同步「付款方式設定」開關外觀（與加購商品前台啟用開關一致）
+function updatePaymentMethodToggleUI(type, isEnabled) {
+    const isTransfer = type === 'transfer';
+    const prefix = isTransfer ? 'enableTransfer' : 'enableCard';
+    const track = document.getElementById(`${prefix}Track`);
+    const thumb = document.getElementById(`${prefix}Thumb`);
+    const text = document.getElementById(`${prefix}Text`);
+    if (track) track.style.backgroundColor = isEnabled ? '#27ae60' : '#ccc';
+    if (thumb) thumb.style.transform = isEnabled ? 'translateX(24px)' : 'translateX(0)';
+    if (text) {
+        text.textContent = isEnabled
+            ? (isTransfer ? '啟用匯款轉帳' : '啟用線上刷卡')
+            : (isTransfer ? '未啟用匯款轉帳' : '未啟用線上刷卡');
+    }
+}
+
 // 儲存付款設定（包含付款方式設定和訂金百分比）
 async function savePaymentSettings() {
     const depositPercentage = document.getElementById('depositPercentage').value;
@@ -4693,8 +4709,12 @@ async function loadSettings() {
             document.getElementById('accountName').value = settings.account_name || '';
             
             // 付款方式啟用狀態
-            document.getElementById('enableTransfer').checked = settings.enable_transfer === '1' || settings.enable_transfer === 'true';
-            document.getElementById('enableCard').checked = settings.enable_card === '1' || settings.enable_card === 'true';
+            const transferEnabled = settings.enable_transfer === '1' || settings.enable_transfer === 'true';
+            const cardEnabled = settings.enable_card === '1' || settings.enable_card === 'true';
+            document.getElementById('enableTransfer').checked = transferEnabled;
+            document.getElementById('enableCard').checked = cardEnabled;
+            updatePaymentMethodToggleUI('transfer', transferEnabled);
+            updatePaymentMethodToggleUI('card', cardEnabled);
             
             // 綠界設定
             document.getElementById('ecpayMerchantID').value = settings.ecpay_merchant_id || '';
