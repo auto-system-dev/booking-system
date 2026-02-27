@@ -1061,6 +1061,7 @@ async function initEmailTemplates() {
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.8; color: #333; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -1069,10 +1070,10 @@ async function initEmailTemplates() {
         .header p { font-size: 18px; margin: 0; opacity: 0.95; }
         .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
         .info-box { background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #4caf50; }
-        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
         .info-row:last-child { border-bottom: none; }
-        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; }
-        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; }
+        .info-label { font-weight: 600; color: #666; font-size: 16px; min-width: 140px; flex: 0 0 auto; }
+        .info-value { color: #333; font-size: 16px; text-align: right; font-weight: 500; flex: 1 1 auto; word-break: break-word; }
         .info-value strong { color: #333; font-weight: 700; }
         .section-title { color: #333; font-size: 22px; font-weight: bold; margin: 30px 0 18px 0; display: flex; align-items: center; gap: 8px; }
         .section-title:first-of-type { margin-top: 0; }
@@ -1089,6 +1090,31 @@ async function initEmailTemplates() {
         .rating-stars { font-size: 32px; margin: 15px 0; }
         .google-review-btn { display: inline-block; background: #1a73e8; color: white; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-size: 17px; font-weight: 700; margin-top: 15px; transition: background 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.2); letter-spacing: 0.5px; }
         .google-review-btn:hover { background: #1557b0; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+
+        /* 手機響應式設計 */
+        @media only screen and (max-width: 600px) {
+            .container { padding: 0; }
+            .header { padding: 25px 15px; }
+            .header h1 { font-size: 24px; }
+            .header p { font-size: 16px; }
+            .content { padding: 20px 15px; }
+            .info-box { padding: 15px; margin: 20px 0; }
+            .info-row { flex-direction: column; align-items: flex-start; padding: 10px 0; }
+            .info-label { min-width: auto; width: 100%; margin-bottom: 5px; font-size: 14px; }
+            .info-value { text-align: left; width: 100%; font-size: 15px; }
+            .section-title { font-size: 20px; margin: 25px 0 15px 0; }
+            p { font-size: 15px; }
+            .greeting { font-size: 17px; }
+            .intro-text { font-size: 15px; margin-bottom: 20px; }
+            ul { padding-left: 25px; }
+            li { font-size: 15px; }
+            .highlight-box { padding: 15px; margin: 20px 0; }
+            .info-section { padding: 15px; margin: 20px 0; }
+            .info-section-title { font-size: 18px; }
+            .rating-section { padding: 20px 15px; margin: 20px 0; }
+            .rating-stars { font-size: 28px; }
+            .google-review-btn { display: block; width: 100%; box-sizing: border-box; padding: 12px 16px; font-size: 16px; }
+        }
     </style>
 </head>
 <body>
@@ -1798,8 +1824,20 @@ async function initEmailTemplates() {
                     console.log(`⚠️ 匯款提醒模板缺少圖卡樣式結構，需要更新`);
                 }
             }
+
+            // 檢查感謝入住模板是否缺少手機響應式
+            let needsUpdateForFeedbackResponsive = false;
+            if (template.key === 'feedback_request' && existing && existing.content && existing.content.trim() !== '') {
+                const hasViewport = existing.content.includes('meta name="viewport"');
+                const hasMediaQuery = existing.content.includes('@media only screen and (max-width: 600px)');
+                const hasMobileInfoRow = existing.content.includes('.info-row { flex-direction: column');
+                if (!hasViewport || !hasMediaQuery || !hasMobileInfoRow) {
+                    needsUpdateForFeedbackResponsive = true;
+                    console.log(`⚠️ 感謝入住模板缺少手機響應式結構，需要更新`);
+                }
+            }
             
-            if (!existing || !existing.content || existing.content.trim() === '' || existing.template_name !== template.name || isContentTooShort || needsUpdateForHtmlStructure || forceUpdateCheckinReminder || forceUpdatePaymentReminder || needsUpdateForPaymentReminder) {
+            if (!existing || !existing.content || existing.content.trim() === '' || existing.template_name !== template.name || isContentTooShort || needsUpdateForHtmlStructure || forceUpdateCheckinReminder || forceUpdatePaymentReminder || needsUpdateForPaymentReminder || needsUpdateForFeedbackResponsive) {
                 if (usePostgreSQL) {
                     await query(
                         `INSERT INTO email_templates (template_key, template_name, subject, content, is_enabled, days_before_checkin, send_hour_checkin, days_after_checkout, send_hour_feedback, days_reserved, send_hour_payment_reminder)
