@@ -3705,6 +3705,14 @@ function updateAddonsFrontendToggleUI(isEnabled) {
     if (text) text.textContent = isEnabled ? '啟用前台加購商品功能' : '未啟用前台加購商品功能';
 }
 
+// 同步「郵件模板啟用」開關外觀（與前台加購商品開關一致）
+function updateEmailTemplateEnabledToggleUI(isEnabled) {
+    const track = document.getElementById('emailTemplateEnabledTrack');
+    const thumb = document.getElementById('emailTemplateEnabledThumb');
+    if (track) track.style.backgroundColor = isEnabled ? '#27ae60' : '#ccc';
+    if (thumb) thumb.style.transform = isEnabled ? 'translateX(24px)' : 'translateX(0)';
+}
+
 // 載入加購商品列表
 async function loadAddons() {
     try {
@@ -5676,6 +5684,7 @@ async function showEmailTemplateModal(templateKey) {
             document.getElementById('emailTemplateName').value = templateName;
             document.getElementById('emailTemplateSubject').value = templateSubject;
             document.getElementById('emailTemplateEnabled').checked = template.is_enabled === 1;
+            updateEmailTemplateEnabledToggleUI(template.is_enabled === 1);
             
             // 根據模板類型顯示/隱藏設定欄位
             const checkinSettings = document.getElementById('checkinReminderSettings');
