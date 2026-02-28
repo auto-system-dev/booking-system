@@ -632,9 +632,9 @@
 
                 <!-- 前台啟用開關 -->
                 <div class="settings-card" style="margin-bottom: 20px;">
-                    <h3>前台啟用設定</h3>
+                    <h3 style="margin-bottom: 14px;">前台啟用設定</h3>
                     <div class="form-group">
-                        <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
                             <div style="position: relative; display: inline-block; width: 50px; height: 26px;">
                                 <input type="checkbox" id="enableAddonsFrontend" style="opacity: 0; width: 0; height: 0; position: absolute;" onchange="updateAddonsFrontendToggleUI(this.checked); toggleAddonsFrontend(this.checked)">
                                 <span id="enableAddonsFrontendTrack" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: 0.3s; border-radius: 26px;" onclick="const cb=this.previousElementSibling; cb.checked=!cb.checked; cb.dispatchEvent(new Event('change'));">
@@ -643,7 +643,7 @@
                             </div>
                             <span id="enableAddonsFrontendText" style="color: #666; font-size: 14px;">未啟用前台加購商品功能</span>
                         </div>
-                        <small>關閉後，前台將不顯示加購商品選項，也不計算加購商品價格</small>
+                        <small style="display: block; margin-top: 4px; line-height: 1.7;">關閉後，前台將不顯示加購商品選項，也不計算加購商品價格</small>
                     </div>
                 </div>
 
