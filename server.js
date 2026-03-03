@@ -7561,6 +7561,15 @@ app.post('/api/email-templates/reset-to-default', requireAuth, checkPermission('
                 </ul>
             </div>
 
+            <div style="margin-top: 30px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px;">
+                <p style="margin: 0 0 10px 0; font-size: 16px; font-weight: 700; color: #333;">聯絡資訊</p>
+                <p style="margin: 0 0 8px 0; font-size: 15px; color: #333;"><strong>電話：</strong><a href="tel:{{hotelPhone}}" style="color: #1976d2; text-decoration: none;">{{hotelPhone}}</a></p>
+                <p style="margin: 0 0 8px 0; font-size: 15px; color: #333;"><strong>Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: none;">{{hotelEmail}}</a></p>
+                {{#if officialLineUrl}}
+                <p style="margin: 0; font-size: 15px; color: #333;"><strong>官方 LINE：</strong><a href="{{officialLineUrl}}" target="_blank" style="color: #1976d2; text-decoration: underline;">{{officialLineUrl}}</a></p>
+                {{/if}}
+            </div>
+
             <p style="margin-top: 35px; font-size: 17px; font-weight: 500;">感謝您的預訂，期待為您服務！</p>
             <p style="text-align: center; margin-top: 30px; color: #666; font-size: 14px; padding-top: 20px; border-top: 1px solid #e0e0e0;">此為系統自動發送郵件，請勿直接回覆</p>
         </div>
@@ -8496,6 +8505,15 @@ app.get('/api/email-templates/:key/default', requireAuth, checkPermission('email
                     <li>如需取消或變更訂房，請提前 3 天通知</li>
                     <li>如有任何問題，請隨時與我們聯繫</li>
                 </ul>
+            </div>
+
+            <div style="margin-top: 30px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px;">
+                <p style="margin: 0 0 10px 0; font-size: 16px; font-weight: 700; color: #333;">聯絡資訊</p>
+                <p style="margin: 0 0 8px 0; font-size: 15px; color: #333;"><strong>電話：</strong><a href="tel:{{hotelPhone}}" style="color: #1976d2; text-decoration: none;">{{hotelPhone}}</a></p>
+                <p style="margin: 0 0 8px 0; font-size: 15px; color: #333;"><strong>Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: none;">{{hotelEmail}}</a></p>
+                {{#if officialLineUrl}}
+                <p style="margin: 0; font-size: 15px; color: #333;"><strong>官方 LINE：</strong><a href="{{officialLineUrl}}" target="_blank" style="color: #1976d2; text-decoration: underline;">{{officialLineUrl}}</a></p>
+                {{/if}}
             </div>
 
             <p style="margin-top: 35px; font-size: 17px; font-weight: 500;">感謝您的預訂，期待為您服務！</p>
@@ -10377,6 +10395,11 @@ ${htmlEnd}`;
                           (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'https://your-booking-site.com');
         variables['{{bookingUrl}}'] = bookingUrl;
     }
+    // 官方 LINE 連結：供模板中直接使用 {{officialLineUrl}}
+    if (!variables['{{officialLineUrl}}']) {
+        const officialLineUrl = await db.getSetting('landing_social_line') || '';
+        variables['{{officialLineUrl}}'] = officialLineUrl;
+    }
     
     // 處理嵌套條件區塊的輔助函數（改進版，能正確處理嵌套結構）
     // 需要在處理入住提醒區塊之前定義
@@ -10491,6 +10514,10 @@ ${htmlEnd}`;
     // 處理折扣條件（discountAmount > 0）
     const hasDiscount = discountAmount > 0;
     content = processConditionalBlock(content, hasDiscount, 'hasDiscount');
+    
+    // 處理官方 LINE 條件（有設定銷售頁 LINE 才顯示）
+    const hasOfficialLineUrl = !!(variables['{{officialLineUrl}}'] && String(variables['{{officialLineUrl}}']).trim() !== '');
+    content = processConditionalBlock(content, hasOfficialLineUrl, 'officialLineUrl');
 
     // 入住提醒區塊條件
     if (isCheckinReminder) {
