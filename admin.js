@@ -9967,7 +9967,7 @@ async function loadLandingSettings() {
             if (heroImageUrl) {
                 showHeroImagePreview(heroImageUrl);
             }
-            // 還原客戶 favicon 預覽
+            // 還原 favicon 預覽
             const faviconUrl = data['landing_favicon'];
             if (faviconUrl) {
                 showLandingFaviconPreview(faviconUrl);
@@ -10272,7 +10272,7 @@ async function saveLandingSettings(tab) {
             landing_seo_title: '銷售頁-SEO 標題',
             landing_seo_desc: '銷售頁-SEO 描述',
             landing_og_image: '銷售頁-OG 分享圖片',
-            landing_favicon: '銷售頁-客戶 Favicon',
+            landing_favicon: '銷售頁-Favicon',
             landing_address: '銷售頁-地址',
             landing_driving: '銷售頁-自行開車',
             landing_transit: '銷售頁-大眾運輸',
@@ -10415,7 +10415,7 @@ function removeHeroImage() {
     document.getElementById('heroImageInput').value = '';
 }
 
-// ===== 客戶 Favicon 上傳（landing / index 共用） =====
+// ===== Favicon 上傳（landing / index 共用） =====
 async function handleLandingFaviconUpload(input) {
     const file = input.files[0];
     if (!file) return;
@@ -10452,13 +10452,13 @@ async function handleLandingFaviconUpload(input) {
             const faviconInput = document.getElementById('landingFavicon');
             if (faviconInput) faviconInput.value = imageUrl;
             showLandingFaviconPreview(imageUrl);
-            showSuccess('客戶 favicon 上傳成功');
+            showSuccess('favicon 上傳成功');
         } else {
             showError('上傳失敗：' + (result.message || '未知錯誤'));
             if (uploadArea) uploadArea.innerHTML = originalContent;
         }
     } catch (error) {
-        console.error('上傳客戶 favicon 錯誤:', error);
+        console.error('上傳 favicon 錯誤:', error);
         showError('上傳 favicon 時發生錯誤：' + error.message);
         if (uploadArea) uploadArea.innerHTML = originalContent;
     }
@@ -10473,7 +10473,7 @@ function showLandingFaviconPreview(imageUrl) {
         <div id="landingFaviconPreview" style="display: flex; align-items: center; justify-content: center; gap: 12px; position: relative;">
             <img src="${imageUrl}" style="width: 48px; height: 48px; border-radius: 8px; border: 1px solid #ddd; object-fit: cover; background: #fff;">
             <div style="text-align: left;">
-                <p style="margin: 0; color: #444; font-weight: 600;">客戶 favicon 已上傳</p>
+                <p style="margin: 0; color: #444; font-weight: 600;">favicon 已上傳</p>
                 <small style="color: #888;">點擊此區可重新上傳</small>
             </div>
             <button type="button" onclick="event.stopPropagation(); removeLandingFavicon();" style="position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%; border: none; background: #e74c3c; color: white; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;">✕</button>
@@ -10489,7 +10489,7 @@ function removeLandingFavicon() {
         uploadArea.innerHTML = `
             <div id="landingFaviconPreview">
                 <span class="material-symbols-outlined" style="font-size: 40px; color: #888; display: block; margin-bottom: 8px;">image</span>
-                <p style="margin: 0; color: #555;">點擊上傳客戶 favicon</p>
+                <p style="margin: 0; color: #555;">點擊上傳 favicon</p>
                 <small style="color: #888;">建議 PNG / ICO（正方形），最大 1MB</small>
             </div>
         `;
