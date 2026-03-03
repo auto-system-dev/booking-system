@@ -1666,6 +1666,14 @@ async function initEmailTemplates() {
             </div>
             
             <p>若您後續仍需變更或取消訂房，請儘早與我們聯繫，我們將盡力協助您。</p>
+            <div style="margin-top: 30px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px;">
+                <p style="margin: 0 0 10px 0; font-size: 16px; font-weight: 700; color: #333;">聯絡資訊</p>
+                <p style="margin: 0 0 8px 0; font-size: 15px; color: #333;"><strong>電話：</strong><a href="tel:{{hotelPhone}}" style="color: #1976d2; text-decoration: none;">{{hotelPhone}}</a></p>
+                <p style="margin: 0 0 8px 0; font-size: 15px; color: #333;"><strong>Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: none;">{{hotelEmail}}</a></p>
+                {{#if officialLineUrl}}
+                <p style="margin: 0; font-size: 15px; color: #333;"><strong>官方 LINE：</strong><a href="{{officialLineUrl}}" target="_blank" style="color: #1976d2; text-decoration: underline;">{{officialLineUrl}}</a></p>
+                {{/if}}
+            </div>
             
             <p style="margin-top: 35px; font-size: 17px; font-weight: 500;">再次感謝您的預訂，期待您的光臨！</p>
             <p style="text-align: center; margin-top: 30px; color: #666; font-size: 14px; padding-top: 20px; border-top: 1px solid #e0e0e0;">此為系統自動發送郵件，請勿直接回覆</p>
@@ -1866,7 +1874,19 @@ async function initEmailTemplates() {
                 }
             }
             
-            if (!existing || !existing.content || existing.content.trim() === '' || existing.template_name !== template.name || isContentTooShort || needsUpdateForHtmlStructure || forceUpdateCheckinReminder || forceUpdatePaymentReminder || needsUpdateForPaymentReminder || needsUpdateForFeedbackResponsive || needsUpdateForBookingContactInfo) {
+            // 檢查付款完成模板是否缺少聯絡資訊區塊（電話 / Email / 官方 LINE）
+            let needsUpdateForPaymentCompletedContactInfo = false;
+            if (template.key === 'payment_completed' && existing && existing.content && existing.content.trim() !== '') {
+                const hasPhoneField = existing.content.includes('{{hotelPhone}}');
+                const hasEmailField = existing.content.includes('{{hotelEmail}}');
+                const hasOfficialLineField = existing.content.includes('{{officialLineUrl}}');
+                if (!hasPhoneField || !hasEmailField || !hasOfficialLineField) {
+                    needsUpdateForPaymentCompletedContactInfo = true;
+                    console.log(`⚠️ 付款完成模板缺少完整聯絡資訊區塊，需要更新`);
+                }
+            }
+            
+            if (!existing || !existing.content || existing.content.trim() === '' || existing.template_name !== template.name || isContentTooShort || needsUpdateForHtmlStructure || forceUpdateCheckinReminder || forceUpdatePaymentReminder || needsUpdateForPaymentReminder || needsUpdateForFeedbackResponsive || needsUpdateForBookingContactInfo || needsUpdateForPaymentCompletedContactInfo) {
                 if (usePostgreSQL) {
                     await query(
                         `INSERT INTO email_templates (template_key, template_name, subject, content, is_enabled, days_before_checkin, send_hour_checkin, days_after_checkout, send_hour_feedback, days_reserved, send_hour_payment_reminder)

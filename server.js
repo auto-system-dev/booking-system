@@ -7850,6 +7850,14 @@ app.post('/api/email-templates/reset-to-default', requireAuth, checkPermission('
             </div>
             
             <p>若您後續仍需變更或取消訂房，請儘早與我們聯繫，我們將盡力協助您。</p>
+            <div style="margin-top: 30px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px;">
+                <p style="margin: 0 0 10px 0; font-size: 16px; font-weight: 700; color: #333;">聯絡資訊</p>
+                <p style="margin: 0 0 8px 0; font-size: 15px; color: #333;"><strong>電話：</strong><a href="tel:{{hotelPhone}}" style="color: #1976d2; text-decoration: none;">{{hotelPhone}}</a></p>
+                <p style="margin: 0 0 8px 0; font-size: 15px; color: #333;"><strong>Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: none;">{{hotelEmail}}</a></p>
+                {{#if officialLineUrl}}
+                <p style="margin: 0; font-size: 15px; color: #333;"><strong>官方 LINE：</strong><a href="{{officialLineUrl}}" target="_blank" style="color: #1976d2; text-decoration: underline;">{{officialLineUrl}}</a></p>
+                {{/if}}
+            </div>
             
             <p style="margin-top: 35px; font-size: 17px; font-weight: 500;">再次感謝您的預訂，期待您的光臨！</p>
             <p style="text-align: center; margin-top: 30px; color: #666; font-size: 14px; padding-top: 20px; border-top: 1px solid #e0e0e0;">此為系統自動發送郵件，請勿直接回覆</p>
@@ -8782,6 +8790,14 @@ app.get('/api/email-templates/:key/default', requireAuth, checkPermission('email
             </div>
             
             <p>若您後續仍需變更或取消訂房，請儘早與我們聯繫，我們將盡力協助您。</p>
+            <div style="margin-top: 30px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px;">
+                <p style="margin: 0 0 10px 0; font-size: 16px; font-weight: 700; color: #333;">聯絡資訊</p>
+                <p style="margin: 0 0 8px 0; font-size: 15px; color: #333;"><strong>電話：</strong><a href="tel:{{hotelPhone}}" style="color: #1976d2; text-decoration: none;">{{hotelPhone}}</a></p>
+                <p style="margin: 0 0 8px 0; font-size: 15px; color: #333;"><strong>Email：</strong><a href="mailto:{{hotelEmail}}" style="color: #1976d2; text-decoration: none;">{{hotelEmail}}</a></p>
+                {{#if officialLineUrl}}
+                <p style="margin: 0; font-size: 15px; color: #333;"><strong>官方 LINE：</strong><a href="{{officialLineUrl}}" target="_blank" style="color: #1976d2; text-decoration: underline;">{{officialLineUrl}}</a></p>
+                {{/if}}
+            </div>
             
             <p style="margin-top: 35px; font-size: 17px; font-weight: 500;">再次感謝您的預訂，期待您的光臨！</p>
             <p style="text-align: center; margin-top: 30px; color: #666; font-size: 14px; padding-top: 20px; border-top: 1px solid #e0e0e0;">此為系統自動發送郵件，請勿直接回覆</p>
