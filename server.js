@@ -668,8 +668,9 @@ async function initEmailService() {
     try {
         // 優先使用資料庫設定
         const resendApiKey = await db.getSetting('resend_api_key') || process.env.RESEND_API_KEY;
-        const emailUser = await getRequiredEmailUser('初始化郵件服務');
-        configuredSenderEmail = emailUser;
+        let emailUser = ((await db.getSetting('email_user')) || process.env.EMAIL_USER || '').trim();
+        const resendSenderEmail = ((await db.getSetting('resend_sender_email')) || '').trim();
+        configuredSenderEmail = resendSenderEmail || emailUser;
         const emailPass = process.env.EMAIL_PASS || 'vtik qvij ravh lirg';
         const gmailClientID = await db.getSetting('gmail_client_id') || process.env.GMAIL_CLIENT_ID;
         const gmailClientSecret = await db.getSetting('gmail_client_secret') || process.env.GMAIL_CLIENT_SECRET;
@@ -701,6 +702,10 @@ async function initEmailService() {
         
         // 如果沒有 Resend，使用 Gmail
         emailServiceProvider = 'gmail';
+        if (!emailUser) {
+            emailUser = await getRequiredEmailUser('初始化郵件服務');
+        }
+        configuredSenderEmail = emailUser;
         
         // 檢查是否使用 OAuth2
         const useOAuth2 = gmailClientID && gmailClientSecret && gmailRefreshToken;
@@ -930,25 +935,19 @@ async function sendEmail(mailOptions) {
             try {
                 console.log('📧 使用 Resend 發送郵件...');
                 
-                // 從 mailOptions.from 提取發件人信箱（Resend 需要驗證過的網域或信箱）
-                const emailUser = await getRequiredEmailUser('Resend 發送');
-                let fromEmail = mailOptions.from || emailUser;
-                
-                // 檢查是否有設定旅館名稱，如果有，使用「名稱 <email>」格式
-                // Resend 支援格式："名稱" <email@domain.com> 或 名稱 <email@domain.com>
-                const hotelName = await db.getSetting('hotel_name');
-                if (hotelName && hotelName.trim()) {
-                    // 如果 mailOptions.from 已經包含名稱格式，就不需要再添加
-                    // 檢查是否已經是「名稱 <email>」格式
-                    const nameEmailRegex = /^[^<]+<[^>]+>$/;
-                    if (!nameEmailRegex.test(fromEmail)) {
-                        // 提取純 email（移除可能已有的名稱部分）
-                        const emailMatch = fromEmail.match(/<([^>]+)>/) || fromEmail.match(/([^\s<>]+@[^\s<>]+)/);
-                        const pureEmail = emailMatch ? emailMatch[1] || emailMatch[0] : fromEmail;
-                        // 使用旅館名稱作為寄件人顯示名稱
-                        fromEmail = `"${hotelName.trim()}" <${pureEmail}>`;
-                        console.log('   使用寄件人名稱:', hotelName.trim());
-                    }
+                // Resend 寄件資訊：優先使用 Resend 專用設定，未設定時才退回 email_user / EMAIL_USER
+                const resendSenderEmail = ((await db.getSetting('resend_sender_email')) || '').trim();
+                const fallbackEmailUser = ((await db.getSetting('email_user')) || process.env.EMAIL_USER || '').trim();
+                const senderEmail = resendSenderEmail || fallbackEmailUser;
+                if (!senderEmail) {
+                    throw new Error('未設定 Resend 寄件郵箱（resend_sender_email）或 email_user / EMAIL_USER');
+                }
+
+                let fromEmail = senderEmail;
+                const resendSenderName = ((await db.getSetting('resend_sender_name')) || (await db.getSetting('hotel_name')) || '').trim();
+                if (resendSenderName) {
+                    fromEmail = `"${resendSenderName}" <${senderEmail}>`;
+                    console.log('   使用寄件人名稱:', resendSenderName);
                 }
                 
                 const result = await resendClient.emails.send({
@@ -6126,8 +6125,11 @@ app.get('/api/admin/email-service-status', requireAuth, checkPermission('email_t
         // 檢查 Resend 客戶端狀態
         const resendClientInitialized = resendClient !== null;
         
-        // 檢查發件人信箱
+        // 檢查發件人資訊（Resend 專用設定優先）
+        const resendSenderEmail = (await db.getSetting('resend_sender_email') || '').trim();
+        const resendSenderName = (await db.getSetting('resend_sender_name') || '').trim();
         const emailUser = (await db.getSetting('email_user') || '').trim();
+        const effectiveSenderEmail = resendSenderEmail || emailUser;
         
         // 檢查當前郵件服務提供商
         const currentProvider = emailServiceProvider;
@@ -6153,7 +6155,8 @@ app.get('/api/admin/email-service-status', requireAuth, checkPermission('email_t
                 status: gmailOAuth2Configured ? '已設定（備用）' : '未設定'
             },
             currentProvider: currentProvider,
-            senderEmail: emailUser || '未設定',
+            senderEmail: effectiveSenderEmail || '未設定',
+            senderName: resendSenderName || '未設定',
             recommendations: []
         };
         
@@ -6167,10 +6170,10 @@ app.get('/api/admin/email-service-status', requireAuth, checkPermission('email_t
         if (resendApiKey && !resendClientInitialized) {
             status.recommendations.push('⚠️ Resend API Key 已設定但客戶端未初始化，請重新啟動伺服器');
         }
-        if (!emailUser) {
-            status.recommendations.push('⚠️ 發件人信箱未設定，請在「Gmail 發信設定」中設定「Gmail 帳號」欄位');
+        if (!effectiveSenderEmail) {
+            status.recommendations.push('⚠️ 發件人信箱未設定，請在「Resend 發信設定」設定「寄件顯示郵箱」或在「Gmail 發信設定」設定「Gmail 帳號」');
         }
-        if (resendPackageInstalled && resendApiKey && resendClientInitialized && emailUser) {
+        if (resendPackageInstalled && resendApiKey && resendClientInitialized && effectiveSenderEmail) {
             status.recommendations.push('✅ Resend 設定完整，可以正常發送郵件');
         }
         

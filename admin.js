@@ -4402,6 +4402,8 @@ async function saveHotelInfoSettings() {
 // 儲存 Resend 設定
 async function saveResendSettings() {
     const resendApiKey = document.getElementById('resendApiKey').value.trim();
+    const resendSenderName = document.getElementById('resendSenderName').value.trim();
+    const resendSenderEmail = document.getElementById('resendSenderEmail').value.trim();
     
     // 驗證必填欄位
     if (!resendApiKey) {
@@ -4414,29 +4416,62 @@ async function saveResendSettings() {
         showError('Resend API Key 格式不正確，應以 re_ 開頭');
         return;
     }
+
+    if (resendSenderEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resendSenderEmail)) {
+        showError('寄件顯示郵箱格式不正確');
+        return;
+    }
     
     try {
-        const response = await adminFetch('/api/admin/settings/resend_api_key', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                value: resendApiKey,
-                description: 'Resend API Key（郵件服務提供商）'
+        const [apiKeyResponse, senderNameResponse, senderEmailResponse] = await Promise.all([
+            adminFetch('/api/admin/settings/resend_api_key', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: resendApiKey,
+                    description: 'Resend API Key（郵件服務提供商）'
+                })
+            }),
+            adminFetch('/api/admin/settings/resend_sender_name', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: resendSenderName,
+                    description: 'Resend 寄件顯示名稱（收件者看到的寄件人名稱）'
+                })
+            }),
+            adminFetch('/api/admin/settings/resend_sender_email', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: resendSenderEmail,
+                    description: 'Resend 寄件顯示郵箱（收件者看到的寄件人郵箱）'
+                })
             })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
+        ]);
+
+        const results = await Promise.all([
+            apiKeyResponse.json(),
+            senderNameResponse.json(),
+            senderEmailResponse.json()
+        ]);
+        const allSuccess = results.every(r => r.success);
+
+        if (allSuccess) {
             showSuccess('Resend 發信設定已儲存！請重新啟動伺服器以套用變更。');
             // 重新載入設定
             setTimeout(() => {
                 loadSettings();
             }, 300);
         } else {
-            showError('儲存 Resend 設定失敗：' + (result.message || '未知錯誤'));
+            const errorMsg = results.find(r => !r.success)?.message || '未知錯誤';
+            showError('儲存 Resend 設定失敗：' + errorMsg);
         }
     } catch (error) {
         console.error('儲存 Resend 設定錯誤:', error);
@@ -4764,6 +4799,14 @@ async function loadSettings() {
             const resendApiKeyInput = document.getElementById('resendApiKey');
             if (resendApiKeyInput) {
                 resendApiKeyInput.value = settings.resend_api_key || '';
+            }
+            const resendSenderNameInput = document.getElementById('resendSenderName');
+            if (resendSenderNameInput) {
+                resendSenderNameInput.value = settings.resend_sender_name || '';
+            }
+            const resendSenderEmailInput = document.getElementById('resendSenderEmail');
+            if (resendSenderEmailInput) {
+                resendSenderEmailInput.value = settings.resend_sender_email || '';
             }
             
             // Gmail 發信設定
