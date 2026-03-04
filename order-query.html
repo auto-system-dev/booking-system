@@ -252,9 +252,12 @@
                     <div>姓名：${item.guest_name || '-'}</div>
                     <div>電話：${item.guest_phone || '-'}</div>
                     <div>房型：${item.room_type || '-'}</div>
+                    <div>天數：${item.nights || 0} 晚</div>
                     <div>入住：${item.check_in_date || '-'}</div>
                     <div>退房：${item.check_out_date || '-'}</div>
-                    <div>金額：NT$ ${formatAmount(item.final_amount || item.total_amount)}</div>
+                    <div>總金額：NT$ ${formatAmount(item.total_amount)}</div>
+                    <div>訂金：NT$ ${formatAmount(item.payment_amount || item.final_amount || 0)}</div>
+                    <div>支付：${item.payment_method || '-'}</div>
                     <div>狀態：${statusText(item.status, item.payment_status)}</div>
                 </div>
             `).join('');

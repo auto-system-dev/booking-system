@@ -3386,6 +3386,7 @@ function sanitizeOrderQueryBookings(bookings = []) {
         check_out_date: booking.check_out_date || '',
         nights: booking.nights || 0,
         total_amount: booking.total_amount || 0,
+        payment_amount: booking.payment_amount || 0,
         final_amount: booking.final_amount || 0,
         payment_method: booking.payment_method || '',
         payment_status: booking.payment_status || 'pending',
