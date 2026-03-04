@@ -2802,13 +2802,21 @@ async function getBookingById(bookingId) {
         console.log(`📊 getBookingById [${bookingId}]: discount_amount=${booking.discount_amount}, promoUsage=${!!promoUsage}, total_amount=${booking.total_amount}, final_amount=${booking.final_amount}, payment_amount=${booking.payment_amount}, discount_description=${booking.discount_description}`);
         
         // 嘗試從現有資料推算折扣金額（用於舊訂單沒有 discount_amount 的情況）
+        // 僅在 payment_amount 可辨識為「訂金 xx%」或「全額」時才反推，避免把應付金額誤判成折扣。
         if (booking.discount_amount === 0 && !promoUsage) {
             const paymentAmountStr = booking.payment_amount || '';
-            let paymentRate = 1; // 預設全額
+            let paymentRate = null;
             
             const depositMatch = paymentAmountStr.match(/(\d+)%/);
             if (depositMatch) {
                 paymentRate = parseInt(depositMatch[1]) / 100;
+            } else if (paymentAmountStr.includes('全額')) {
+                paymentRate = 1;
+            }
+
+            if (!paymentRate || paymentRate <= 0) {
+                console.log(`📊 跳過折扣反推：無法從 payment_amount 解析付款比例 (payment_amount=${paymentAmountStr})`);
+                return booking;
             }
             
             const totalAmt = parseFloat(booking.total_amount) || 0;
