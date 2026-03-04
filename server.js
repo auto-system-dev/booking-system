@@ -669,8 +669,7 @@ async function initEmailService() {
         // 優先使用資料庫設定
         const resendApiKey = await db.getSetting('resend_api_key') || process.env.RESEND_API_KEY;
         let emailUser = ((await db.getSetting('email_user')) || process.env.EMAIL_USER || '').trim();
-        const resendSenderEmail = ((await db.getSetting('resend_sender_email')) || '').trim();
-        configuredSenderEmail = resendSenderEmail || emailUser;
+        configuredSenderEmail = emailUser;
         const emailPass = process.env.EMAIL_PASS || 'vtik qvij ravh lirg';
         const gmailClientID = await db.getSetting('gmail_client_id') || process.env.GMAIL_CLIENT_ID;
         const gmailClientSecret = await db.getSetting('gmail_client_secret') || process.env.GMAIL_CLIENT_SECRET;
@@ -686,6 +685,7 @@ async function initEmailService() {
                 
                 resendClient = new Resend(resendApiKey);
                 emailServiceProvider = 'resend';
+                configuredSenderEmail = 'resend@resend.dev';
                 console.log('📧 郵件服務已設定（Resend）');
                 console.log('   服務提供商: Resend');
                 console.log('   設定來源:', await db.getSetting('resend_api_key') ? '資料庫' : '環境變數');
@@ -935,13 +935,8 @@ async function sendEmail(mailOptions) {
             try {
                 console.log('📧 使用 Resend 發送郵件...');
                 
-                // Resend 寄件資訊：優先使用 Resend 專用設定，未設定時才退回 email_user / EMAIL_USER
-                const resendSenderEmail = ((await db.getSetting('resend_sender_email')) || '').trim();
-                const fallbackEmailUser = ((await db.getSetting('email_user')) || process.env.EMAIL_USER || '').trim();
-                const senderEmail = resendSenderEmail || fallbackEmailUser;
-                if (!senderEmail) {
-                    throw new Error('未設定 Resend 寄件郵箱（resend_sender_email）或 email_user / EMAIL_USER');
-                }
+                // Resend 寄件郵箱固定使用預設值
+                const senderEmail = 'resend@resend.dev';
 
                 let fromEmail = senderEmail;
                 const resendSenderName = ((await db.getSetting('resend_sender_name')) || (await db.getSetting('hotel_name')) || '').trim();
@@ -6125,11 +6120,10 @@ app.get('/api/admin/email-service-status', requireAuth, checkPermission('email_t
         // 檢查 Resend 客戶端狀態
         const resendClientInitialized = resendClient !== null;
         
-        // 檢查發件人資訊（Resend 專用設定優先）
-        const resendSenderEmail = (await db.getSetting('resend_sender_email') || '').trim();
+        // 檢查發件人資訊（Resend 使用固定寄件郵箱）
         const resendSenderName = (await db.getSetting('resend_sender_name') || '').trim();
         const emailUser = (await db.getSetting('email_user') || '').trim();
-        const effectiveSenderEmail = resendSenderEmail || emailUser;
+        const effectiveSenderEmail = currentProvider === 'resend' ? 'resend@resend.dev' : emailUser;
         
         // 檢查當前郵件服務提供商
         const currentProvider = emailServiceProvider;
@@ -6170,8 +6164,8 @@ app.get('/api/admin/email-service-status', requireAuth, checkPermission('email_t
         if (resendApiKey && !resendClientInitialized) {
             status.recommendations.push('⚠️ Resend API Key 已設定但客戶端未初始化，請重新啟動伺服器');
         }
-        if (!effectiveSenderEmail) {
-            status.recommendations.push('⚠️ 發件人信箱未設定，請在「Resend 發信設定」設定「寄件顯示郵箱」或在「Gmail 發信設定」設定「Gmail 帳號」');
+        if (currentProvider !== 'resend' && !effectiveSenderEmail) {
+            status.recommendations.push('⚠️ 發件人信箱未設定，請在「Gmail 發信設定」設定「Gmail 帳號」');
         }
         if (resendPackageInstalled && resendApiKey && resendClientInitialized && effectiveSenderEmail) {
             status.recommendations.push('✅ Resend 設定完整，可以正常發送郵件');

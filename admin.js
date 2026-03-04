@@ -4403,7 +4403,6 @@ async function saveHotelInfoSettings() {
 async function saveResendSettings() {
     const resendApiKey = document.getElementById('resendApiKey').value.trim();
     const resendSenderName = document.getElementById('resendSenderName').value.trim();
-    const resendSenderEmail = document.getElementById('resendSenderEmail').value.trim();
     
     // 驗證必填欄位
     if (!resendApiKey) {
@@ -4417,13 +4416,8 @@ async function saveResendSettings() {
         return;
     }
 
-    if (resendSenderEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resendSenderEmail)) {
-        showError('寄件顯示郵箱格式不正確');
-        return;
-    }
-    
     try {
-        const [apiKeyResponse, senderNameResponse, senderEmailResponse] = await Promise.all([
+        const [apiKeyResponse, senderNameResponse] = await Promise.all([
             adminFetch('/api/admin/settings/resend_api_key', {
                 method: 'PUT',
                 headers: {
@@ -4443,23 +4437,12 @@ async function saveResendSettings() {
                     value: resendSenderName,
                     description: 'Resend 寄件顯示名稱（收件者看到的寄件人名稱）'
                 })
-            }),
-            adminFetch('/api/admin/settings/resend_sender_email', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    value: resendSenderEmail,
-                    description: 'Resend 寄件顯示郵箱（收件者看到的寄件人郵箱）'
-                })
             })
         ]);
 
         const results = await Promise.all([
             apiKeyResponse.json(),
-            senderNameResponse.json(),
-            senderEmailResponse.json()
+            senderNameResponse.json()
         ]);
         const allSuccess = results.every(r => r.success);
 
@@ -4803,10 +4786,6 @@ async function loadSettings() {
             const resendSenderNameInput = document.getElementById('resendSenderName');
             if (resendSenderNameInput) {
                 resendSenderNameInput.value = settings.resend_sender_name || '';
-            }
-            const resendSenderEmailInput = document.getElementById('resendSenderEmail');
-            if (resendSenderEmailInput) {
-                resendSenderEmailInput.value = settings.resend_sender_email || '';
             }
             
             // Gmail 發信設定
