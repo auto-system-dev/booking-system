@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>訂單查詢</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        :root {
+            color-scheme: light;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif;
+            background: #f5f7fb;
+            color: #1f2937;
+        }
+        .container {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 24px 16px 48px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(31, 41, 55, 0.08);
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        h1 {
+            margin: 0 0 12px;
+            font-size: 28px;
+        }
+        h2 {
+            margin: 0 0 12px;
+            font-size: 20px;
+        }
+        p {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+        .muted {
+            color: #6b7280;
+            font-size: 14px;
+        }
+        .row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        input {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 15px;
+            outline: none;
+        }
+        input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+        .field {
+            flex: 1;
+            min-width: 220px;
+        }
+        button {
+            border: none;
+            border-radius: 8px;
+            padding: 11px 14px;
+            font-size: 15px;
+            cursor: pointer;
+            background: #2563eb;
+            color: #fff;
+            min-width: 130px;
+        }
+        button.secondary {
+            background: #4b5563;
+        }
+        button:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+        .message {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .message.error {
+            color: #b91c1c;
+        }
+        .message.success {
+            color: #047857;
+        }
+        .booking-list {
+            margin-top: 14px;
+            display: grid;
+            gap: 12px;
+        }
+        .booking-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 14px;
+            background: #fcfdff;
+        }
+        .booking-id {
+            font-weight: 700;
+            color: #1d4ed8;
+            margin-bottom: 6px;
+        }
+        .booking-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px 16px;
+            font-size: 14px;
+        }
+        @media (max-width: 680px) {
+            .booking-grid {
+                grid-template-columns: 1fr;
+            }
+            h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>訂單查詢</h1>
+            <p class="muted">有 LINE 身分時可直接查詢；若無 LINE 身分，請使用 Email + 一次性驗證碼（OTP）。</p>
+        </div>
+
+        <div class="card">
+            <h2>方式一：LINE 直接查詢</h2>
+            <p class="muted">若由 LINE LIFF 開啟，系統會自動帶入 LINE User ID。</p>
+            <div class="row">
+                <div class="field">
+                    <input id="lineUserIdInput" placeholder="LINE User ID（可自動帶入）">
+                </div>
+                <button id="lineQueryBtn">使用 LINE 查詢</button>
+                <button id="lineInitBtn" class="secondary">重新抓取 LINE 身分</button>
+            </div>
+            <div id="lineMessage" class="message"></div>
+        </div>
+
+        <div class="card">
+            <h2>方式二：Email + OTP 查詢</h2>
+            <div class="row">
+                <div class="field">
+                    <input id="emailInput" type="email" placeholder="請輸入訂房時的 Email">
+                </div>
+                <button id="sendOtpBtn">寄送驗證碼</button>
+            </div>
+            <div class="row">
+                <div class="field">
+                    <input id="otpInput" inputmode="numeric" maxlength="6" placeholder="請輸入 6 碼驗證碼">
+                </div>
+                <button id="verifyOtpBtn">驗證並查詢</button>
+            </div>
+            <div id="otpMessage" class="message"></div>
+        </div>
+
+        <div class="card">
+            <h2>查詢結果</h2>
+            <p id="resultMeta" class="muted">尚未查詢</p>
+            <div id="bookingList" class="booking-list"></div>
+        </div>
+    </div>
+
+    <script>
+        const lineUserIdInput = document.getElementById('lineUserIdInput');
+        const lineMessage = document.getElementById('lineMessage');
+        const otpMessage = document.getElementById('otpMessage');
+        const resultMeta = document.getElementById('resultMeta');
+        const bookingList = document.getElementById('bookingList');
+        const emailInput = document.getElementById('emailInput');
+        const otpInput = document.getElementById('otpInput');
+
+        function setMessage(target, text, isError = false) {
+            target.textContent = text || '';
+            target.className = `message ${text ? (isError ? 'error' : 'success') : ''}`;
+        }
+
+        function formatAmount(value) {
+            const num = Number(value || 0);
+            return `NT$ ${Number.isFinite(num) ? num.toLocaleString() : '0'}`;
+        }
+
+        function statusText(status, paymentStatus) {
+            const bookingMap = {
+                active: '有效',
+                reserved: '保留',
+                cancelled: '已取消'
+            };
+            const payMap = {
+                pending: '待付款',
+                paid: '已付款',
+                refunded: '已退款'
+            };
+            return `${bookingMap[status] || status || '-'} / ${payMap[paymentStatus] || paymentStatus || '-'}`;
+        }
+
+        function renderBookings(bookings) {
+            bookingList.innerHTML = '';
+            if (!Array.isArray(bookings) || bookings.length === 0) {
+                resultMeta.textContent = '查無訂單';
+                return;
+            }
+            resultMeta.textContent = `共找到 ${bookings.length} 筆訂單`;
+            const html = bookings.map(item => `
+                <div class="booking-item">
+                    <div class="booking-id">訂單編號：${item.booking_id || '-'}</div>
+                    <div class="booking-grid">
+                        <div>姓名：${item.guest_name || '-'}</div>
+                        <div>Email：${item.guest_email || '-'}</div>
+                        <div>電話：${item.guest_phone || '-'}</div>
+                        <div>房型：${item.room_type || '-'}</div>
+                        <div>入住：${item.check_in_date || '-'}</div>
+                        <div>退房：${item.check_out_date || '-'}</div>
+                        <div>金額：${formatAmount(item.final_amount || item.total_amount)}</div>
+                        <div>狀態：${statusText(item.status, item.payment_status)}</div>
+                    </div>
+                </div>
+            `).join('');
+            bookingList.innerHTML = html;
+        }
+
+        async function initLiffAndSetLineId() {
+            try {
+                if (typeof liff === 'undefined') {
+                    setMessage(lineMessage, '目前非 LINE 環境，請改用 Email + OTP 查詢', true);
+                    return;
+                }
+
+                let liffId = null;
+                try {
+                    const settingsRes = await fetch('/api/settings');
+                    const settings = await settingsRes.json();
+                    liffId = settings?.success && settings?.data ? settings.data.line_liff_id : null;
+                } catch (err) {
+                    console.warn('讀取 LIFF 設定失敗:', err);
+                }
+
+                if (!liffId) {
+                    setMessage(lineMessage, '尚未設定 LINE LIFF ID，請改用 Email + OTP 查詢', true);
+                    return;
+                }
+
+                await liff.init({ liffId });
+                if (!liff.isLoggedIn()) {
+                    setMessage(lineMessage, '請在 LINE 內開啟本頁，或先登入 LINE', true);
+                    return;
+                }
+
+                const profile = await liff.getProfile();
+                if (profile && profile.userId) {
+                    lineUserIdInput.value = profile.userId;
+                    setMessage(lineMessage, '已取得 LINE 身分，可直接查詢', false);
+                }
+            } catch (error) {
+                console.warn('LIFF 初始化失敗:', error);
+                setMessage(lineMessage, '無法取得 LINE 身分，請改用 Email + OTP 查詢', true);
+            }
+        }
+
+        async function queryByLineId() {
+            const lineUserId = (lineUserIdInput.value || '').trim();
+            if (!lineUserId) {
+                setMessage(lineMessage, '請先提供 LINE User ID', true);
+                return;
+            }
+            setMessage(lineMessage, '查詢中...', false);
+            try {
+                const response = await fetch(`/api/order-query/line/${encodeURIComponent(lineUserId)}`);
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || '查詢失敗');
+                }
+                setMessage(lineMessage, '查詢成功', false);
+                renderBookings(result.data || []);
+            } catch (error) {
+                setMessage(lineMessage, error.message || '查詢失敗', true);
+            }
+        }
+
+        async function sendOtp() {
+            const email = (emailInput.value || '').trim().toLowerCase();
+            if (!email) {
+                setMessage(otpMessage, '請先輸入 Email', true);
+                return;
+            }
+            setMessage(otpMessage, '寄送中...', false);
+            try {
+                const response = await fetch('/api/order-query/otp/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || '寄送失敗');
+                }
+                setMessage(otpMessage, result.message || '驗證碼已寄送', false);
+            } catch (error) {
+                setMessage(otpMessage, error.message || '寄送失敗', true);
+            }
+        }
+
+        async function verifyOtpAndQuery() {
+            const email = (emailInput.value || '').trim().toLowerCase();
+            const otp = (otpInput.value || '').trim();
+            if (!email || !otp) {
+                setMessage(otpMessage, '請輸入 Email 與驗證碼', true);
+                return;
+            }
+            setMessage(otpMessage, '驗證中...', false);
+            try {
+                const response = await fetch('/api/order-query/otp/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, otp })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || '驗證失敗');
+                }
+                setMessage(otpMessage, '驗證成功', false);
+                renderBookings(result.data || []);
+            } catch (error) {
+                setMessage(otpMessage, error.message || '驗證失敗', true);
+            }
+        }
+
+        document.getElementById('lineQueryBtn').addEventListener('click', queryByLineId);
+        document.getElementById('lineInitBtn').addEventListener('click', initLiffAndSetLineId);
+        document.getElementById('sendOtpBtn').addEventListener('click', sendOtp);
+        document.getElementById('verifyOtpBtn').addEventListener('click', verifyOtpAndQuery);
+
+        initLiffAndSetLineId();
+    </script>
+</body>
+</html>

@@ -32,6 +32,7 @@ const csrf = require('csrf');
 const lineBot = require('./line-bot');
 const multer = require('multer');
 const storage = require('./storage');
+const dataProtection = require('./data-protection');
 
 // 本地 uploads 目錄（當未設定 R2 時作為回退儲存）
 const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
@@ -2378,6 +2379,11 @@ app.get('/data-protection', (req, res) => {
     res.sendFile(path.join(__dirname, 'data-protection.html'));
 });
 
+// 訂單查詢頁面
+app.get('/order-query', (req, res) => {
+    res.sendFile(path.join(__dirname, 'order-query.html'));
+});
+
 // 管理後台登入頁面
 app.get('/admin/login', (req, res) => {
     // 如果已經登入，重導向到管理後台
@@ -3369,6 +3375,143 @@ app.get('/api/bookings/email/:email', publicLimiter, async (req, res) => {
     }
 });
 
+function sanitizeOrderQueryBookings(bookings = []) {
+    return bookings.map(booking => ({
+        booking_id: booking.booking_id || '',
+        guest_name: booking.guest_name || '',
+        guest_email: booking.guest_email || '',
+        guest_phone: booking.guest_phone || '',
+        room_type: booking.room_type || '',
+        check_in_date: booking.check_in_date || '',
+        check_out_date: booking.check_out_date || '',
+        nights: booking.nights || 0,
+        total_amount: booking.total_amount || 0,
+        final_amount: booking.final_amount || 0,
+        payment_method: booking.payment_method || '',
+        payment_status: booking.payment_status || 'pending',
+        status: booking.status || 'active',
+        created_at: booking.created_at || null
+    }));
+}
+
+async function sendOrderQueryOtpEmail(email, code) {
+    const emailUser = await getRequiredEmailUser('訂單查詢 OTP');
+    await sendEmail({
+        from: emailUser,
+        to: email,
+        subject: '【訂單查詢】一次性驗證碼',
+        html: `
+            <div style="font-family: 'Noto Sans TC', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #262A33;">訂單查詢驗證碼</h2>
+                <p>您好，您正在進行訂單查詢，請使用以下驗證碼完成驗證：</p>
+                <div style="background: #f5f7fb; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
+                    <h1 style="color: #2C8EC4; font-size: 32px; margin: 0; letter-spacing: 5px;">${code}</h1>
+                </div>
+                <p style="color: #666; font-size: 14px;">此驗證碼有效期限為 15 分鐘，且僅可使用一次。</p>
+                <p style="color: #666; font-size: 14px;">若非本人操作，請忽略此郵件。</p>
+            </div>
+        `
+    });
+}
+
+// 訂單查詢 API（有 LINE User ID 直接查詢）
+app.get('/api/order-query/line/:lineUserId', publicLimiter, async (req, res) => {
+    try {
+        const lineUserId = (req.params.lineUserId || '').trim();
+        if (!lineUserId) {
+            return res.status(400).json({
+                success: false,
+                message: '缺少 LINE User ID'
+            });
+        }
+
+        const bookings = await db.getBookingsByLineUserId(lineUserId);
+        return res.json({
+            success: true,
+            count: bookings.length,
+            data: sanitizeOrderQueryBookings(bookings)
+        });
+    } catch (error) {
+        console.error('LINE 訂單查詢失敗:', error);
+        return res.status(500).json({
+            success: false,
+            message: '查詢失敗，請稍後再試'
+        });
+    }
+});
+
+// 訂單查詢 API（寄送 Email OTP）
+app.post('/api/order-query/otp/send', publicLimiter, async (req, res) => {
+    try {
+        const email = (req.body.email || '').trim().toLowerCase();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email 格式不正確'
+            });
+        }
+
+        const bookings = await db.getBookingsByEmail(email);
+        if (!bookings || bookings.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: '找不到此 Email 的訂單資料'
+            });
+        }
+
+        const code = dataProtection.generateVerificationCode();
+        dataProtection.saveVerificationCode(email, code, 'order_query');
+        await sendOrderQueryOtpEmail(email, code);
+
+        return res.json({
+            success: true,
+            message: '驗證碼已寄送，請至 Email 收信'
+        });
+    } catch (error) {
+        console.error('寄送訂單查詢 OTP 失敗:', error);
+        return res.status(500).json({
+            success: false,
+            message: '寄送驗證碼失敗，請稍後再試'
+        });
+    }
+});
+
+// 訂單查詢 API（驗證 OTP 並回傳訂單）
+app.post('/api/order-query/otp/verify', publicLimiter, async (req, res) => {
+    try {
+        const email = (req.body.email || '').trim().toLowerCase();
+        const otp = (req.body.otp || '').trim();
+        if (!email || !otp) {
+            return res.status(400).json({
+                success: false,
+                message: '請提供 Email 與驗證碼'
+            });
+        }
+
+        const verification = dataProtection.verifyCode(email, otp, 'order_query');
+        if (!verification.valid) {
+            return res.status(400).json({
+                success: false,
+                message: verification.message || '驗證碼無效'
+            });
+        }
+
+        const bookings = await db.getBookingsByEmail(email);
+        return res.json({
+            success: true,
+            count: bookings.length,
+            data: sanitizeOrderQueryBookings(bookings)
+        });
+    } catch (error) {
+        console.error('驗證訂單查詢 OTP 失敗:', error);
+        return res.status(500).json({
+            success: false,
+            message: '驗證失敗，請稍後再試'
+        });
+    }
+});
+
 // API: 取得所有客戶列表（聚合訂房資料）- 需要登入
 app.get('/api/customers', requireAuth, checkPermission('customers.view'), adminLimiter, async (req, res) => {
     try {
@@ -4015,8 +4158,6 @@ app.get('/api/customers/:email', publicLimiter, async (req, res) => {
 });
 
 // ==================== 個資保護 API ====================
-
-const dataProtection = require('./data-protection');
 
 // 發送個資查詢驗證碼
 app.post('/api/data-protection/send-verification-code', publicLimiter, async (req, res, next) => {

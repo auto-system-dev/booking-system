@@ -2849,6 +2849,20 @@ async function getBookingsByEmail(email) {
     }
 }
 
+// 根據 LINE User ID 查詢訂房記錄
+async function getBookingsByLineUserId(lineUserId) {
+    try {
+        const sql = usePostgreSQL
+            ? `SELECT * FROM bookings WHERE line_user_id = $1 ORDER BY created_at DESC`
+            : `SELECT * FROM bookings WHERE line_user_id = ? ORDER BY created_at DESC`;
+        const result = await query(sql, [lineUserId]);
+        return result.rows;
+    } catch (error) {
+        console.error('❌ 查詢 LINE 訂房記錄失敗:', error.message);
+        throw error;
+    }
+}
+
 // 更新訂房資料
 async function updateBooking(bookingId, updateData) {
     try {
@@ -6751,6 +6765,7 @@ module.exports = {
     getAllBookings,
     getBookingById,
     getBookingsByEmail,
+    getBookingsByLineUserId,
     updateBooking,
     cancelBooking,
     deleteBooking,
