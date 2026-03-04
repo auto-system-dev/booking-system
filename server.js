@@ -653,6 +653,12 @@ let gmail = null; // Gmail API 客戶端
 let resendClient = null; // Resend 客戶端
 let emailServiceProvider = 'gmail'; // 郵件服務提供商：'resend' 或 'gmail'
 let configuredSenderEmail = ''; // 後台設定的寄件信箱
+const DEFAULT_HOTEL_SETTINGS = {
+    name: 'XX民宿',
+    phone: '02-1234-5678',
+    address: '台北市信義區信義路五段7號',
+    email: 'service@hotel.com'
+};
 
 async function getRequiredEmailUser(context = '') {
     const emailUser = ((await db.getSetting('email_user')) || process.env.EMAIL_USER || '').trim();
@@ -661,6 +667,14 @@ async function getRequiredEmailUser(context = '') {
         throw new Error(`未設定後台寄件信箱 email_user / EMAIL_USER${contextLabel}`);
     }
     return emailUser;
+}
+
+async function getHotelSettingsWithFallback() {
+    const hotelName = ((await db.getSetting('hotel_name')) || '').trim() || DEFAULT_HOTEL_SETTINGS.name;
+    const hotelPhone = ((await db.getSetting('hotel_phone')) || '').trim() || DEFAULT_HOTEL_SETTINGS.phone;
+    const hotelAddress = ((await db.getSetting('hotel_address')) || '').trim() || DEFAULT_HOTEL_SETTINGS.address;
+    const hotelEmail = ((await db.getSetting('hotel_email')) || '').trim() || DEFAULT_HOTEL_SETTINGS.email;
+    return { hotelName, hotelPhone, hotelAddress, hotelEmail };
 }
 
 // 初始化郵件服務（優先使用資料庫設定）
@@ -939,7 +953,7 @@ async function sendEmail(mailOptions) {
                 const senderEmail = 'resend@resend.dev';
 
                 let fromEmail = senderEmail;
-                const resendSenderName = ((await db.getSetting('resend_sender_name')) || (await db.getSetting('hotel_name')) || '').trim();
+                const resendSenderName = ((await db.getSetting('resend_sender_name')) || (await getHotelSettingsWithFallback()).hotelName || '').trim();
                 if (resendSenderName) {
                     fromEmail = `"${resendSenderName}" <${senderEmail}>`;
                     console.log('   使用寄件人名稱:', resendSenderName);
@@ -1900,14 +1914,7 @@ app.post('/api/admin/bookings/quick', requireAuth, checkPermission('bookings.cre
 // 取得旅館資訊 footer
 async function getHotelInfoFooter() {
     try {
-        const hotelName = await db.getSetting('hotel_name') || '';
-        const hotelPhone = await db.getSetting('hotel_phone') || '';
-        const hotelAddress = await db.getSetting('hotel_address') || '';
-        const hotelEmail = await db.getSetting('hotel_email') || '';
-        
-        if (!hotelName && !hotelPhone && !hotelAddress && !hotelEmail) {
-            return '';
-        }
+        const { hotelName, hotelPhone, hotelAddress, hotelEmail } = await getHotelSettingsWithFallback();
         
         let footer = '<div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #ddd;">';
         footer += '<h3 style="color: #333; margin-bottom: 15px; font-size: 18px;">🏨 旅館資訊</h3>';
@@ -6453,6 +6460,8 @@ app.post('/api/email-templates/:key/test', requireAuth, checkPermission('email_t
         const nights = Math.max(1, Math.round((checkOutDate - checkInDate) / (24 * 60 * 60 * 1000)));
         const paymentDeadlineDate = new Date(today.getTime() + randomInt(1, 7) * 24 * 60 * 60 * 1000);
         
+        const hotelDefaults = await getHotelSettingsWithFallback();
+
         // 創建測試資料來替換模板變數（使用隨機數生成缺失的參數）
         const testData = {
             guestName: '測試用戶' + randomInt(1, 999),
@@ -6481,8 +6490,8 @@ app.post('/api/email-templates/:key/test', requireAuth, checkPermission('email_t
             bookingDate: today.toLocaleDateString('zh-TW'),
             bookingDateTime: today.toLocaleString('zh-TW'),
             bookingIdLast5: (Date.now().toString().slice(-6) + randomInt(100, 999)).slice(-5),
-            hotelEmail: await db.getSetting('hotel_email') || 'feedback@hotel.com',
-            hotelPhone: await db.getSetting('hotel_phone') || '02-1234-5678'
+            hotelEmail: hotelDefaults.hotelEmail,
+            hotelPhone: hotelDefaults.hotelPhone
         };
         
         // 確保使用正確的模板內容
@@ -9394,7 +9403,7 @@ app.post('/api/email-templates/checkin_reminder/clear-blocks', requireAuth, chec
         }
         
         // 使用最新的預設內容（直接寫入，確保編輯器可以看到）
-        const hotelAddress = await db.getSetting('hotel_address') || 'XXX';
+        const hotelAddress = (await getHotelSettingsWithFallback()).hotelAddress;
         
         blockSettings.transport = {
             enabled: blockSettings.transport?.enabled !== false,
@@ -10437,31 +10446,17 @@ ${htmlEnd}`;
         ...additionalData // 合併額外的變數
     };
     
-    // 如果 additionalData 中沒有 hotelEmail、hotelPhone、hotelAddress，則從資料庫取得
+    // 如果 additionalData 中沒有 hotelEmail、hotelPhone、hotelAddress，則從資料庫取得（未設定時使用預設值）
+    const hotelSettings = await getHotelSettingsWithFallback();
     if (!variables['{{hotelEmail}}']) {
-        const hotelEmail = await db.getSetting('hotel_email') || '';
-        if (hotelEmail) {
-            variables['{{hotelEmail}}'] = hotelEmail;
-        } else {
-            variables['{{hotelEmail}}'] = 'feedback@hotel.com'; // 預設值
-        }
+        variables['{{hotelEmail}}'] = hotelSettings.hotelEmail;
     }
     if (!variables['{{hotelPhone}}']) {
-        const hotelPhone = await db.getSetting('hotel_phone') || '';
-        if (hotelPhone) {
-            variables['{{hotelPhone}}'] = hotelPhone;
-        } else {
-            variables['{{hotelPhone}}'] = '02-1234-5678'; // 預設值
-        }
+        variables['{{hotelPhone}}'] = hotelSettings.hotelPhone;
     }
     // 地址變數：供模板中直接使用 {{hotelAddress}}
     if (!variables['{{hotelAddress}}']) {
-        const hotelAddress = await db.getSetting('hotel_address') || '';
-        if (hotelAddress) {
-            variables['{{hotelAddress}}'] = hotelAddress;
-        } else {
-            variables['{{hotelAddress}}'] = ''; // 若未設定地址則留空，避免顯示 {{hotelAddress}}
-        }
+        variables['{{hotelAddress}}'] = hotelSettings.hotelAddress;
     }
     // 訂房網址變數：供模板中直接使用 {{bookingUrl}}
     if (!variables['{{bookingUrl}}']) {
@@ -11073,9 +11068,8 @@ async function sendCheckinReminderEmails() {
         
         const emailUser = await getRequiredEmailUser('入住提醒排程');
         
-        // 取得旅館資訊（如果有的話）
-        const hotelEmail = await db.getSetting('hotel_email') || '';
-        const hotelPhone = await db.getSetting('hotel_phone') || '';
+        // 取得民宿資訊（未設定時使用預設值）
+        const hotelSettings = await getHotelSettingsWithFallback();
         
         for (const booking of bookings) {
             try {
@@ -11097,8 +11091,8 @@ async function sendCheckinReminderEmails() {
                 
                 // 傳遞旅館資訊作為額外資料
                 const additionalData = {
-                    ...(hotelEmail ? { '{{hotelEmail}}': hotelEmail } : {}),
-                    ...(hotelPhone ? { '{{hotelPhone}}': hotelPhone } : {})
+                    '{{hotelEmail}}': hotelSettings.hotelEmail,
+                    '{{hotelPhone}}': hotelSettings.hotelPhone
                 };
                 
                 // 使用數據庫模板生成郵件（與訂房確認邏輯一致）
@@ -11192,16 +11186,15 @@ async function sendFeedbackRequestEmails() {
         
         const emailUser = await getRequiredEmailUser('回訪信排程');
         
-        // 取得旅館資訊（如果有的話）
-        const hotelEmail = await db.getSetting('hotel_email') || '';
-        const hotelPhone = await db.getSetting('hotel_phone') || '';
+        // 取得民宿資訊（未設定時使用預設值）
+        const hotelSettings = await getHotelSettingsWithFallback();
         
         for (const booking of bookings) {
             try {
                 // 傳遞旅館資訊作為額外資料
                 const additionalData = {
-                    ...(hotelEmail ? { '{{hotelEmail}}': hotelEmail } : {}),
-                    ...(hotelPhone ? { '{{hotelPhone}}': hotelPhone } : {})
+                    '{{hotelEmail}}': hotelSettings.hotelEmail,
+                    '{{hotelPhone}}': hotelSettings.hotelPhone
                 };
                 
                 // 使用數據庫模板生成郵件（與訂房確認邏輯一致）
