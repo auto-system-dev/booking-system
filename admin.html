@@ -2388,16 +2388,26 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label style="display: flex; align-items: center; gap: 10px;">
-                            <input type="checkbox" id="promoCodeIsActive" checked style="width: 20px; height: 20px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="position: relative; display: inline-block; width: 50px; height: 26px;">
+                                <input type="checkbox" id="promoCodeIsActive" checked style="opacity: 0; width: 0; height: 0; position: absolute;" onchange="updatePromoCodeIsActiveToggleUI(this.checked)">
+                                <span id="promoCodeIsActiveTrack" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #27ae60; transition: 0.3s; border-radius: 26px;" onclick="const cb=this.previousElementSibling; cb.checked=!cb.checked; cb.dispatchEvent(new Event('change'));">
+                                    <span id="promoCodeIsActiveThumb" style="position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: 0.3s; border-radius: 50%; transform: translateX(24px);"></span>
+                                </span>
+                            </div>
                             <span>啟用此優惠代碼</span>
-                        </label>
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label style="display: flex; align-items: center; gap: 10px;">
-                            <input type="checkbox" id="promoCodeCanCombineEarlyBird" style="width: 20px; height: 20px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="position: relative; display: inline-block; width: 50px; height: 26px;">
+                                <input type="checkbox" id="promoCodeCanCombineEarlyBird" style="opacity: 0; width: 0; height: 0; position: absolute;" onchange="updatePromoCodeCanCombineEarlyBirdToggleUI(this.checked)">
+                                <span id="promoCodeCanCombineEarlyBirdTrack" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: 0.3s; border-radius: 26px;" onclick="const cb=this.previousElementSibling; cb.checked=!cb.checked; cb.dispatchEvent(new Event('change'));">
+                                    <span id="promoCodeCanCombineEarlyBirdThumb" style="position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: 0.3s; border-radius: 50%; transform: translateX(0);"></span>
+                                </span>
+                            </div>
                             <span>可與早鳥優惠疊加使用</span>
-                        </label>
+                        </div>
                         <small style="color: #888; margin-top: 4px; display: block;">勾選後，此優惠代碼可與早鳥優惠同時使用（折扣會疊加計算）。不勾選則系統自動取較大的折扣。</small>
                     </div>
                     <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">

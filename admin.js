@@ -8322,6 +8322,8 @@ function showAddPromoCodeModal() {
     document.getElementById('promoCodeForm').reset();
     document.getElementById('promoCodeIsActive').checked = true;
     document.getElementById('promoCodeCanCombineEarlyBird').checked = false;
+    updatePromoCodeIsActiveToggleUI(true);
+    updatePromoCodeCanCombineEarlyBirdToggleUI(false);
     document.getElementById('promoCodeDiscountType').value = 'fixed';
     updatePromoCodeDiscountType();
     document.getElementById('promoCodeModal').style.display = 'block';
@@ -8376,10 +8378,12 @@ async function editPromoCode(id) {
             // 確保 is_active 正確處理（可能是 0/1 或 true/false）
             const isActive = code.is_active !== undefined ? (parseInt(code.is_active) === 1 || code.is_active === true) : true;
             document.getElementById('promoCodeIsActive').checked = isActive;
+            updatePromoCodeIsActiveToggleUI(isActive);
             
             // 設定「可與早鳥優惠疊加」
             const canCombineEB = code.can_combine_with_early_bird !== undefined ? (parseInt(code.can_combine_with_early_bird) === 1) : false;
             document.getElementById('promoCodeCanCombineEarlyBird').checked = canCombineEB;
+            updatePromoCodeCanCombineEarlyBirdToggleUI(canCombineEB);
             
             updatePromoCodeDiscountType();
             document.getElementById('promoCodeModal').style.display = 'block';
@@ -8492,6 +8496,20 @@ function closePromoCodeModal() {
     document.getElementById('promoCodeModal').style.display = 'none';
     document.getElementById('promoCodeForm').reset();
     document.getElementById('promoCodeId').value = '';
+}
+
+function updatePromoCodeIsActiveToggleUI(isEnabled) {
+    const track = document.getElementById('promoCodeIsActiveTrack');
+    const thumb = document.getElementById('promoCodeIsActiveThumb');
+    if (track) track.style.backgroundColor = isEnabled ? '#27ae60' : '#ccc';
+    if (thumb) thumb.style.transform = isEnabled ? 'translateX(24px)' : 'translateX(0)';
+}
+
+function updatePromoCodeCanCombineEarlyBirdToggleUI(isEnabled) {
+    const track = document.getElementById('promoCodeCanCombineEarlyBirdTrack');
+    const thumb = document.getElementById('promoCodeCanCombineEarlyBirdThumb');
+    if (track) track.style.backgroundColor = isEnabled ? '#27ae60' : '#ccc';
+    if (thumb) thumb.style.transform = isEnabled ? 'translateX(24px)' : 'translateX(0)';
 }
 
 // ==================== 手機版側邊欄 ====================
