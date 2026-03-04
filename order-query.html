@@ -4,6 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>訂單查詢</title>
+    <link rel="icon" id="customerFavicon" href="/favicon.ico">
+    <link rel="apple-touch-icon" id="customerAppleTouchIcon" href="/favicon.ico">
+    <script>
+        (async function() {
+            try {
+                const res = await fetch('/api/landing-settings');
+                const result = await res.json();
+                const faviconUrl = result.success && result.data && result.data.landing_favicon;
+                if (faviconUrl) {
+                    const iconEl = document.getElementById('customerFavicon');
+                    const appleIconEl = document.getElementById('customerAppleTouchIcon');
+                    if (iconEl) iconEl.href = faviconUrl;
+                    if (appleIconEl) appleIconEl.href = faviconUrl;
+                }
+            } catch (e) {
+                console.warn('⚠️ 無法載入 Favicon 設定:', e.message);
+            }
+        })();
+    </script>
     <style>
         * {
             box-sizing: border-box;
