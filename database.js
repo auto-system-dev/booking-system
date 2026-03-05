@@ -1899,8 +1899,12 @@ async function initEmailTemplates() {
                     existing.content.includes('<strong style="color: #2e7d32;">電話：</strong>') ||
                     existing.content.includes('<strong style="color: #2e7d32;">官方 LINE：</strong>');
                 const hasOldClosingSpacing = existing.content.includes('<p style="margin: 0; font-size: 15px; color: #2e7d32; font-weight: 600;">我們會認真聆聽您的意見，並持續改進服務品質！</p>');
+                const hasExpectedBlackEmailLink = existing.content.includes('href="mailto:{{hotelEmail}}" style="color: #333; text-decoration: none;"');
+                const hasExpectedBlackPhoneLink = existing.content.includes('href="tel:{{hotelPhone}}" style="color: #333; text-decoration: none;"');
+                const hasExpectedBlackLineLink = existing.content.includes('href="{{officialLineUrl}}" target="_blank" style="color: #333; text-decoration: none;"');
+                const missingExpectedBlackContactStyles = !hasExpectedBlackEmailLink || !hasExpectedBlackPhoneLink || !hasExpectedBlackLineLink;
 
-                if (hasBlueContactLinks || hasGreenContactLabels || hasOldClosingSpacing) {
+                if (hasBlueContactLinks || hasGreenContactLabels || hasOldClosingSpacing || missingExpectedBlackContactStyles) {
                     needsUpdateForFeedbackContactTextColorAndSpacing = true;
                     console.log(`⚠️ 感謝入住模板聯絡資訊文字顏色或結語行距仍為舊版，需要更新`);
                 }
