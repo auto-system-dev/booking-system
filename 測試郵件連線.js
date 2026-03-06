@@ -7,8 +7,13 @@ console.log('   測試郵件連線設定');
 console.log('========================================\n');
 
 // 讀取設定
-const emailUser = process.env.EMAIL_USER || 'cheng701107@gmail.com';
-const emailPass = process.env.EMAIL_PASS || 'vtik qvij ravh lirg';
+const emailUser = (process.env.EMAIL_USER || '').trim();
+const emailPass = (process.env.EMAIL_PASS || '').trim();
+
+if (!emailUser || !emailPass) {
+    console.log('❌ 缺少必要設定：請先設定 EMAIL_USER 與 EMAIL_PASS');
+    process.exit(1);
+}
 
 console.log('Email 帳號:', emailUser);
 console.log('應用程式密碼:', emailPass ? '已設定（' + emailPass.length + ' 字元）' : '未設定');

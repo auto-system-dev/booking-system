@@ -67,10 +67,17 @@ function verifyCode(email, code, purpose) {
  */
 async function sendVerificationEmail(email, code, purpose) {
     try {
-        // 使用環境變數或預設值
-        const emailUser = process.env.EMAIL_USER || 'cheng701107@gmail.com';
-        const emailPass = process.env.EMAIL_PASS || 'vtik qvij ravh lirg';
+        // 嚴格使用環境變數，禁止硬編碼密碼
+        const emailUser = (process.env.EMAIL_USER || '').trim();
+        const emailPass = (process.env.EMAIL_PASS || '').trim();
         const useOAuth2 = process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET && process.env.GMAIL_REFRESH_TOKEN;
+
+        if (!emailUser) {
+            throw new Error('未設定 EMAIL_USER，無法發送驗證碼郵件');
+        }
+        if (!useOAuth2 && !emailPass) {
+            throw new Error('未設定 EMAIL_PASS，且未啟用 Gmail OAuth2，無法發送驗證碼郵件');
+        }
         
         const purposeText = purpose === 'query' ? '查詢個人資料' : '刪除個人資料';
         

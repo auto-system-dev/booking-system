@@ -25,7 +25,7 @@ const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const rateLimit = require('express-rate-limit');
 const db = require('./database');
-const payment = require('./payment');
+const payment = require('./src/payments/ecpay.client');
 const cron = require('node-cron');
 const backup = require('./backup');
 const csrf = require('csrf');
@@ -33,6 +33,33 @@ const lineBot = require('./line-bot');
 const multer = require('multer');
 const storage = require('./storage');
 const dataProtection = require('./data-protection');
+const { createApp } = require('./src/app');
+const requestIdMiddleware = require('./src/middlewares/requestId');
+const { logPaymentEvent } = require('./src/lib/logger');
+const { calculateDynamicPaymentDeadline, formatPaymentDeadline } = require('./src/lib/payment-deadline');
+const { requireAuth } = require('./src/middlewares/auth');
+const { createCheckPermission } = require('./src/middlewares/permission');
+const { createPaymentService } = require('./src/services/payment.service');
+const { createPaymentController } = require('./src/controllers/payment.controller');
+const { createPaymentRoutes } = require('./src/routes/payment.routes');
+const { createEmailDeliveryService } = require('./src/services/email-delivery.service');
+const { createEmailConfigService } = require('./src/services/email-config.service');
+const { createHotelConfigService } = require('./src/services/hotel-config.service');
+const { createBookingService } = require('./src/services/booking.service');
+const { createOrderQueryService } = require('./src/services/orderQuery.service');
+const { createEmailService } = require('./src/services/email.service');
+const { createTemplateService } = require('./src/services/template.service');
+const { createNotificationService } = require('./src/services/notification.service');
+const { createEmailFallbackTemplatesService } = require('./src/services/email-fallback-templates.service');
+const { createBookingNotificationJobs } = require('./src/jobs/booking-notification.jobs');
+const { createAdminLogCleanupJobs } = require('./src/jobs/admin-log-cleanup.jobs');
+const { registerScheduledJobs } = require('./src/jobs/scheduler');
+const { startServer } = require('./src/bootstrap/start-server');
+const { initEmailService: initEmailServiceBootstrap } = require('./src/bootstrap/email-init');
+const { loadResendProvider } = require('./src/bootstrap/email-provider-loader');
+const { createEmailRuntime, resetEmailRuntime, getConfiguredSenderEmail } = require('./src/bootstrap/email-runtime');
+const { createBookingRoutes } = require('./src/routes/booking.routes');
+const { createOrderQueryRoutes } = require('./src/routes/order-query.routes');
 
 // 本地 uploads 目錄（當未設定 R2 時作為回退儲存）
 const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
@@ -58,22 +85,7 @@ const uploadImage = multer({
     }
 });
 
-// 預先載入 Resend（如果可用）
-let Resend = null;
-try {
-    const resendModule = require('resend');
-    // Resend v6.x 的導出方式
-    Resend = resendModule.Resend || (resendModule.default && resendModule.default.Resend) || resendModule.default;
-    if (Resend) {
-        console.log('✅ Resend 套件已載入');
-    } else {
-        console.warn('⚠️  Resend 類別未找到，請檢查套件版本');
-    }
-} catch (error) {
-    console.warn('⚠️  Resend 套件未安裝或載入失敗:', error.message);
-    console.warn('   系統將使用 Gmail 作為郵件服務');
-    console.warn('   如需使用 Resend，請執行: npm install resend@6.7.0');
-}
+const Resend = loadResendProvider();
 const {
     errorHandler,
     asyncHandler,
@@ -94,8 +106,9 @@ const {
     createValidationMiddleware
 } = require('./validators');
 
-const app = express();
+const app = createApp();
 const PORT = process.env.PORT || 3000;
+const checkPermission = createCheckPermission(db);
 
 // Railway 使用代理，需要信任代理以正確處理 HTTPS 和 Cookie
 app.set('trust proxy', 1);
@@ -129,14 +142,14 @@ const useSecureCookie = isProduction || isRailway || process.env.SESSION_SECURE 
 // 輸出 Session 設定資訊（用於除錯）
 console.log('🔐 Session 設定:');
 console.log('   NODE_ENV:', process.env.NODE_ENV || '未設定');
-console.log('   SESSION_SECRET:', process.env.SESSION_SECRET ? '已設定' : '⚠️ 未設定（使用預設值）');
+const sessionSecret = (process.env.SESSION_SECRET || '').trim();
+console.log('   SESSION_SECRET:', sessionSecret ? '已設定' : '❌ 未設定');
 console.log('   useSecureCookie:', useSecureCookie);
 console.log('   isRailway:', isRailway);
 
 // 檢查 SESSION_SECRET 是否設定
-if (!process.env.SESSION_SECRET) {
-    console.warn('⚠️  WARNING: SESSION_SECRET 未設定！Session Cookie 可能無法正確設定！');
-    console.warn('   請在 Railway 環境變數中設定 SESSION_SECRET');
+if (!sessionSecret) {
+    throw new Error('缺少必要環境變數 SESSION_SECRET。為了安全性，系統已禁止使用硬編碼預設值啟動。');
 }
 
 // 配置 Session Store
@@ -173,7 +186,7 @@ if (usePostgreSQL) {
 
 app.use(session({
     store: sessionStore, // 使用 PostgreSQL Store 或 MemoryStore
-    secret: process.env.SESSION_SECRET || 'your-secret-key-change-this-in-production',
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: true, // 改為 true，確保 Session 被儲存並設定 Cookie
     cookie: {
@@ -636,6 +649,8 @@ app.use((req, res, next) => {
     next();
 });
 
+app.use(requestIdMiddleware);
+
 // 應用通用輸入清理中間件（在所有路由之前）
 app.use(sanitizeInput);
 
@@ -646,382 +661,23 @@ app.use(sanitizeInput);
 // 這裡使用 Gmail 作為範例，您也可以使用其他郵件服務
 // 優先使用資料庫設定，其次使用環境變數
 
-let transporter;
-let getAccessToken = null; // 將函數聲明在外部作用域
-let sendEmailViaGmailAPI = null; // Gmail API 備用方案
-let oauth2Client = null; // OAuth2 客戶端
-let gmail = null; // Gmail API 客戶端
-let resendClient = null; // Resend 客戶端
-let emailServiceProvider = 'gmail'; // 郵件服務提供商：'resend' 或 'gmail'
-let configuredSenderEmail = ''; // 後台設定的寄件信箱
-const DEFAULT_HOTEL_SETTINGS = {
-    name: 'XX民宿',
-    phone: '02-1234-5678',
-    address: '台北市信義區信義路五段7號',
-    email: 'service@hotel.com'
-};
+const emailRuntime = createEmailRuntime();
 
-async function getRequiredEmailUser(context = '') {
-    const emailUser = ((await db.getSetting('email_user')) || process.env.EMAIL_USER || '').trim();
-    if (!emailUser) {
-        const contextLabel = context ? `（${context}）` : '';
-        throw new Error(`未設定後台寄件信箱 email_user / EMAIL_USER${contextLabel}`);
-    }
-    return emailUser;
-}
+const emailDeliveryService = createEmailDeliveryService({
+    db,
+    Resend,
+    getHotelSettingsWithFallback,
+    emailRuntime
+});
 
-async function getHotelSettingsWithFallback() {
-    const hotelName = ((await db.getSetting('hotel_name')) || '').trim() || DEFAULT_HOTEL_SETTINGS.name;
-    const hotelPhone = ((await db.getSetting('hotel_phone')) || '').trim() || DEFAULT_HOTEL_SETTINGS.phone;
-    const hotelAddress = ((await db.getSetting('hotel_address')) || '').trim() || DEFAULT_HOTEL_SETTINGS.address;
-    const hotelEmail = ((await db.getSetting('hotel_email')) || '').trim() || DEFAULT_HOTEL_SETTINGS.email;
-    return { hotelName, hotelPhone, hotelAddress, hotelEmail };
-}
-
-// 初始化郵件服務（優先使用資料庫設定）
-async function initEmailService() {
-    try {
-        // 優先使用資料庫設定
-        const resendApiKey = await db.getSetting('resend_api_key') || process.env.RESEND_API_KEY;
-        let emailUser = ((await db.getSetting('email_user')) || process.env.EMAIL_USER || '').trim();
-        configuredSenderEmail = emailUser;
-        const emailPass = process.env.EMAIL_PASS || 'vtik qvij ravh lirg';
-        const gmailClientID = await db.getSetting('gmail_client_id') || process.env.GMAIL_CLIENT_ID;
-        const gmailClientSecret = await db.getSetting('gmail_client_secret') || process.env.GMAIL_CLIENT_SECRET;
-        const gmailRefreshToken = await db.getSetting('gmail_refresh_token') || process.env.GMAIL_REFRESH_TOKEN;
-        
-        // 優先使用 Resend（如果已設定）
-        if (resendApiKey) {
-            try {
-                // 檢查 Resend 套件是否可用
-                if (!Resend) {
-                    throw new Error('Resend 套件未安裝，請執行: npm install resend');
-                }
-                
-                resendClient = new Resend(resendApiKey);
-                emailServiceProvider = 'resend';
-                configuredSenderEmail = 'resend@resend.dev';
-                console.log('📧 郵件服務已設定（Resend）');
-                console.log('   服務提供商: Resend');
-                console.log('   設定來源:', await db.getSetting('resend_api_key') ? '資料庫' : '環境變數');
-                return; // Resend 設定完成，不需要初始化 Gmail
-            } catch (error) {
-                console.error('❌ 初始化 Resend 失敗:', error.message);
-                console.error('   錯誤詳情:', error);
-                console.error('   將回退到 Gmail 服務');
-                // 確保變數被重置，避免後續錯誤
-                resendClient = null;
-                emailServiceProvider = 'gmail';
-            }
-        }
-        
-        // 如果沒有 Resend，使用 Gmail
-        emailServiceProvider = 'gmail';
-        if (!emailUser) {
-            emailUser = await getRequiredEmailUser('初始化郵件服務');
-        }
-        configuredSenderEmail = emailUser;
-        
-        // 檢查是否使用 OAuth2
-        const useOAuth2 = gmailClientID && gmailClientSecret && gmailRefreshToken;
-        
-        if (useOAuth2) {
-            // 使用 OAuth2 認證（推薦，解決 Railway 連接超時問題）
-            const { google } = require('googleapis');
-            
-            oauth2Client = new google.auth.OAuth2(
-                gmailClientID,
-                gmailClientSecret,
-                'https://developers.google.com/oauthplayground' // 重新導向 URI（OAuth2 Playground）
-            );
-            
-            oauth2Client.setCredentials({
-                refresh_token: gmailRefreshToken
-            });
-            
-            // 設定 Gmail API 所需的 scopes
-            oauth2Client.scopes = ['https://www.googleapis.com/auth/gmail.send'];
-            
-            // 取得 Access Token（nodemailer 需要同步返回 Promise）
-            let accessTokenCache = null;
-            let tokenExpiry = null;
-            
-            getAccessToken = async function() {
-                try {
-                    // 如果 token 還在有效期內，直接返回
-                    if (accessTokenCache && tokenExpiry && Date.now() < tokenExpiry) {
-                        console.log('✅ 使用快取的 Access Token');
-                        return accessTokenCache;
-                    }
-                    
-                    // 取得新的 token
-                    console.log('🔄 正在取得新的 Access Token...');
-                    const { token } = await oauth2Client.getAccessToken();
-                    if (!token) {
-                        throw new Error('無法取得 Access Token');
-                    }
-                    accessTokenCache = token;
-                    // Token 通常有效期為 1 小時，提前 5 分鐘刷新
-                    tokenExpiry = Date.now() + (55 * 60 * 1000);
-                    console.log('✅ Access Token 已成功取得');
-                    return token;
-                } catch (error) {
-                    console.error('❌ 取得 Access Token 失敗:');
-                    console.error('   錯誤訊息:', error.message);
-                    console.error('   錯誤代碼:', error.code);
-                    console.error('   錯誤詳情:', error);
-                    
-                    // 如果是 invalid_grant 錯誤，提供更詳細的說明
-                    if (error.message && (error.message.includes('invalid_grant') || error.message.includes('Invalid grant'))) {
-                        console.error('⚠️  OAuth2 Refresh Token 無效或已過期！');
-                        console.error('   這通常是因為：');
-                        console.error('   1. GMAIL_REFRESH_TOKEN 已過期（通常有效期為 6 個月）');
-                        console.error('   2. Refresh Token 已被撤銷');
-                        console.error('   3. 用戶在 Google 帳號中撤銷了應用程式存取權限');
-                        console.error('   解決方法：');
-                        console.error('   1. 在 Google Cloud Console 重新生成 Refresh Token');
-                        console.error('   2. 更新資料庫或環境變數中的 GMAIL_REFRESH_TOKEN');
-                        console.error('   3. 確認 GMAIL_CLIENT_ID 和 GMAIL_CLIENT_SECRET 是否正確');
-                    } else if (error.message && (error.message.includes('unauthorized_client') || error.message.includes('Unauthorized client'))) {
-                        console.error('⚠️  OAuth2 Client 認證失敗！');
-                        console.error('   這通常是因為：');
-                        console.error('   1. GMAIL_CLIENT_ID 或 GMAIL_CLIENT_SECRET 不正確');
-                        console.error('   2. Refresh Token 是從不同的 Client ID/Secret 生成的');
-                        console.error('   3. OAuth2 應用程式設定有問題');
-                        console.error('   解決方法：');
-                        console.error('   1. 檢查 Google Cloud Console → API 和服務 → 憑證');
-                        console.error('   2. 確認 Client ID 和 Client Secret 是否正確');
-                        console.error('   3. 確認 Refresh Token 是從相同的 Client ID/Secret 生成的');
-                        console.error('   4. 確認 OAuth 同意畫面已正確設定');
-                        console.error('   5. 確認 Gmail API 已啟用');
-                    }
-                    
-                    throw error;
-                }
-            };
-            
-            // 嘗試使用 SSL 端口 465（Railway 環境可能更穩定）
-            transporter = nodemailer.createTransport({
-                // 明確指定 SMTP 設定（Railway 環境需要）
-                host: 'smtp.gmail.com',
-                port: 465, // 使用 SSL 端口
-                secure: true, // SSL 連接
-                auth: {
-                    type: 'OAuth2',
-                    user: emailUser,
-                    clientId: gmailClientID,
-                    clientSecret: gmailClientSecret,
-                    refreshToken: gmailRefreshToken,
-                    accessToken: getAccessToken
-                },
-                // 縮短超時時間，快速切換到 Gmail API（Railway 環境 SMTP 連接不穩定）
-                connectionTimeout: 10000, // 10 秒（快速失敗，切換到 Gmail API）
-                greetingTimeout: 5000, // 5 秒
-                socketTimeout: 10000, // 10 秒
-                pool: false, // 不使用連接池（避免連接問題）
-                // 啟用 TLS
-                tls: {
-                    rejectUnauthorized: false // Railway 環境可能需要
-                }
-            });
-            
-            console.log('📧 郵件服務已設定（OAuth2 認證）');
-            console.log('   使用帳號:', emailUser);
-            console.log('   認證方式: OAuth2');
-            console.log('   設定來源: 後台設定 (email_user)');
-            
-            // Gmail API 備用方案（當 SMTP 連接失敗時使用）
-            gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-            
-            // 使用 Gmail API 發送郵件的備用函數
-            sendEmailViaGmailAPI = async function(mailOptions) {
-                try {
-                    console.log('📧 使用 Gmail API 發送郵件（SMTP 備用方案）...');
-                    
-                    // 構建 MIME 格式的郵件字符串
-                    const boundary = '----=_Part_' + Date.now();
-                    const mimeMessage = [
-                        `From: ${mailOptions.from}`,
-                        `To: ${mailOptions.to}`,
-                        `Subject: =?UTF-8?B?${Buffer.from(mailOptions.subject, 'utf8').toString('base64')}?=`,
-                        `MIME-Version: 1.0`,
-                        `Content-Type: multipart/alternative; boundary="${boundary}"`,
-                        ``,
-                        `--${boundary}`,
-                        `Content-Type: text/html; charset=UTF-8`,
-                        `Content-Transfer-Encoding: base64`,
-                        ``,
-                        Buffer.from(mailOptions.html, 'utf8').toString('base64'),
-                        ``,
-                        `--${boundary}--`
-                    ].join('\r\n');
-                    
-                    // 轉換為 base64url 格式
-                    const messageBase64 = Buffer.from(mimeMessage, 'utf8')
-                        .toString('base64')
-                        .replace(/\+/g, '-')
-                        .replace(/\//g, '_')
-                        .replace(/=+$/, '');
-                    
-                    // 使用 Gmail API 發送
-                    const response = await gmail.users.messages.send({
-                        userId: 'me',
-                        requestBody: {
-                            raw: messageBase64
-                        }
-                    });
-                    
-                    console.log('✅ Gmail API 郵件已發送 (ID: ' + response.data.id + ')');
-                    console.log('   發送給:', mailOptions.to);
-                    console.log('   發件人:', mailOptions.from);
-                    return { messageId: response.data.id, accepted: [mailOptions.to] };
-                } catch (error) {
-                    console.error('❌ Gmail API 發送失敗:');
-                    console.error('   發送給:', mailOptions.to);
-                    console.error('   發件人:', mailOptions.from);
-                    console.error('   錯誤訊息:', error.message);
-                    console.error('   錯誤代碼:', error.code);
-                    console.error('   錯誤詳情:', error);
-                    if (error.response) {
-                        console.error('   API 回應:', error.response.data);
-                        console.error('   狀態碼:', error.response.status);
-                        if (error.response.data && error.response.data.error) {
-                            console.error('   錯誤類型:', error.response.data.error.error);
-                            console.error('   錯誤描述:', error.response.data.error.error_description);
-                        }
-                    }
-                    
-                    // 如果是 unauthorized_client 錯誤，提供更詳細的說明
-                    if (error.message && (error.message.includes('unauthorized_client') || error.message.includes('Unauthorized client'))) {
-                        console.error('⚠️  OAuth2 Client 認證失敗！');
-                        console.error('   可能原因：');
-                        console.error('   1. GMAIL_CLIENT_ID 或 GMAIL_CLIENT_SECRET 不正確');
-                        console.error('   2. Refresh Token 是從不同的 Client ID/Secret 生成的');
-                        console.error('   3. OAuth2 應用程式設定有問題');
-                        console.error('   4. Gmail API 未啟用');
-                        console.error('   解決方法：');
-                        console.error('   1. 檢查 Google Cloud Console → API 和服務 → 憑證');
-                        console.error('   2. 確認 Client ID 和 Client Secret 是否正確');
-                        console.error('   3. 確認 Refresh Token 是從相同的 Client ID/Secret 生成的');
-                        console.error('   4. 確認 OAuth 同意畫面已正確設定');
-                        console.error('   5. 確認 Gmail API 已啟用');
-                    }
-                    
-                    throw error;
-                }
-            };
-        } else {
-            // 使用應用程式密碼（備用方案）
-            transporter = nodemailer.createTransport({
-                service: 'gmail',
-                auth: {
-                    user: emailUser,
-                    pass: emailPass
-                },
-                // 增加超時時間和連接設定（Railway 環境需要）
-                connectionTimeout: 60000, // 60 秒
-                greetingTimeout: 30000, // 30 秒
-                socketTimeout: 60000, // 60 秒
-                pool: true, // 使用連接池
-                maxConnections: 1,
-                maxMessages: 3,
-                // 啟用 TLS
-                tls: {
-                    rejectUnauthorized: false // Railway 環境可能需要
-                }
-            });
-            
-            console.log('📧 郵件服務已設定（應用程式密碼）');
-            console.log('   使用帳號:', emailUser);
-            console.log('   設定來源: 後台設定 (email_user)');
-            console.log('   ⚠️  建議使用 OAuth2 認證以解決連接超時問題');
-        }
-    } catch (error) {
-        console.error('❌ 初始化郵件服務失敗:', error);
-        throw error;
-    }
-}
-
-// 統一的郵件發送函數（自動選擇 Resend 或 Gmail）
-async function sendEmail(mailOptions) {
-    try {
-        // 優先使用 Resend（確保 resendClient 存在且有效）
-        if (emailServiceProvider === 'resend' && resendClient && Resend) {
-            try {
-                console.log('📧 使用 Resend 發送郵件...');
-                
-                // Resend 寄件郵箱固定使用預設值
-                const senderEmail = 'resend@resend.dev';
-
-                let fromEmail = senderEmail;
-                const resendSenderName = ((await db.getSetting('resend_sender_name')) || (await getHotelSettingsWithFallback()).hotelName || '').trim();
-                if (resendSenderName) {
-                    fromEmail = `"${resendSenderName}" <${senderEmail}>`;
-                    console.log('   使用寄件人名稱:', resendSenderName);
-                }
-                
-                const result = await resendClient.emails.send({
-                    from: fromEmail,
-                    to: Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to],
-                    subject: mailOptions.subject,
-                    html: mailOptions.html,
-                    text: mailOptions.text || mailOptions.html.replace(/<[^>]*>/g, ''), // 自動從 HTML 提取純文字
-                });
-                
-                console.log('✅ Resend 郵件已發送');
-                console.log('   發送給:', mailOptions.to);
-                console.log('   發件人:', fromEmail);
-                console.log('   郵件 ID:', result.data?.id);
-                
-                return { 
-                    messageId: result.data?.id || 'resend-' + Date.now(), 
-                    accepted: Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to] 
-                };
-            } catch (resendError) {
-                console.error('❌ Resend 發送失敗:', resendError.message);
-                console.error('   錯誤詳情:', resendError);
-                // Resend 失敗時，如果有 Gmail 備用方案，嘗試使用 Gmail
-                if (transporter || sendEmailViaGmailAPI) {
-                    console.log('⚠️  Resend 失敗，切換到 Gmail 備用方案...');
-                    return await sendEmailViaGmail(mailOptions);
-                }
-                throw resendError;
-            }
-        }
-        
-        // 如果 Resend 不可用，使用 Gmail（原有邏輯）
-        if (!resendClient && emailServiceProvider === 'resend') {
-            console.warn('⚠️  Resend 客戶端未初始化，切換到 Gmail');
-            emailServiceProvider = 'gmail';
-        }
-        
-        return await sendEmailViaGmail(mailOptions);
-    } catch (error) {
-        console.error('❌ 郵件發送失敗:', error);
-        throw error;
-    }
-}
-
-// Gmail 郵件發送函數（保留原有邏輯）
-async function sendEmailViaGmail(mailOptions) {
-    // 優先使用 Gmail API（Railway 環境更穩定）
-    if (sendEmailViaGmailAPI) {
-        try {
-            return await sendEmailViaGmailAPI(mailOptions);
-        } catch (gmailError) {
-            // Gmail API 失敗時，嘗試 SMTP
-            console.log('⚠️  Gmail API 失敗，嘗試 SMTP...');
-            try {
-                return await transporter.sendMail(mailOptions);
-            } catch (smtpError) {
-                throw gmailError; // 拋出原始 Gmail API 錯誤
-            }
-        }
-    } else {
-        // 沒有 Gmail API，使用 SMTP
-        return await transporter.sendMail(mailOptions);
-    }
-}
+const sendEmail = async (mailOptions) => emailDeliveryService.sendEmail(mailOptions);
+const emailConfigService = createEmailConfigService({
+    db,
+    processEnv: process.env
+});
+const getRequiredEmailUser = emailConfigService.getRequiredEmailUser;
+const hotelConfigService = createHotelConfigService({ db });
+const getHotelSettingsWithFallback = hotelConfigService.getHotelSettingsWithFallback;
 
 // 房型名稱對照
 const roomTypes = {
@@ -1046,7 +702,7 @@ function generateShortBookingId() {
 }
 
 // 訂房 API
-app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async (req, res) => {
+async function handleCreateBooking(req, res) {
     console.log('\n========================================');
     console.log('📥 收到訂房請求');
     console.log('時間:', new Date().toLocaleString('zh-TW'));
@@ -1307,47 +963,6 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
         bookingData.promoDiscount = promoDiscountAmount;
         bookingData.promoCode = promoCode || null; // 優惠代碼字串（用於折扣說明）
         
-        // 發送通知郵件給管理員（所有付款方式都需要）
-        // 優先使用資料庫設定，其次使用環境變數，最後使用預設值
-        const adminEmail = await db.getSetting('admin_email') || process.env.ADMIN_EMAIL || 'cheng701107@gmail.com';
-        // 確保 emailUser 與 OAuth2 認證帳號一致（Gmail API 要求）
-        let emailUser = await getRequiredEmailUser('建立訂房寄信');
-        
-        // 驗證 emailUser 是否與 OAuth2 認證帳號一致
-        if (sendEmailViaGmailAPI && transporter && transporter.options && transporter.options.auth) {
-            const oauthUser = transporter.options.auth.user;
-            if (oauthUser && emailUser !== oauthUser) {
-                console.warn('⚠️  警告：email_user 與 OAuth2 認證帳號不一致！');
-                console.warn(`   email_user: ${emailUser}`);
-                console.warn(`   OAuth2 認證帳號: ${oauthUser}`);
-                console.warn('   使用 OAuth2 認證帳號作為發件人（Gmail API 要求）');
-                // 使用 OAuth2 認證的帳號作為發件人（Gmail API 要求）
-                emailUser = oauthUser;
-            }
-        }
-        
-        // 準備管理員通知郵件（使用數據庫模板，與客戶郵件邏輯一致）
-        let adminMailOptions = null;
-        try {
-            console.log('📧 準備發送管理員通知郵件');
-            const { subject, content } = await generateEmailFromTemplate('booking_confirmation_admin', bookingData);
-            adminMailOptions = {
-                from: emailUser,
-                to: adminEmail, // 管理員 Email
-                subject: subject,
-                html: content
-            };
-        } catch (adminTemplateError) {
-            console.error('⚠️ 無法從數據庫讀取管理員通知模板，使用備用方案:', adminTemplateError.message);
-            // 備用方案：使用原來的函數
-            adminMailOptions = {
-                from: emailUser,
-                to: adminEmail,
-                subject: `【新訂房通知】${guestName} - ${bookingData.bookingId}`,
-                html: generateAdminEmail(bookingData)
-            };
-        }
-
         // 發送郵件
         let emailSent = false;
         let emailErrorMsg = '';
@@ -1355,151 +970,22 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
         // 只有匯款轉帳才在建立訂房時發送確認郵件給客戶
         // 線上刷卡要等付款完成後才發送確認郵件
         if (paymentMethod === 'transfer') {
-            // 發送確認郵件給客戶（匯款轉帳）- 使用數據庫模板
-            let customerMailOptions = null;
             try {
-                console.log('📧 準備發送訂房確認郵件（匯款轉帳）');
-                console.log('🔍 bankInfo 內容:', JSON.stringify(bankInfo, null, 2));
-                console.log('🔍 bankInfo 檢查:', {
-                    exists: !!bankInfo,
-                    hasBankName: !!(bankInfo && bankInfo.bankName && bankInfo.bankName.trim()),
-                    hasAccount: !!(bankInfo && bankInfo.account && bankInfo.account.trim()),
-                    hasBankBranch: !!(bankInfo && bankInfo.bankBranch && bankInfo.bankBranch.trim()),
-                    hasAccountName: !!(bankInfo && bankInfo.accountName && bankInfo.accountName.trim())
+                console.log('📧 準備發送訂房通知（匯款轉帳）');
+                const sendResult = await notificationService.sendTransferBookingCreatedNotifications({
+                    bookingData,
+                    guestEmail,
+                    guestName,
+                    bankInfo
                 });
-                const { subject, content } = await generateEmailFromTemplate('booking_confirmation', bookingData, bankInfo);
-                customerMailOptions = {
-                    from: emailUser,
-                    to: guestEmail,
-                    subject: subject,
-                    html: content
-                };
-            } catch (customerTemplateError) {
-                console.error('⚠️ 無法從數據庫讀取訂房確認模板，使用備用方案:', customerTemplateError.message);
-                // 備用方案：使用原來的函數
-                customerMailOptions = {
-                    from: emailUser,
-                    to: guestEmail,
-                    subject: '【訂房確認】您的訂房已成功',
-                    html: await generateCustomerEmail(bookingData)
-                };
-            }
-            
-            try {
-                console.log('📧 正在發送郵件（匯款轉帳）...');
-                console.log('   發送給客戶:', guestEmail);
-                console.log('   使用帳號:', emailUser);
-                console.log('   認證方式:', sendEmailViaGmailAPI ? 'OAuth2 (Gmail API)' : 'SMTP');
-            
-            // 如果是 OAuth2，先測試取得 Access Token
-            if (sendEmailViaGmailAPI && getAccessToken) {
-                try {
-                    console.log('🔍 測試 OAuth2 Access Token...');
-                    console.log('   使用 Client ID:', gmailClientID ? gmailClientID.substring(0, 20) + '...' : '未設定');
-                    console.log('   使用 Client Secret:', gmailClientSecret ? gmailClientSecret.substring(0, 10) + '...' : '未設定');
-                    console.log('   使用 Refresh Token:', gmailRefreshToken ? gmailRefreshToken.substring(0, 20) + '...' : '未設定');
-                    const testToken = await getAccessToken();
-                    if (testToken) {
-                        console.log('✅ OAuth2 Access Token 測試成功');
-                    }
-                } catch (tokenError) {
-                    console.error('❌ OAuth2 Access Token 測試失敗:', tokenError.message);
-                    console.error('   錯誤代碼:', tokenError.code);
-                    console.error('   詳細錯誤:', tokenError);
-                    
-                    // 如果是 unauthorized_client 錯誤，提供詳細的解決建議
-                    if (tokenError.message && (tokenError.message.includes('unauthorized_client') || tokenError.message.includes('Unauthorized client'))) {
-                        console.error('⚠️  OAuth2 Client 認證失敗！');
-                        console.error('   可能原因：');
-                        console.error('   1. GMAIL_CLIENT_ID 或 GMAIL_CLIENT_SECRET 不正確');
-                        console.error('   2. Refresh Token 是從不同的 Client ID/Secret 生成的');
-                        console.error('   3. OAuth2 應用程式設定有問題');
-                        console.error('   4. Gmail API 未啟用');
-                        console.error('   5. 已授權的重新導向 URI 未包含：https://developers.google.com/oauthplayground');
-                        console.error('   解決方法：');
-                        console.error('   1. 檢查 Google Cloud Console → API 和服務 → 憑證');
-                        console.error('   2. 確認 Client ID 和 Client Secret 是否正確');
-                        console.error('   3. 確認 Refresh Token 是從相同的 Client ID/Secret 生成的');
-                        console.error('   4. 確認 OAuth 同意畫面已正確設定');
-                        console.error('   5. 確認 Gmail API 已啟用');
-                        console.error('   6. 確認已授權的重新導向 URI 包含：https://developers.google.com/oauthplayground');
-                        console.error('   7. 如果問題持續，請重新生成 Refresh Token');
-                    } else if (tokenError.message && (tokenError.message.includes('invalid_grant') || tokenError.message.includes('Invalid grant'))) {
-                        console.error('⚠️  OAuth2 Refresh Token 無效或已過期！');
-                        console.error('   解決方法：');
-                        console.error('   1. 在 OAuth2 Playground 重新生成 Refresh Token');
-                        console.error('   2. 更新資料庫或環境變數中的 GMAIL_REFRESH_TOKEN');
-                    }
-                    
-                    console.error('⚠️  服務將繼續啟動，但 Gmail API 可能無法使用');
-                    console.error('   如果使用 SMTP，請確保 EMAIL_PASS（應用程式密碼）已正確設定');
-                    // 不拋出錯誤，讓服務繼續啟動（可能使用 SMTP 備用方案）
-                }
-            }
-            
-            // 發送客戶確認郵件（使用統一函數，自動選擇 Resend 或 Gmail）
-            console.log('📤 發送客戶確認郵件...');
-            const customerResult = await sendEmail(customerMailOptions);
-            console.log('✅ 客戶確認郵件已發送');
-            if (customerResult && customerResult.messageId) {
-                console.log('   郵件 ID:', customerResult.messageId);
-            }
-            
-            emailSent = true;
-        } catch (emailError) {
-            emailErrorMsg = emailError.message || '未知錯誤';
-            console.error('❌ 客戶郵件發送失敗:');
-            console.error('   發送給:', guestEmail);
-            console.error('   使用帳號:', emailUser);
-            console.error('   錯誤訊息:', emailErrorMsg);
-            console.error('   錯誤代碼:', emailError.code);
-            console.error('   錯誤命令:', emailError.command);
-            console.error('   完整錯誤:', emailError);
-            console.error('   錯誤堆疊:', emailError.stack);
-            
-            // 如果是認證錯誤，提供更詳細的說明
-            if (emailError.code === 'EAUTH' || emailError.message.includes('Invalid login')) {
-                console.error('⚠️  認證失敗！請檢查：');
-                if (useOAuth2) {
-                    console.error('   1. GMAIL_CLIENT_ID 是否正確');
-                    console.error('   2. GMAIL_CLIENT_SECRET 是否正確');
-                    console.error('   3. GMAIL_REFRESH_TOKEN 是否有效');
-                    console.error('   4. Refresh Token 是否已過期或被撤銷');
-                } else {
-                    console.error('   1. Email 帳號是否正確');
-                    console.error('   2. 是否使用應用程式密碼（Gmail 需要）');
-                    console.error('   3. 是否啟用兩步驟驗證');
-                }
-            } else if (emailError.code === 'ETIMEDOUT') {
-                console.error('⚠️  連接超時！');
-                if (useOAuth2) {
-                    console.error('   這可能是 OAuth2 Access Token 取得失敗');
-                    console.error('   請檢查 Refresh Token 是否有效');
-                } else {
-                    console.error('   建議使用 OAuth2 認證以解決連接超時問題');
-                }
-            }
+                emailSent = !!sendResult.customerEmailSent;
+                emailErrorMsg = sendResult.customerEmailError || '';
+            } catch (emailError) {
+                emailErrorMsg = emailError.message || '未知錯誤';
+                console.error('❌ 匯款轉帳通知發送失敗:', emailErrorMsg);
             }
         } else {
             console.log('📧 線上刷卡：確認郵件將於付款完成後發送');
-        }
-        
-        // 發送管理員通知郵件
-        // 線上刷卡：只在支付成功後發送（避免重複發送）
-        // 匯款轉帳：在建立訂房時發送
-        if (paymentMethod === 'transfer') {
-            try {
-                console.log('📤 發送管理員通知郵件（匯款轉帳）...');
-                const adminResult = await sendEmail(adminMailOptions);
-                console.log('✅ 管理員通知郵件已發送');
-                if (adminResult && adminResult.messageId) {
-                    console.log('   郵件 ID:', adminResult.messageId);
-                }
-            } catch (adminEmailError) {
-                console.error('❌ 管理員通知郵件發送失敗:', adminEmailError.message);
-                // 管理員郵件失敗不影響訂房流程
-            }
-        } else {
             console.log('📧 線上刷卡：管理員通知郵件將於付款完成後發送');
         }
 
@@ -1661,31 +1147,17 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
         if (paymentMethod === 'card') {
             // 線上刷卡：建立支付表單
             try {
-                // 判斷環境（正式環境或測試環境）
-                const isProduction = process.env.NODE_ENV === 'production';
+                const ecpayConfig = await paymentService.getEcpayConfigFromSettings(['MerchantID', 'HashKey', 'HashIV']);
+                const isProduction = ecpayConfig.isProduction;
+                const ecpayMerchantID = ecpayConfig.MerchantID;
+                const ecpayHashKey = ecpayConfig.HashKey;
+                const ecpayHashIV = ecpayConfig.HashIV;
+
                 console.log('🌍 當前環境:', isProduction ? '正式環境 (Production)' : '測試環境 (Test)');
-                
-                // 根據環境取得綠界設定
-                let ecpayMerchantID, ecpayHashKey, ecpayHashIV;
-                
-                if (isProduction) {
-                    // 正式環境：優先使用資料庫設定，其次使用環境變數
-                    ecpayMerchantID = await db.getSetting('ecpay_merchant_id') || process.env.ECPAY_MERCHANT_ID_PROD || '2000132';
-                    ecpayHashKey = await db.getSetting('ecpay_hash_key') || process.env.ECPAY_HASH_KEY_PROD || '';
-                    ecpayHashIV = await db.getSetting('ecpay_hash_iv') || process.env.ECPAY_HASH_IV_PROD || '';
-                    
-                    console.log('💰 使用正式環境設定');
-                    if (!ecpayMerchantID || ecpayMerchantID === '2000132') {
-                        console.warn('⚠️  警告：正式環境仍在使用測試環境的 MerchantID！');
-                        console.warn('   請在系統設定中設定綠界支付參數，或設定 ECPAY_MERCHANT_ID_PROD 環境變數');
-                    }
-                } else {
-                    // 測試環境：優先使用資料庫設定，其次使用環境變數
-                    ecpayMerchantID = await db.getSetting('ecpay_merchant_id') || process.env.ECPAY_MERCHANT_ID || '2000132';
-                    ecpayHashKey = await db.getSetting('ecpay_hash_key') || process.env.ECPAY_HASH_KEY || '5294y06JbISpM5x9';
-                    ecpayHashIV = await db.getSetting('ecpay_hash_iv') || process.env.ECPAY_HASH_IV || 'v77hoKGq4kWxNNIS';
-                    
-                    console.log('🧪 使用測試環境設定');
+                console.log(isProduction ? '💰 使用正式環境設定' : '🧪 使用測試環境設定');
+                if (isProduction && ecpayMerchantID === '2000132') {
+                    console.warn('⚠️  警告：正式環境仍在使用測試環境的 MerchantID！');
+                    console.warn('   請在系統設定中設定綠界支付參數，或設定 ECPAY_MERCHANT_ID_PROD 環境變數');
                 }
                 
                 console.log('📋 綠界設定:', {
@@ -1693,17 +1165,6 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
                     HashKey: ecpayHashKey ? '已設定' : '未設定',
                     HashIV: ecpayHashIV ? '已設定' : '未設定'
                 });
-                
-                // 驗證必要參數
-                if (!ecpayMerchantID || !ecpayHashKey || !ecpayHashIV) {
-                    const missingParams = [];
-                    if (!ecpayMerchantID) missingParams.push('MerchantID');
-                    if (!ecpayHashKey) missingParams.push('HashKey');
-                    if (!ecpayHashIV) missingParams.push('HashIV');
-                    
-                    console.error('❌ 綠界設定不完整，缺少:', missingParams.join(', '));
-                    throw new Error(`綠界支付設定不完整，請設定：${missingParams.join(', ')}。請在系統設定的「綠界支付設定」中設定，或使用環境變數 ${isProduction ? 'ECPAY_MERCHANT_ID_PROD、ECPAY_HASH_KEY_PROD、ECPAY_HASH_IV_PROD' : 'ECPAY_MERCHANT_ID、ECPAY_HASH_KEY、ECPAY_HASH_IV'}`);
-                }
                 
                 // 傳入綠界設定給 payment 模組
                 paymentData = payment.createPaymentForm(bookingData, {
@@ -1754,7 +1215,7 @@ app.post('/api/booking', publicLimiter, verifyCsrfToken, validateBooking, async 
             });
         }
     }
-});
+}
 
 // LINE Webhook 端點（接收 LINE 官方帳號的事件）
 app.post('/api/line/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
@@ -1910,431 +1371,6 @@ app.post('/api/admin/bookings/quick', requireAuth, checkPermission('bookings.cre
         });
     }
 });
-
-// 生成客戶確認郵件
-// 取得旅館資訊 footer
-async function getHotelInfoFooter() {
-    try {
-        const { hotelName, hotelPhone, hotelAddress, hotelEmail } = await getHotelSettingsWithFallback();
-        
-        let footer = '<div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #ddd;">';
-        footer += '<h3 style="color: #333; margin-bottom: 15px; font-size: 18px;">🏨 旅館資訊</h3>';
-        footer += '<div style="color: #666; line-height: 1.8;">';
-        
-        if (hotelName) {
-            footer += `<p style="margin: 5px 0;"><strong>旅館名稱：</strong>${hotelName}</p>`;
-        }
-        if (hotelPhone) {
-            footer += `<p style="margin: 5px 0;"><strong>聯絡電話：</strong>${hotelPhone}</p>`;
-        }
-        if (hotelAddress) {
-            footer += `<p style="margin: 5px 0;"><strong>地址：</strong>${hotelAddress}</p>`;
-        }
-        if (hotelEmail) {
-            footer += `<p style="margin: 5px 0;"><strong>Email：</strong>${hotelEmail}</p>`;
-        }
-        
-        footer += '</div></div>';
-        return footer;
-    } catch (error) {
-        console.error('取得旅館資訊失敗:', error);
-        return '';
-    }
-}
-
-async function generateCustomerEmail(data) {
-    console.log('📧 生成客戶郵件，資料:', {
-        paymentMethodCode: data.paymentMethodCode,
-        daysReserved: data.daysReserved,
-        paymentDeadline: data.paymentDeadline,
-        bankInfo: data.bankInfo
-    });
-    return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-            body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-            .container { max-width: 600px; margin: 0 auto; padding: 0; width: 100%; }
-            .header { background: #262A33; color: white; padding: 30px 20px; text-align: center; border-radius: 0; }
-            .content { background: #f9f9f9; padding: 30px 20px; border-radius: 0; }
-            .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; flex-wrap: wrap; }
-            .info-label { font-weight: 600; color: #666; flex: 0 0 auto; }
-            .info-value { color: #333; flex: 1 1 auto; text-align: right; word-break: break-word; }
-            .highlight { background: #fff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #262A33; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-            @media only screen and (max-width: 600px) {
-                .container { padding: 0; }
-                .header { padding: 25px 15px; }
-                .header h1 { font-size: 24px; }
-                .header p { font-size: 16px; }
-                .content { padding: 20px 15px; }
-                .info-row { flex-direction: column; align-items: flex-start; padding: 10px 0; }
-                .info-label { width: 100%; margin-bottom: 5px; font-size: 14px; }
-                .info-value { text-align: left; width: 100%; font-size: 15px; }
-                .highlight { padding: 15px; }
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>🏨 訂房確認成功</h1>
-                <p>感謝您的預訂！</p>
-            </div>
-            <div class="content">
-                <p>親愛的 ${data.guestName}，</p>
-                <p style="margin-bottom: 25px;">您的訂房已成功確認，以下是您的訂房資訊：</p>
-                
-                <div class="highlight">
-                    <div class="info-row">
-                        <span class="info-label">訂房編號</span>
-                        <span class="info-value"><strong>${data.bookingId}</strong></span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">入住日期</span>
-                        <span class="info-value">${new Date(data.checkInDate).toLocaleDateString('zh-TW')}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">退房日期</span>
-                        <span class="info-value">${new Date(data.checkOutDate).toLocaleDateString('zh-TW')}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">住宿天數</span>
-                        <span class="info-value">${data.nights} 晚</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">房型</span>
-                        <span class="info-value">${data.roomType}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">房價（每晚）</span>
-                        <span class="info-value">NT$ ${data.pricePerNight.toLocaleString()}</span>
-                    </div>
-                    ${data.addonsList ? `
-                    <div class="info-row">
-                        <span class="info-label">加購商品</span>
-                        <span class="info-value">${data.addonsList}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">加購商品總額</span>
-                        <span class="info-value">NT$ ${(data.addonsTotal || 0).toLocaleString()}</span>
-                    </div>
-                    ` : ''}
-                    <div class="info-row">
-                        <span class="info-label">總金額</span>
-                        <span class="info-value">NT$ ${data.totalAmount.toLocaleString()}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">支付方式</span>
-                        <span class="info-value">${data.paymentAmount} - ${data.paymentMethod}</span>
-                    </div>
-                    <div class="info-row" style="border-bottom: none; margin-top: 15px; padding-top: 15px; border-top: 2px solid #667eea;">
-                        <span class="info-label" style="font-size: 18px;">${data.paymentStatus === 'paid' ? '已付金額' : '應付金額'}</span>
-                        <span class="info-value" style="font-size: 20px; color: ${data.paymentStatus === 'paid' ? '#4caf50' : '#667eea'}; font-weight: 700;">NT$ ${data.finalAmount.toLocaleString()}</span>
-                    </div>
-                </div>
-
-                ${data.paymentStatus === 'paid' ? `
-                <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 15px; margin: 20px 0;">
-                    <p style="color: #2e7d32; font-weight: 600; margin: 0; font-size: 16px;">✅ 付款已完成！</p>
-                    <p style="color: #2e7d32; margin: 10px 0 0 0; font-size: 14px;">感謝您的付款，訂房已確認完成。</p>
-                </div>
-                ` : ''}
-
-                ${data.paymentAmount && data.paymentAmount.includes('訂金') && data.paymentStatus !== 'paid' ? (() => {
-                    // 剩餘尾款 = 折後總額 - 已付金額
-                    // 如果有折扣，使用折後總額；如果沒有折扣，discountedTotal 等於 totalAmount
-                    const discountedTotal = data.discountedTotal || data.totalAmount || 0;
-                    const remainingAmount = Math.max(0, discountedTotal - (data.finalAmount || 0));
-                    return `
-                <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 15px; margin: 20px 0;">
-                    <p style="color: #2e7d32; font-weight: 600; margin: 0; font-size: 16px;">💡 剩餘尾款於現場付清！</p>
-                    <p style="color: #2e7d32; margin: 10px 0 0 0; font-size: 18px; font-weight: 700;">剩餘尾款：NT$ ${remainingAmount.toLocaleString()}</p>
-                </div>
-                `;
-                })() : ''}
-
-                ${data.paymentMethodCode === 'transfer' ? `
-                <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
-                    <h3 style="color: #856404; margin-top: 0;">💰 匯款提醒</h3>
-                    <p style="color: #856404; font-weight: 600; margin: 10px 0;">
-                        ⏰ 此訂房將為您保留 <strong>${data.daysReserved || 3} 天</strong>，請於 <strong>${data.paymentDeadline ? data.paymentDeadline + '前' : (data.daysReserved || 3) + '天內'}</strong>完成匯款，逾期將自動取消訂房。
-                    </p>
-                    ${data.bankInfo && data.bankInfo.account ? `
-                    <div style="background: white; padding: 15px; border-radius: 5px; margin-top: 15px;">
-                        <p style="margin: 8px 0; color: #333;"><strong>匯款資訊：</strong></p>
-                        ${data.bankInfo.bankName ? `<p style="margin: 5px 0; color: #333;">銀行：${data.bankInfo.bankName}${data.bankInfo.bankBranch ? ' - ' + data.bankInfo.bankBranch : ''}</p>` : ''}
-                        <p style="margin: 5px 0; color: #333;">帳號：<span style="font-size: 18px; color: #e74c3c; font-weight: 700; letter-spacing: 2px;">${data.bankInfo.account}</span></p>
-                        ${data.bankInfo.accountName ? `<p style="margin: 5px 0; color: #333;">戶名：${data.bankInfo.accountName}</p>` : ''}
-                        <p style="margin: 15px 0 5px 0; padding-top: 10px; border-top: 1px solid #ddd; color: #666; font-size: 14px;">請在匯款時備註訂房編號後5碼：<strong>${data.bookingId ? data.bookingId.slice(-5) : ''}</strong></p>
-                        <p style="margin: 8px 0 0 0; color: #666; font-size: 14px;">匯款後請加入官方LINE告知，謝謝！</p>
-                    </div>
-                    ` : '<p style="color: #856404; margin: 10px 0;">⚠️ 匯款資訊尚未設定，請聯繫客服取得匯款帳號。</p>'}
-                </div>
-                ` : ''}
-                
-                <p style="margin-top: 30px;"><strong>重要提醒：</strong></p>
-                <ul>
-                    <li>請於入住當天攜帶身分證件辦理入住手續</li>
-                    <li>如需取消或變更訂房，請提前 3 天通知</li>
-                    <li>如有任何問題，請隨時與我們聯繫</li>
-                </ul>
-
-                <div class="footer" style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #ddd;">
-                    <p>感謝您的預訂，期待為您服務！</p>
-                    <p>此為系統自動發送郵件，請勿直接回覆</p>
-                </div>
-            </div>
-        </div>
-    </body>
-    </html>
-    `;
-}
-
-// 生成收款確認郵件（匯款轉帳收到款項時）- 使用模板系統
-async function generatePaymentReceivedEmail(booking) {
-    try {
-        // 使用 payment_completed 模板
-        const { subject, content } = await generateEmailFromTemplate('payment_completed', booking);
-        return content;
-    } catch (error) {
-        console.error('⚠️ 無法從數據庫讀取付款完成確認模板，使用備用方案:', error.message);
-        // 備用方案：使用原來的硬編碼模板
-        const hotelInfoFooter = await getHotelInfoFooter();
-        const checkInDate = new Date(booking.check_in_date);
-        const checkOutDate = new Date(booking.check_out_date);
-        
-        return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <style>
-            body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #198754; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
-            .info-label { font-weight: 600; color: #666; }
-            .info-value { color: #333; }
-            .highlight { background: #e8f5e9; border: 2px solid #198754; border-radius: 8px; padding: 20px; margin: 20px 0; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>✅ 已收到您的匯款</h1>
-                <p>感謝您的付款！</p>
-            </div>
-            <div class="content">
-                <p>親愛的 ${booking.guest_name}，</p>
-                <p style="margin-bottom: 20px;">我們已確認收到您本次訂房的匯款，以下是您的訂房與付款資訊：</p>
-                
-                <div class="highlight">
-                    <div class="info-row">
-                        <span class="info-label">訂房編號</span>
-                        <span class="info-value"><strong>${booking.booking_id}</strong></span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">入住日期</span>
-                        <span class="info-value">${checkInDate.toLocaleDateString('zh-TW')}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">退房日期</span>
-                        <span class="info-value">${checkOutDate.toLocaleDateString('zh-TW')}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">房型</span>
-                        <span class="info-value">${booking.room_type}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">總金額</span>
-                        <span class="info-value">NT$ ${Number(booking.total_amount || 0).toLocaleString()}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">本次已收金額</span>
-                        <span class="info-value" style="color: #198754; font-weight: 700;">NT$ ${Number(booking.final_amount || 0).toLocaleString()}</span>
-                    </div>
-                    <div class="info-row" style="border-bottom: none;">
-                        <span class="info-label">付款方式</span>
-                        <span class="info-value">${booking.payment_method}</span>
-                    </div>
-                </div>
-                
-                <p>若您後續仍需變更或取消訂房，請儘早與我們聯繫，我們將盡力協助您。</p>
-                
-                <div class="footer">
-                    <p>再次感謝您的預訂，期待您的光臨！</p>
-                    <p>此為系統自動發送郵件，請勿直接回覆</p>
-                </div>
-                ${hotelInfoFooter}
-            </div>
-        </div>
-    </body>
-    </html>
-    `;
-    }
-}
-
-// 生成管理員通知郵件
-function generateAdminEmail(data) {
-    return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <style>
-            body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #e74c3c; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
-            .info-label { font-weight: 600; color: #666; }
-            .info-value { color: #333; }
-            .highlight { background: #fff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #e74c3c; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>🔔 新訂房通知</h1>
-            </div>
-            <div class="content">
-                <p>您有一筆新的訂房申請：</p>
-                
-                <div class="highlight">
-                    <div class="info-row">
-                        <span class="info-label">訂房編號</span>
-                        <span class="info-value"><strong>${data.bookingId}</strong></span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">客戶姓名</span>
-                        <span class="info-value">${data.guestName}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">聯絡電話</span>
-                        <span class="info-value">${data.guestPhone}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Email</span>
-                        <span class="info-value">${data.guestEmail}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">入住日期</span>
-                        <span class="info-value">${new Date(data.checkInDate).toLocaleDateString('zh-TW')}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">退房日期</span>
-                        <span class="info-value">${new Date(data.checkOutDate).toLocaleDateString('zh-TW')}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">房型</span>
-                        <span class="info-value">${data.roomType}</span>
-                    </div>
-                    ${data.addonsList ? `
-                    <div class="info-row">
-                        <span class="info-label">加購商品</span>
-                        <span class="info-value">${data.addonsList}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">加購商品總額</span>
-                        <span class="info-value">NT$ ${(data.addonsTotal || 0).toLocaleString()}</span>
-                    </div>
-                    ` : ''}
-                    <div class="info-row">
-                        <span class="info-label">總金額</span>
-                        <span class="info-value" style="color: #333; font-weight: 600;">NT$ ${(data.totalAmount || 0).toLocaleString()}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">${data.paymentStatus === 'paid' ? '已付金額' : '應付金額'}</span>
-                        <span class="info-value" style="color: ${data.paymentStatus === 'paid' ? '#4caf50' : '#e74c3c'}; font-weight: 700;">NT$ ${data.finalAmount.toLocaleString()}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">支付方式</span>
-                        <span class="info-value">${data.paymentAmount} - ${data.paymentMethod}</span>
-                    </div>
-                    ${data.paymentStatus === 'paid' ? `
-                    <div class="info-row">
-                        <span class="info-label">付款狀態</span>
-                        <span class="info-value" style="color: #4caf50; font-weight: 700;">✅ 已付款</span>
-                    </div>
-                    ` : ''}
-                    <div class="info-row">
-                        <span class="info-label">訂房時間</span>
-                        <span class="info-value">${new Date(data.bookingDate).toLocaleString('zh-TW')}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </body>
-    </html>
-    `;
-}
-
-// 登入驗證中間件
-function requireAuth(req, res, next) {
-    if (req.session && req.session.admin) {
-        return next();
-    }
-    res.status(401).json({ success: false, message: '請先登入' });
-}
-
-// 權限檢查中間件
-function checkPermission(permissionCode) {
-    return async (req, res, next) => {
-        try {
-            if (!req.session || !req.session.admin) {
-                return res.status(401).json({ success: false, message: '未登入' });
-            }
-            
-            const adminId = req.session.admin.id;
-            const permissions = req.session.admin.permissions || [];
-            
-            // 先從 session 中檢查權限（效能優化）
-            if (permissions.includes(permissionCode)) {
-                return next();
-            }
-            
-            // 如果 session 中沒有權限列表，從資料庫檢查
-            const hasPermission = await db.hasPermission(adminId, permissionCode);
-            
-            if (hasPermission) {
-                // 更新 session 中的權限列表
-                if (!req.session.admin.permissions) {
-                    req.session.admin.permissions = await db.getAdminPermissions(adminId);
-                }
-                return next();
-            }
-        
-        // 記錄權限檢查失敗日誌
-        await db.logAdminAction({
-            adminId: adminId,
-            adminUsername: req.session.admin.username,
-            action: 'permission_denied',
-            resourceType: 'permission',
-            resourceId: permissionCode,
-            details: JSON.stringify({ requestedPermission: permissionCode }),
-            ipAddress: req.ip || req.connection?.remoteAddress || 'unknown',
-            userAgent: req.get('user-agent') || 'unknown'
-        }).catch(err => console.error('記錄權限檢查失敗日誌錯誤:', err));
-        
-        return res.status(403).json({ 
-            success: false, 
-            message: '您沒有權限執行此操作' 
-        });
-        } catch (error) {
-            console.error('❌ checkPermission 中間件錯誤:', error.message);
-            return res.status(500).json({
-                success: false,
-                message: '權限檢查失敗: ' + error.message
-            });
-        }
-    };
-}
 
 // 記錄操作日誌的輔助函數
 async function logAction(req, action, resourceType = null, resourceId = null, details = null) {
@@ -3294,232 +2330,71 @@ app.get('/admin', generateCsrfToken, (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
-// API: 查詢訂房記錄（可帶入日期區間，供列表與日曆共用）
-app.get('/api/bookings', publicLimiter, async (req, res) => {
-    try {
-        const { startDate, endDate } = req.query;
-        let bookings;
+const bookingService = createBookingService({ db });
+app.use('/api', createBookingRoutes({
+    bookingService,
+    handlers: {
+        createBooking: handleCreateBooking,
+        updateBooking: handleUpdateBooking,
+        cancelBooking: handleCancelBooking,
+        deleteBooking: handleDeleteBooking
+    },
+    publicLimiter,
+    verifyCsrfToken,
+    validateBooking,
+    requireAuth,
+    checkPermission,
+    adminLimiter
+}));
 
-        if (startDate && endDate) {
-            console.log('📅 查詢日曆區間:', startDate, '~', endDate);
-            bookings = await db.getBookingsInRange(startDate, endDate);
-        } else {
-            console.log('📋 查詢所有訂房記錄');
-            bookings = await db.getAllBookings();
-        }
-        
-        // 確保每筆記錄都有 payment_status 和 status 欄位（處理舊資料）
-        const bookingsWithDefaults = bookings.map(booking => ({
-            ...booking,
-            payment_status: booking.payment_status || 'pending',
-            status: booking.status || 'active'
-        }));
-        
-        res.json({
-            success: true,
-            count: bookingsWithDefaults.length,
-            data: bookingsWithDefaults
-        });
-    } catch (error) {
-        console.error('查詢訂房記錄錯誤:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: '查詢訂房記錄失敗：' + error.message 
-        });
-    }
+const emailService = createEmailService({
+    getRequiredEmailUser,
+    sendEmail
 });
 
-// API: 根據訂房編號查詢單筆訂房（供後台列表/日曆詳情使用）
-app.get('/api/bookings/:bookingId', publicLimiter, async (req, res) => {
-    try {
-        const { bookingId } = req.params;
-        const booking = await db.getBookingById(bookingId);
-        
-        if (booking) {
-            console.log(`📋 查詢訂房 ${bookingId}: discount_amount=${booking.discount_amount}, original_amount=${booking.original_amount}, discount_description=${booking.discount_description}`);
-            res.json({
-                success: true,
-                data: booking
-            });
-        } else {
-            res.status(404).json({
-                success: false,
-                message: '找不到該訂房記錄'
-            });
-        }
-    } catch (error) {
-        console.error('查詢單筆訂房記錄錯誤:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: '查詢單筆訂房記錄失敗：' + error.message
-        });
-    }
+const fallbackTemplateService = createEmailFallbackTemplatesService({
+    getHotelSettingsWithFallback,
+    generateEmailFromTemplate
 });
 
-// API: 根據 Email 查詢訂房記錄
-app.get('/api/bookings/email/:email', publicLimiter, async (req, res) => {
-    try {
-        const { email } = req.params;
-        const bookings = await db.getBookingsByEmail(email);
-        
-        res.json({
-            success: true,
-            count: bookings.length,
-            data: bookings
-        });
-    } catch (error) {
-        console.error('查詢訂房記錄錯誤:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: '查詢訂房記錄失敗' 
-        });
-    }
+const templateService = createTemplateService({
+    generateEmailFromTemplate,
+    generateCustomerEmail: fallbackTemplateService.generateCustomerEmail,
+    generateAdminEmail: fallbackTemplateService.generateAdminEmail
 });
 
-function sanitizeOrderQueryBookings(bookings = []) {
-    return bookings.map(booking => {
-        const paymentAmount = Number(booking.payment_amount) || 0;
-        const finalAmount = Number(booking.final_amount) || 0;
-        const payableAmount = paymentAmount > 0 ? paymentAmount : finalAmount;
-
-        return {
-            booking_id: booking.booking_id || '',
-            guest_name: booking.guest_name || '',
-            guest_email: booking.guest_email || '',
-            guest_phone: booking.guest_phone || '',
-            room_type: booking.room_type || '',
-            check_in_date: booking.check_in_date || '',
-            check_out_date: booking.check_out_date || '',
-            nights: booking.nights || 0,
-            total_amount: booking.total_amount || 0,
-            payment_amount: paymentAmount,
-            final_amount: finalAmount,
-            payable_amount: payableAmount,
-            payment_method: booking.payment_method || '',
-            payment_status: booking.payment_status || 'pending',
-            status: booking.status || 'active',
-            created_at: booking.created_at || null
-        };
-    });
-}
-
-async function sendOrderQueryOtpEmail(email, code) {
-    const emailUser = await getRequiredEmailUser('訂單查詢 OTP');
-    await sendEmail({
-        from: emailUser,
-        to: email,
-        subject: '【訂單查詢】一次性驗證碼',
-        html: `
-            <div style="font-family: 'Noto Sans TC', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #262A33;">訂單查詢驗證碼</h2>
-                <p>您好，您正在進行訂單查詢，請使用以下驗證碼完成驗證：</p>
-                <div style="background: #f5f7fb; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
-                    <h1 style="color: #2C8EC4; font-size: 32px; margin: 0; letter-spacing: 5px;">${code}</h1>
-                </div>
-                <p style="color: #666; font-size: 14px;">此驗證碼有效期限為 15 分鐘，且僅可使用一次。</p>
-                <p style="color: #666; font-size: 14px;">若非本人操作，請忽略此郵件。</p>
-            </div>
-        `
-    });
-}
-
-// 訂單查詢 API（有 LINE User ID 直接查詢）
-app.get('/api/order-query/line/:lineUserId', publicLimiter, async (req, res) => {
-    try {
-        const lineUserId = (req.params.lineUserId || '').trim();
-        if (!lineUserId) {
-            return res.status(400).json({
-                success: false,
-                message: '缺少 LINE User ID'
-            });
-        }
-
-        const bookings = await db.getBookingsByLineUserId(lineUserId);
-        return res.json({
-            success: true,
-            count: bookings.length,
-            data: sanitizeOrderQueryBookings(bookings)
-        });
-    } catch (error) {
-        console.error('LINE 訂單查詢失敗:', error);
-        return res.status(500).json({
-            success: false,
-            message: '查詢失敗，請稍後再試'
-        });
-    }
+const notificationService = createNotificationService({
+    db,
+    lineBot,
+    emailService,
+    templateService,
+    processEnv: process.env,
+    replaceTemplateVariables,
+    generatePaymentReceivedEmail: fallbackTemplateService.generatePaymentReceivedEmail,
+    generateCancellationEmail: fallbackTemplateService.generateCancellationEmail
 });
 
-// 訂單查詢 API（寄送 Email OTP）
-app.post('/api/order-query/otp/send', publicLimiter, async (req, res) => {
-    try {
-        const email = (req.body.email || '').trim().toLowerCase();
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Email 格式不正確'
-            });
-        }
-
-        const bookings = await db.getBookingsByEmail(email);
-        if (!bookings || bookings.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: '找不到此 Email 的訂單資料'
-            });
-        }
-
-        const code = dataProtection.generateVerificationCode();
-        dataProtection.saveVerificationCode(email, code, 'order_query');
-        await sendOrderQueryOtpEmail(email, code);
-
-        return res.json({
-            success: true,
-            message: '驗證碼已寄送，請至 Email 收信'
-        });
-    } catch (error) {
-        console.error('寄送訂單查詢 OTP 失敗:', error);
-        return res.status(500).json({
-            success: false,
-            message: '寄送驗證碼失敗，請稍後再試'
-        });
-    }
+const bookingNotificationJobs = createBookingNotificationJobs({
+    db,
+    notificationService,
+    getHotelSettingsWithFallback,
+    calculateDynamicPaymentDeadline
 });
 
-// 訂單查詢 API（驗證 OTP 並回傳訂單）
-app.post('/api/order-query/otp/verify', publicLimiter, async (req, res) => {
-    try {
-        const email = (req.body.email || '').trim().toLowerCase();
-        const otp = (req.body.otp || '').trim();
-        if (!email || !otp) {
-            return res.status(400).json({
-                success: false,
-                message: '請提供 Email 與驗證碼'
-            });
-        }
-
-        const verification = dataProtection.verifyCode(email, otp, 'order_query');
-        if (!verification.valid) {
-            return res.status(400).json({
-                success: false,
-                message: verification.message || '驗證碼無效'
-            });
-        }
-
-        const bookings = await db.getBookingsByEmail(email);
-        return res.json({
-            success: true,
-            count: bookings.length,
-            data: sanitizeOrderQueryBookings(bookings)
-        });
-    } catch (error) {
-        console.error('驗證訂單查詢 OTP 失敗:', error);
-        return res.status(500).json({
-            success: false,
-            message: '驗證失敗，請稍後再試'
-        });
-    }
+const adminLogCleanupJobs = createAdminLogCleanupJobs({
+    db,
+    processEnv: process.env
 });
+
+const orderQueryService = createOrderQueryService({
+    db,
+    dataProtection,
+    notificationService
+});
+app.use('/api/order-query', createOrderQueryRoutes({
+    orderQueryService,
+    publicLimiter
+}));
 
 // API: 取得所有客戶列表（聚合訂房資料）- 需要登入
 app.get('/api/customers', requireAuth, checkPermission('customers.view'), adminLimiter, async (req, res) => {
@@ -4633,7 +3508,7 @@ app.get('/api/dashboard', adminLimiter, async (req, res) => {
 });
 
 // API: 更新訂房資料
-app.put('/api/bookings/:bookingId', requireAuth, checkPermission('bookings.edit'), adminLimiter, async (req, res) => {
+async function handleUpdateBooking(req, res) {
     try {
         const { bookingId } = req.params;
         const updateData = { ...req.body };
@@ -4659,46 +3534,9 @@ app.put('/api/bookings/:bookingId', requireAuth, checkPermission('bookings.edit'
                     const updatedBooking = await db.getBookingById(bookingId);
                     if (updatedBooking && updatedBooking.payment_method === '匯款轉帳') {
                         console.log(`📧 準備寄送收款信給 ${updatedBooking.guest_email} (${updatedBooking.booking_id})`);
-                        
-                        const emailUser = await getRequiredEmailUser('手動更新付款狀態寄信');
-                        
-                        // 使用模板系統生成郵件
-                        let mailOptions;
-                        try {
-                            const { subject, content } = await generateEmailFromTemplate('payment_completed', updatedBooking);
-                            mailOptions = {
-                                from: emailUser,
-                                to: updatedBooking.guest_email,
-                                subject: subject,
-                                html: content
-                            };
-                        } catch (templateError) {
-                            console.error('⚠️ 無法從數據庫讀取付款完成確認模板，使用備用方案:', templateError.message);
-                            // 備用方案：使用原來的函數
-                            mailOptions = {
-                                from: emailUser,
-                                to: updatedBooking.guest_email,
-                                subject: '【收款確認】我們已收到您的款項',
-                                html: await generatePaymentReceivedEmail(updatedBooking)
-                            };
-                        }
-                        
-                        let emailSent = false;
-                        
-                        try {
-                            await sendEmail(mailOptions);
-                            console.log(`✅ 收款信已發送給 ${updatedBooking.guest_name} (${updatedBooking.booking_id})`);
-                            emailSent = true;
-                        } catch (emailError) {
-                            console.error(`❌ 收款信發送失敗 (${updatedBooking.booking_id}):`, emailError.message);
-                        }
-                        
+                        const emailSent = await notificationService.sendPaymentCompletedEmail(updatedBooking);
                         if (emailSent) {
-                            try {
-                                await db.updateEmailStatus(updatedBooking.booking_id, 'payment_received', true);
-                            } catch (updateError) {
-                                console.error(`❌ 更新收款信郵件狀態失敗 (${updatedBooking.booking_id}):`, updateError.message);
-                            }
+                            console.log(`✅ 收款信已發送給 ${updatedBooking.guest_name} (${updatedBooking.booking_id})`);
                         }
                     }
                 } catch (emailError) {
@@ -4725,10 +3563,10 @@ app.put('/api/bookings/:bookingId', requireAuth, checkPermission('bookings.edit'
             message: '更新訂房資料失敗: ' + error.message
         });
     }
-});
+}
 
 // API: 取消訂房
-app.post('/api/bookings/:bookingId/cancel', requireAuth, checkPermission('bookings.cancel'), adminLimiter, async (req, res) => {
+async function handleCancelBooking(req, res) {
     try {
         const { bookingId } = req.params;
         
@@ -4780,10 +3618,10 @@ app.post('/api/bookings/:bookingId/cancel', requireAuth, checkPermission('bookin
             message: '取消訂房失敗'
         });
     }
-});
+}
 
 // API: 刪除訂房（僅限已取消的訂房）
-app.delete('/api/bookings/:bookingId', requireAuth, checkPermission('bookings.delete'), adminLimiter, async (req, res) => {
+async function handleDeleteBooking(req, res) {
     try {
         const { bookingId } = req.params;
         
@@ -4823,7 +3661,7 @@ app.delete('/api/bookings/:bookingId', requireAuth, checkPermission('bookings.de
             message: '刪除訂房失敗: ' + error.message
         });
     }
-});
+}
 
 // ==================== 房型管理 API ====================
 
@@ -5563,704 +4401,24 @@ app.get('/api/landing-settings', publicLimiter, async (req, res) => {
     }
 });
 
-// API: 建立支付表單（用於重新支付）
-app.post('/api/payment/create', paymentLimiter, async (req, res) => {
-    try {
-        const { bookingId } = req.body;
-        
-        if (!bookingId) {
-            return res.status(400).json({
-                success: false,
-                message: '請提供訂房編號'
-            });
-        }
-        
-        // 從資料庫取得訂房資料
-        const booking = await db.getBookingById(bookingId);
-        
-        if (!booking) {
-            return res.status(404).json({
-                success: false,
-                message: '找不到該訂房記錄'
-            });
-        }
-        
-        // 建立支付表單
-        const paymentData = payment.createPaymentForm({
-            bookingId: booking.booking_id,
-            finalAmount: booking.final_amount,
-            guestName: booking.guest_name,
-            guestEmail: booking.guest_email,
-            guestPhone: booking.guest_phone
-        }, {
-            amount: booking.final_amount,
-            description: `訂房編號：${booking.booking_id}`
-        });
-        
-        res.json({
-            success: true,
-            data: paymentData
-        });
-    } catch (error) {
-        console.error('建立支付表單錯誤:', error);
-        res.status(500).json({
-            success: false,
-            message: '建立支付表單失敗'
-        });
-    }
+const paymentService = createPaymentService({
+    db,
+    notificationService,
+    logPaymentEvent,
+    processEnv: process.env
 });
 
-// API: 綠界付款完成回傳（Server POST）
-app.post('/api/payment/return', paymentLimiter, async (req, res) => {
-    try {
-        console.log('\n========================================');
-        console.log('📥 收到綠界付款回傳');
-        console.log('時間:', new Date().toLocaleString('zh-TW'));
-        console.log('回傳資料:', req.body);
-        console.log('========================================\n');
-        
-        // 取得綠界設定用於驗證（優先使用資料庫設定）
-        const isProduction = process.env.NODE_ENV === 'production';
-        let ecpayHashKey, ecpayHashIV;
-        
-        if (isProduction) {
-            ecpayHashKey = await db.getSetting('ecpay_hash_key') || process.env.ECPAY_HASH_KEY_PROD || '';
-            ecpayHashIV = await db.getSetting('ecpay_hash_iv') || process.env.ECPAY_HASH_IV_PROD || '';
-        } else {
-            ecpayHashKey = await db.getSetting('ecpay_hash_key') || process.env.ECPAY_HASH_KEY || '5294y06JbISpM5x9';
-            ecpayHashIV = await db.getSetting('ecpay_hash_iv') || process.env.ECPAY_HASH_IV || 'v77hoKGq4kWxNNIS';
-        }
-        
-        // 驗證回傳資料（使用正確的設定）
-        const isValid = payment.verifyReturnData(req.body, {
-            HashKey: ecpayHashKey,
-            HashIV: ecpayHashIV
-        });
-        
-        if (!isValid) {
-            console.error('❌ 回傳資料驗證失敗');
-            return res.status(400).send('驗證失敗');
-        }
-        
-        // 解析回傳資料
-        const paymentResult = payment.parseReturnData(req.body);
-        
-        console.log('付款結果:', paymentResult);
-        
-        // 回傳 1|OK 給綠界（必須）
-        res.send('1|OK');
-    } catch (error) {
-        console.error('處理付款回傳錯誤:', error);
-        res.status(500).send('處理失敗');
-    }
+const paymentController = createPaymentController({
+    db,
+    paymentClient: payment,
+    paymentService,
+    logPaymentEvent
 });
 
-// API: 綠界付款完成導向（Client Redirect - 支援 GET 和 POST）
-const handlePaymentResult = async (req, res) => {
-    try {
-        console.log('\n========================================');
-        console.log('📥 收到綠界付款完成導向');
-        console.log('時間:', new Date().toLocaleString('zh-TW'));
-        console.log('請求方法:', req.method);
-        console.log('回傳資料:', req.method === 'POST' ? req.body : req.query);
-        console.log('========================================\n');
-        
-        // 根據請求方法取得資料
-        const returnData = req.method === 'POST' ? req.body : req.query;
-        
-        // 取得綠界設定用於驗證
-        // 取得綠界設定用於驗證（優先使用資料庫設定）
-        const isProduction = process.env.NODE_ENV === 'production';
-        let ecpayHashKey, ecpayHashIV;
-        
-        if (isProduction) {
-            ecpayHashKey = await db.getSetting('ecpay_hash_key') || process.env.ECPAY_HASH_KEY_PROD || '';
-            ecpayHashIV = await db.getSetting('ecpay_hash_iv') || process.env.ECPAY_HASH_IV_PROD || '';
-        } else {
-            ecpayHashKey = await db.getSetting('ecpay_hash_key') || process.env.ECPAY_HASH_KEY || '5294y06JbISpM5x9';
-            ecpayHashIV = await db.getSetting('ecpay_hash_iv') || process.env.ECPAY_HASH_IV || 'v77hoKGq4kWxNNIS';
-        }
-        
-        // 驗證回傳資料（使用正確的設定）
-        console.log('開始驗證回傳資料...');
-        const isValid = payment.verifyReturnData(returnData, {
-            HashKey: ecpayHashKey,
-            HashIV: ecpayHashIV
-        });
-        
-        if (!isValid) {
-            console.error('❌ 付款驗證失敗');
-            console.error('回傳資料內容:', JSON.stringify(returnData, null, 2));
-            
-            // 在測試環境中，即使驗證失敗也顯示結果（僅用於除錯）
-            // 注意：正式環境應該嚴格驗證，測試環境可以寬鬆處理
-            const isTestEnv = process.env.NODE_ENV !== 'production';
-            if (isTestEnv && returnData.RtnCode === '1') {
-                console.warn('⚠️  測試環境：CheckMacValue 驗證失敗，但付款成功（RtnCode=1）');
-                console.warn('⚠️  正式環境請修正 CheckMacValue 計算方式');
-                
-                // 即使驗證失敗，如果付款成功也要更新狀態
-                try {
-                    const paymentResult = payment.parseReturnData(returnData);
-                    if (paymentResult.rtnCode === '1') {
-                        const bookingId = paymentResult.merchantTradeNo;
-                        console.log('✅ 測試環境：付款成功，更新訂房記錄:', bookingId);
-                        
-                        // 取得訂房資料
-                        const booking = await db.getBookingById(bookingId);
-                        if (booking) {
-                            // 更新付款狀態為已付款，並將訂房狀態改為有效
-                        await db.updateBooking(bookingId, {
-                                payment_status: 'paid',
-                                status: 'active'
-                            });
-                            console.log('✅ 付款狀態已更新為「已付款」，訂房狀態已更新為「有效」');
-                            
-                            // 線上刷卡付款完成後，發送確認郵件
-                            if (booking.payment_method && booking.payment_method.includes('刷卡')) {
-                                console.log('📧 測試環境：線上刷卡付款完成，發送確認郵件...');
-                                try {
-                                    // 處理加購商品顯示名稱
-                                    let addonsList = '';
-                                    if (booking.addons) {
-                                        try {
-                                            const parsedAddons = typeof booking.addons === 'string' ? JSON.parse(booking.addons) : booking.addons;
-                                            if (parsedAddons && parsedAddons.length > 0) {
-                                                const allAddons = await db.getAllAddonsAdmin();
-                                                addonsList = parsedAddons.map(addon => {
-                                                    const addonInfo = allAddons.find(a => a.name === addon.name);
-                                                    const displayName = addonInfo ? addonInfo.display_name : addon.name;
-                                                    const quantity = addon.quantity || 1;
-                                                    const itemTotal = addon.price * quantity;
-                                                    return `${displayName} x${quantity} (NT$ ${itemTotal.toLocaleString()})`;
-                                                }).join('、');
-                                            }
-                                        } catch (err) {
-                                            console.error('處理加購商品顯示失敗:', err);
-                                        }
-                                    }
-                                    
-                                    // 計算折扣金額和折後總額（從資料庫讀取的 booking 可能已包含這些資訊）
-                                    const originalAmount = booking.original_amount || booking.total_amount || 0;
-                                    const discountAmount = booking.discount_amount || 0;
-                                    const discountedTotal = discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : originalAmount;
-                                    
-                                    const bookingData = {
-                                        bookingId: booking.booking_id,
-                                        guestName: booking.guest_name,
-                                        guestEmail: booking.guest_email,
-                                        guestPhone: booking.guest_phone,
-                                        checkInDate: booking.check_in_date,
-                                        checkOutDate: booking.check_out_date,
-                                        roomType: booking.room_type,
-                                        pricePerNight: booking.price_per_night,
-                                        nights: booking.nights,
-                                        totalAmount: originalAmount,
-                                        discountAmount: discountAmount,
-                                        discountedTotal: discountedTotal,
-                                        finalAmount: booking.final_amount,
-                                        paymentAmount: booking.payment_amount,
-                                        paymentMethod: booking.payment_method,
-                                        paymentMethodCode: 'card',
-                                        bookingDate: booking.booking_date,
-                                        bankInfo: null,
-                                        addons: booking.addons ? (typeof booking.addons === 'string' ? JSON.parse(booking.addons) : booking.addons) : null,
-                                        addonsTotal: booking.addons_total || 0,
-                                        addonsList: addonsList
-                                    };
-                                    
-                                    const emailUser = await getRequiredEmailUser('信用卡付款完成寄信');
-                                    const customerMailOptions = {
-                                        from: emailUser,
-                                        to: booking.guest_email,
-                                        subject: (await generateEmailFromTemplate('booking_confirmation', bookingData)).subject,
-                                        html: (await generateEmailFromTemplate('booking_confirmation', bookingData)).content
-                                    };
-                                    
-                                    let emailSent = false;
-                                    try {
-                                        await sendEmail(customerMailOptions);
-                                        emailSent = true;
-                                    } catch (emailError) {
-                                        console.error('❌ 確認郵件發送失敗:', emailError.message);
-                                    }
-                                    
-                                    if (emailSent) {
-                                        await db.updateEmailStatus(bookingId, 'booking_confirmation');
-                                        console.log('✅ 確認郵件已發送，郵件狀態已更新');
-                                    }
-                                } catch (emailError) {
-                                    console.error('❌ 發送確認郵件失敗:', emailError.message);
-                                }
-                            }
-                        }
-                    }
-                } catch (updateError) {
-                    console.error('❌ 更新付款狀態失敗:', updateError);
-                }
-                
-                // 繼續處理（僅測試環境且付款成功時）
-            } else {
-                return res.send(`
-                    <html>
-                        <head>
-                            <meta charset="UTF-8">
-                            <style>
-                                body {
-                                    font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-                                    display: flex;
-                                    justify-content: center;
-                                    align-items: center;
-                                    min-height: 100vh;
-                                    margin: 0;
-                                    padding: 20px;
-                                    background-image: url('Background%20image.jpg');
-                                    background-size: cover;
-                                    background-position: center;
-                                    background-repeat: no-repeat;
-                                    background-attachment: fixed;
-                                }
-                                .container {
-                                    background: white;
-                                    padding: 40px;
-                                    border-radius: 24px;
-                                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-                                    text-align: center;
-                                    max-width: 500px;
-                                    animation: slideUp 0.5s ease-out;
-                                }
-                                @keyframes slideUp {
-                                    from {
-                                        opacity: 0;
-                                        transform: translateY(30px);
-                                    }
-                                    to {
-                                        opacity: 1;
-                                        transform: translateY(0);
-                                    }
-                                }
-                                .error-icon {
-                                    font-size: 80px;
-                                    color: #f44336;
-                                    margin-bottom: 20px;
-                                }
-                                h1 { 
-                                    color: #333; 
-                                    margin-bottom: 10px; 
-                                    font-size: 24px;
-                                    font-weight: 600;
-                                }
-                                p { 
-                                    color: #666; 
-                                    margin: 10px 0; 
-                                    font-size: 16px;
-                                }
-                                .btn {
-                                    display: inline-block;
-                                    margin-top: 20px;
-                                    padding: 12px 30px;
-                                    background: #262A33;
-                                    color: white;
-                                    text-decoration: none;
-                                    border-radius: 8px;
-                                    font-weight: 500;
-                                    transition: background 0.3s;
-                                }
-                                .btn:hover {
-                                    background: #1a1d24;
-                                }
-                            </style>
-                        </head>
-                        <body>
-                            <div class="container">
-                                <div class="error-icon">⚠️</div>
-                                <h1>付款驗證失敗</h1>
-                                <p>請聯繫客服確認付款狀態</p>
-                                <p style="font-size: 12px; color: #999;">請查看終端機日誌了解詳細資訊</p>
-                                <a href="/" class="btn">返回首頁</a>
-                            </div>
-                        </body>
-                    </html>
-                `);
-            }
-        } else {
-            console.log('✅ 付款驗證成功');
-        }
-        
-        // 解析回傳資料
-        const paymentResult = payment.parseReturnData(returnData);
-        
-        // 根據付款結果顯示頁面
-        if (paymentResult.rtnCode === '1') {
-            // 付款成功 - 更新資料庫中的付款狀態
-            try {
-                const bookingId = paymentResult.merchantTradeNo; // 訂房編號
-                console.log('✅ 付款成功，更新訂房記錄:', bookingId);
-                
-                // 取得訂房資料
-                const booking = await db.getBookingById(bookingId);
-                if (!booking) {
-                    throw new Error('找不到訂房記錄');
-                }
-                
-                // 更新付款狀態為已付款，並將訂房狀態改為有效
-                await db.updateBooking(bookingId, {
-                    payment_status: 'paid',
-                    status: 'active'
-                });
-                
-                console.log('✅ 付款狀態已更新為「已付款」，訂房狀態已更新為「有效」');
-                
-                // 線上刷卡付款完成後，發送確認郵件
-                if (booking.payment_method && booking.payment_method.includes('刷卡')) {
-                    console.log('📧 線上刷卡付款完成，發送確認郵件...');
-                    try {
-                        // 構建 bookingData 物件
-                        // 處理加購商品顯示名稱
-                        let addonsList = '';
-                        if (booking.addons) {
-                            try {
-                                const parsedAddons = typeof booking.addons === 'string' ? JSON.parse(booking.addons) : booking.addons;
-                                if (parsedAddons && parsedAddons.length > 0) {
-                                    const allAddons = await db.getAllAddonsAdmin();
-                                    addonsList = parsedAddons.map(addon => {
-                                        const addonInfo = allAddons.find(a => a.name === addon.name);
-                                        const displayName = addonInfo ? addonInfo.display_name : addon.name;
-                                        const quantity = addon.quantity || 1;
-                                        const itemTotal = addon.price * quantity;
-                                        return `${displayName} x${quantity} (NT$ ${itemTotal.toLocaleString()})`;
-                                    }).join('、');
-                                }
-                            } catch (err) {
-                                console.error('處理加購商品顯示失敗:', err);
-                            }
-                        }
-                        
-                        // 計算折扣金額和折後總額（從資料庫讀取的 booking 可能已包含這些資訊）
-                        const originalAmount = booking.original_amount || booking.originalAmount || booking.total_amount || booking.totalAmount || 0;
-                        const discountAmount = booking.discount_amount || booking.discountAmount || 0;
-                        // 如果 booking 中有 discountedTotal，優先使用；否則計算
-                        const discountedTotal = booking.discountedTotal || (discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : originalAmount);
-                        
-                        const bookingData = {
-                            bookingId: booking.booking_id,
-                            guestName: booking.guest_name,
-                            guestEmail: booking.guest_email,
-                            guestPhone: booking.guest_phone,
-                            checkInDate: booking.check_in_date,
-                            checkOutDate: booking.check_out_date,
-                            roomType: booking.room_type,
-                            pricePerNight: booking.price_per_night,
-                            nights: booking.nights,
-                            originalAmount: originalAmount,
-                            totalAmount: originalAmount,
-                            discountAmount: discountAmount,
-                            discountedTotal: discountedTotal,
-                            finalAmount: booking.final_amount,
-                            paymentAmount: booking.payment_amount,
-                            paymentMethod: booking.payment_method,
-                            paymentMethodCode: 'card',
-                            paymentStatus: 'paid', // 已付款
-                            bookingDate: booking.booking_date,
-                            bankInfo: null, // 線上刷卡不需要匯款資訊
-                            addons: booking.addons ? (typeof booking.addons === 'string' ? JSON.parse(booking.addons) : booking.addons) : null,
-                            addonsTotal: booking.addons_total || 0,
-                            addonsList: addonsList
-                        };
-                        
-                        // 發送確認郵件 - 使用數據庫模板
-                        const emailUser = await getRequiredEmailUser('綠界回傳寄送訂房確認');
-                        let customerMailOptions = null;
-                        try {
-                            const { subject, content } = await generateEmailFromTemplate('booking_confirmation', bookingData);
-                            customerMailOptions = {
-                                from: emailUser,
-                                to: booking.guest_email,
-                                subject: subject,
-                                html: content
-                            };
-                        } catch (templateError) {
-                            console.error('⚠️ 無法從數據庫讀取訂房確認模板，使用備用方案:', templateError.message);
-                            // 備用方案：使用原來的函數
-                            customerMailOptions = {
-                                from: emailUser,
-                                to: booking.guest_email,
-                                subject: '【訂房確認】您的訂房已成功',
-                                html: await generateCustomerEmail(bookingData)
-                            };
-                        }
-                        
-                        let emailSent = false;
-                        try {
-                            await sendEmail(customerMailOptions);
-                            console.log('✅ 確認郵件已發送');
-                            emailSent = true;
-                        } catch (emailError) {
-                            console.error('❌ 確認郵件發送失敗:', emailError.message);
-                        }
-                        
-                        // 更新郵件狀態
-                        if (emailSent) {
-                            await db.updateEmailStatus(bookingId, 'booking_confirmation');
-                            console.log('✅ 郵件狀態已更新');
-                        }
-                        
-                        // 發送管理者通知郵件 - 使用數據庫模板
-                        try {
-                            console.log('📧 發送管理者通知郵件...');
-                            const adminEmail = await db.getSetting('admin_email') || process.env.ADMIN_EMAIL || 'cheng701107@gmail.com';
-                            let adminMailOptions = null;
-                            try {
-                                const { subject, content } = await generateEmailFromTemplate('booking_confirmation_admin', bookingData);
-                                adminMailOptions = {
-                                    from: emailUser,
-                                    to: adminEmail,
-                                    subject: subject,
-                                    html: content
-                                };
-                            } catch (adminTemplateError) {
-                                console.error('⚠️ 無法從數據庫讀取管理員通知模板，使用備用方案:', adminTemplateError.message);
-                                // 備用方案：使用原來的函數
-                                adminMailOptions = {
-                                    from: emailUser,
-                                    to: adminEmail,
-                                    subject: `【新訂房通知】${booking.guest_name} - ${booking.booking_id}`,
-                                    html: generateAdminEmail(bookingData)
-                                };
-                            }
-                            await sendEmail(adminMailOptions);
-                            console.log('✅ 管理者通知郵件已發送');
-                        } catch (adminEmailError) {
-                            console.error('❌ 管理者通知郵件發送失敗:', adminEmailError.message);
-                            // 郵件發送失敗不影響付款流程
-                        }
-                        
-                        // 發送 LINE 訊息（如果有 LINE User ID）
-                        if (booking.line_user_id) {
-                            try {
-                                // 確保 LINE Bot 設定是最新的（從資料庫重新載入）
-                                await lineBot.loadSettings();
-                                
-                                // 計算折扣金額和折後總額（從資料庫讀取的 booking 可能已包含這些資訊）
-                                const originalAmount = booking.original_amount || booking.total_amount || 0;
-                                const discountAmount = booking.discount_amount || 0;
-                                const discountedTotal = discountAmount > 0 ? Math.max(0, originalAmount - discountAmount) : originalAmount;
-                                
-                                console.log('📱 付款成功，發送 LINE 訂房成功訊息...');
-                                const lineResult = await lineBot.sendBookingSuccessMessage(booking.line_user_id, {
-                                    bookingId: booking.booking_id,
-                                    guestName: booking.guest_name,
-                                    checkInDate: booking.check_in_date,
-                                    checkOutDate: booking.check_out_date,
-                                    roomType: booking.room_type,
-                                    totalAmount: originalAmount,
-                                    discountAmount: discountAmount,
-                                    discountedTotal: discountedTotal,
-                                    finalAmount: booking.final_amount,
-                                    isPaid: true // 已付款
-                                });
-                                
-                                if (lineResult.success) {
-                                    console.log('✅ LINE 訊息發送成功');
-                                } else {
-                                    console.warn('⚠️ LINE 訊息發送失敗:', lineResult.error);
-                                }
-                            } catch (lineError) {
-                                console.error('❌ LINE 訊息發送錯誤:', lineError.message);
-                                // LINE 訊息失敗不影響付款流程
-                            }
-                        }
-                    } catch (emailError) {
-                        console.error('❌ 發送確認郵件失敗:', emailError.message);
-                        // 郵件發送失敗不影響付款流程
-                    }
-                }
-            } catch (updateError) {
-                console.error('❌ 更新付款狀態失敗:', updateError);
-                // 即使更新失敗，也繼續顯示成功頁面
-            }
-            
-            // 付款成功
-            res.send(`
-                <!DOCTYPE html>
-                <html>
-                    <head>
-                        <meta charset="UTF-8">
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <title>付款成功</title>
-                        <style>
-                            :root {
-                                --primary-color: #2C8EC4;
-                                --card-bg: #ffffff;
-                                --header-bg: #262A33;
-                            }
-                            body {
-                                font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-                                display: flex;
-                                justify-content: center;
-                                align-items: center;
-                                min-height: 100vh;
-                                margin: 0;
-                                background-image: url('/Background%20image.jpg');
-                                background-size: cover;
-                                background-position: center;
-                                background-repeat: no-repeat;
-                                background-attachment: fixed;
-                                padding: 20px;
-                            }
-                            .container {
-                                background: var(--card-bg);
-                                border-radius: 24px;
-                                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-                                text-align: center;
-                                max-width: 480px;
-                                width: 100%;
-                                overflow: hidden;
-                            }
-                            .container-header {
-                                background: var(--header-bg);
-                                color: #fff;
-                                padding: 24px 20px 16px;
-                            }
-                            .container-header h1 {
-                                color: #fff !important;
-                                margin: 0 0 16px;
-                                font-size: 24px;
-                            }
-                            .success-icon {
-                                font-size: 56px;
-                                color: #4caf50;
-                                margin-bottom: 8px;
-                            }
-                            .container-body {
-                                padding: 24px 28px 28px;
-                            }
-                            h1 { color: #333; margin: 0 0 16px; font-size: 24px; }
-                            p { color: #555; margin: 6px 0; font-size: 14px; }
-                            .btn {
-                                display: inline-block;
-                                margin-top: 20px;
-                                padding: 10px 28px;
-                                background: var(--primary-color);
-                                color: #fff;
-                                text-decoration: none;
-                                border-radius: 999px;
-                                font-size: 14px;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="container">
-                            <div class="container-header">
-                            <div class="success-icon">✓</div>
-                            <h1>付款成功！</h1>
-                            </div>
-                            <div class="container-body">
-                            <p>訂單編號：${paymentResult.merchantTradeNo}</p>
-                            <p>交易編號：${paymentResult.tradeNo}</p>
-                            <p>付款金額：NT$ ${paymentResult.tradeAmt.toLocaleString()}</p>
-                            <p>付款時間：${paymentResult.paymentDate}</p>
-                            <a href="/" class="btn">返回首頁</a>
-                            </div>
-                        </div>
-                    </body>
-                </html>
-            `);
-        } else {
-            // 付款失敗
-            res.send(`
-                <!DOCTYPE html>
-                <html>
-                    <head>
-                        <meta charset="UTF-8">
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <title>付款失敗</title>
-                        <style>
-                            body {
-                                font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-                                display: flex;
-                                justify-content: center;
-                                align-items: center;
-                                min-height: 100vh;
-                                margin: 0;
-                                padding: 20px;
-                                background-image: url('Background%20image.jpg');
-                                background-size: cover;
-                                background-position: center;
-                                background-repeat: no-repeat;
-                                background-attachment: fixed;
-                            }
-                            .container {
-                                background: white;
-                                padding: 40px;
-                                border-radius: 24px;
-                                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-                                text-align: center;
-                                max-width: 500px;
-                                animation: slideUp 0.5s ease-out;
-                            }
-                            @keyframes slideUp {
-                                from {
-                                    opacity: 0;
-                                    transform: translateY(30px);
-                                }
-                                to {
-                                    opacity: 1;
-                                    transform: translateY(0);
-                                }
-                            }
-                            .error-icon {
-                                font-size: 80px;
-                                color: #f44336;
-                                margin-bottom: 20px;
-                            }
-                            h1 { 
-                                color: #333; 
-                                margin-bottom: 10px; 
-                                font-size: 24px;
-                                font-weight: 600;
-                            }
-                            p { 
-                                color: #666; 
-                                margin: 10px 0; 
-                                font-size: 16px;
-                            }
-                            .btn {
-                                display: inline-block;
-                                margin-top: 20px;
-                                padding: 12px 30px;
-                                background: #262A33;
-                                color: white;
-                                text-decoration: none;
-                                border-radius: 8px;
-                                font-weight: 500;
-                                transition: background 0.3s;
-                            }
-                            .btn:hover {
-                                background: #1a1d24;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="container">
-                            <div class="error-icon">✗</div>
-                            <h1>付款失敗</h1>
-                            <p>${paymentResult.rtnMsg || '付款處理失敗'}</p>
-                            <a href="/" class="btn">返回首頁</a>
-                        </div>
-                    </body>
-                </html>
-            `);
-        }
-    } catch (error) {
-        console.error('處理付款導向錯誤:', error);
-        res.status(500).send('處理失敗');
-    }
-};
-
-// 同時支援 GET 和 POST
-app.get('/api/payment/result', paymentLimiter, handlePaymentResult);
-app.post('/api/payment/result', paymentLimiter, handlePaymentResult);
+app.use('/api/payment', createPaymentRoutes({
+    controller: paymentController,
+    paymentLimiter
+}));
 
 // API: 檢查郵件服務狀態（Resend/Gmail）
 app.get('/api/admin/email-service-status', requireAuth, checkPermission('email_templates.view'), adminLimiter, async (req, res) => {
@@ -6275,15 +4433,13 @@ app.get('/api/admin/email-service-status', requireAuth, checkPermission('email_t
         const resendApiKeySource = resendApiKeyFromDB ? '資料庫' : (resendApiKeyFromEnv ? '環境變數' : '未設定');
         
         // 檢查 Resend 客戶端狀態
-        const resendClientInitialized = resendClient !== null;
+        const resendClientInitialized = emailRuntime.resendClient !== null;
+        const currentProvider = emailRuntime.emailServiceProvider;
         
         // 檢查發件人資訊（Resend 使用固定寄件郵箱）
         const resendSenderName = (await db.getSetting('resend_sender_name') || '').trim();
         const emailUser = (await db.getSetting('email_user') || '').trim();
         const effectiveSenderEmail = currentProvider === 'resend' ? 'resend@resend.dev' : emailUser;
-        
-        // 檢查當前郵件服務提供商
-        const currentProvider = emailServiceProvider;
         
         // 檢查 Gmail 設定（作為備用）
         const gmailClientID = await db.getSetting('gmail_client_id') || process.env.GMAIL_CLIENT_ID;
@@ -9815,85 +7971,6 @@ async function generateEmailFromTemplate(templateKey, booking, bankInfo = null, 
     }
 }
 
-// ----------------------------------------------------------------------------
-// 匯款期限相關邏輯
-// ----------------------------------------------------------------------------
-
-/**
- * 計算匯款期限（根據預訂日期與訂房日期的差距調整）
- * @param {Date|string} createdAt 訂房時間
- * @param {Date|string} checkInDate 入住日期
- * @param {number} configDaysReserved 設定的保留天數 (預設 3)
- * @returns {Object} { deadline: Date, actualDaysReserved: number } 截止日期物件和實際保留天數
- */
-function calculateDynamicPaymentDeadline(createdAt, checkInDate, configDaysReserved = 3) {
-    const created = new Date(createdAt);
-    created.setHours(0, 0, 0, 0);
-    
-    // 處理 checkInDate 可能為 YYYY-MM-DD 的情況
-    const checkIn = new Date(typeof checkInDate === 'string' && !checkInDate.includes('T') ? checkInDate + 'T00:00:00' : checkInDate);
-    checkIn.setHours(0, 0, 0, 0);
-    
-    // 計算訂房日到入住日的天數差距
-    const diffTime = checkIn.getTime() - created.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    // 保留期限從訂房日當天開始起算（訂房日當天算第1天）
-    let deadline = new Date(created);
-    let actualDaysReserved = configDaysReserved;
-    
-    if (diffDays > configDaysReserved) {
-        // 情況 1: 預訂日期-訂房日期大於保留天數 -> 正常邏輯
-        // 訂房日當天算第1天，所以截止日期 = 訂房日期 + (保留天數 - 1)
-        deadline.setDate(deadline.getDate() + (configDaysReserved - 1));
-        actualDaysReserved = configDaysReserved;
-    } else if (diffDays === 1) {
-        // 情況 2: 預訂日期為明天 -> 保留天數為今天（1天）
-        // 訂房日當天算第1天，所以截止日期 = 訂房日期（當天）
-        deadline.setDate(deadline.getDate() + 0); // 當天
-        actualDaysReserved = 1;
-    } else if (diffDays <= configDaysReserved && diffDays > 1) {
-        // 情況 3: 預訂日期-訂房日期等於或小於保留天數（但大於1天，即2天以上）
-        // 保留天數 = 入住日期 - 訂房日期
-        // 訂房日當天算第1天，所以截止日期 = 訂房日期 + (實際保留天數 - 1)
-        actualDaysReserved = diffDays;
-        deadline.setDate(deadline.getDate() + (actualDaysReserved - 1));
-    } else {
-        // 其他情況（理論上不會發生，因為已經驗證入住日期不能是今天）
-        deadline.setDate(deadline.getDate() + (configDaysReserved - 1));
-        actualDaysReserved = configDaysReserved;
-    }
-    
-    // 設定為當天 23:59:59 結束，方便統一判斷
-    deadline.setHours(23, 59, 59, 999);
-    
-    return { deadline, actualDaysReserved };
-}
-
-/**
- * 格式化匯款期限顯示文字
- * @param {Date} deadline 截止日期物件
- * @returns {string} 格式化後的文字
- */
-function formatPaymentDeadline(deadline) {
-    if (!deadline || isNaN(deadline.getTime())) return '';
-    
-    // 如果是 23:59:59，只顯示日期即可
-    if (deadline.getHours() === 23 && deadline.getMinutes() === 59) {
-        return deadline.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
-    }
-    
-    // 否則顯示日期與時間
-    return deadline.toLocaleString('zh-TW', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric', 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: false
-    });
-}
-
 function ensureAutoMailNotice(content) {
     const noticeText = '此為系統自動發送郵件，請勿直接回覆';
     if (!content || content.includes(noticeText)) {
@@ -10838,683 +8915,6 @@ ${htmlEnd}`;
     return { subject, content };
 }
 
-// 發送匯款期限提醒郵件
-async function sendPaymentReminderEmails() {
-    try {
-        const now = new Date();
-        console.log(`\n[定時任務] 開始檢查匯款期限提醒... (${now.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })})`);
-        
-        // 先取得模板以取得保留天數
-        const template = await db.getEmailTemplateByKey('payment_reminder');
-        if (!template) {
-            console.log('❌ 找不到匯款提醒模板');
-            return;
-        }
-        if (!template.is_enabled) {
-            console.log('⚠️ 匯款提醒模板未啟用，跳過發送');
-            return;
-        }
-        
-        const daysReserved = parseInt(template.days_reserved) || 3;
-        const sendHour = parseInt(template.send_hour_payment_reminder) || 9;
-        
-        console.log(`✅ 匯款提醒模板已啟用 (days_reserved: ${daysReserved}, send_hour_payment_reminder: ${sendHour})`);
-        
-        // 檢查當前時間是否符合發送時間
-        const currentHour = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', hour12: false });
-        const currentHourNum = parseInt(currentHour);
-        if (currentHourNum !== sendHour) {
-            console.log(`⏰ 當前時間 ${currentHourNum}:00 不符合發送時間 ${sendHour}:00，跳過`);
-            return;
-        }
-        
-        // 取得所有可能的訂房
-        const allBookings = await db.getBookingsForPaymentReminder();
-        console.log(`初步查詢找到 ${allBookings.length} 筆可能的訂房`);
-        
-        // 過濾出需要發送提醒的訂房
-        const bookings = allBookings.filter(booking => {
-            if (!booking.check_in_date) {
-                return false; // 沒有入住日期，跳過
-            }
-            
-            const { deadline, actualDaysReserved } = calculateDynamicPaymentDeadline(booking.created_at, booking.check_in_date, daysReserved);
-            
-            // 計算訂房日到入住日的天數差距
-            const created = new Date(booking.created_at);
-            created.setHours(0, 0, 0, 0);
-            const checkIn = new Date(booking.check_in_date);
-            checkIn.setHours(0, 0, 0, 0);
-            const diffTime = checkIn.getTime() - created.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            // 計算明天（訂房日期的下一天）
-            const tomorrow = new Date(created);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            tomorrow.setHours(0, 0, 0, 0);
-            
-            // 如果預訂日期為明天，不發送匯款提醒
-            if (diffDays === 1) {
-                return false;
-            }
-            
-            // 如果預訂日期-訂房日期等於或小於保留天數（但大於1天），在預訂日期前一天發送
-            if (diffDays <= daysReserved && diffDays > 1) {
-                // 預訂日期前一天
-                const reminderDate = new Date(checkIn);
-                reminderDate.setDate(reminderDate.getDate() - 1);
-                reminderDate.setHours(0, 0, 0, 0);
-                
-                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                return reminderDate.getTime() === today.getTime() && currentHourNum === sendHour;
-            }
-            
-            // 其他情況：在截止當天且符合 sendHour 時提醒
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const deadlineDay = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate());
-            return deadlineDay.getTime() === today.getTime() && currentHourNum === sendHour;
-        });
-        
-        console.log(`找到 ${bookings.length} 筆需要發送匯款提醒的訂房（匯款期限最後一天）`);
-        
-        // 取得匯款資訊
-        const bankInfo = {
-            bankName: await db.getSetting('bank_name') || '',
-            bankBranch: await db.getSetting('bank_branch') || '',
-            account: await db.getSetting('bank_account') || '',
-            accountName: await db.getSetting('account_name') || ''
-        };
-        
-        const emailUser = await getRequiredEmailUser('匯款提醒排程');
-        
-        for (const booking of bookings) {
-            try {
-                // 使用數據庫模板生成郵件（與訂房確認邏輯一致）
-                let mailOptions = null;
-                try {
-                    const { subject, content } = await generateEmailFromTemplate('payment_reminder', booking, bankInfo);
-                    mailOptions = {
-                        from: emailUser,
-                        to: booking.guest_email,
-                        subject: subject,
-                        html: content
-                    };
-                } catch (templateError) {
-                    console.error('⚠️ 無法從數據庫讀取匯款提醒模板，使用備用方案:', templateError.message);
-                    // 備用方案：使用 replaceTemplateVariables
-                    const { subject, content } = await replaceTemplateVariables(template, booking, bankInfo);
-                    mailOptions = {
-                        from: emailUser,
-                        to: booking.guest_email,
-                        subject: subject,
-                        html: content
-                    };
-                }
-                
-                let emailSent = false;
-                
-                // 使用統一函數發送郵件（自動選擇 Resend 或 Gmail）
-                try {
-                    await sendEmail(mailOptions);
-                    console.log(`✅ 已發送匯款提醒給 ${booking.guest_name} (${booking.booking_id})`);
-                    emailSent = true;
-                } catch (emailError) {
-                    console.error(`❌ 發送匯款提醒失敗 (${booking.booking_id}):`, emailError.message);
-                }
-                
-                // 只有成功發送才更新郵件狀態
-                if (emailSent) {
-                    try {
-                        await db.updateEmailStatus(booking.booking_id, 'payment_reminder', true);
-                    } catch (updateError) {
-                        console.error(`❌ 更新郵件狀態失敗 (${booking.booking_id}):`, updateError.message);
-                    }
-                }
-            } catch (error) {
-                console.error(`❌ 發送匯款提醒失敗 (${booking.booking_id}):`, error.message);
-            }
-        }
-    } catch (error) {
-        console.error('❌ 匯款提醒任務錯誤:', error);
-    }
-}
-
-// 生成取消通知郵件
-async function generateCancellationEmail(booking) {
-    const hotelInfoFooter = await getHotelInfoFooter();
-    const bookingDate = new Date(booking.created_at);
-    const checkInDate = new Date(booking.check_in_date);
-    const checkOutDate = new Date(booking.check_out_date);
-    
-    // 計算住宿天數
-    const msPerDay = 1000 * 60 * 60 * 24;
-    const nights = Math.max(1, Math.round((checkOutDate - checkInDate) / msPerDay));
-    
-    return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <style>
-            body { font-family: 'Microsoft JhengHei', Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #e74c3c; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ddd; }
-            .info-label { font-weight: 600; color: #666; }
-            .info-value { color: #333; }
-            .highlight { background: #fff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #e74c3c; }
-            .warning-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>⚠️ 訂房已自動取消</h1>
-                <p>很抱歉，您的訂房因超過保留期限已自動取消</p>
-            </div>
-            <div class="content">
-                <p>親愛的 ${booking.guest_name}，</p>
-                <p style="margin-bottom: 25px;">很抱歉通知您，由於超過匯款保留期限，您的訂房已自動取消。以下是取消的訂房資訊：</p>
-                
-                <div class="highlight">
-                    <div class="info-row">
-                        <span class="info-label">訂房編號</span>
-                        <span class="info-value"><strong>${booking.booking_id}</strong></span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">入住日期</span>
-                        <span class="info-value">${checkInDate.toLocaleDateString('zh-TW')}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">退房日期</span>
-                        <span class="info-value">${checkOutDate.toLocaleDateString('zh-TW')}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">住宿天數</span>
-                        <span class="info-value">${nights} 晚</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">房型</span>
-                        <span class="info-value">${booking.room_type || '-'}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">訂房日期</span>
-                        <span class="info-value">${bookingDate.toLocaleDateString('zh-TW')}</span>
-                    </div>
-                    <div class="info-row" style="border-bottom: none;">
-                        <span class="info-label">應付金額</span>
-                        <span class="info-value">NT$ ${(booking.final_amount || 0).toLocaleString()}</span>
-                    </div>
-                </div>
-
-                <div class="warning-box">
-                    <h3 style="color: #856404; margin-top: 0;">📌 取消原因</h3>
-                    <p style="color: #856404; margin: 10px 0;">
-                        此訂房因超過匯款保留期限，且未在期限內完成付款，系統已自動取消。
-                    </p>
-                </div>
-
-                <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 20px; margin: 20px 0;">
-                    <h3 style="color: #2e7d32; margin-top: 0;">💡 如需重新訂房</h3>
-                    <p style="color: #2e7d32; margin: 10px 0;">
-                        如果您仍希望預訂，歡迎重新進行訂房。如有任何疑問，請隨時與我們聯繫。
-                    </p>
-                </div>
-
-                ${hotelInfoFooter}
-            </div>
-        </div>
-    </body>
-    </html>
-    `;
-}
-
-// 自動取消過期保留訂房
-async function cancelExpiredReservations() {
-    try {
-        console.log('\n[定時任務] 開始檢查過期保留訂房...');
-        const bookings = await db.getBookingsExpiredReservation();
-        console.log(`找到 ${bookings.length} 筆保留狀態的訂房`);
-        
-        // 取得匯款提醒模板的保留天數（預設3天）
-        let daysReserved = 3;
-        try {
-            const paymentTemplate = await db.getEmailTemplateByKey('payment_reminder');
-            if (paymentTemplate && paymentTemplate.days_reserved) {
-                daysReserved = parseInt(paymentTemplate.days_reserved) || 3;
-            }
-        } catch (err) {
-            console.warn('取得匯款提醒模板失敗，使用預設值:', err.message);
-        }
-        
-        const now = new Date();
-        const emailUser = await getRequiredEmailUser('自動取消通知');
-        let cancelledCount = 0;
-        let emailSentCount = 0;
-        let emailFailedCount = 0;
-        
-        for (const booking of bookings) {
-            try {
-                if (!booking.check_in_date) {
-                    continue; // 沒有入住日期，跳過
-                }
-                
-                // 計算保留到期日期
-                const { deadline } = calculateDynamicPaymentDeadline(booking.created_at, booking.check_in_date, daysReserved);
-                
-                // 如果當前時間超過保留期限，自動取消
-                if (now > deadline) {
-                    // 取消訂房
-                    await db.cancelBooking(booking.booking_id);
-                    console.log(`✅ 已自動取消過期保留訂房: ${booking.booking_id} (${booking.guest_name})`);
-                    cancelledCount++;
-                    
-                    // 發送取消通知 Email
-                    try {
-                        // 使用數據庫模板發送取消通知郵件
-                        let mailOptions = null;
-                        try {
-                            const { subject, content } = await generateEmailFromTemplate('cancel_notification', booking);
-                            mailOptions = {
-                                from: emailUser,
-                                to: booking.guest_email,
-                                subject: subject,
-                                html: content
-                            };
-                        } catch (templateError) {
-                            console.error('⚠️ 無法從數據庫讀取取消通知模板，使用備用方案:', templateError.message);
-                            // 備用方案：使用原來的函數
-                            const cancellationEmail = await generateCancellationEmail(booking);
-                            mailOptions = {
-                                from: emailUser,
-                                to: booking.guest_email,
-                                subject: '【訂房取消通知】您的訂房已自動取消',
-                                html: cancellationEmail
-                            };
-                        }
-                        
-                        let emailSent = false;
-                        
-                        // 使用統一函數發送郵件（自動選擇 Resend 或 Gmail）
-                        try {
-                            await sendEmail(mailOptions);
-                            console.log(`✅ 已發送取消通知給 ${booking.guest_name} (${booking.booking_id})`);
-                            emailSent = true;
-                            emailSentCount++;
-                        } catch (emailError) {
-                            console.error(`❌ 發送取消通知失敗 (${booking.booking_id}):`, emailError.message);
-                            emailFailedCount++;
-                        }
-
-                        // 只有成功發送才更新郵件狀態（追加「取消信」）
-                        if (emailSent) {
-                            try {
-                                await db.updateEmailStatus(booking.booking_id, 'cancel_notification', true);
-                            } catch (updateError) {
-                                console.error(`❌ 更新取消信郵件狀態失敗 (${booking.booking_id}):`, updateError.message);
-                            }
-                        }
-                    } catch (emailError) {
-                        console.error(`❌ 發送取消通知時發生錯誤 (${booking.booking_id}):`, emailError.message);
-                        emailFailedCount++;
-                    }
-                }
-            } catch (error) {
-                console.error(`❌ 取消過期保留訂房失敗 (${booking.booking_id}):`, error.message);
-            }
-        }
-        
-        console.log(`✅ 共取消 ${cancelledCount} 筆過期保留訂房`);
-        console.log(`📧 成功發送 ${emailSentCount} 封取消通知郵件`);
-        if (emailFailedCount > 0) {
-            console.warn(`⚠️  有 ${emailFailedCount} 封取消通知郵件發送失敗`);
-        }
-    } catch (error) {
-        console.error('❌ 自動取消過期保留訂房任務錯誤:', error);
-    }
-}
-
-// 發送入住提醒郵件
-async function sendCheckinReminderEmails() {
-    try {
-        const now = new Date();
-        console.log(`\n[定時任務] 開始檢查入住提醒... (${now.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })})`);
-        
-        const template = await db.getEmailTemplateByKey('checkin_reminder');
-        if (!template) {
-            console.log('❌ 找不到入住提醒模板');
-            return;
-        }
-        if (!template.is_enabled) {
-            console.log('⚠️ 入住提醒模板未啟用，跳過發送');
-            return;
-        }
-        
-        const daysBeforeCheckin = parseInt(template.days_before_checkin) || 1;
-        const sendHour = parseInt(template.send_hour_checkin) || 9;
-        
-        console.log(`✅ 入住提醒模板已啟用 (days_before_checkin: ${daysBeforeCheckin}, send_hour_checkin: ${sendHour})`);
-        
-        // 檢查當前時間是否符合發送時間
-        const currentHour = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', hour12: false });
-        const currentHourNum = parseInt(currentHour);
-        if (currentHourNum !== sendHour) {
-            console.log(`⏰ 當前時間 ${currentHourNum}:00 不符合發送時間 ${sendHour}:00，跳過`);
-            return;
-        }
-        
-        const bookings = await db.getBookingsForCheckinReminder(daysBeforeCheckin);
-        console.log(`找到 ${bookings.length} 筆需要發送入住提醒的訂房`);
-        
-        const emailUser = await getRequiredEmailUser('入住提醒排程');
-        
-        // 取得民宿資訊（未設定時使用預設值）
-        const hotelSettings = await getHotelSettingsWithFallback();
-        
-        for (const booking of bookings) {
-            try {
-                // 檢查模板內容是否存在
-                const templateContent = template.content || '';
-                const templateSubject = template.subject || '';
-                
-                if (!templateContent || templateContent.trim() === '') {
-                    console.error(`❌ 入住提醒模板內容為空，跳過發送 (${booking.booking_id})`);
-                    continue;
-                }
-                if (!templateSubject || templateSubject.trim() === '') {
-                    console.error(`❌ 入住提醒模板主題為空，跳過發送 (${booking.booking_id})`);
-                    continue;
-                }
-                
-                console.log(`📧 準備發送入住提醒郵件 (${booking.booking_id})，模板內容長度: ${templateContent.length} 字元`);
-                console.log(`📋 使用資料庫中保存的完整模板內容`);
-                
-                // 傳遞旅館資訊作為額外資料
-                const additionalData = {
-                    '{{hotelEmail}}': hotelSettings.hotelEmail,
-                    '{{hotelPhone}}': hotelSettings.hotelPhone
-                };
-                
-                // 使用數據庫模板生成郵件（與訂房確認邏輯一致）
-                let mailOptions = null;
-                try {
-                    const { subject, content } = await generateEmailFromTemplate('checkin_reminder', booking, null, additionalData);
-                    mailOptions = {
-                        from: emailUser,
-                        to: booking.guest_email,
-                        subject: subject,
-                        html: content
-                    };
-                } catch (templateError) {
-                    console.error('⚠️ 無法從數據庫讀取入住提醒模板，使用備用方案:', templateError.message);
-                    // 備用方案：使用 replaceTemplateVariables
-                    const { subject, content } = await replaceTemplateVariables(template, booking, null, additionalData);
-                    mailOptions = {
-                        from: emailUser,
-                        to: booking.guest_email,
-                        subject: subject,
-                        html: content
-                    };
-                }
-                
-                // 檢查生成的郵件內容
-                if (!mailOptions.html || mailOptions.html.trim() === '') {
-                    console.error(`❌ 生成的郵件內容為空，跳過發送 (${booking.booking_id})`);
-                    continue;
-                }
-                
-                let emailSent = false;
-                
-                // 使用統一函數發送郵件（自動選擇 Resend 或 Gmail）
-                try {
-                    await sendEmail(mailOptions);
-                    console.log(`✅ 已發送入住提醒給 ${booking.guest_name} (${booking.booking_id})`);
-                    emailSent = true;
-                } catch (emailError) {
-                    console.error(`❌ 發送入住提醒失敗 (${booking.booking_id}):`, emailError.message);
-                }
-                
-                // 只有成功發送才更新郵件狀態
-                if (emailSent) {
-                    try {
-                        await db.updateEmailStatus(booking.booking_id, 'checkin_reminder', true);
-                    } catch (updateError) {
-                        console.error(`❌ 更新郵件狀態失敗 (${booking.booking_id}):`, updateError.message);
-                    }
-                }
-            } catch (error) {
-                console.error(`❌ 發送入住提醒失敗 (${booking.booking_id}):`, error.message);
-            }
-        }
-    } catch (error) {
-        console.error('❌ 入住提醒任務錯誤:', error);
-    }
-}
-
-// 發送回訪信
-async function sendFeedbackRequestEmails() {
-    try {
-        const now = new Date();
-        console.log(`\n[定時任務] 開始檢查回訪信... (${now.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })})`);
-        
-        // 先取得模板以取得天數和發送時間
-        const template = await db.getEmailTemplateByKey('feedback_request');
-        if (!template) {
-            console.log('❌ 找不到回訪信模板');
-            return;
-        }
-        if (!template.is_enabled) {
-            console.log('⚠️ 回訪信模板未啟用，跳過發送');
-            return;
-        }
-        
-        const daysAfterCheckout = parseInt(template.days_after_checkout) || 1;
-        const sendHour = parseInt(template.send_hour_feedback) || 10;
-        
-        console.log(`✅ 回訪信模板已啟用 (days_after_checkout: ${daysAfterCheckout}, send_hour_feedback: ${sendHour})`);
-        
-        // 檢查當前時間是否符合發送時間
-        const currentHour = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', hour12: false });
-        const currentHourNum = parseInt(currentHour);
-        if (currentHourNum !== sendHour) {
-            console.log(`⏰ 當前時間 ${currentHourNum}:00 不符合發送時間 ${sendHour}:00，跳過`);
-            return;
-        }
-        
-        const bookings = await db.getBookingsForFeedbackRequest(daysAfterCheckout);
-        console.log(`找到 ${bookings.length} 筆需要發送回訪信的訂房`);
-        
-        const emailUser = await getRequiredEmailUser('回訪信排程');
-        
-        // 取得民宿資訊（未設定時使用預設值）
-        const hotelSettings = await getHotelSettingsWithFallback();
-        
-        for (const booking of bookings) {
-            try {
-                // 傳遞旅館資訊作為額外資料
-                const additionalData = {
-                    '{{hotelEmail}}': hotelSettings.hotelEmail,
-                    '{{hotelPhone}}': hotelSettings.hotelPhone
-                };
-                
-                // 使用數據庫模板生成郵件（與訂房確認邏輯一致）
-                let mailOptions = null;
-                try {
-                    const { subject, content } = await generateEmailFromTemplate('feedback_request', booking, null, additionalData);
-                    mailOptions = {
-                        from: emailUser,
-                        to: booking.guest_email,
-                        subject: subject,
-                        html: content
-                    };
-                } catch (templateError) {
-                    console.error('⚠️ 無法從數據庫讀取感謝入住模板，使用備用方案:', templateError.message);
-                    // 備用方案：使用 replaceTemplateVariables
-                    const { subject, content } = await replaceTemplateVariables(template, booking, null, additionalData);
-                    mailOptions = {
-                        from: emailUser,
-                        to: booking.guest_email,
-                        subject: subject,
-                        html: content
-                    };
-                }
-                
-                let emailSent = false;
-                
-                // 使用統一函數發送郵件（自動選擇 Resend 或 Gmail）
-                try {
-                    await sendEmail(mailOptions);
-                    console.log(`✅ 已發送回訪信給 ${booking.guest_name} (${booking.booking_id})`);
-                    emailSent = true;
-                } catch (emailError) {
-                    console.error(`❌ 發送回訪信失敗 (${booking.booking_id}):`, emailError.message);
-                }
-                
-                // 只有成功發送才更新郵件狀態
-                if (emailSent) {
-                    try {
-                        await db.updateEmailStatus(booking.booking_id, 'feedback_request', true);
-                    } catch (updateError) {
-                        console.error(`❌ 更新郵件狀態失敗 (${booking.booking_id}):`, updateError.message);
-                    }
-                }
-            } catch (error) {
-                console.error(`❌ 發送回訪信失敗 (${booking.booking_id}):`, error.message);
-            }
-        }
-    } catch (error) {
-        console.error('❌ 回訪信任務錯誤:', error);
-    }
-}
-
-function isAdminLogCleanupEnabled() {
-    const rawValue = (process.env.ADMIN_LOG_AUTO_CLEANUP_ENABLED || 'true').toLowerCase();
-    return !['false', '0', 'no', 'off'].includes(rawValue);
-}
-
-async function runAdminLogCleanup(trigger) {
-    try {
-        const result = await db.cleanupAdminLogs();
-        console.log(
-            `✅ 操作日誌清理完成 [${trigger}] ` +
-            `(保留 ${result.retentionDays} 天, 候選 ${result.totalCandidates} 筆, 已刪除 ${result.deletedCount} 筆, 批次 ${result.runCount})`
-        );
-
-        if (result.hasRemainingCandidates) {
-            console.log('ℹ️  仍有舊日誌待清理，將於下次排程繼續清理');
-        }
-    } catch (error) {
-        console.error(`❌ 操作日誌清理失敗 [${trigger}]:`, error.message);
-    }
-}
-
-// 啟動伺服器
-async function startServer() {
-    try {
-        console.log('📋 開始啟動伺服器...');
-        console.log('📋 環境變數檢查:', {
-            PORT: process.env.PORT || '未設定（將使用 3000）',
-            NODE_ENV: process.env.NODE_ENV || '未設定',
-            DATABASE_URL: process.env.DATABASE_URL ? '已設定' : '未設定',
-            RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT || '未設定'
-        });
-        
-        // 初始化資料庫
-        console.log('💾 初始化資料庫...');
-        await db.initDatabase();
-        console.log('✅ 資料庫初始化完成');
-
-        if (isAdminLogCleanupEnabled()) {
-            // 避免影響服務啟動速度，啟動後延遲執行一次清理
-            setTimeout(() => {
-                runAdminLogCleanup('startup').catch((error) => {
-                    console.error('❌ 啟動後操作日誌清理失敗:', error.message);
-                });
-            }, 5000);
-        } else {
-            console.log('ℹ️  已停用操作日誌自動清理（ADMIN_LOG_AUTO_CLEANUP_ENABLED=false）');
-        }
-        
-        // 初始化郵件服務（優先使用資料庫設定）
-        console.log('📧 初始化郵件服務...');
-        await initEmailService();
-        console.log('✅ 郵件服務初始化完成');
-        
-        // 啟動伺服器
-        // Railway 需要監聽 0.0.0.0 才能接受外部請求
-        app.listen(PORT, '0.0.0.0', () => {
-            console.log('\n========================================');
-            console.log('🚀 訂房系統伺服器已啟動');
-            console.log(`📍 端口: ${PORT}`);
-            console.log(`🌐 監聽地址: 0.0.0.0:${PORT}`);
-            console.log(`📧 Email: ${configuredSenderEmail || '未設定（請至後台設定 email_user）'}`);
-            console.log(`💾 資料庫: PostgreSQL`);
-            console.log(`📁 備份目錄: ${process.env.BACKUP_DIR || './backups'}`);
-            console.log(`🖼️ 圖片儲存: ${storage.isCloudStorage ? 'Cloudflare R2' : (process.env.UPLOADS_DIR || './uploads')}`);
-            console.log('========================================\n');
-            console.log('等待請求中...\n');
-            
-            // 啟動定時任務（使用台灣時區 Asia/Taipei）
-            const timezone = 'Asia/Taipei';
-            
-            // 每天上午 9:00 執行匯款提醒檢查（台灣時間）
-            // 匯款提醒定時任務 - 每小時檢查一次，在設定的時間發送
-            cron.schedule('0 * * * *', sendPaymentReminderEmails, {
-                timezone: timezone
-            });
-            console.log('✅ 匯款提醒定時任務已啟動（每小時檢查，根據模板設定時間發送）');
-            
-            // 入住提醒定時任務 - 每小時檢查一次，在設定的時間發送
-            cron.schedule('0 * * * *', sendCheckinReminderEmails, {
-                timezone: timezone
-            });
-            console.log('✅ 入住提醒定時任務已啟動（每小時檢查，根據模板設定時間發送）');
-            
-            // 每天上午 11:00 執行回訪信檢查（台灣時間）
-            // 回訪信定時任務 - 每小時檢查一次，在設定的時間發送
-            cron.schedule('0 * * * *', sendFeedbackRequestEmails, {
-                timezone: timezone
-            });
-            console.log('✅ 回訪信定時任務已啟動（每小時檢查，根據模板設定時間發送）');
-            
-            // 每小時的 30 分執行自動取消過期保留訂房
-            cron.schedule('30 * * * *', cancelExpiredReservations, {
-                timezone: timezone
-            });
-            console.log('✅ 自動取消過期保留訂房定時任務已啟動（每小時 30 分檢查）');
-            
-            // 每天凌晨 2:00 執行資料庫備份（台灣時間）
-            cron.schedule('0 2 * * *', async () => {
-                try {
-                    await backup.performBackup();
-                    // 備份完成後清理舊備份
-                    await backup.cleanupOldBackups(30);
-                } catch (error) {
-                    console.error('❌ 備份任務失敗:', error.message);
-                }
-            }, {
-                timezone: timezone
-            });
-            console.log('✅ 資料庫備份定時任務已啟動（每天 02:00 台灣時間，保留 30 天）');
-
-            if (isAdminLogCleanupEnabled()) {
-                // 每天凌晨 03:15 清理一次過舊操作日誌（避開 02:00 備份時段）
-                cron.schedule('15 3 * * *', async () => {
-                    await runAdminLogCleanup('daily-cron');
-                }, {
-                    timezone: timezone
-                });
-                console.log('✅ 操作日誌自動清理任務已啟動（每天 03:15 台灣時間）');
-            }
-        });
-    } catch (error) {
-        console.error('❌ 伺服器啟動失敗:', error);
-        process.exit(1);
-    }
-}
-
 // 靜態檔案服務 - uploads 目錄（保留以支援尚未遷移到 R2 的舊圖片）
 app.use('/uploads', express.static(uploadsDir, {
     maxAge: '7d',
@@ -11549,7 +8949,30 @@ app.use(express.static(__dirname, {
 app.use(errorHandler);
 
 // 啟動應用程式
-startServer().catch((error) => {
+startServer({
+    app,
+    port: PORT,
+    processEnv: process.env,
+    db,
+    initEmailService: async () => {
+        await initEmailServiceBootstrap({
+            db,
+            processEnv: process.env,
+            getRequiredEmailUser,
+            Resend,
+            nodemailer,
+            emailRuntime,
+            resetEmailRuntime
+        });
+    },
+    getConfiguredSenderEmail: () => getConfiguredSenderEmail(emailRuntime),
+    storage,
+    registerScheduledJobs,
+    cron,
+    backup,
+    bookingJobs: bookingNotificationJobs,
+    adminLogCleanupJobs
+}).catch((error) => {
     console.error('❌ 應用程式啟動失敗:', error.message);
     console.error('錯誤詳情:', error.stack);
     // 延遲退出，確保 Railway 有時間捕捉 stderr 日誌

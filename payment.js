@@ -6,9 +6,9 @@ const querystring = require('querystring');
 const ECPAY_CONFIG = {
     // 測試環境
     test: {
-        MerchantID: process.env.ECPAY_MERCHANT_ID || '2000132',
-        HashKey: process.env.ECPAY_HASH_KEY || '5294y06JbISpM5x9',
-        HashIV: process.env.ECPAY_HASH_IV || 'v77hoKGq4kWxNNIS',
+        MerchantID: process.env.ECPAY_MERCHANT_ID || '',
+        HashKey: process.env.ECPAY_HASH_KEY || '',
+        HashIV: process.env.ECPAY_HASH_IV || '',
         ActionUrl: 'https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5'
     },
     // 正式環境（上線時使用）
