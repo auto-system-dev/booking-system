@@ -662,6 +662,8 @@ app.use(sanitizeInput);
 // 優先使用資料庫設定，其次使用環境變數
 
 const emailRuntime = createEmailRuntime();
+const hotelConfigService = createHotelConfigService({ db });
+const getHotelSettingsWithFallback = hotelConfigService.getHotelSettingsWithFallback;
 
 const emailDeliveryService = createEmailDeliveryService({
     db,
@@ -676,8 +678,6 @@ const emailConfigService = createEmailConfigService({
     processEnv: process.env
 });
 const getRequiredEmailUser = emailConfigService.getRequiredEmailUser;
-const hotelConfigService = createHotelConfigService({ db });
-const getHotelSettingsWithFallback = hotelConfigService.getHotelSettingsWithFallback;
 
 // 房型名稱對照
 const roomTypes = {
