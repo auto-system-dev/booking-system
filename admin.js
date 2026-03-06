@@ -53,7 +53,7 @@ if (typeof window !== 'undefined') {
             
             let response;
             try {
-                response = await fetch('/api/admin/login', {
+                response = await adminFetch('/api/admin/login', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -233,7 +233,7 @@ window.testLogin = async function(username = 'admin', password = 'admin123') {
     console.log('🧪 測試帳號:', username);
     
     try {
-        const response = await fetch('/api/admin/login', {
+        const response = await adminFetch('/api/admin/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -507,7 +507,7 @@ async function handleLogout() {
     }
     
     try {
-        const response = await fetch('/api/admin/logout', {
+        const response = await adminFetch('/api/admin/logout', {
             method: 'POST',
             credentials: 'include'
         });
@@ -1195,13 +1195,13 @@ async function loadBookingCalendar() {
         const endDateStr = formatDateStr(endDate);
         
         // 獲取房型資料 (渲染時需要顯示房型名稱)
-        const roomTypesResponse = await fetch('/api/room-types');
+        const roomTypesResponse = await adminFetch('/api/room-types');
         const roomTypesResult = await roomTypesResponse.json();
         const roomTypes = roomTypesResult.success ? roomTypesResult.data : [];
         
         // 獲取訂房資料
         const calendarUrl = `${window.location.origin}/api/bookings?startDate=${encodeURIComponent(startDateStr)}&endDate=${encodeURIComponent(endDateStr)}`;
-        const bookingsResponse = await fetch(calendarUrl);
+        const bookingsResponse = await adminFetch(calendarUrl);
         if (bookingsResponse.status === 401) {
             console.warn('載入訂房日曆收到 401，登入已過期');
             showLoginPage();
@@ -1744,7 +1744,7 @@ function filterCustomers() {
 // 查看客戶詳情
 async function viewCustomerDetails(email) {
     try {
-        const response = await fetch(`/api/customers/${encodeURIComponent(email)}`);
+        const response = await adminFetch(`/api/customers/${encodeURIComponent(email)}`);
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -2034,7 +2034,7 @@ function updateSortIcon() {
 // 查看訂房詳情
 async function viewBookingDetail(bookingId) {
     try {
-        const response = await fetch(`/api/bookings/${bookingId}`);
+        const response = await adminFetch(`/api/bookings/${bookingId}`);
         const result = await response.json();
         
         if (result.success) {
@@ -2194,7 +2194,7 @@ async function openQuickBookingModal(roomTypeName, dateStr) {
     let roomTypeHtml = '';
     if (!roomTypeName) {
         try {
-            const response = await fetch('/api/room-types');
+            const response = await adminFetch('/api/room-types');
             const result = await response.json();
             const roomTypes = result.success ? result.data : [];
             roomTypeHtml = `
@@ -2706,7 +2706,7 @@ function getEmailStatusDisplay(emailSent) {
 async function editBooking(bookingId) {
     try {
         console.log('載入訂房資料:', bookingId);
-        const response = await fetch(`/api/bookings/${bookingId}`);
+        const response = await adminFetch(`/api/bookings/${bookingId}`);
         const result = await response.json();
         
         if (result.success) {
@@ -2729,9 +2729,7 @@ let depositPercentage = 30;
 async function loadRoomPrices() {
     try {
         // 先檢查是否已登入，避免未登入時發送請求導致 401 錯誤
-        const authCheckResponse = await fetch('/api/admin/check-auth', {
-            credentials: 'include'
-        });
+        const authCheckResponse = await adminFetch('/api/admin/check-auth');
         
         if (!authCheckResponse.ok) {
             // 未登入，不載入房型價格（這是正常的，因為用戶還沒登入）
@@ -3137,7 +3135,7 @@ async function saveBookingEdit(event, bookingId) {
     });
     
     try {
-        const response = await fetch(`/api/bookings/${bookingId}`, {
+        const response = await adminFetch(`/api/bookings/${bookingId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -3181,7 +3179,7 @@ async function cancelBooking(bookingId) {
     console.log('取消訂房:', bookingId);
     
     try {
-        const response = await fetch(`/api/bookings/${bookingId}/cancel`, {
+        const response = await adminFetch(`/api/bookings/${bookingId}/cancel`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -3212,7 +3210,7 @@ async function deleteBooking(bookingId) {
     console.log('刪除訂房:', bookingId);
     
     try {
-        const response = await fetch(`/api/bookings/${bookingId}`, {
+        const response = await adminFetch(`/api/bookings/${bookingId}`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
@@ -4769,7 +4767,7 @@ function switchSettingsTab(tab) {
 
 async function loadSettings() {
     try {
-        const response = await fetch('/api/settings');
+        const response = await adminFetch('/api/settings');
         const result = await response.json();
         
         if (result.success) {
@@ -5143,7 +5141,7 @@ async function loadWeekdaySettingsFromServer(retryCount = 0) {
         }
         
         console.log('🔄 開始載入平日/假日設定...');
-        const response = await fetch('/api/settings');
+        const response = await adminFetch('/api/settings');
         const result = await response.json();
         
         console.log('📥 收到設定資料:', result);
@@ -5204,7 +5202,7 @@ async function saveWeekdaySettings() {
 async function loadEmailTemplates() {
     try {
         console.log('開始載入郵件模板...');
-        const response = await fetch('/api/email-templates');
+        const response = await adminFetch('/api/email-templates');
         console.log('API 回應狀態:', response.status);
         
         const result = await response.json();
@@ -5309,7 +5307,7 @@ window.resetCurrentTemplateToDefault = async function resetCurrentTemplateToDefa
     }
     
     try {
-        const response = await fetch('/api/email-templates/reset-to-default', {
+        const response = await adminFetch('/api/email-templates/reset-to-default', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -5343,7 +5341,7 @@ async function clearCheckinBlocks() {
     }
     
     try {
-        const response = await fetch('/api/email-templates/checkin_reminder/clear-blocks', {
+        const response = await adminFetch('/api/email-templates/checkin_reminder/clear-blocks', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -5669,7 +5667,7 @@ window.toggleEmailPreview = function toggleEmailPreview() {
 async function showEmailTemplateModal(templateKey) {
     try {
         console.log('📧 載入郵件模板:', templateKey);
-        const response = await fetch(`/api/email-templates/${templateKey}`);
+        const response = await adminFetch(`/api/email-templates/${templateKey}`);
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -6015,7 +6013,7 @@ async function showEmailTemplateModal(templateKey) {
                             } else {
                                 // 從 API 獲取模板
                                 try {
-                                    const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
+                                    const templateResponse = await adminFetch(`/api/email-templates/${templateKey}`);
                                     const templateResult = await templateResponse.json();
                                     if (templateResult.success && templateResult.data) {
                                         const templateContent = templateResult.data.content;
@@ -6042,7 +6040,7 @@ async function showEmailTemplateModal(templateKey) {
                         }
                         
                         // 發送測試郵件
-                        const response = await fetch(`/api/email-templates/${templateKey}/test`, {
+                        const response = await adminFetch(`/api/email-templates/${templateKey}/test`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -6455,7 +6453,7 @@ async function saveEmailTemplate(event) {
         if (content && !content.includes('<!DOCTYPE html>') && !content.includes('<html')) {
             console.log('⚠️ HTML 模式：textarea 內容不是完整 HTML，從資料庫讀取模板結構');
             try {
-                const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
+                const templateResponse = await adminFetch(`/api/email-templates/${templateKey}`);
                 const templateResult = await templateResponse.json();
                 if (templateResult.success && templateResult.data && templateResult.data.content) {
                     const templateContent = templateResult.data.content;
@@ -6489,7 +6487,7 @@ async function saveEmailTemplate(event) {
         if (content && !content.includes('<!DOCTYPE html>') && !content.includes('<html')) {
             console.log('⚠️ textarea 內容不是完整 HTML，從資料庫讀取模板結構');
             try {
-                const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
+                const templateResponse = await adminFetch(`/api/email-templates/${templateKey}`);
                 const templateResult = await templateResponse.json();
                 if (templateResult.success && templateResult.data && templateResult.data.content) {
                     const templateContent = templateResult.data.content;
@@ -6518,7 +6516,7 @@ async function saveEmailTemplate(event) {
             
             // 從資料庫讀取模板結構
             try {
-                const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
+                const templateResponse = await adminFetch(`/api/email-templates/${templateKey}`);
                 const templateResult = await templateResponse.json();
                 if (templateResult.success && templateResult.data && templateResult.data.content) {
                     const templateContent = templateResult.data.content;
@@ -6546,7 +6544,7 @@ async function saveEmailTemplate(event) {
             const quillHtml = quillEditor.root.innerHTML;
             // 從資料庫讀取模板結構
             try {
-                const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
+                const templateResponse = await adminFetch(`/api/email-templates/${templateKey}`);
                 const templateResult = await templateResponse.json();
                 if (templateResult.success && templateResult.data && templateResult.data.content) {
                     const templateContent = templateResult.data.content;
@@ -6673,7 +6671,7 @@ async function saveEmailTemplate(event) {
         });
         console.log('完整資料物件:', data);
         
-        const response = await fetch(`/api/email-templates/${templateKey}`, {
+        const response = await adminFetch(`/api/email-templates/${templateKey}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -6759,7 +6757,7 @@ async function sendTestEmail() {
             } else {
                 // 如果原始內容不是完整 HTML，從資料庫讀取模板結構
                 try {
-                    const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
+                    const templateResponse = await adminFetch(`/api/email-templates/${templateKey}`);
                     const templateResult = await templateResponse.json();
                     if (templateResult.success && templateResult.data && templateResult.data.content) {
                         const templateContent = templateResult.data.content;
@@ -6815,7 +6813,7 @@ async function sendTestEmail() {
             note: '不發送 content，讓後端直接從資料庫讀取完整的模板內容'
         });
         
-        const response = await fetch(`/api/email-templates/${templateKey}/test`, {
+        const response = await adminFetch(`/api/email-templates/${templateKey}/test`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -6921,7 +6919,7 @@ async function sendTestEmail() {
             } else {
                 // 如果沒有原始內容，使用資料庫中的內容
                 try {
-                    const templateResponse = await fetch(`/api/email-templates/${templateKey}`);
+                    const templateResponse = await adminFetch(`/api/email-templates/${templateKey}`);
                     const templateResult = await templateResponse.json();
                     if (templateResult.success && templateResult.data) {
                         const templateContent = templateResult.data.content;
@@ -6976,7 +6974,7 @@ ${quillHtml}
         }
         
         // 使用編輯器中的內容（用戶修改後的內容），但保留完整的 HTML 結構
-        const response = await fetch(`/api/email-templates/${templateKey}/test`, {
+        const response = await adminFetch(`/api/email-templates/${templateKey}/test`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -7030,7 +7028,7 @@ async function restoreEmailTemplate() {
     }
     
     try {
-        const response = await fetch(`/api/email-templates/${templateKey}/default`, {
+        const response = await adminFetch(`/api/email-templates/${templateKey}/default`, {
             method: 'GET',
             credentials: 'include'
         });
@@ -7242,7 +7240,7 @@ async function resetEmailTemplateToDefault(templateKey, templateName) {
     }
     
     try {
-        const response = await fetch('/api/email-templates/reset-to-default', {
+        const response = await adminFetch('/api/email-templates/reset-to-default', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -10034,7 +10032,7 @@ const landingFieldMap = {
 // 載入銷售頁設定
 async function loadLandingSettings() {
     try {
-        const response = await fetch('/api/landing-settings');
+        const response = await adminFetch('/api/landing-settings');
         const result = await response.json();
 
         if (result.success) {
