@@ -589,6 +589,17 @@ function exposeFunctionsToWindow() {
 }
 
 // 統一的 API 請求函數（自動包含 credentials 和 CSRF Token）
+let lastUnauthorizedHandledAt = 0;
+
+function handleUnauthorizedSession() {
+    const now = Date.now();
+    if (now - lastUnauthorizedHandledAt > 3000) {
+        console.warn('⚠️ 偵測到 401，登入已過期，切回登入頁');
+        lastUnauthorizedHandledAt = now;
+    }
+    showLoginPage();
+}
+
 async function adminFetch(url, options = {}) {
     // 取得 CSRF Token
     const csrfToken = await getCsrfToken();
@@ -626,9 +637,9 @@ async function adminFetch(url, options = {}) {
     try {
         const response = await fetch(url, mergedOptions);
         
-        // 如果收到 401 未授權錯誤，靜默處理（不拋出錯誤）
+        // 全站統一攔截 401：直接切回登入頁，避免各頁重複處理
         if (response.status === 401) {
-            // 返回 response，讓調用者自行處理
+            handleUnauthorizedSession();
             return response;
         }
         
@@ -2580,6 +2591,10 @@ function formatDateTime(dateString) {
 
 // 顯示錯誤訊息
 function showError(message) {
+    if (typeof message === 'string' && (message.includes('HTTP 401') || message.includes(' 401:') || message.includes('status of 401'))) {
+        console.warn('ℹ️ 已攔截 401 錯誤提示，改由登入頁流程處理');
+        return;
+    }
     alert(message);
 }
 
