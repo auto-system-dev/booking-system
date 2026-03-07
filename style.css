@@ -447,10 +447,12 @@ body {
     display: flex;
     gap: 10px;
     align-items: stretch;
+    width: 100%;
 }
 
 .promo-code-input-wrapper input {
     flex: 1;
+    min-width: 0;
     padding: 12px 16px;
     border: 2px solid #e0e0e0;
     border-radius: 12px;
@@ -476,6 +478,7 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .btn-apply-promo:hover {
@@ -502,6 +505,22 @@ body {
     border-radius: 8px;
     font-size: 14px;
     font-weight: 600;
+}
+
+@media (max-width: 480px) {
+    .promo-code-input-wrapper {
+        gap: 8px;
+    }
+
+    .promo-code-input-wrapper input {
+        padding: 10px 12px;
+        font-size: 15px;
+    }
+
+    .btn-apply-promo {
+        padding: 10px 14px;
+        font-size: 15px;
+    }
 }
 
 /* 支付選項 */
