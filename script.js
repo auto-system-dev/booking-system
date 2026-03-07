@@ -776,6 +776,16 @@ function updateDepositLabel() {
     }
 }
 
+function setBookingSubmitButtonState(disabled, text = null) {
+    const submitBtn = document.querySelector('#bookingForm .submit-btn');
+    if (!submitBtn) return;
+
+    submitBtn.disabled = !!disabled;
+    if (text) {
+        submitBtn.innerHTML = `<span>${text}</span>`;
+    }
+}
+
 // 根據設定更新付款方式顯示
 function updatePaymentMethods(settings) {
     const enableTransfer = settings.enable_transfer === '1' || settings.enable_transfer === 'true';
@@ -786,6 +796,8 @@ function updatePaymentMethods(settings) {
     const cardOption = document.querySelector('input[name="paymentMethod"][value="card"]');
     const transferLabel = transferOption ? transferOption.closest('label') : null;
     const cardLabel = cardOption ? cardOption.closest('label') : null;
+    const paymentMethodGroup = document.querySelector('.payment-method-group');
+    const paymentMethodRadioGroup = paymentMethodGroup ? paymentMethodGroup.querySelector('.radio-group') : null;
     
     // 顯示/隱藏匯款轉帳選項
     if (transferLabel) {
@@ -811,9 +823,43 @@ function updatePaymentMethods(settings) {
     
     // 如果兩種付款方式都被停用，顯示提示
     if (!enableTransfer && !enableCard) {
-        const paymentMethodGroup = document.querySelector('.payment-method-group');
         if (paymentMethodGroup) {
-            paymentMethodGroup.innerHTML = '<p style="color: #e74c3c; padding: 10px;">目前沒有可用的付款方式，請聯繫客服</p>';
+            if (paymentMethodRadioGroup) {
+                paymentMethodRadioGroup.style.display = 'none';
+            }
+
+            let unavailableHint = paymentMethodGroup.querySelector('.payment-method-unavailable-hint');
+            if (!unavailableHint) {
+                unavailableHint = document.createElement('p');
+                unavailableHint.className = 'payment-method-unavailable-hint';
+                unavailableHint.style.color = '#e74c3c';
+                unavailableHint.style.padding = '10px 0';
+                unavailableHint.textContent = '目前沒有可用的付款方式，請聯繫客服';
+                paymentMethodGroup.appendChild(unavailableHint);
+            }
+
+            if (transferOption) transferOption.checked = false;
+            if (cardOption) cardOption.checked = false;
+        }
+        setBookingSubmitButtonState(true, '目前暫停受理');
+    } else {
+        if (paymentMethodRadioGroup) {
+            paymentMethodRadioGroup.style.display = '';
+        }
+        if (paymentMethodGroup) {
+            const unavailableHint = paymentMethodGroup.querySelector('.payment-method-unavailable-hint');
+            if (unavailableHint) unavailableHint.remove();
+        }
+        setBookingSubmitButtonState(false, '確認訂房');
+
+        // 確保至少有一種可用付款方式被選中
+        const selectedPaymentMethod = document.querySelector('input[name="paymentMethod"]:checked');
+        if (!selectedPaymentMethod) {
+            if (enableTransfer && transferOption) {
+                transferOption.checked = true;
+            } else if (enableCard && cardOption) {
+                cardOption.checked = true;
+            }
         }
     }
     
@@ -1250,8 +1296,23 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     }
     clearFieldError('guestEmail');
     
-    // 6. 付款方式驗證：如果入住日期為今天，不允許選擇匯款
+    // 6. 付款方式驗證：必須至少有一種可用付款方式
     const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked');
+    if (!paymentMethod) {
+        const paymentMethodGroup = document.querySelector('.payment-method-group');
+        const hasPaymentMethodInputs = document.querySelectorAll('input[name="paymentMethod"]').length > 0;
+        if (hasPaymentMethodInputs) {
+            alert('目前無可用付款方式，請聯繫客服協助下單');
+        } else {
+            alert('付款方式載入中，請稍後再試');
+        }
+        if (paymentMethodGroup) {
+            paymentMethodGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return;
+    }
+
+    // 7. 付款方式驗證：如果入住日期為今天，不允許選擇匯款
     if (paymentMethod && paymentMethod.value === 'transfer') {
         const checkInDate = new Date(checkIn);
         checkInDate.setHours(0, 0, 0, 0);
@@ -1301,7 +1362,7 @@ document.getElementById('bookingForm').addEventListener('submit', async function
         adults,
         children,
         paymentAmount: document.querySelector('input[name="paymentAmount"]:checked').value,
-        paymentMethod: document.querySelector('input[name="paymentMethod"]:checked').value
+        paymentMethod: paymentMethod.value
     };
     
     // 計算價格資訊（考慮假日）
