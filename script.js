@@ -116,13 +116,24 @@ async function initLIFF() {
             await liff.init({ liffId: liffId });
             console.log('✅ LIFF 初始化成功');
 
-            // 取得 LINE User Profile
-            const profile = await liff.getProfile();
-            lineUserId = profile.userId;
-            console.log('✅ 取得 LINE User ID:', lineUserId?.substring(0, 10) + '...');
+            // 未登入 LINE 時，跳過 user profile 取得，避免誤導性錯誤訊息
+            if (typeof liff.isLoggedIn === 'function' && !liff.isLoggedIn()) {
+                console.log('ℹ️ LIFF 已初始化，但目前未登入 LINE，略過 User ID 讀取');
+            } else {
+                try {
+                    const profile = await liff.getProfile();
+                    lineUserId = profile.userId;
+                    console.log('✅ 取得 LINE User ID:', lineUserId?.substring(0, 10) + '...');
+                } catch (profileError) {
+                    // 這裡不視為致命錯誤：前台仍可正常下單
+                    console.warn('⚠️ 無法取得 LINE User ID，將以一般訪客流程繼續:', profileError.message);
+                }
+            }
 
             // 設定 LIFF 視窗標題
-            liff.setTitle('線上訂房系統');
+            if (typeof liff.setTitle === 'function') {
+                liff.setTitle('線上訂房系統');
+            }
         } else {
             console.log('🌐 非 LINE 環境，跳過 LIFF 初始化');
         }
