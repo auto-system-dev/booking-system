@@ -552,6 +552,13 @@ body {
     padding: 30px;
 }
 
+.email-template-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 0 30px 24px;
+}
+
 .detail-row {
     display: flex;
     justify-content: flex-start;
@@ -1706,6 +1713,10 @@ code {
         padding: 15px 20px;
         flex-direction: column;
         gap: 10px;
+    }
+
+    .email-template-modal-footer {
+        padding: 0 20px 20px;
     }
     
     .modal-footer button {
