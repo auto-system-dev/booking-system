@@ -1480,8 +1480,15 @@ app.post('/api/admin/login', loginLimiter, validateLogin, async (req, res) => {
                 permissionCount: permissions.length
             }).catch(err => console.error('記錄登入日誌失敗:', err));
             
-            // 立即回應登入成功（express-session 會在回應發送時自動設定 Cookie）
-            // 不等待 session.save()，讓回應更快
+            // 穩定性優先：先確保 Session 已成功寫入，再回應登入成功
+            await new Promise((resolve, reject) => {
+                req.session.save((err) => {
+                    if (err) return reject(err);
+                    resolve();
+                });
+            });
+            console.log('✅ Session 已保存');
+            
             res.json({
                 success: true,
                 message: '登入成功',
@@ -1490,15 +1497,6 @@ app.post('/api/admin/login', loginLimiter, validateLogin, async (req, res) => {
                     role: admin.role,
                     role_display_name: roleName,
                     permissions: permissions
-                }
-            });
-            
-            // 異步保存 Session（不阻塞回應）
-            req.session.save((err) => {
-                if (err) {
-                    console.error('❌ 儲存 Session 錯誤:', err);
-                } else {
-                    console.log('✅ Session 已保存');
                 }
             });
         } else {

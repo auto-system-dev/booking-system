@@ -114,51 +114,34 @@ if (typeof window !== 'undefined') {
                     errorDiv.textContent = '';
                 }
                 
-                // 立即顯示管理後台（如果 showAdminPage 函數已定義）
-                if (typeof showAdminPage === 'function') {
-                    console.log('✅ 使用 showAdminPage 函數顯示管理後台');
-                    showAdminPage(result.admin);
+                // 穩定性優先：先驗證 session/cookie 已生效，再切換後台與載入資料
+                console.log('🔐 登入成功後再次檢查認證狀態（避免 Session 寫入競態）...');
+                await checkAuthStatus();
+
+                const adminPage = document.getElementById('adminPage');
+                const isAdminVisible = adminPage && window.getComputedStyle(adminPage).display !== 'none';
+                if (isAdminVisible) {
+                    console.log('📊 認證確認完成，開始載入資料...');
+                    const loadPromises = [];
+                    if (typeof loadBookings === 'function') {
+                        loadPromises.push(loadBookings().catch(err => {
+                            console.error('❌ 載入訂房記錄失敗:', err);
+                        }));
+                    }
+                    if (typeof loadStatistics === 'function') {
+                        loadPromises.push(loadStatistics().catch(err => {
+                            console.error('❌ 載入統計資料失敗:', err);
+                        }));
+                    }
+
+                    Promise.all(loadPromises).then(() => {
+                        console.log('✅ 資料載入完成');
+                    }).catch(err => {
+                        console.error('❌ 資料載入過程中有錯誤:', err);
+                    });
                 } else {
-                    console.log('⚠️ showAdminPage 函數未定義，直接切換頁面');
-                    // 如果 showAdminPage 未定義，直接切換頁面
-                    const adminPage = document.getElementById('adminPage');
-                    const loginPage = document.getElementById('loginPage');
-                    if (adminPage) {
-                        adminPage.style.display = 'flex';
-                        adminPage.style.visibility = 'visible';
-                        adminPage.style.opacity = '1';
-                        console.log('✅ adminPage 已顯示');
-                    } else {
-                        console.error('❌ 找不到 adminPage 元素');
-                    }
-                    if (loginPage) {
-                        loginPage.style.display = 'none';
-                        console.log('✅ loginPage 已隱藏');
-                    }
+                    console.warn('⚠️ 登入後認證檢查未通過，維持登入頁面');
                 }
-                
-                // 立即開始載入資料（不等待延遲）
-                console.log('📊 開始載入資料...');
-                
-                // 並行載入資料，不等待
-                const loadPromises = [];
-                if (typeof loadBookings === 'function') {
-                    loadPromises.push(loadBookings().catch(err => {
-                        console.error('❌ 載入訂房記錄失敗:', err);
-                    }));
-                }
-                if (typeof loadStatistics === 'function') {
-                    loadPromises.push(loadStatistics().catch(err => {
-                        console.error('❌ 載入統計資料失敗:', err);
-                    }));
-                }
-                
-                // 不等待載入完成，讓頁面立即顯示
-                Promise.all(loadPromises).then(() => {
-                    console.log('✅ 資料載入完成');
-                }).catch(err => {
-                    console.error('❌ 資料載入過程中有錯誤:', err);
-                });
             } else {
                 // 登入失敗
                 console.warn('⚠️ 登入失敗:', result.message);
