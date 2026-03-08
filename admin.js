@@ -1263,7 +1263,7 @@ function renderMonthlyCalendar(bookings, startDate, endDate, currentMonth) {
         const dayBookings = bookingsByDate[dateKey] || [];
         const isCurrentMonth = currDate.getMonth() === currentMonth;
         
-        html += `<td class="booking-cell ${isCurrentMonth ? '' : 'other-month'}" data-date="${dateKey}" style="height: 120px; vertical-align: top; padding: 5px;">
+        html += `<td class="booking-cell ${isCurrentMonth ? '' : 'other-month'}" data-date="${dateKey}" style="height: 120px; vertical-align: top; padding: 5px 5px 28px 5px; position: relative;">
             <div class="calendar-day-num" style="text-align: right; font-size: 14px; color: ${isCurrentMonth ? '#333' : '#ccc'}; margin-bottom: 5px;">${currDate.getDate()}</div>
             <div class="calendar-bookings-list" style="display: flex; flex-direction: column; gap: 2px;">`;
         
@@ -1279,7 +1279,9 @@ function renderMonthlyCalendar(bookings, startDate, endDate, currentMonth) {
             </div>`;
         });
         
-        html += `</div></td>`;
+        html += `</div>
+            <button type="button" class="calendar-add-btn" onclick="event.stopPropagation(); openQuickBookingModal('', '${dateKey}')" title="新增此日期訂房">+</button>
+        </td>`;
         
         if (currDate.getDay() === 6) {
             html += '</tr>';

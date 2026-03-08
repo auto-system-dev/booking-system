@@ -1259,6 +1259,29 @@ label:has(input[type="checkbox"]:hover) {
     overflow-y: auto;
 }
 
+.calendar-add-btn {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 50%;
+    background: #2C8EC4;
+    color: #fff;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.calendar-add-btn:hover {
+    background: #2474a0;
+}
+
 .calendar-booking-room {
     font-size: 10px;
     line-height: 1.2;
@@ -1290,7 +1313,7 @@ label:has(input[type="checkbox"]:hover) {
         display: inline-block;
         width: 14.28%;
         height: 80px;
-        padding: 2px;
+        padding: 2px 2px 22px 2px;
         font-size: 10px;
     }
     
@@ -1304,6 +1327,14 @@ label:has(input[type="checkbox"]:hover) {
     
     .calendar-booking-name {
         font-size: 9px;
+    }
+
+    .calendar-add-btn {
+        width: 18px;
+        height: 18px;
+        right: 3px;
+        bottom: 3px;
+        font-size: 14px;
     }
 }
 
