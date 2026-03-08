@@ -1253,12 +1253,18 @@ function renderMonthlyCalendar(bookings, startDate, endDate, currentMonth) {
     // 表格內容
     html += '<tbody>';
     
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     let currDate = new Date(startDate);
     while (currDate <= endDate) {
         if (currDate.getDay() === 0) {
             html += '<tr>';
         }
         
+        const currentCellDate = new Date(currDate);
+        currentCellDate.setHours(0, 0, 0, 0);
+        const isPastOrToday = currentCellDate <= today;
         const dateKey = `${currDate.getFullYear()}-${String(currDate.getMonth() + 1).padStart(2, '0')}-${String(currDate.getDate()).padStart(2, '0')}`;
         const dayBookings = bookingsByDate[dateKey] || [];
         const isCurrentMonth = currDate.getMonth() === currentMonth;
@@ -1279,9 +1285,12 @@ function renderMonthlyCalendar(bookings, startDate, endDate, currentMonth) {
             </div>`;
         });
         
-        html += `</div>
-            <button type="button" class="calendar-add-btn" onclick="event.stopPropagation(); openQuickBookingModal('', '${dateKey}')" title="新增此日期訂房">+</button>
-        </td>`;
+        html += `</div>`;
+        if (!isPastOrToday) {
+            html += `
+            <button type="button" class="calendar-add-btn" onclick="event.stopPropagation(); openQuickBookingModal('', '${dateKey}')" title="新增此日期訂房">+</button>`;
+        }
+        html += `</td>`;
         
         if (currDate.getDay() === 6) {
             html += '</tr>';
