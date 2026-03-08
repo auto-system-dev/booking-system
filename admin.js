@@ -2192,9 +2192,16 @@ async function openQuickBookingModal(roomTypeName, dateStr) {
             const bookingsInDate = bookingsResult.success ? (bookingsResult.data || []) : [];
 
             // 規則：當天已有「有效 / 保留」訂房的同房型，不可再新增
+            const selectedDate = new Date(`${checkInDate}T00:00:00`);
             const unavailableRoomTypeSet = new Set(
                 bookingsInDate
-                    .filter(b => b.status === 'active' || b.status === 'reserved')
+                    .filter((b) => {
+                        if (!(b.status === 'active' || b.status === 'reserved')) return false;
+                        const bCheckIn = new Date(`${String(b.check_in_date).slice(0, 10)}T00:00:00`);
+                        const bCheckOut = new Date(`${String(b.check_out_date).slice(0, 10)}T00:00:00`);
+                        // 以住房夜為準：入住日含、退房日不含
+                        return selectedDate >= bCheckIn && selectedDate < bCheckOut;
+                    })
                     .map(b => (b.room_type || '').trim())
                     .filter(Boolean)
             );
