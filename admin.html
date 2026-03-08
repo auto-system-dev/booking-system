@@ -189,6 +189,45 @@
                         <button class="dashboard-card-button" onclick="switchSection('bookings')">前往訂單列表</button>
                     </div>
                 </div>
+
+                <div class="section-header" style="margin-top: 26px;">
+                    <h3 style="font-size: 22px; margin: 0;">
+                        <span class="material-symbols-outlined" style="font-size: 24px; vertical-align: middle; margin-right: 6px;">monitoring</span>
+                        營運 KPI（近 30 天）
+                    </h3>
+                </div>
+                <div class="dashboard-grid dashboard-ops-grid">
+                    <div class="dashboard-card dashboard-kpi-card">
+                        <div class="dashboard-card-icon"><span class="material-symbols-outlined">hotel_class</span></div>
+                        <div class="dashboard-card-title">每日入住率</div>
+                        <div class="dashboard-card-subtitle">已售房晚 / 可售房晚</div>
+                        <div class="dashboard-kpi-value" id="opsOccupancyRate">0.0%</div>
+                    </div>
+                    <div class="dashboard-card dashboard-kpi-card">
+                        <div class="dashboard-card-icon"><span class="material-symbols-outlined">attach_money</span></div>
+                        <div class="dashboard-card-title">平均房價（ADR）</div>
+                        <div class="dashboard-card-subtitle">每房晚平均收入</div>
+                        <div class="dashboard-kpi-value" id="opsAverageRoomRate">NT$ 0</div>
+                    </div>
+                    <div class="dashboard-card dashboard-kpi-card">
+                        <div class="dashboard-card-icon"><span class="material-symbols-outlined">conversion_path</span></div>
+                        <div class="dashboard-card-title">轉換率</div>
+                        <div class="dashboard-card-subtitle">有效/保留 訂單占比</div>
+                        <div class="dashboard-kpi-value" id="opsConversionRate">0.0%</div>
+                    </div>
+                    <div class="dashboard-card dashboard-kpi-card">
+                        <div class="dashboard-card-icon"><span class="material-symbols-outlined">credit_score</span></div>
+                        <div class="dashboard-card-title">付款成功率</div>
+                        <div class="dashboard-card-subtitle">已付款 / 可計算付款狀態</div>
+                        <div class="dashboard-kpi-value" id="opsPaymentSuccessRate">0.0%</div>
+                    </div>
+                    <div class="dashboard-card dashboard-kpi-card">
+                        <div class="dashboard-card-icon"><span class="material-symbols-outlined">event_busy</span></div>
+                        <div class="dashboard-card-title">取消率</div>
+                        <div class="dashboard-card-subtitle">取消訂單占比</div>
+                        <div class="dashboard-kpi-value" id="opsCancellationRate">0.0%</div>
+                    </div>
+                </div>
             </section>
 
             <!-- 訂房記錄區 -->

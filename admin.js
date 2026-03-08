@@ -987,16 +987,25 @@ function switchRoomTypeTab(tab) {
 // 載入儀表板數據
 async function loadDashboard() {
     try {
-        const response = await adminFetch('/api/dashboard');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const [dashboardResponse, opsResponse] = await Promise.all([
+            adminFetch('/api/dashboard'),
+            adminFetch('/api/dashboard/ops')
+        ]);
+
+        if (!dashboardResponse.ok) {
+            throw new Error(`HTTP ${dashboardResponse.status}: ${dashboardResponse.statusText}`);
         }
-        
-        const result = await response.json();
-        
+        if (!opsResponse.ok) {
+            throw new Error(`HTTP ${opsResponse.status}: ${opsResponse.statusText}`);
+        }
+
+        const [result, opsResult] = await Promise.all([
+            dashboardResponse.json(),
+            opsResponse.json()
+        ]);
+
         if (result.success) {
-            const data = result.data;
+            const data = result.data || {};
             
             // 更新今日房況
             document.getElementById('todayCheckIns').textContent = data.todayCheckIns || 0;
@@ -1010,6 +1019,29 @@ async function loadDashboard() {
             document.getElementById('activeBookings').textContent = data.activeBookings || 0;
             document.getElementById('reservedBookings').textContent = data.reservedBookings || 0;
             document.getElementById('cancelledBookings').textContent = data.cancelledBookings || 0;
+
+            if (opsResult.success && opsResult.data && opsResult.data.kpis) {
+                const kpis = opsResult.data.kpis;
+                const formatPercent = (v) => `${(Number(v) || 0).toFixed(1)}%`;
+                const formatCurrency = (v) => `NT$ ${Math.round(Number(v) || 0).toLocaleString()}`;
+
+                const occupancyEl = document.getElementById('opsOccupancyRate');
+                if (occupancyEl) occupancyEl.textContent = formatPercent(kpis.occupancyRate);
+
+                const adrEl = document.getElementById('opsAverageRoomRate');
+                if (adrEl) adrEl.textContent = formatCurrency(kpis.averageRoomRate);
+
+                const conversionEl = document.getElementById('opsConversionRate');
+                if (conversionEl) conversionEl.textContent = formatPercent(kpis.conversionRate);
+
+                const paymentEl = document.getElementById('opsPaymentSuccessRate');
+                if (paymentEl) paymentEl.textContent = formatPercent(kpis.paymentSuccessRate);
+
+                const cancellationEl = document.getElementById('opsCancellationRate');
+                if (cancellationEl) cancellationEl.textContent = formatPercent(kpis.cancellationRate);
+            } else {
+                console.warn('營運 KPI 載入失敗:', opsResult.message || '未知錯誤');
+            }
         } else {
             showError('載入儀表板數據失敗：' + (result.message || '未知錯誤'));
         }

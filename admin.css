@@ -945,6 +945,21 @@ body {
     background: #1d5d7d;
 }
 
+.dashboard-ops-grid {
+    gap: 20px;
+}
+
+.dashboard-kpi-card {
+    padding: 24px;
+}
+
+.dashboard-kpi-value {
+    font-size: 36px;
+    font-weight: 700;
+    color: #2C8EC4;
+    line-height: 1.2;
+}
+
 /* 郵件模板管理樣式 */
 .email-templates-container {
     padding: 20px;

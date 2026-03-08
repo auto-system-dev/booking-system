@@ -3528,6 +3528,117 @@ app.get('/api/dashboard', adminLimiter, async (req, res) => {
     }
 });
 
+// API: 營運儀表板 Phase 1 指標（同頁整合）
+app.get('/api/dashboard/ops', requireAuth, checkPermission('dashboard.view'), adminLimiter, async (req, res) => {
+    try {
+        const end = req.query.endDate ? new Date(`${req.query.endDate}T00:00:00`) : new Date();
+        end.setHours(0, 0, 0, 0);
+
+        const start = req.query.startDate
+            ? new Date(`${req.query.startDate}T00:00:00`)
+            : new Date(end.getTime() - 29 * 24 * 60 * 60 * 1000); // 預設近 30 天
+        start.setHours(0, 0, 0, 0);
+
+        if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) {
+            return res.status(400).json({
+                success: false,
+                message: '日期區間格式不正確'
+            });
+        }
+
+        const allBookings = await db.getAllBookings();
+        const roomTypes = await db.getAllRoomTypes();
+
+        const dayCount = Math.max(1, Math.floor((end - start) / (24 * 60 * 60 * 1000)) + 1);
+        const totalRoomTypes = Math.max(1, (roomTypes || []).length);
+
+        const inRangeByCreatedAt = allBookings.filter((booking) => {
+            const created = booking.created_at || booking.booking_date;
+            if (!created) return false;
+            const createdDate = new Date(created);
+            if (isNaN(createdDate.getTime())) return false;
+            createdDate.setHours(0, 0, 0, 0);
+            return createdDate >= start && createdDate <= end;
+        });
+
+        const normalizeDay = (v) => {
+            const d = new Date(`${String(v).slice(0, 10)}T00:00:00`);
+            return isNaN(d.getTime()) ? null : d;
+        };
+
+        let occupiedRoomNights = 0;
+        let activeReservedRevenue = 0;
+        let activeReservedNights = 0;
+
+        allBookings.forEach((booking) => {
+            const status = booking.status;
+            if (status !== 'active' && status !== 'reserved') return;
+
+            const checkIn = normalizeDay(booking.check_in_date);
+            const checkOut = normalizeDay(booking.check_out_date);
+            if (!checkIn || !checkOut || checkOut <= checkIn) return;
+
+            // 住房夜計算：入住日含、退房日不含
+            const overlapStart = checkIn > start ? checkIn : start;
+            const overlapEndExclusive = checkOut <= new Date(end.getTime() + 24 * 60 * 60 * 1000)
+                ? checkOut
+                : new Date(end.getTime() + 24 * 60 * 60 * 1000);
+
+            if (overlapEndExclusive <= overlapStart) return;
+
+            const overlapNights = Math.floor((overlapEndExclusive - overlapStart) / (24 * 60 * 60 * 1000));
+            if (overlapNights <= 0) return;
+
+            occupiedRoomNights += overlapNights;
+
+            const totalNights = Math.max(1, Math.floor((checkOut - checkIn) / (24 * 60 * 60 * 1000)));
+            const finalAmount = parseFloat(booking.final_amount || 0) || 0;
+            const perNightRevenue = finalAmount / totalNights;
+            activeReservedRevenue += perNightRevenue * overlapNights;
+            activeReservedNights += overlapNights;
+        });
+
+        const conversionNumerator = inRangeByCreatedAt.filter((b) => b.status === 'active' || b.status === 'reserved').length;
+        const conversionDenominator = inRangeByCreatedAt.length;
+
+        const paymentNumerator = inRangeByCreatedAt.filter((b) => b.payment_status === 'paid').length;
+        const paymentDenominator = inRangeByCreatedAt.filter((b) => ['paid', 'pending', 'failed'].includes(String(b.payment_status || '').toLowerCase())).length;
+
+        const cancellationNumerator = inRangeByCreatedAt.filter((b) => b.status === 'cancelled').length;
+        const cancellationDenominator = inRangeByCreatedAt.length;
+
+        const occupancyRate = (occupiedRoomNights / (totalRoomTypes * dayCount)) * 100;
+        const averageRoomRate = activeReservedNights > 0 ? (activeReservedRevenue / activeReservedNights) : 0;
+        const conversionRate = conversionDenominator > 0 ? (conversionNumerator / conversionDenominator) * 100 : 0;
+        const paymentSuccessRate = paymentDenominator > 0 ? (paymentNumerator / paymentDenominator) * 100 : 0;
+        const cancellationRate = cancellationDenominator > 0 ? (cancellationNumerator / cancellationDenominator) * 100 : 0;
+
+        res.json({
+            success: true,
+            data: {
+                range: {
+                    startDate: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`,
+                    endDate: `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`,
+                    dayCount
+                },
+                kpis: {
+                    occupancyRate,
+                    averageRoomRate,
+                    conversionRate,
+                    paymentSuccessRate,
+                    cancellationRate
+                }
+            }
+        });
+    } catch (error) {
+        console.error('查詢營運儀表板指標錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '查詢營運儀表板指標失敗：' + error.message
+        });
+    }
+});
+
 // API: 更新訂房資料
 async function handleUpdateBooking(req, res) {
     try {
