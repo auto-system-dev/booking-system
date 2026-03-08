@@ -1307,6 +1307,29 @@ app.post('/api/admin/bookings/quick', requireAuth, checkPermission('bookings.cre
         
         const msPerDay = 1000 * 60 * 60 * 24;
         const nights = Math.max(1, Math.round((checkOut - checkIn) / msPerDay));
+
+        // 後端強制防呆：同房型在「有效/保留」重疊期間不可重複新增
+        const bookingsInRange = await db.getBookingsInRange(checkInDate, checkOutDate);
+        const hasRoomTypeConflict = bookingsInRange.some((booking) => {
+            if (!booking) return false;
+            const status = (booking.status || '').toLowerCase();
+            if (status !== 'active' && status !== 'reserved') return false;
+
+            const existingRoomType = (booking.room_type || '').trim();
+            if (!existingRoomType || existingRoomType !== (roomType || '').trim()) return false;
+
+            const existingCheckIn = new Date(`${String(booking.check_in_date).slice(0, 10)}T00:00:00`);
+            const existingCheckOut = new Date(`${String(booking.check_out_date).slice(0, 10)}T00:00:00`);
+            // 退房日視為不占房：只有真正重疊才視為衝突
+            return checkIn < existingCheckOut && checkOut > existingCheckIn;
+        });
+
+        if (hasRoomTypeConflict) {
+            return res.status(409).json({
+                success: false,
+                message: '該房型在此日期已有「有效/保留」訂房，請選擇其他房型或日期'
+            });
+        }
         
         const bookingId = generateShortBookingId();
         const bookingDate = new Date().toISOString();

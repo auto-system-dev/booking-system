@@ -2177,17 +2177,49 @@ async function openQuickBookingModal(roomTypeName, dateStr) {
     
     // 如果沒有傳入房型名稱，則獲取房型列表供選擇
     let roomTypeHtml = '';
+    let roomTypeConflictHint = '';
+    let disableQuickSave = false;
     if (!roomTypeName) {
         try {
-            const response = await adminFetch('/api/room-types');
-            const result = await response.json();
-            const roomTypes = result.success ? result.data : [];
-            roomTypeHtml = `
-                <select name="room_type" required>
-                    <option value="">請選擇房型</option>
-                    ${roomTypes.map(rt => `<option value="${rt.display_name}">${rt.display_name}</option>`).join('')}
-                </select>
-            `;
+            const [roomTypesResponse, bookingsResponse] = await Promise.all([
+                adminFetch('/api/room-types'),
+                adminFetch(`/api/bookings?startDate=${encodeURIComponent(checkInDate)}&endDate=${encodeURIComponent(checkInDate)}`)
+            ]);
+            const roomTypesResult = await roomTypesResponse.json();
+            const bookingsResult = await bookingsResponse.json();
+
+            const roomTypes = roomTypesResult.success ? roomTypesResult.data : [];
+            const bookingsInDate = bookingsResult.success ? (bookingsResult.data || []) : [];
+
+            // 規則：當天已有「有效 / 保留」訂房的同房型，不可再新增
+            const unavailableRoomTypeSet = new Set(
+                bookingsInDate
+                    .filter(b => b.status === 'active' || b.status === 'reserved')
+                    .map(b => (b.room_type || '').trim())
+                    .filter(Boolean)
+            );
+
+            const availableRoomTypes = roomTypes.filter(rt => !unavailableRoomTypeSet.has((rt.display_name || '').trim()));
+
+            if (availableRoomTypes.length === 0) {
+                disableQuickSave = true;
+                roomTypeHtml = `
+                    <select name="room_type" required disabled>
+                        <option value="">當天可用房型已滿</option>
+                    </select>
+                `;
+                roomTypeConflictHint = '<small style="color:#dc3545;display:block;margin-top:6px;">此日期已有有效/保留訂房，無可新增的同日房型。</small>';
+            } else {
+                roomTypeHtml = `
+                    <select name="room_type" required>
+                        <option value="">請選擇房型</option>
+                        ${availableRoomTypes.map(rt => `<option value="${rt.display_name}">${rt.display_name}</option>`).join('')}
+                    </select>
+                `;
+                if (unavailableRoomTypeSet.size > 0) {
+                    roomTypeConflictHint = '<small style="color:#856404;display:block;margin-top:6px;">已自動隱藏當天已被「有效/保留」訂房占用的房型。</small>';
+                }
+            }
         } catch (e) {
             console.error('獲取房型失敗:', e);
             roomTypeHtml = `<input type="text" name="room_type" placeholder="請手動輸入房型" required>`;
@@ -2202,6 +2234,7 @@ async function openQuickBookingModal(roomTypeName, dateStr) {
             <div class="form-group">
                 <label>房型</label>
                 ${roomTypeHtml}
+                ${roomTypeConflictHint}
             </div>
             <div class="form-group">
                 <label>入住日期</label>
@@ -2246,7 +2279,7 @@ async function openQuickBookingModal(roomTypeName, dateStr) {
                 </select>
             </div>
             <div class="modal-actions">
-                <button type="submit" class="btn-primary">儲存</button>
+                <button type="submit" class="btn-primary" ${disableQuickSave ? 'disabled title="當天可用房型已滿，無法新增"' : ''}>儲存</button>
                 <button type="button" class="btn-cancel" onclick="closeModal()">取消</button>
             </div>
         </form>
