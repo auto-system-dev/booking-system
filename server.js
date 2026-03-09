@@ -3552,19 +3552,17 @@ app.get('/api/dashboard/ops', requireAuth, checkPermission('dashboard.view'), ad
         const dayCount = Math.max(1, Math.floor((end - start) / (24 * 60 * 60 * 1000)) + 1);
         const totalRoomTypes = Math.max(1, (roomTypes || []).length);
 
-        const inRangeByCreatedAt = allBookings.filter((booking) => {
-            const created = booking.created_at || booking.booking_date;
-            if (!created) return false;
-            const createdDate = new Date(created);
-            if (isNaN(createdDate.getTime())) return false;
-            createdDate.setHours(0, 0, 0, 0);
-            return createdDate >= start && createdDate <= end;
-        });
-
         const normalizeDay = (v) => {
             const d = new Date(`${String(v).slice(0, 10)}T00:00:00`);
             return isNaN(d.getTime()) ? null : d;
         };
+
+        // 口徑統一：以入住日落在區間內作為 KPI 計算母體
+        const inRangeByCheckInDate = allBookings.filter((booking) => {
+            const checkIn = normalizeDay(booking.check_in_date);
+            if (!checkIn) return false;
+            return checkIn >= start && checkIn <= end;
+        });
 
         let occupiedRoomNights = 0;
         let activeReservedRevenue = 0;
@@ -3598,14 +3596,14 @@ app.get('/api/dashboard/ops', requireAuth, checkPermission('dashboard.view'), ad
             activeReservedNights += overlapNights;
         });
 
-        const conversionNumerator = inRangeByCreatedAt.filter((b) => b.status === 'active' || b.status === 'reserved').length;
-        const conversionDenominator = inRangeByCreatedAt.length;
+        const conversionNumerator = inRangeByCheckInDate.filter((b) => b.status === 'active' || b.status === 'reserved').length;
+        const conversionDenominator = inRangeByCheckInDate.length;
 
-        const paymentNumerator = inRangeByCreatedAt.filter((b) => b.payment_status === 'paid').length;
-        const paymentDenominator = inRangeByCreatedAt.filter((b) => ['paid', 'pending', 'failed'].includes(String(b.payment_status || '').toLowerCase())).length;
+        const paymentNumerator = inRangeByCheckInDate.filter((b) => b.payment_status === 'paid').length;
+        const paymentDenominator = inRangeByCheckInDate.filter((b) => ['paid', 'pending', 'failed'].includes(String(b.payment_status || '').toLowerCase())).length;
 
-        const cancellationNumerator = inRangeByCreatedAt.filter((b) => b.status === 'cancelled').length;
-        const cancellationDenominator = inRangeByCreatedAt.length;
+        const cancellationNumerator = inRangeByCheckInDate.filter((b) => b.status === 'cancelled').length;
+        const cancellationDenominator = inRangeByCheckInDate.length;
 
         const occupancyRate = (occupiedRoomNights / (totalRoomTypes * dayCount)) * 100;
         const averageRoomRate = activeReservedNights > 0 ? (activeReservedRevenue / activeReservedNights) : 0;
