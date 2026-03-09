@@ -3543,7 +3543,7 @@ app.get('/api/dashboard', adminLimiter, async (req, res) => {
 });
 
 // API: 營運儀表板 Phase 1 指標（同頁整合）
-app.get('/api/dashboard/ops', requireAuth, checkPermission('dashboard.view'), adminLimiter, async (req, res) => {
+app.get('/api/dashboard/ops', requireAuth, adminLimiter, async (req, res) => {
     try {
         const normalizeStatus = (status) => String(status || '').trim().toLowerCase();
         const isActiveStatus = (status) => {
