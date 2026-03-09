@@ -6,6 +6,7 @@
 // 全域設定變數
 let landingConfig = {};
 let countdownDays = 7;
+const DEFAULT_HERO_IMAGE = 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=1920';
 
 // 預設配色主題定義
 const landingThemes = {
@@ -29,7 +30,7 @@ async function loadLandingConfig() {
             landingConfig = result.data;
             landingConfig._roomTypes = result.roomTypes || [];
             console.log('📋 API 回傳房型數量:', landingConfig._roomTypes.length);
-            applyConfig(landingConfig);
+            await applyConfig(landingConfig);
             console.log('✅ 銷售頁設定已從後台載入');
         } else {
             console.warn('⚠️ 無法取得銷售頁設定，使用預設值');
@@ -37,6 +38,15 @@ async function loadLandingConfig() {
     } catch (error) {
         console.warn('⚠️ 載入銷售頁設定失敗:', error.message);
     }
+}
+
+function preloadImage(url) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(url);
+        img.onerror = () => reject(new Error(`圖片載入失敗: ${url}`));
+        img.src = url;
+    });
 }
 
 // 將 HEX 顏色轉為 RGB 數值
@@ -78,7 +88,7 @@ function applyTheme(themeId) {
 }
 
 // 將設定套用至 HTML 元素
-function applyConfig(cfg) {
+async function applyConfig(cfg) {
     // ===== 配色主題 =====
     if (cfg.landing_theme) {
         applyTheme(cfg.landing_theme);
@@ -102,11 +112,16 @@ function applyConfig(cfg) {
     setText('heroPriceAmount', cfg.landing_price_amount);
     setText('heroPriceOriginal', cfg.landing_price_original);
 
-    // Hero 背景圖片
-    if (cfg.landing_hero_image) {
-        const heroSection = document.getElementById('hero');
-        if (heroSection) {
-            heroSection.style.backgroundImage = `url('${cfg.landing_hero_image}')`;
+    // Hero 背景圖片（先預載再套用，避免刷新時先看到預設圖再切換）
+    const heroSection = document.getElementById('hero');
+    if (heroSection) {
+        const targetHeroImage = cfg.landing_hero_image || DEFAULT_HERO_IMAGE;
+        try {
+            await preloadImage(targetHeroImage);
+            heroSection.style.backgroundImage = `url('${targetHeroImage}')`;
+        } catch (error) {
+            console.warn('⚠️ Hero 圖片載入失敗，改用預設圖:', error.message);
+            heroSection.style.backgroundImage = `url('${DEFAULT_HERO_IMAGE}')`;
         }
     }
 

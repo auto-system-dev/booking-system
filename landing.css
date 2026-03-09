@@ -163,7 +163,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-image: url('https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=1920');
+    background-color: var(--primary, #1a3a4a);
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
