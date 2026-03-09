@@ -467,6 +467,19 @@ const validateAddon = createValidationMiddleware([
             return validateNumberRange(req.body.price, 0, 100000, '價格');
         }
         return { valid: true };
+    },
+    (req) => {
+        if (req.method === 'POST' || req.method === 'PUT') {
+            const rawUnit = String(req.body.unit_label || '人').trim();
+            if (!rawUnit) {
+                return { valid: false, message: '單位不可為空' };
+            }
+            if (rawUnit.length > 10) {
+                return { valid: false, message: '單位長度不可超過 10 個字' };
+            }
+            req.body.unit_label = rawUnit;
+        }
+        return { valid: true };
     }
 ]);
 
@@ -819,7 +832,8 @@ async function handleCreateBooking(req, res) {
                     const displayName = addonInfo ? addonInfo.display_name : addon.name;
                     const quantity = addon.quantity || 1;
                     const itemTotal = addon.price * quantity;
-                    return `${displayName} x${quantity} (NT$ ${itemTotal.toLocaleString()})`;
+                    const unitLabel = (addon.unit_label || addonInfo?.unit_label || '人').trim();
+                    return `${displayName} x${quantity} (每${unitLabel}, NT$ ${itemTotal.toLocaleString()})`;
                 }).join('、');
             } catch (err) {
                 console.error('取得加購商品資訊失敗:', err);
@@ -827,7 +841,8 @@ async function handleCreateBooking(req, res) {
                 addonsList = addons.map(addon => {
                     const quantity = addon.quantity || 1;
                     const itemTotal = addon.price * quantity;
-                    return `${addon.name} x${quantity} (NT$ ${itemTotal.toLocaleString()})`;
+                    const unitLabel = String(addon.unit_label || '人').trim();
+                    return `${addon.name} x${quantity} (每${unitLabel}, NT$ ${itemTotal.toLocaleString()})`;
                 }).join('、');
             }
         }
@@ -8726,7 +8741,8 @@ ${htmlEnd}`;
                     const displayName = addonInfo ? addonInfo.display_name : addon.name;
                     const quantity = addon.quantity || 1;
                     const itemTotal = addon.price * quantity;
-                    return `${displayName} x${quantity} (NT$ ${itemTotal.toLocaleString()})`;
+                    const unitLabel = (addon.unit_label || addonInfo?.unit_label || '人').trim();
+                    return `${displayName} x${quantity} (每${unitLabel}, NT$ ${itemTotal.toLocaleString()})`;
                 }).join('、');
                 addonsTotal = booking.addons_total || parsedAddons.reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0);
             }

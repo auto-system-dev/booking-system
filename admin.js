@@ -3982,7 +3982,7 @@ function renderAddons() {
     const filteredAddons = allAddons;
     
     if (filteredAddons.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="loading">沒有加購商品資料</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="loading">沒有加購商品資料</td></tr>';
         return;
     }
     
@@ -3993,6 +3993,7 @@ function renderAddons() {
             <td>${addon.name}</td>
             <td>${addon.display_name}</td>
             <td>NT$ ${addon.price.toLocaleString()}</td>
+            <td>每${escapeHtml((addon.unit_label || '人').trim())}</td>
             <td>
                 <span class="status-badge ${addon.is_active === 1 ? 'status-sent' : 'status-unsent'}">
                     ${addon.is_active === 1 ? '啟用' : '停用'}
@@ -4051,6 +4052,11 @@ function showAddonModal(addon) {
                 <small>加購商品的單價</small>
             </div>
             <div class="form-group">
+                <label>單位</label>
+                <input type="text" name="unit_label" value="${isEdit ? escapeHtml(addon.unit_label || '人') : '人'}" maxlength="10" required>
+                <small>例如：人、房、晚、趟、份（前台顯示為「每X」）</small>
+            </div>
+            <div class="form-group">
                 <label>圖示（Emoji）</label>
                 <input type="text" name="icon" value="${isEdit ? escapeHtml(addon.icon) : '➕'}" maxlength="10">
             </div>
@@ -4084,6 +4090,7 @@ async function saveAddon(event, id) {
         name: formData.get('name'),
         display_name: formData.get('display_name'),
         price: parseInt(formData.get('price')),
+        unit_label: (formData.get('unit_label') || '人').trim() || '人',
         icon: formData.get('icon') || '➕',
         display_order: parseInt(formData.get('display_order')) || 0,
         is_active: parseInt(formData.get('is_active'))
@@ -4128,6 +4135,7 @@ async function toggleAddonStatus(id, isActive) {
         const data = {
             display_name: addon.display_name,
             price: addon.price,
+            unit_label: addon.unit_label || '人',
             icon: addon.icon || '➕',
             display_order: addon.display_order || 0,
             is_active: isActive ? 1 : 0

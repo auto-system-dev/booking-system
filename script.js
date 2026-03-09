@@ -3,6 +3,11 @@ let roomTypes = [];
 let addons = []; // 加購商品列表
 let selectedAddons = []; // 已選擇的加購商品
 let enableAddons = true; // 前台加購商品功能是否啟用
+
+function formatAddonUnit(unitLabel) {
+    const normalized = String(unitLabel || '人').trim();
+    return normalized || '人';
+}
 let depositPercentage = 30; // 預設訂金百分比
 let unavailableRooms = []; // 已滿房的房型列表
 let datePicker = null; // 日期區間選擇器
@@ -209,6 +214,7 @@ function renderAddons() {
         const selectedAddon = selectedAddons.find(a => a.name === addon.name);
         const quantity = selectedAddon ? selectedAddon.quantity : 0;
         const isSelected = quantity > 0;
+        const unitLabel = formatAddonUnit(addon.unit_label);
         
         return `
             <div class="addon-option ${isSelected ? 'selected' : ''}" data-addon="${addon.name}" data-price="${addon.price}">
@@ -216,12 +222,12 @@ function renderAddons() {
                     <span style="font-size: 24px;">${addon.icon || '➕'}</span>
                     <div style="flex: 1;">
                         <div style="font-weight: 600; font-size: 16px; margin-bottom: 5px;">${addon.display_name}</div>
-                        <div style="color: #2C8EC4; font-weight: 600;">NT$ ${addon.price.toLocaleString()}/人</div>
+                        <div style="color: #2C8EC4; font-weight: 600;">NT$ ${addon.price.toLocaleString()}/每${unitLabel}</div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <button type="button" class="addon-quantity-btn" onclick="changeAddonQuantity('${addon.name}', ${addon.price}, -1)" style="width: 32px; height: 32px; border: 1px solid #ddd; border-radius: 4px; background: #fff; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; color: #666;" ${quantity === 0 ? 'disabled' : ''}>−</button>
+                        <button type="button" class="addon-quantity-btn" onclick="changeAddonQuantity('${addon.name}', -1)" style="width: 32px; height: 32px; border: 1px solid #ddd; border-radius: 4px; background: #fff; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; color: #666;" ${quantity === 0 ? 'disabled' : ''}>−</button>
                         <span class="addon-quantity" style="min-width: 30px; text-align: center; font-weight: 600; font-size: 16px;">${quantity}</span>
-                        <button type="button" class="addon-quantity-btn" onclick="changeAddonQuantity('${addon.name}', ${addon.price}, 1)" style="width: 32px; height: 32px; border: 1px solid #ddd; border-radius: 4px; background: #fff; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; color: #666;">+</button>
+                        <button type="button" class="addon-quantity-btn" onclick="changeAddonQuantity('${addon.name}', 1)" style="width: 32px; height: 32px; border: 1px solid #ddd; border-radius: 4px; background: #fff; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; color: #666;">+</button>
                     </div>
                 </div>
             </div>
@@ -230,7 +236,12 @@ function renderAddons() {
 }
 
 // 改變加購商品數量
-function changeAddonQuantity(addonName, addonPrice, change) {
+function changeAddonQuantity(addonName, change) {
+    const addonDef = addons.find(a => a.name === addonName);
+    if (!addonDef) return;
+
+    const addonPrice = Number(addonDef.price) || 0;
+    const unitLabel = formatAddonUnit(addonDef.unit_label);
     const existingIndex = selectedAddons.findIndex(a => a.name === addonName);
     let newQuantity = 0;
     
@@ -245,7 +256,13 @@ function changeAddonQuantity(addonName, addonPrice, change) {
         }
     } else if (change > 0) {
         // 新增加購商品
-        selectedAddons.push({ name: addonName, price: addonPrice, quantity: 1 });
+        selectedAddons.push({
+            name: addonName,
+            display_name: addonDef.display_name || addonName,
+            price: addonPrice,
+            unit_label: unitLabel,
+            quantity: 1
+        });
         newQuantity = 1;
     }
     
@@ -1004,7 +1021,8 @@ function updatePriceDisplay(pricePerNight, nights, totalAmount, discountAmount =
         // 加購商品明細
         const addonsDetail = selectedAddons.map(addon => {
             const addonName = addons.find(a => a.name === addon.name)?.display_name || addon.name;
-            return `${addonName} x${addon.quantity || 1}`;
+            const unitLabel = formatAddonUnit(addon.unit_label || addons.find(a => a.name === addon.name)?.unit_label);
+            return `${addonName} x${addon.quantity || 1}（每${unitLabel}）`;
         }).join('、');
         html += `<div style="margin-bottom: 5px; color: #666;">加購商品（${addonsDetail}）：NT$ ${addonsTotal.toLocaleString()}</div>`;
     }

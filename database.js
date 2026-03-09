@@ -375,6 +375,7 @@ async function initPostgreSQL() {
                     name VARCHAR(255) UNIQUE NOT NULL,
                     display_name VARCHAR(255) NOT NULL,
                     price INTEGER NOT NULL,
+                    unit_label VARCHAR(50) DEFAULT '人',
                     icon VARCHAR(255) DEFAULT '➕',
                     display_order INTEGER DEFAULT 0,
                     is_active INTEGER DEFAULT 1,
@@ -383,24 +384,44 @@ async function initPostgreSQL() {
                 )
             `);
             console.log('✅ 加購商品表已準備就緒');
+
+            // 加購商品欄位遷移（舊資料庫補上 unit_label）
+            try {
+                await query(`ALTER TABLE addons ADD COLUMN IF NOT EXISTS unit_label VARCHAR(50) DEFAULT '人'`);
+            } catch (addErr) {
+                if (addErr.message && !addErr.message.includes('already exists') && !addErr.message.includes('duplicate column')) {
+                    try {
+                        const checkResult = await query(`
+                            SELECT column_name FROM information_schema.columns
+                            WHERE table_name = 'addons' AND column_name = $1
+                        `, ['unit_label']);
+                        if (!checkResult.rows || checkResult.rows.length === 0) {
+                            await query(`ALTER TABLE addons ADD COLUMN unit_label VARCHAR(50) DEFAULT '人'`);
+                            console.log('✅ 已添加 addons.unit_label 欄位');
+                        }
+                    } catch (innerErr) {
+                        console.warn('⚠️  添加 addons.unit_label 欄位時發生錯誤:', innerErr.message);
+                    }
+                }
+            }
             
             // 初始化預設加購商品
             const defaultAddons = [
-                ['extra_bed', '加床', 500, '🛏️', 1],
-                ['breakfast', '早餐', 200, '🍳', 2],
-                ['afternoon_tea', '下午茶', 300, '☕', 3],
-                ['dinner', '晚餐', 600, '🍽️', 4],
-                ['bbq', '烤肉', 800, '🔥', 5],
-                ['spa', 'SPA', 1000, '💆', 6]
+                ['extra_bed', '加床', 500, '床', '🛏️', 1],
+                ['breakfast', '早餐', 200, '人', '🍳', 2],
+                ['afternoon_tea', '下午茶', 300, '份', '☕', 3],
+                ['dinner', '晚餐', 600, '份', '🍽️', 4],
+                ['bbq', '烤肉', 800, '份', '🔥', 5],
+                ['spa', 'SPA', 1000, '人', '💆', 6]
             ];
             
-            for (const [name, displayName, price, icon, displayOrder] of defaultAddons) {
+            for (const [name, displayName, price, unitLabel, icon, displayOrder] of defaultAddons) {
                 try {
                     const existing = await queryOne('SELECT id FROM addons WHERE name = $1', [name]);
                     if (!existing) {
                         await query(
-                            'INSERT INTO addons (name, display_name, price, icon, display_order) VALUES ($1, $2, $3, $4, $5)',
-                            [name, displayName, price, icon, displayOrder]
+                            'INSERT INTO addons (name, display_name, price, unit_label, icon, display_order) VALUES ($1, $2, $3, $4, $5, $6)',
+                            [name, displayName, price, unitLabel, icon, displayOrder]
                         );
                     }
                 } catch (err) {
@@ -2197,6 +2218,7 @@ function initSQLite() {
                                                     name TEXT UNIQUE NOT NULL,
                                                     display_name TEXT NOT NULL,
                                                     price INTEGER NOT NULL,
+                                                    unit_label TEXT DEFAULT '人',
                                                     icon TEXT DEFAULT '➕',
                                                     display_order INTEGER DEFAULT 0,
                                                     is_active INTEGER DEFAULT 1,
@@ -2210,22 +2232,28 @@ function initSQLite() {
                                                     console.log('✅ 加購商品表已準備就緒');
                                                     
                                                     // 初始化預設加購商品
+                                                    db.run(`ALTER TABLE addons ADD COLUMN unit_label TEXT DEFAULT '人'`, (alterErr) => {
+                                                        if (alterErr && !alterErr.message.includes('duplicate column')) {
+                                                            console.warn('⚠️  新增 addons.unit_label 欄位時發生錯誤:', alterErr.message);
+                                                        }
+                                                    });
+
                                                     const defaultAddons = [
-                                                        ['extra_bed', '加床', 500, '🛏️', 1],
-                                                        ['breakfast', '早餐', 200, '🍳', 2],
-                                                        ['afternoon_tea', '下午茶', 300, '☕', 3],
-                                                        ['dinner', '晚餐', 600, '🍽️', 4],
-                                                        ['bbq', '烤肉', 800, '🔥', 5],
-                                                        ['spa', 'SPA', 1000, '💆', 6]
+                                                        ['extra_bed', '加床', 500, '床', '🛏️', 1],
+                                                        ['breakfast', '早餐', 200, '人', '🍳', 2],
+                                                        ['afternoon_tea', '下午茶', 300, '份', '☕', 3],
+                                                        ['dinner', '晚餐', 600, '份', '🍽️', 4],
+                                                        ['bbq', '烤肉', 800, '份', '🔥', 5],
+                                                        ['spa', 'SPA', 1000, '人', '💆', 6]
                                                     ];
                                                     
                                                     let addonCount = 0;
-                                                    defaultAddons.forEach(([name, displayName, price, icon, displayOrder]) => {
+                                                    defaultAddons.forEach(([name, displayName, price, unitLabel, icon, displayOrder]) => {
                                                         db.get('SELECT id FROM addons WHERE name = ?', [name], (err, row) => {
                                                             if (!err && !row) {
                                                                 db.run(
-                                                                    'INSERT INTO addons (name, display_name, price, icon, display_order) VALUES (?, ?, ?, ?, ?)',
-                                                                    [name, displayName, price, icon, displayOrder],
+                                                                    'INSERT INTO addons (name, display_name, price, unit_label, icon, display_order) VALUES (?, ?, ?, ?, ?, ?)',
+                                                                    [name, displayName, price, unitLabel, icon, displayOrder],
                                                                     (err) => {
                                                                         if (!err) {
                                                                             addonCount++;
@@ -5568,7 +5596,7 @@ async function getBookingsForFeedbackRequest(daysAfterCheckout = 1) {
 // 取得所有加購商品
 async function getAllAddons() {
     try {
-        const sql = `SELECT * FROM addons WHERE is_active = 1 ORDER BY display_order ASC, id ASC`;
+        const sql = `SELECT *, COALESCE(unit_label, '人') AS unit_label FROM addons WHERE is_active = 1 ORDER BY display_order ASC, id ASC`;
         const result = await query(sql);
         return result.rows;
     } catch (error) {
@@ -5580,7 +5608,7 @@ async function getAllAddons() {
 // 取得所有加購商品（包含已停用的，供管理後台使用）
 async function getAllAddonsAdmin() {
     try {
-        const sql = `SELECT * FROM addons ORDER BY display_order ASC, id ASC`;
+        const sql = `SELECT *, COALESCE(unit_label, '人') AS unit_label FROM addons ORDER BY display_order ASC, id ASC`;
         const result = await query(sql);
         return result.rows;
     } catch (error) {
@@ -5593,8 +5621,8 @@ async function getAllAddonsAdmin() {
 async function getAddonById(id) {
     try {
         const sql = usePostgreSQL
-            ? `SELECT * FROM addons WHERE id = $1`
-            : `SELECT * FROM addons WHERE id = ?`;
+            ? `SELECT *, COALESCE(unit_label, '人') AS unit_label FROM addons WHERE id = $1`
+            : `SELECT *, COALESCE(unit_label, '人') AS unit_label FROM addons WHERE id = ?`;
         return await queryOne(sql, [id]);
     } catch (error) {
         console.error('❌ 查詢加購商品失敗:', error.message);
@@ -5606,15 +5634,16 @@ async function getAddonById(id) {
 async function createAddon(addonData) {
     try {
         const sql = usePostgreSQL
-            ? `INSERT INTO addons (name, display_name, price, icon, display_order, is_active) 
-               VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
-            : `INSERT INTO addons (name, display_name, price, icon, display_order, is_active) 
-               VALUES (?, ?, ?, ?, ?, ?)`;
+            ? `INSERT INTO addons (name, display_name, price, unit_label, icon, display_order, is_active) 
+               VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
+            : `INSERT INTO addons (name, display_name, price, unit_label, icon, display_order, is_active) 
+               VALUES (?, ?, ?, ?, ?, ?, ?)`;
         
         const values = [
             addonData.name,
             addonData.display_name,
             addonData.price,
+            addonData.unit_label || '人',
             addonData.icon || '➕',
             addonData.display_order || 0,
             addonData.is_active !== undefined ? addonData.is_active : 1
@@ -5632,12 +5661,13 @@ async function createAddon(addonData) {
 async function updateAddon(id, addonData) {
     try {
         const sql = usePostgreSQL
-            ? `UPDATE addons SET display_name = $1, price = $2, icon = $3, display_order = $4, is_active = $5, updated_at = CURRENT_TIMESTAMP WHERE id = $6`
-            : `UPDATE addons SET display_name = ?, price = ?, icon = ?, display_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+            ? `UPDATE addons SET display_name = $1, price = $2, unit_label = $3, icon = $4, display_order = $5, is_active = $6, updated_at = CURRENT_TIMESTAMP WHERE id = $7`
+            : `UPDATE addons SET display_name = ?, price = ?, unit_label = ?, icon = ?, display_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
         
         const values = [
             addonData.display_name,
             addonData.price,
+            addonData.unit_label || '人',
             addonData.icon || '➕',
             addonData.display_order || 0,
             addonData.is_active !== undefined ? addonData.is_active : 1,
