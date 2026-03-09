@@ -3593,9 +3593,32 @@ app.get('/api/dashboard/ops', requireAuth, adminLimiter, async (req, res) => {
         const dayCount = Math.max(1, Math.floor((end - start) / (24 * 60 * 60 * 1000)) + 1);
         const totalRoomTypes = Math.max(1, (roomTypes || []).length);
 
-        const normalizeDay = (v) => {
-            const d = new Date(`${String(v).slice(0, 10)}T00:00:00`);
-            return isNaN(d.getTime()) ? null : d;
+        const normalizeDay = (value) => {
+            if (!value) return null;
+
+            // PostgreSQL 有機會回傳 Date 物件，先標準化成當地日期 00:00
+            if (value instanceof Date) {
+                if (isNaN(value.getTime())) return null;
+                return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+            }
+
+            const raw = String(value).trim();
+            if (!raw) return null;
+
+            // 優先解析常見格式：YYYY-MM-DD / YYYY/MM/DD（可帶時間）
+            const ymdMatch = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+            if (ymdMatch) {
+                const year = Number(ymdMatch[1]);
+                const month = Number(ymdMatch[2]) - 1;
+                const day = Number(ymdMatch[3]);
+                const d = new Date(year, month, day);
+                return isNaN(d.getTime()) ? null : d;
+            }
+
+            // 後備：讓 JS 嘗試解析，成功後再截成日期
+            const fallback = new Date(raw);
+            if (isNaN(fallback.getTime())) return null;
+            return new Date(fallback.getFullYear(), fallback.getMonth(), fallback.getDate());
         };
 
         // 口徑統一：以入住日落在區間內作為 KPI 計算母體
