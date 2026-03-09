@@ -3466,6 +3466,20 @@ app.get('/api/statistics/monthly-stats', requireAuth, checkPermission('statistic
 // API: 儀表板數據
 app.get('/api/dashboard', adminLimiter, async (req, res) => {
     try {
+        const normalizeStatus = (status) => String(status || '').trim().toLowerCase();
+        const isActiveStatus = (status) => {
+            const s = normalizeStatus(status);
+            return s === 'active' || s === '有效' || s === '已確認' || s === 'confirmed';
+        };
+        const isReservedStatus = (status) => {
+            const s = normalizeStatus(status);
+            return s === 'reserved' || s === '保留' || s === '保留中';
+        };
+        const isCancelledStatus = (status) => {
+            const s = normalizeStatus(status);
+            return s === 'cancelled' || s === '已取消' || s === '取消';
+        };
+
         // 獲取今天的日期（YYYY-MM-DD）
         const today = new Date();
         const year = today.getFullYear();
@@ -3479,12 +3493,12 @@ app.get('/api/dashboard', adminLimiter, async (req, res) => {
         // 計算今日房況
         const todayCheckIns = allBookings.filter(booking => 
             booking.check_in_date === todayStr && 
-            (booking.status === 'active' || booking.status === 'reserved')
+            (isActiveStatus(booking.status) || isReservedStatus(booking.status))
         ).length;
         
         const todayCheckOuts = allBookings.filter(booking => 
             booking.check_out_date === todayStr && 
-            booking.status === 'active'
+            isActiveStatus(booking.status)
         ).length;
         
         // 計算今日訂單（訂購日為今日）
@@ -3503,9 +3517,9 @@ app.get('/api/dashboard', adminLimiter, async (req, res) => {
         ).length;
         
         // 計算訂房狀態
-        const activeBookings = allBookings.filter(booking => booking.status === 'active').length;
-        const reservedBookings = allBookings.filter(booking => booking.status === 'reserved').length;
-        const cancelledBookings = allBookings.filter(booking => booking.status === 'cancelled').length;
+        const activeBookings = allBookings.filter(booking => isActiveStatus(booking.status)).length;
+        const reservedBookings = allBookings.filter(booking => isReservedStatus(booking.status)).length;
+        const cancelledBookings = allBookings.filter(booking => isCancelledStatus(booking.status)).length;
         
         res.json({
             success: true,
@@ -3531,6 +3545,33 @@ app.get('/api/dashboard', adminLimiter, async (req, res) => {
 // API: 營運儀表板 Phase 1 指標（同頁整合）
 app.get('/api/dashboard/ops', requireAuth, checkPermission('dashboard.view'), adminLimiter, async (req, res) => {
     try {
+        const normalizeStatus = (status) => String(status || '').trim().toLowerCase();
+        const isActiveStatus = (status) => {
+            const s = normalizeStatus(status);
+            return s === 'active' || s === '有效' || s === '已確認' || s === 'confirmed';
+        };
+        const isReservedStatus = (status) => {
+            const s = normalizeStatus(status);
+            return s === 'reserved' || s === '保留' || s === '保留中';
+        };
+        const isCancelledStatus = (status) => {
+            const s = normalizeStatus(status);
+            return s === 'cancelled' || s === '已取消' || s === '取消';
+        };
+        const normalizePaymentStatus = (status) => String(status || '').trim().toLowerCase();
+        const isPaid = (status) => {
+            const s = normalizePaymentStatus(status);
+            return s === 'paid' || s === '已付款' || s === '付款完成';
+        };
+        const isPending = (status) => {
+            const s = normalizePaymentStatus(status);
+            return s === 'pending' || s === '未付款' || s === '待付款';
+        };
+        const isFailed = (status) => {
+            const s = normalizePaymentStatus(status);
+            return s === 'failed' || s === '付款失敗' || s === '失敗';
+        };
+
         const end = req.query.endDate ? new Date(`${req.query.endDate}T00:00:00`) : new Date();
         end.setHours(0, 0, 0, 0);
 
@@ -3569,8 +3610,7 @@ app.get('/api/dashboard/ops', requireAuth, checkPermission('dashboard.view'), ad
         let activeReservedNights = 0;
 
         allBookings.forEach((booking) => {
-            const status = booking.status;
-            if (status !== 'active' && status !== 'reserved') return;
+            if (!isActiveStatus(booking.status) && !isReservedStatus(booking.status)) return;
 
             const checkIn = normalizeDay(booking.check_in_date);
             const checkOut = normalizeDay(booking.check_out_date);
@@ -3596,13 +3636,13 @@ app.get('/api/dashboard/ops', requireAuth, checkPermission('dashboard.view'), ad
             activeReservedNights += overlapNights;
         });
 
-        const conversionNumerator = inRangeByCheckInDate.filter((b) => b.status === 'active' || b.status === 'reserved').length;
+        const conversionNumerator = inRangeByCheckInDate.filter((b) => isActiveStatus(b.status) || isReservedStatus(b.status)).length;
         const conversionDenominator = inRangeByCheckInDate.length;
 
-        const paymentNumerator = inRangeByCheckInDate.filter((b) => b.payment_status === 'paid').length;
-        const paymentDenominator = inRangeByCheckInDate.filter((b) => ['paid', 'pending', 'failed'].includes(String(b.payment_status || '').toLowerCase())).length;
+        const paymentNumerator = inRangeByCheckInDate.filter((b) => isPaid(b.payment_status)).length;
+        const paymentDenominator = inRangeByCheckInDate.filter((b) => isPaid(b.payment_status) || isPending(b.payment_status) || isFailed(b.payment_status)).length;
 
-        const cancellationNumerator = inRangeByCheckInDate.filter((b) => b.status === 'cancelled').length;
+        const cancellationNumerator = inRangeByCheckInDate.filter((b) => isCancelledStatus(b.status)).length;
         const cancellationDenominator = inRangeByCheckInDate.length;
 
         const occupancyRate = (occupiedRoomNights / (totalRoomTypes * dayCount)) * 100;
