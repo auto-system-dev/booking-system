@@ -29,7 +29,7 @@ function createEmailDeliveryService(deps) {
                 try {
                     console.log('📧 使用 Resend 發送郵件...');
 
-                    const senderEmail = 'resend@resend.dev';
+                    const senderEmail = (emailRuntime.configuredSenderEmail || 'resend@resend.dev').trim();
                     let fromEmail = senderEmail;
                     const resendSenderName = ((await db.getSetting('resend_sender_name')) || (await getHotelSettingsWithFallback()).hotelName || '').trim();
                     if (resendSenderName) {

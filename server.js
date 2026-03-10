@@ -4644,10 +4644,10 @@ app.get('/api/admin/email-service-status', requireAuth, checkPermission('email_t
         const resendClientInitialized = emailRuntime.resendClient !== null;
         const currentProvider = emailRuntime.emailServiceProvider;
         
-        // 檢查發件人資訊（Resend 使用固定寄件郵箱）
+        // 檢查發件人資訊
         const resendSenderName = (await db.getSetting('resend_sender_name') || '').trim();
         const emailUser = (await db.getSetting('email_user') || '').trim();
-        const effectiveSenderEmail = currentProvider === 'resend' ? 'resend@resend.dev' : emailUser;
+        const effectiveSenderEmail = getConfiguredSenderEmail(emailRuntime) || emailUser;
         
         // 檢查 Gmail 設定（作為備用）
         const gmailClientID = await db.getSetting('gmail_client_id') || process.env.GMAIL_CLIENT_ID;
@@ -4684,6 +4684,9 @@ app.get('/api/admin/email-service-status', requireAuth, checkPermission('email_t
         }
         if (resendApiKey && !resendClientInitialized) {
             status.recommendations.push('⚠️ Resend API Key 已設定但客戶端未初始化，請重新啟動伺服器');
+        }
+        if (currentProvider === 'resend' && effectiveSenderEmail === 'resend@resend.dev') {
+            status.recommendations.push('⚠️ 目前使用 Resend 測試寄件人，建議在「Gmail 帳號(email_user)」或環境變數 RESEND_FROM_EMAIL 設定自有網域寄件信箱');
         }
         if (currentProvider !== 'resend' && !effectiveSenderEmail) {
             status.recommendations.push('⚠️ 發件人信箱未設定，請在「Gmail 發信設定」設定「Gmail 帳號」');

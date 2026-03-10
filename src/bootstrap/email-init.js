@@ -15,6 +15,19 @@ async function initEmailService(deps) {
         }
 
         const resendApiKey = await db.getSetting('resend_api_key') || processEnv.RESEND_API_KEY;
+        const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+        const resolveResendSenderEmail = async () => {
+            const fromDb = (await db.getSetting('resend_from_email') || '').trim();
+            const fromDbEmailUser = (await db.getSetting('email_user') || '').trim();
+            const fromEnv = (processEnv.RESEND_FROM_EMAIL || '').trim();
+            const fromEnvEmailUser = (processEnv.EMAIL_USER || '').trim();
+
+            if (isValidEmail(fromDb)) return fromDb;
+            if (isValidEmail(fromDbEmailUser)) return fromDbEmailUser;
+            if (isValidEmail(fromEnv)) return fromEnv;
+            if (isValidEmail(fromEnvEmailUser)) return fromEnvEmailUser;
+            return 'resend@resend.dev';
+        };
         let emailUser = ((await db.getSetting('email_user')) || processEnv.EMAIL_USER || '').trim();
         emailRuntime.configuredSenderEmail = emailUser;
         const emailPass = (processEnv.EMAIL_PASS || '').trim();
@@ -30,10 +43,11 @@ async function initEmailService(deps) {
 
                 emailRuntime.resendClient = new Resend(resendApiKey);
                 emailRuntime.emailServiceProvider = 'resend';
-                emailRuntime.configuredSenderEmail = 'resend@resend.dev';
+                emailRuntime.configuredSenderEmail = await resolveResendSenderEmail();
                 console.log('📧 郵件服務已設定（Resend）');
                 console.log('   服務提供商: Resend');
                 console.log('   設定來源:', await db.getSetting('resend_api_key') ? '資料庫' : '環境變數');
+                console.log('   寄件信箱:', emailRuntime.configuredSenderEmail);
                 return;
             } catch (error) {
                 console.error('❌ 初始化 Resend 失敗:', error.message);
