@@ -281,7 +281,18 @@ function setLink(id, url) {
     if (!url) return;
     const el = document.getElementById(id);
     if (el) {
-        el.href = url;
+        const raw = String(url).trim();
+        if (!raw || raw === '#') return;
+
+        let normalized = raw;
+        const hasScheme = /^(https?:\/\/|line:\/\/|mailto:|tel:)/i.test(raw);
+        if (!hasScheme) {
+            normalized = `https://${raw}`;
+        }
+
+        el.href = normalized;
+        el.target = '_blank';
+        el.rel = 'noopener noreferrer';
         el.style.display = '';
         el.removeAttribute('style');
     }
@@ -710,7 +721,7 @@ function initCountdown() {
 }
 
 // ===== 平滑捲動（錨點連結）=====
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+document.querySelectorAll('a[href^="#"]:not([href="#"])').forEach(anchor => {
     anchor.addEventListener('click', function(e) {
         e.preventDefault();
         const target = document.querySelector(this.getAttribute('href'));
