@@ -22,6 +22,10 @@
                     if (iconEl) iconEl.href = faviconUrl;
                     if (appleIconEl) appleIconEl.href = faviconUrl;
                 }
+                const landingName = result.success && result.data && result.data.landing_name;
+                if (landingName && String(landingName).trim()) {
+                    document.title = String(landingName).trim();
+                }
                 const pixelId = result.success && result.data && result.data.landing_fb_pixel_id;
                 if (pixelId && pixelId !== 'YOUR_PIXEL_ID_HERE' && /^\d+$/.test(pixelId)) {
                     !function(f,b,e,v,n,t,s)
