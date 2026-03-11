@@ -111,11 +111,12 @@ async function applyConfig(cfg) {
     // ===== 基本資訊 =====
     const name = cfg.landing_name || '';
     if (name) {
-        setText('navLogo', name);
+        setText('navLogoText', name);
         setText('footerBrand', name);
         const footerCopyright = document.getElementById('footerCopyright');
         if (footerCopyright) footerCopyright.innerHTML = `&copy; ${new Date().getFullYear()} ${name}. All rights reserved.`;
     }
+    setNavLogo(cfg.landing_nav_logo);
     if (cfg.landing_title) {
         const titleEl = document.getElementById('heroTitle');
         if (titleEl) titleEl.innerHTML = cfg.landing_title;
@@ -258,6 +259,21 @@ function setText(id, value) {
     if (!value) return;
     const el = document.getElementById(id);
     if (el) el.textContent = value;
+}
+
+function setNavLogo(imageUrl) {
+    const navLogo = document.getElementById('navLogo');
+    const logoImg = document.getElementById('navLogoImage');
+    if (!navLogo || !logoImg) return;
+    if (imageUrl && String(imageUrl).trim()) {
+        logoImg.src = String(imageUrl).trim();
+        logoImg.style.display = '';
+        navLogo.classList.add('has-image');
+    } else {
+        logoImg.removeAttribute('src');
+        logoImg.style.display = 'none';
+        navLogo.classList.remove('has-image');
+    }
 }
 
 function escapeHtml(str) {

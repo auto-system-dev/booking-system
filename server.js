@@ -1556,7 +1556,14 @@ function renderLandingTemplate(templateHtml, landingSettings, landingRoomTypes) 
     const seoTitle = cfg.landing_seo_title || landingName || '民宿銷售頁';
 
     html = replaceElementContentById(html, 'pageTitle', seoTitle);
-    html = replaceElementContentById(html, 'navLogo', landingName);
+    html = replaceElementContentById(html, 'navLogoText', landingName);
+    if (cfg.landing_nav_logo) {
+        html = replaceAttrById(html, 'navLogoImage', 'src', cfg.landing_nav_logo);
+        html = html.replace(
+            /<img id="navLogoImage" class="nav-logo-image" src="" alt="民宿 Logo" style="display: none;">/,
+            `<img id="navLogoImage" class="nav-logo-image" src="${escapeHtmlAttr(cfg.landing_nav_logo)}" alt="民宿 Logo">`
+        );
+    }
     html = replaceElementContentById(html, 'footerBrand', landingName);
 
     html = replaceElementContentById(html, 'heroTitle', cfg.landing_title, { allowHtml: true });

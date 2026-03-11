@@ -85,6 +85,17 @@ body {
     color: var(--text-white);
     text-decoration: none;
     letter-spacing: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav-logo-image {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 .nav-menu {

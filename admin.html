@@ -1527,6 +1527,18 @@
                                     <small>顯示在導航列和頁尾的品牌名稱</small>
                                 </div>
                                 <div class="form-group">
+                                    <label>導航列 Logo 圖片（顯示在民宿名稱前）</label>
+                                    <input type="hidden" id="landingNavLogo" value="">
+                                    <div id="landingNavLogoUploadArea" onclick="document.getElementById('landingNavLogoInput').click()" style="border: 2px dashed #d0d7de; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; background: #fafbfc;">
+                                        <div id="landingNavLogoPreview">
+                                            <span class="material-symbols-outlined" style="font-size: 32px; color: #9aa0a6; display:block; margin-bottom: 6px;">add_photo_alternate</span>
+                                            <p style="margin:0; color:#666;">點擊上傳導航列 Logo</p>
+                                            <small style="color:#999;">建議正方形 PNG/WebP，最大 2MB</small>
+                                        </div>
+                                    </div>
+                                    <input type="file" id="landingNavLogoInput" accept="image/png,image/jpeg,image/webp,image/gif" style="display: none;" onchange="handleLandingNavLogoUpload(this)">
+                                </div>
+                                <div class="form-group">
                                     <label>主標題</label>
                                     <input type="text" id="landingTitle" placeholder="例如：遠離塵囂 擁抱自然">
                                     <small>Hero 區塊的大標題（支援用 &lt;br&gt; 換行）</small>
