@@ -112,11 +112,11 @@ async function applyConfig(cfg) {
     const name = cfg.landing_name || '';
     if (name) {
         setText('navLogoText', name);
-        setText('footerBrand', name);
+        setText('footerBrandText', name);
         const footerCopyright = document.getElementById('footerCopyright');
         if (footerCopyright) footerCopyright.innerHTML = `&copy; ${new Date().getFullYear()} ${name}. All rights reserved.`;
     }
-    setNavLogo(cfg.landing_nav_logo);
+    setBrandLogos(cfg.landing_nav_logo);
     if (cfg.landing_title) {
         const titleEl = document.getElementById('heroTitle');
         if (titleEl) titleEl.innerHTML = cfg.landing_title;
@@ -261,17 +261,23 @@ function setText(id, value) {
     if (el) el.textContent = value;
 }
 
-function setNavLogo(imageUrl) {
+function setBrandLogos(imageUrl) {
     const navLogo = document.getElementById('navLogo');
     const logoImg = document.getElementById('navLogoImage');
-    if (!navLogo || !logoImg) return;
+    const footerLogoImg = document.getElementById('footerLogoImage');
+    if (!navLogo || !logoImg || !footerLogoImg) return;
     if (imageUrl && String(imageUrl).trim()) {
-        logoImg.src = String(imageUrl).trim();
+        const normalizedUrl = String(imageUrl).trim();
+        logoImg.src = normalizedUrl;
+        footerLogoImg.src = normalizedUrl;
         logoImg.style.display = '';
+        footerLogoImg.style.display = '';
         navLogo.classList.add('has-image');
     } else {
         logoImg.removeAttribute('src');
+        footerLogoImg.removeAttribute('src');
         logoImg.style.display = 'none';
+        footerLogoImg.style.display = 'none';
         navLogo.classList.remove('has-image');
     }
 }

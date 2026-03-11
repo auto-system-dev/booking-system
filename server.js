@@ -1564,7 +1564,14 @@ function renderLandingTemplate(templateHtml, landingSettings, landingRoomTypes) 
             `<img id="navLogoImage" class="nav-logo-image" src="${escapeHtmlAttr(cfg.landing_nav_logo)}" alt="民宿 Logo">`
         );
     }
-    html = replaceElementContentById(html, 'footerBrand', landingName);
+    html = replaceElementContentById(html, 'footerBrandText', landingName);
+    if (cfg.landing_nav_logo) {
+        html = replaceAttrById(html, 'footerLogoImage', 'src', cfg.landing_nav_logo);
+        html = html.replace(
+            /<img id="footerLogoImage" class="footer-logo-image" src="" alt="民宿 Logo" style="display: none;">/,
+            `<img id="footerLogoImage" class="footer-logo-image" src="${escapeHtmlAttr(cfg.landing_nav_logo)}" alt="民宿 Logo">`
+        );
+    }
 
     html = replaceElementContentById(html, 'heroTitle', cfg.landing_title, { allowHtml: true });
     html = replaceElementContentById(html, 'heroSubtitle', cfg.landing_subtitle);
