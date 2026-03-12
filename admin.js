@@ -920,13 +920,12 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
 
             if (attempt < maxAttempts) {
-                setLoginStatusMessage(`服務喚醒中，正在重試連線（${attempt}/${maxAttempts}）...`);
                 await new Promise(resolve => setTimeout(resolve, 2200));
                 return tryCheckAuth(attempt + 1, maxAttempts);
             }
 
             showLoginPage();
-            setLoginStatusMessage('服務可能剛喚醒，請稍候 5-10 秒後再試登入。');
+            setLoginStatusMessage('');
             return false;
         };
 
