@@ -846,6 +846,7 @@ section {
     border: 1px solid #eef2f7;
     transition: var(--transition);
     cursor: pointer;
+    position: relative;
 }
 
 .facility-gallery-card:hover {
