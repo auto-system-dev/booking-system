@@ -4693,6 +4693,7 @@ async function getAllCustomers() {
                     SUM(final_amount) as total_spent,
                     MAX(created_at) as last_booking_date
                 FROM bookings
+                WHERE payment_status = 'paid' AND status = 'active'
                 GROUP BY guest_email
             )
             SELECT 
@@ -4717,6 +4718,8 @@ async function getAllCustomers() {
                 SUM(b1.final_amount) as total_spent,
                 MAX(b1.created_at) as last_booking_date
             FROM bookings b1
+            WHERE b1.payment_status = 'paid'
+              AND b1.status = 'active'
             GROUP BY b1.guest_email
             ORDER BY last_booking_date DESC`;
         
@@ -4764,6 +4767,8 @@ async function getCustomerByEmail(email) {
                 MAX(created_at) OVER (PARTITION BY guest_email) as last_booking_date
             FROM bookings
             WHERE guest_email = $1
+              AND payment_status = 'paid'
+              AND status = 'active'
             ORDER BY guest_email, created_at DESC
             LIMIT 1`
             : `SELECT 
@@ -4778,7 +4783,9 @@ async function getCustomerByEmail(email) {
                 SUM(final_amount) as total_spent,
                 MAX(created_at) as last_booking_date
             FROM bookings
-            WHERE guest_email = ?`;
+            WHERE guest_email = ?
+              AND payment_status = 'paid'
+              AND status = 'active'`;
         
         const customerResult = usePostgreSQL 
             ? await queryOne(customerSQL, [email])
