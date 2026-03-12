@@ -10437,12 +10437,12 @@ function renderLandingFacilityGalleryEditor() {
                     ${images.length ? `
                         <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:4px; margin-top:6px;">
                             ${images.map((img, imgIndex) => `
-                                <div style="position:relative; border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; height:42px;">
+                                <div onclick="setLandingFacilityGalleryCover('${item.id}', ${imgIndex})" style="position:relative; border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; height:42px; cursor:pointer;">
                                     <img src="${escapeHtml(img)}" alt="" style="width:100%; height:100%; object-fit:cover;">
                                     <button type="button" onclick="event.stopPropagation(); removeLandingFacilityGalleryImage('${item.id}', ${imgIndex})" style="position:absolute; top:2px; right:2px; width:16px; height:16px; border:none; border-radius:50%; background:rgba(220,53,69,.92); color:#fff; font-size:11px; line-height:1; cursor:pointer;">×</button>
                                     ${imgIndex === 0
                                         ? `<span style="position:absolute; left:2px; bottom:2px; border-radius:10px; background:rgba(14,116,144,.9); color:#fff; font-size:10px; padding:1px 5px;">封面</span>`
-                                        : `<button type="button" onclick="event.stopPropagation(); setLandingFacilityGalleryCover('${item.id}', ${imgIndex})" style="position:absolute; left:2px; bottom:2px; border:none; border-radius:10px; background:rgba(15,23,42,.78); color:#fff; font-size:10px; padding:1px 5px; cursor:pointer;">設為封面</button>`}
+                                        : ''}
                                 </div>
                             `).join('')}
                         </div>
