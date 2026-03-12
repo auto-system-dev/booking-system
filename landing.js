@@ -442,8 +442,10 @@ function renderFacilityGallery(cfg) {
 
     grid.innerHTML = items.map((item, index) => `
         <article class="facility-gallery-card" onclick="openFacilityGallery(${index})">
-            <img class="facility-gallery-image" src="${escapeHtml(item.images[0])}" alt="${escapeHtml(item.title || '公共設施照片')}" loading="lazy">
-            <span class="room-gallery-hint"><span class="material-symbols-outlined">photo_library</span> ${item.images.length} 張照片</span>
+            <div class="facility-gallery-image-wrap">
+                <img class="facility-gallery-image" src="${escapeHtml(item.images[0])}" alt="${escapeHtml(item.title || '公共設施照片')}" loading="lazy">
+                <span class="room-gallery-hint"><span class="material-symbols-outlined">photo_library</span> ${item.images.length} 張照片</span>
+            </div>
             <div class="facility-gallery-info">
                 <div class="facility-gallery-title">${escapeHtml(item.title || '公共設施')}</div>
                 ${item.desc ? `<div class="facility-gallery-desc">${escapeHtml(item.desc)}</div>` : ''}
