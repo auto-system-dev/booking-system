@@ -415,7 +415,14 @@ function renderFacilityGallery(cfg) {
         const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
         if (Array.isArray(parsed)) {
             items = parsed
-                .filter(item => item && item.image && item.enabled !== false)
+                .map(item => {
+                    const images = resolveFacilityGalleryImages(item);
+                    return {
+                        ...item,
+                        images
+                    };
+                })
+                .filter(item => item && item.images.length > 0 && item.enabled !== false)
                 .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
         }
     } catch (error) {
@@ -428,12 +435,14 @@ function renderFacilityGallery(cfg) {
     }
 
     section.style.display = '';
-    const imageList = items.map(item => item.image).filter(Boolean);
-    window._facilityGalleryImages = imageList;
+    window._facilityGalleryItems = items.map(item => ({
+        title: item.title || '公共設施',
+        images: item.images
+    }));
 
     grid.innerHTML = items.map((item, index) => `
         <article class="facility-gallery-card" onclick="openFacilityGallery(${index})">
-            <img class="facility-gallery-image" src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title || '公共設施照片')}" loading="lazy">
+            <img class="facility-gallery-image" src="${escapeHtml(item.images[0])}" alt="${escapeHtml(item.title || '公共設施照片')}" loading="lazy">
             <div class="facility-gallery-info">
                 <div class="facility-gallery-title">${escapeHtml(item.title || '公共設施')}</div>
                 ${item.desc ? `<div class="facility-gallery-desc">${escapeHtml(item.desc)}</div>` : ''}
@@ -443,8 +452,26 @@ function renderFacilityGallery(cfg) {
 }
 
 function openFacilityGallery(index = 0) {
-    const images = window._facilityGalleryImages || [];
-    openImageGallery('公共設施相簿', images, index);
+    const list = window._facilityGalleryItems || [];
+    const item = list[index];
+    if (!item || !Array.isArray(item.images) || !item.images.length) return;
+    openImageGallery(item.title || '公共設施相簿', item.images, 0);
+}
+
+function resolveFacilityGalleryImages(item) {
+    const images = [];
+    if (item && Array.isArray(item.images)) {
+        item.images.forEach(url => {
+            const normalized = String(url || '').trim();
+            if (normalized) images.push(normalized);
+        });
+    }
+    // 相容舊資料：只有 image 欄位
+    if (item && item.image) {
+        const legacy = String(item.image).trim();
+        if (legacy && !images.includes(legacy)) images.push(legacy);
+    }
+    return images;
 }
 
 // ===== 動態生成房型卡片（從房型管理 + 設施設定合併） =====

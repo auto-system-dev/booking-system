@@ -10379,7 +10379,7 @@ function loadLandingFacilityGalleryEditor(rawValue) {
                     id: item.id || `f_${Date.now()}_${index}`,
                     title: item.title || '',
                     desc: item.desc || '',
-                    image: item.image || '',
+                    images: normalizeFacilityImages(item),
                     enabled: item.enabled !== false,
                     order: Number(item.order) || (index + 1)
                 }));
@@ -10390,6 +10390,22 @@ function loadLandingFacilityGalleryEditor(rawValue) {
     }
     normalizeLandingFacilityGalleryOrder();
     renderLandingFacilityGalleryEditor();
+}
+
+function normalizeFacilityImages(item) {
+    const images = [];
+    if (item && Array.isArray(item.images)) {
+        item.images.forEach(url => {
+            const normalized = String(url || '').trim();
+            if (normalized) images.push(normalized);
+        });
+    }
+    // 相容舊資料：單圖欄位 image
+    if (item && item.image) {
+        const legacy = String(item.image).trim();
+        if (legacy && !images.includes(legacy)) images.push(legacy);
+    }
+    return images;
 }
 
 function normalizeLandingFacilityGalleryOrder() {
@@ -10407,17 +10423,32 @@ function renderLandingFacilityGalleryEditor() {
         return;
     }
 
-    container.innerHTML = landingFacilityGalleryItems.map((item, index) => `
+    container.innerHTML = landingFacilityGalleryItems.map((item, index) => {
+        const images = Array.isArray(item.images) ? item.images : [];
+        const cover = images[0] || '';
+        return `
         <div style="border: 1px solid #dbe4ee; border-radius: 10px; padding: 10px; background: #fff;" data-facility-item-id="${item.id}">
             <div style="display: grid; grid-template-columns: 140px 1fr; gap: 12px;">
                 <div>
                     <div style="width: 100%; height: 96px; border-radius: 8px; border: 1px solid #e5e7eb; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                        ${item.image ? `<img src="${escapeHtml(item.image)}" alt="" style="width: 100%; height: 100%; object-fit: cover;">` : '<span style="color:#94a3b8;font-size:12px;">尚未上傳</span>'}
+                        ${cover ? `<img src="${escapeHtml(cover)}" alt="" style="width: 100%; height: 100%; object-fit: cover;">` : '<span style="color:#94a3b8;font-size:12px;">尚未上傳</span>'}
                     </div>
+                    ${images.length ? `<div style="margin-top:6px; font-size:12px; color:#64748b;">共 ${images.length} 張（第一張為封面）</div>` : ''}
+                    ${images.length ? `
+                        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:4px; margin-top:6px;">
+                            ${images.map((img, imgIndex) => `
+                                <div style="position:relative; border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; height:42px;">
+                                    <img src="${escapeHtml(img)}" alt="" style="width:100%; height:100%; object-fit:cover;">
+                                    <button type="button" onclick="event.stopPropagation(); removeLandingFacilityGalleryImage('${item.id}', ${imgIndex})" style="position:absolute; top:2px; right:2px; width:16px; height:16px; border:none; border-radius:50%; background:rgba(220,53,69,.92); color:#fff; font-size:11px; line-height:1; cursor:pointer;">×</button>
+                                    ${imgIndex > 0 ? `<button type="button" onclick="event.stopPropagation(); setLandingFacilityGalleryCover('${item.id}', ${imgIndex})" style="position:absolute; left:2px; bottom:2px; border:none; border-radius:10px; background:rgba(15,23,42,.78); color:#fff; font-size:10px; padding:1px 5px; cursor:pointer;">封面</button>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
                     <div class="facility-gallery-mini-actions">
-                        <button type="button" class="facility-gallery-mini-btn" onclick="uploadLandingFacilityGalleryImage('${item.id}')">上傳</button>
-                        <button type="button" class="facility-gallery-mini-btn" onclick="clearLandingFacilityGalleryImage('${item.id}')">清空</button>
-                        <input type="file" id="landingFacilityImageInput_${item.id}" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;" onchange="handleLandingFacilityGalleryImageUpload(this, '${item.id}')">
+                        <button type="button" class="facility-gallery-mini-btn" onclick="uploadLandingFacilityGalleryImage('${item.id}')">新增圖片</button>
+                        <button type="button" class="facility-gallery-mini-btn" onclick="clearLandingFacilityGalleryImage('${item.id}')">清空全部</button>
+                        <input type="file" id="landingFacilityImageInput_${item.id}" accept="image/jpeg,image/png,image/webp,image/gif" multiple style="display:none;" onchange="handleLandingFacilityGalleryImageUpload(this, '${item.id}')">
                     </div>
                 </div>
                 <div>
@@ -10443,7 +10474,8 @@ function renderLandingFacilityGalleryEditor() {
                 </div>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function addLandingFacilityGalleryItem() {
@@ -10451,7 +10483,7 @@ function addLandingFacilityGalleryItem() {
         id: `f_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         title: '',
         desc: '',
-        image: '',
+        images: [],
         enabled: true,
         order: landingFacilityGalleryItems.length + 1
     });
@@ -10490,38 +10522,59 @@ function uploadLandingFacilityGalleryImage(itemId) {
 function clearLandingFacilityGalleryImage(itemId) {
     const item = landingFacilityGalleryItems.find(x => x.id === itemId);
     if (!item) return;
-    item.image = '';
+    item.images = [];
+    renderLandingFacilityGalleryEditor();
+}
+
+function removeLandingFacilityGalleryImage(itemId, imageIndex) {
+    const item = landingFacilityGalleryItems.find(x => x.id === itemId);
+    if (!item || !Array.isArray(item.images)) return;
+    item.images.splice(imageIndex, 1);
+    renderLandingFacilityGalleryEditor();
+}
+
+function setLandingFacilityGalleryCover(itemId, imageIndex) {
+    const item = landingFacilityGalleryItems.find(x => x.id === itemId);
+    if (!item || !Array.isArray(item.images)) return;
+    if (imageIndex <= 0 || imageIndex >= item.images.length) return;
+    const [selected] = item.images.splice(imageIndex, 1);
+    item.images.unshift(selected);
     renderLandingFacilityGalleryEditor();
 }
 
 async function handleLandingFacilityGalleryImageUpload(input, itemId) {
-    const file = input.files && input.files[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-        showError('圖片大小不可超過 5MB');
+    const files = Array.from(input.files || []);
+    if (!files.length) return;
+    if (files.some(file => file.size > 5 * 1024 * 1024)) {
+        showError('單張圖片大小不可超過 5MB');
         input.value = '';
         return;
     }
 
-    const formData = new FormData();
-    formData.append('image', file);
-
     try {
-        const response = await adminFetch('/api/admin/landing/upload-image', {
-            method: 'POST',
-            body: formData
-        });
-        const result = await response.json();
-        if (result.success && result.data && result.data.image_url) {
-            const item = landingFacilityGalleryItems.find(x => x.id === itemId);
-            if (item) {
-                item.image = result.data.image_url;
+        const uploadedUrls = [];
+        for (const file of files) {
+            const formData = new FormData();
+            formData.append('image', file);
+            const response = await adminFetch('/api/admin/landing/upload-image', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            if (result.success && result.data && result.data.image_url) {
+                uploadedUrls.push(result.data.image_url);
+            } else {
+                throw new Error(result.message || '未知錯誤');
             }
-            renderLandingFacilityGalleryEditor();
-            showSuccess('公設圖片上傳成功');
-        } else {
-            showError('上傳失敗：' + (result.message || '未知錯誤'));
         }
+
+        const item = landingFacilityGalleryItems.find(x => x.id === itemId);
+        if (item) {
+            if (!Array.isArray(item.images)) item.images = [];
+            item.images.push(...uploadedUrls);
+        }
+        renderLandingFacilityGalleryEditor();
+        showSuccess(`公設圖片上傳成功（${uploadedUrls.length} 張）`);
     } catch (error) {
         console.error('上傳公設圖片錯誤:', error);
         showError('上傳公設圖片失敗：' + error.message);
@@ -10721,14 +10774,18 @@ async function saveLandingFacilities(silent = false) {
 
 async function saveLandingFacilityGallery(silent = false) {
     try {
-        const normalized = landingFacilityGalleryItems.map((item, index) => ({
-            id: item.id || `f_${index + 1}`,
-            title: String(item.title || '').trim(),
-            desc: String(item.desc || '').trim(),
-            image: String(item.image || '').trim(),
-            enabled: item.enabled !== false,
-            order: index + 1
-        })).filter(item => item.image);
+        const normalized = landingFacilityGalleryItems.map((item, index) => {
+            const images = normalizeFacilityImages(item);
+            return {
+                id: item.id || `f_${index + 1}`,
+                title: String(item.title || '').trim(),
+                desc: String(item.desc || '').trim(),
+                images,
+                image: images[0] || '',
+                enabled: item.enabled !== false,
+                order: index + 1
+            };
+        }).filter(item => item.images.length > 0);
 
         const response = await adminFetch('/api/admin/settings/landing_facility_gallery', {
             method: 'PUT',
@@ -11293,6 +11350,8 @@ window.removeLandingFacilityGalleryItem = removeLandingFacilityGalleryItem;
 window.moveLandingFacilityGalleryItem = moveLandingFacilityGalleryItem;
 window.uploadLandingFacilityGalleryImage = uploadLandingFacilityGalleryImage;
 window.clearLandingFacilityGalleryImage = clearLandingFacilityGalleryImage;
+window.removeLandingFacilityGalleryImage = removeLandingFacilityGalleryImage;
+window.setLandingFacilityGalleryCover = setLandingFacilityGalleryCover;
 window.updateLandingFacilityGalleryItem = updateLandingFacilityGalleryItem;
 window.handleLandingFacilityGalleryImageUpload = handleLandingFacilityGalleryImageUpload;
 window.syncFeatureCheckboxes = syncFeatureCheckboxes;
