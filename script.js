@@ -269,7 +269,7 @@ function renderAddons() {
         const summary = String(addon.summary || '').trim();
         const details = String(addon.details || '').trim();
         const terms = String(addon.terms || '').trim();
-        const hasDetailContent = !!(details || terms);
+        const hasDetailContent = !!(summary || details || terms);
         const encodedName = encodeURIComponent(addon.name || '');
         
         return `
@@ -278,7 +278,6 @@ function renderAddons() {
                     <span style="font-size: 24px;">${addon.icon || '➕'}</span>
                     <div style="flex: 1;">
                         <div style="font-weight: 600; font-size: 16px; margin-bottom: 5px;">${addon.display_name}</div>
-                        ${summary ? `<div class="addon-summary">${escapeAddonText(summary)}</div>` : ''}
                         <div style="color: #2C8EC4; font-weight: 600;">NT$ ${addon.price.toLocaleString()}/每${unitLabel}</div>
                         ${hasDetailContent ? `<button type="button" class="addon-detail-link" onclick="showAddonDetailModal('${encodedName}')">查看詳情</button>` : ''}
                     </div>

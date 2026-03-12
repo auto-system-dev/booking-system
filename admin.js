@@ -4180,12 +4180,12 @@ function showAddonModal(addon) {
             </div>
             <div class="form-group">
                 <label>詳細說明</label>
-                <textarea name="details" rows="5" maxlength="3000" placeholder="例如：內容包含、服務時間、兌換方式">${isEdit ? escapeHtml(addon.details || '') : ''}</textarea>
+                <textarea name="details" rows="8" maxlength="3000" placeholder="例如：內容包含、服務時間、兌換方式">${isEdit ? escapeHtml(addon.details || '') : ''}</textarea>
                 <small>可留空，最多 3000 字</small>
             </div>
             <div class="form-group">
                 <label>注意事項</label>
-                <textarea name="terms" rows="4" maxlength="3000" placeholder="例如：取消規則、不可與其他優惠並用">${isEdit ? escapeHtml(addon.terms || '') : ''}</textarea>
+                <textarea name="terms" rows="7" maxlength="3000" placeholder="例如：取消規則、不可與其他優惠並用">${isEdit ? escapeHtml(addon.terms || '') : ''}</textarea>
                 <small>可留空，最多 3000 字</small>
             </div>
             <div class="form-group">
