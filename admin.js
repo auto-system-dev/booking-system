@@ -4175,7 +4175,7 @@ function showAddonModal(addon) {
             </div>
             <div class="form-group">
                 <label>摘要（短描述）</label>
-                <input type="text" name="summary" value="${isEdit ? escapeHtml(addon.summary || '') : ''}" maxlength="120" placeholder="例如：需於入住前一天預約">
+                <input type="text" name="summary" value="${isEdit ? escapeHtml(addon.summary || '') : ''}" maxlength="120" placeholder="例如:在地食材手作早餐">
                 <small>可留空，最多 120 字，顯示在查看詳情裡</small>
             </div>
             <div class="form-group">
