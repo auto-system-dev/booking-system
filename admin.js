@@ -10943,7 +10943,7 @@ async function saveLandingSettings(tab) {
                 ['landing_name', 'landing_title', 'landing_subtitle', 'landing_badge',
                  'landing_price_prefix', 'landing_price_amount', 'landing_price_original',
                  'landing_nav_logo', 'landing_favicon', 'landing_hero_image', 'landing_countdown_days', 'landing_countdown_text',
-                 'landing_cta_text', 'landing_hero_trust_1', 'landing_hero_trust_2',
+                 'landing_hero_trust_1', 'landing_hero_trust_2',
                  'landing_hero_trust_3', 'landing_final_guarantee', 'landing_hero_trust_icon_1',
                  'landing_hero_trust_icon_2', 'landing_hero_trust_icon_3', 'landing_final_guarantee_icon'].includes(k)
             );
@@ -10999,7 +10999,7 @@ async function saveLandingSettings(tab) {
             keysToSave = Object.keys(landingFieldMap).filter(k =>
                 ['landing_address', 'landing_driving', 'landing_transit', 'landing_phone',
                  'landing_map_url', 'landing_google_review_url', 'landing_social_fb', 'landing_social_ig', 'landing_social_line',
-                 'landing_location_title', 'landing_final_cta_title', 'landing_final_cta_desc'].includes(k)
+                 'landing_location_title', 'landing_final_cta_title', 'landing_final_cta_desc', 'landing_cta_text'].includes(k)
             );
             break;
         case 'tracking':
