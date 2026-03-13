@@ -1494,6 +1494,10 @@
                         <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">info</span>
                         關於我們
                     </button>
+                    <button class="tab-button" onclick="switchLandingTab('public-facilities')" id="landingTabPublicFacilities">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">photo_library</span>
+                        公共設施
+                    </button>
                     <button class="tab-button" onclick="switchLandingTab('features')" id="landingTabFeatures">
                         <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">star</span>
                         特色賣點
@@ -1878,10 +1882,13 @@
                             <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">save</span>
                             儲存民宿設施
                         </button>
+                    </div>
 
-                        <div style="display: flex; align-items: center; margin: 28px 0 12px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+                    <!-- 公共設施分頁 -->
+                    <div id="landingTabPublicFacilitiesContent" class="tab-content">
+                        <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #0ea5e9;">
                             <span class="material-symbols-outlined" style="font-size: 22px; color: #0ea5e9; margin-right: 8px;">photo_library</span>
-                            <h4 style="margin: 0; color: #2c3e50;">公共設施相簿</h4>
+                            <h3 style="margin: 0; color: #2c3e50;">公共設施相簿</h3>
                         </div>
                         <div style="background-color: #ecfeff; border: 1px solid #bae6fd; padding: 10px 12px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; color: #0c4a6e;">
                             建議放客廳、廚房、停車場、庭院等照片。可排序、停用與刪除，前台會顯示啟用項目。
@@ -1895,7 +1902,7 @@
                                 新增公設項目
                             </button>
                         </div>
-                        <button class="btn-save" onclick="saveLandingSettings('facilities')" style="margin-top: 14px;">
+                        <button class="btn-save" onclick="saveLandingSettings('public-facilities')" style="margin-top: 14px;">
                             <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">save</span>
                             儲存公共設施
                         </button>

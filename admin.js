@@ -10954,12 +10954,22 @@ async function saveLandingSettings(tab) {
         case 'facilities':
             {
                 const facilitiesSaved = await saveLandingFacilities(true);
-                const gallerySaved = await saveLandingFacilityGallery(true);
-                if (facilitiesSaved && gallerySaved) {
-                    showSuccess('民宿設施與公設相簿已儲存');
+                if (facilitiesSaved) {
+                    showSuccess('民宿設施已儲存');
                     setTimeout(() => loadLandingSettings(), 300);
                 } else {
-                    showError('儲存失敗：請檢查民宿設施或公設相簿設定');
+                    showError('儲存失敗：請檢查民宿設施設定');
+                }
+            }
+            return;
+        case 'public-facilities':
+            {
+                const gallerySaved = await saveLandingFacilityGallery(true);
+                if (gallerySaved) {
+                    showSuccess('公共設施相簿已儲存');
+                    setTimeout(() => loadLandingSettings(), 300);
+                } else {
+                    showError('儲存失敗：請檢查公共設施相簿設定');
                 }
             }
             return;
