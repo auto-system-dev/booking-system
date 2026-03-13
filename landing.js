@@ -7,6 +7,32 @@
 let landingConfig = {};
 let countdownDays = 7;
 const DEFAULT_HERO_IMAGE = 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=1920';
+const DEFAULT_FACILITY_GALLERY_ITEMS = [
+    {
+        id: 'default_facility_lounge',
+        title: '公共客廳',
+        desc: '明亮寬敞的共享客廳，提供舒適沙發與閱讀角，適合聊天放鬆。',
+        images: ['https://images.unsplash.com/photo-1554995207-c18c203602cb?w=1200'],
+        enabled: true,
+        order: 1
+    },
+    {
+        id: 'default_facility_dining',
+        title: '餐飲空間',
+        desc: '溫馨餐飲區搭配開放式座位，早餐與晚間小聚都很自在。',
+        images: ['https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1200'],
+        enabled: true,
+        order: 2
+    },
+    {
+        id: 'default_facility_courtyard',
+        title: '戶外休憩區',
+        desc: '綠意環繞的戶外空間，白天可享受陽光，夜晚可靜心放鬆。',
+        images: ['https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=1200'],
+        enabled: true,
+        order: 3
+    }
+];
 
 // 預設配色主題定義
 const landingThemes = {
@@ -433,8 +459,11 @@ function renderFacilityGallery(cfg) {
     }
 
     if (!items.length) {
-        section.style.display = 'none';
-        return;
+        items = DEFAULT_FACILITY_GALLERY_ITEMS.map((item, index) => ({
+            ...item,
+            order: index + 1,
+            images: resolveFacilityGalleryImages(item)
+        }));
     }
 
     section.style.display = '';
