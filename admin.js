@@ -10282,6 +10282,14 @@ window.exportStatisticsCSV = exportStatisticsCSV;
 
 // ==================== 銷售頁管理 ====================
 
+function getLandingTabDomKey(tab) {
+    return String(tab || 'basic')
+        .split('-')
+        .filter(Boolean)
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join('');
+}
+
 // 銷售頁分頁切換
 function switchLandingTab(tab) {
     // 移除所有分頁的 active
@@ -10289,8 +10297,17 @@ function switchLandingTab(tab) {
     document.querySelectorAll('#landing-page-section .tab-content').forEach(content => content.classList.remove('active'));
 
     // 啟用選定的分頁
-    const tabBtn = document.getElementById(`landingTab${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
-    const tabContent = document.getElementById(`landingTab${tab.charAt(0).toUpperCase() + tab.slice(1)}Content`);
+    const domKey = getLandingTabDomKey(tab);
+    let tabBtn = document.getElementById(`landingTab${domKey}`);
+    let tabContent = document.getElementById(`landingTab${domKey}Content`);
+
+    // 若 tab key 無效，回退到 basic，避免整頁變空白
+    if (!tabBtn || !tabContent) {
+        tabBtn = document.getElementById('landingTabBasic');
+        tabContent = document.getElementById('landingTabBasicContent');
+        tab = 'basic';
+    }
+
     if (tabBtn) tabBtn.classList.add('active');
     if (tabContent) tabContent.classList.add('active');
 
