@@ -182,30 +182,28 @@ body {
 /* ===== 關於我們區塊 ===== */
 .about-us {
     padding: 80px 0;
-    background: #f8fbff;
+    background: linear-gradient(
+        180deg,
+        var(--primary-alpha-08, rgba(26, 58, 74, 0.08)) 0%,
+        var(--bg-cream, #f8f6f3) 100%
+    );
 }
 
 .about-card {
     max-width: 760px;
     margin: 10px auto 0;
-    background: #fff;
-    border: 1px solid #e6edf5;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid var(--accent-alpha-10, rgba(201, 169, 98, 0.16));
     border-radius: 16px;
     padding: 28px;
-    box-shadow: 0 12px 28px rgba(26, 58, 74, 0.08);
+    box-shadow: 0 12px 28px var(--primary-alpha-08, rgba(26, 58, 74, 0.08));
     text-align: center;
-}
-
-.about-card h3 {
-    font-size: 24px;
-    margin-bottom: 10px;
-    color: var(--primary, #1a3a4a);
 }
 
 .about-card p {
     font-size: 17px;
     color: #4f5b68;
-    line-height: 1.7;
+    line-height: 1.9;
 }
 
 /* ===== Hero 區塊 ===== */
@@ -1205,10 +1203,6 @@ section {
     .about-card {
         padding: 22px 18px;
         border-radius: 12px;
-    }
-
-    .about-card h3 {
-        font-size: 20px;
     }
 
     .about-card p {

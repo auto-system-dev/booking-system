@@ -1587,7 +1587,6 @@ function renderLandingTemplate(templateHtml, landingSettings, landingRoomTypes) 
     html = replaceElementContentById(html, 'heroPriceOriginal', cfg.landing_price_original);
     html = replaceElementContentById(html, 'aboutSectionTitle', cfg.landing_about_title);
     html = replaceElementContentById(html, 'aboutSectionSubtitle', cfg.landing_about_subtitle);
-    html = replaceElementContentById(html, 'aboutCardTitle', cfg.landing_about_card_title);
     html = replaceElementContentById(html, 'aboutCardDesc', cfg.landing_about_card_desc);
     html = replaceElementContentById(html, 'countdownText', cfg.landing_countdown_text, { allowHtml: true });
 

@@ -128,7 +128,6 @@ async function applyConfig(cfg) {
     setText('heroPriceOriginal', cfg.landing_price_original);
     setText('aboutSectionTitle', cfg.landing_about_title);
     setText('aboutSectionSubtitle', cfg.landing_about_subtitle);
-    setText('aboutCardTitle', cfg.landing_about_card_title);
     setText('aboutCardDesc', cfg.landing_about_card_desc);
 
     // Hero 背景圖片（先預載再套用，避免刷新時先看到預設圖再切換）
