@@ -434,7 +434,7 @@ function renderAmenities(cfg) {
 }
 
 function renderFacilityGallery(cfg) {
-    const section = document.getElementById('facilityGallerySection');
+    const section = document.getElementById('public-facilities');
     const grid = document.getElementById('facilityGalleryGrid');
     if (!section || !grid) return;
 
