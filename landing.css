@@ -204,6 +204,7 @@ body {
     font-size: 17px;
     color: #4f5b68;
     line-height: 1.9;
+    white-space: pre-line;
 }
 
 /* ===== Hero 區塊 ===== */

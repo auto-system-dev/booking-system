@@ -2064,6 +2064,23 @@ code {
     font-weight: 500;
 }
 
+/* 銷售頁基本資訊：限時優惠 + 關於我們左右欄 */
+.landing-basic-split-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.landing-basic-split-column {
+    min-width: 0;
+}
+
+.landing-about-column textarea {
+    min-height: 140px;
+    resize: vertical;
+}
+
 /* ===== 色系主題卡片 ===== */
 .theme-card {
     border: 2px solid #e0e0e0;
@@ -2096,6 +2113,12 @@ code {
     gap: 8px;
     padding: 12px 16px;
     justify-content: center;
+}
+
+@media screen and (max-width: 900px) {
+    .landing-basic-split-grid {
+        grid-template-columns: 1fr;
+    }
 }
 .theme-swatch {
     width: 36px;

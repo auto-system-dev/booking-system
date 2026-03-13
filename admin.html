@@ -1608,40 +1608,48 @@
                                 <h3 style="margin: 0; color: #2c3e50;">限時優惠設定</h3>
                             </div>
                             <div class="settings-card" style="margin-top: 0;">
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                                    <div class="form-group">
-                                        <label>優惠倒數天數</label>
-                                        <div class="input-group">
-                                            <input type="number" id="landingCountdownDays" min="1" max="30" value="7" placeholder="7">
-                                            <span class="input-suffix">天</span>
+                                <div class="landing-basic-split-grid">
+                                    <div class="landing-basic-split-column">
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                            <div class="form-group">
+                                                <label>優惠倒數天數</label>
+                                                <div class="input-group">
+                                                    <input type="number" id="landingCountdownDays" min="1" max="30" value="7" placeholder="7">
+                                                    <span class="input-suffix">天</span>
+                                                </div>
+                                                <small>倒數計時器的天數</small>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>優惠說明文字</label>
+                                                <input type="text" id="landingCountdownText" placeholder="例如：限時早鳥優惠！享 8 折 優惠">
+                                            </div>
                                         </div>
-                                        <small>倒數計時器的天數</small>
+                                        <div class="form-group">
+                                            <label>CTA 按鈕文字</label>
+                                            <input type="text" id="landingCtaText" placeholder="例如：立即預訂">
+                                            <small>所有「立即訂房」按鈕的文字</small>
+                                        </div>
                                     </div>
-                                    <div class="form-group">
-                                        <label>優惠說明文字</label>
-                                        <input type="text" id="landingCountdownText" placeholder="例如：限時早鳥優惠！享 8 折 優惠">
+
+                                    <div class="landing-basic-split-column landing-about-column">
+                                        <div style="display: flex; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px dashed #d9e2ef;">
+                                            <span class="material-symbols-outlined" style="font-size: 20px; color: #2563eb; margin-right: 8px;">info</span>
+                                            <h4 style="margin: 0; color: #2c3e50;">關於我們區塊</h4>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>關於我們主標</label>
+                                            <input type="text" id="landingAboutTitle" placeholder="例如：關於我們">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>關於我們副標</label>
+                                            <input type="text" id="landingAboutSubtitle" placeholder="例如：以在地款待與細緻服務，讓每位旅人都像回到熟悉的家。">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>關於我們內容</label>
+                                            <textarea id="landingAboutCardDesc" rows="5" placeholder="例如：我們以真誠的在地款待為核心，從空間清潔、備品細節到旅遊建議都用心安排；&#10;期待你在這裡放慢步調、安心休息，帶走一段溫暖且值得回味的旅宿記憶。"></textarea>
+                                            <small>可換行顯示於前台內容卡片</small>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="form-group">
-                                    <label>CTA 按鈕文字</label>
-                                    <input type="text" id="landingCtaText" placeholder="例如：立即預訂">
-                                    <small>所有「立即訂房」按鈕的文字</small>
-                                </div>
-                                <div style="display: flex; align-items: center; margin: 26px 0 16px; padding-bottom: 12px; border-bottom: 1px dashed #d9e2ef;">
-                                    <span class="material-symbols-outlined" style="font-size: 20px; color: #2563eb; margin-right: 8px;">info</span>
-                                    <h4 style="margin: 0; color: #2c3e50;">關於我們區塊</h4>
-                                </div>
-                                <div class="form-group">
-                                    <label>關於我們主標</label>
-                                    <input type="text" id="landingAboutTitle" placeholder="例如：關於我們">
-                                </div>
-                                <div class="form-group">
-                                    <label>關於我們副標</label>
-                                    <input type="text" id="landingAboutSubtitle" placeholder="例如：以在地款待與細緻服務，讓每位旅人都像回到熟悉的家。">
-                                </div>
-                                <div class="form-group">
-                                    <label>重點卡內容</label>
-                                    <textarea id="landingAboutCardDesc" rows="3" placeholder="例如：我們以真誠的在地款待為核心，從空間清潔、備品細節到旅遊建議都用心安排；期待你在這裡放慢步調、安心休息，帶走一段溫暖且值得回味的旅宿記憶。"></textarea>
                                 </div>
                             </div>
                         </div>
