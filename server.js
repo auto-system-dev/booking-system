@@ -9418,20 +9418,23 @@ app.use('/uploads', express.static(uploadsDir, {
 }));
 
 // 靜態檔案服務（放在最後，避免覆蓋 API 路由）
-// 對後台相關檔案強制禁用快取，避免拿到舊/截斷檔導致前端 SyntaxError -> 白畫面
+// 後台快取策略：
+// - admin.html：no-store（永遠拿最新入口檔）
+// - admin.js / admin.css：短快取（提升重整速度，降低反覆下載）
 app.use(express.static(__dirname, {
     setHeaders: (res, filePath) => {
         try {
             const normalized = String(filePath || '').replace(/\\/g, '/').toLowerCase();
-            const isAdminAsset =
-                normalized.endsWith('/admin.html') ||
-                normalized.endsWith('/admin.js') ||
-                normalized.endsWith('/admin.css');
+            const isAdminHtml = normalized.endsWith('/admin.html');
+            const isAdminJsOrCss = normalized.endsWith('/admin.js') || normalized.endsWith('/admin.css');
 
-            if (isAdminAsset) {
+            if (isAdminHtml) {
                 res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
                 res.setHeader('Pragma', 'no-cache');
                 res.setHeader('Expires', '0');
+            } else if (isAdminJsOrCss) {
+                // 5 分鐘短快取，兼顧載入速度與更新時效
+                res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
             }
         } catch (_) {
             // ignore

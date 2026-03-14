@@ -905,11 +905,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         // 檢查登入狀態（含冷啟動提示與自動重試）
         console.log('🔐 準備檢查登入狀態...');
-        const tryCheckAuth = async (attempt, maxAttempts = 4) => {
+        const tryCheckAuth = async (attempt, maxAttempts = 3) => {
             try {
+                // 逐次延長逾時：第一輪快、後續給喚醒一些緩衝
+                const timeoutMs = Math.min(3500 + (attempt - 1) * 1500, 6500);
                 await Promise.race([
                     checkAuthStatus(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('檢查登入狀態逾時')), 8000))
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('檢查登入狀態逾時')), timeoutMs))
                 ]);
                 if (isAdminPageVisible()) {
                     setLoginStatusMessage('');
@@ -920,7 +922,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
 
             if (attempt < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, 2200));
+                const retryDelayMs = 1000 + (attempt - 1) * 700;
+                await new Promise(resolve => setTimeout(resolve, retryDelayMs));
                 return tryCheckAuth(attempt + 1, maxAttempts);
             }
 
