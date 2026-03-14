@@ -10379,6 +10379,9 @@ const landingFieldMap = {
     landing_hero_trust_1: 'landingHeroTrust1',
     landing_hero_trust_2: 'landingHeroTrust2',
     landing_hero_trust_3: 'landingHeroTrust3',
+    landing_hero_trust_enabled_1: 'landingHeroTrustEnabled1',
+    landing_hero_trust_enabled_2: 'landingHeroTrustEnabled2',
+    landing_hero_trust_enabled_3: 'landingHeroTrustEnabled3',
     landing_final_guarantee: 'landingFinalGuarantee',
     landing_hero_trust_icon_1: 'landingHeroTrustIcon1',
     landing_hero_trust_icon_2: 'landingHeroTrustIcon2',
@@ -10426,7 +10429,12 @@ async function loadLandingSettings() {
             for (const [key, elementId] of Object.entries(landingFieldMap)) {
                 const el = document.getElementById(elementId);
                 if (el && data[key] !== undefined) {
-                    el.value = data[key];
+                    if (el.type === 'checkbox') {
+                        const normalized = String(data[key]).toLowerCase();
+                        el.checked = normalized === '1' || normalized === 'true';
+                    } else {
+                        el.value = data[key];
+                    }
                 }
             }
             // 還原 Hero 背景圖片預覽
@@ -11305,7 +11313,8 @@ async function saveLandingSettings(tab) {
                  'landing_price_prefix', 'landing_price_amount', 'landing_price_original',
                  'landing_nav_logo', 'landing_favicon', 'landing_hero_image', 'landing_countdown_days', 'landing_countdown_text',
                  'landing_hero_trust_1', 'landing_hero_trust_2',
-                 'landing_hero_trust_3', 'landing_final_guarantee', 'landing_hero_trust_icon_1',
+                 'landing_hero_trust_3', 'landing_hero_trust_enabled_1', 'landing_hero_trust_enabled_2', 'landing_hero_trust_enabled_3',
+                 'landing_final_guarantee', 'landing_hero_trust_icon_1',
                  'landing_hero_trust_icon_2', 'landing_hero_trust_icon_3', 'landing_final_guarantee_icon'].includes(k)
             );
             break;
@@ -11405,6 +11414,9 @@ async function saveLandingSettings(tab) {
             landing_hero_trust_1: '銷售頁-Hero 信任文案1',
             landing_hero_trust_2: '銷售頁-Hero 信任文案2',
             landing_hero_trust_3: '銷售頁-Hero 信任文案3',
+            landing_hero_trust_enabled_1: '銷售頁-Hero 信任文案1是否顯示',
+            landing_hero_trust_enabled_2: '銷售頁-Hero 信任文案2是否顯示',
+            landing_hero_trust_enabled_3: '銷售頁-Hero 信任文案3是否顯示',
             landing_final_guarantee: '銷售頁-最終CTA信任文案',
             landing_hero_trust_icon_1: '銷售頁-Hero 信任圖示1',
             landing_hero_trust_icon_2: '銷售頁-Hero 信任圖示2',
@@ -11439,7 +11451,11 @@ async function saveLandingSettings(tab) {
             const el = document.getElementById(elementId);
             let value = '';
             if (el) {
-                value = el.value || '';
+                if (el.type === 'checkbox') {
+                    value = el.checked ? '1' : '0';
+                } else {
+                    value = el.value || '';
+                }
             }
             const description = descMap[key] || `銷售頁設定 - ${key}`;
             return adminFetch(`/api/admin/settings/${key}`, {

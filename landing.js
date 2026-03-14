@@ -198,6 +198,24 @@ async function applyConfig(cfg) {
     setText('heroTrust2', cfg.landing_hero_trust_2);
     setText('heroTrust3', cfg.landing_hero_trust_3);
     setText('finalGuaranteeText', cfg.landing_final_guarantee);
+    const isTrustEnabled = (value) => {
+        if (value === undefined || value === null || value === '') return true;
+        const normalized = String(value).trim().toLowerCase();
+        return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+    };
+    const trustEnabledFlags = [
+        isTrustEnabled(cfg.landing_hero_trust_enabled_1),
+        isTrustEnabled(cfg.landing_hero_trust_enabled_2),
+        isTrustEnabled(cfg.landing_hero_trust_enabled_3)
+    ];
+    trustEnabledFlags.forEach((enabled, index) => {
+        const item = document.getElementById(`heroTrustItem${index + 1}`);
+        if (item) item.style.display = enabled ? '' : 'none';
+    });
+    const trustGroup = document.getElementById('heroTrustGroup');
+    if (trustGroup) {
+        trustGroup.style.display = trustEnabledFlags.some(Boolean) ? '' : 'none';
+    }
 
     // 倒數計時
     if (cfg.landing_countdown_days) {

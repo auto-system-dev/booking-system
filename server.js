@@ -1526,6 +1526,35 @@ function replaceLinkHrefById(html, id, value) {
     return replaceAttrById(html, id, 'href', normalized);
 }
 
+function isLandingSettingEnabled(value, defaultValue = true) {
+    if (value === undefined || value === null || value === '') return defaultValue;
+    const normalized = String(value).trim().toLowerCase();
+    return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+}
+
+function setElementDisplayById(html, id, visible) {
+    const pattern = new RegExp(`(<[^>]*\\sid="${id}"[^>]*)(>)`);
+    return html.replace(pattern, (_, openTag, closeTag) => {
+        if (/\sstyle="/i.test(openTag)) {
+            const updatedOpenTag = openTag.replace(/\sstyle="([^"]*)"/i, (__m, styleValue) => {
+                const cleaned = String(styleValue || '')
+                    .replace(/display\s*:\s*none;?/gi, '')
+                    .replace(/\s*;\s*$/g, '')
+                    .trim();
+                if (visible) {
+                    return cleaned ? ` style="${cleaned}"` : '';
+                }
+                const merged = cleaned ? `${cleaned}; display: none;` : 'display: none;';
+                return ` style="${merged}"`;
+            });
+            return `${updatedOpenTag}${closeTag}`;
+        }
+        return visible
+            ? `${openTag}${closeTag}`
+            : `${openTag} style="display: none;"${closeTag}`;
+    });
+}
+
 function normalizeMaterialIconName(value) {
     return String(value || '')
         .trim()
@@ -1658,6 +1687,13 @@ function renderLandingTemplate(templateHtml, landingSettings, landingRoomTypes) 
     html = replaceElementContentById(html, 'heroTrustIcon1', cfg.landing_hero_trust_icon_1);
     html = replaceElementContentById(html, 'heroTrustIcon2', cfg.landing_hero_trust_icon_2);
     html = replaceElementContentById(html, 'heroTrustIcon3', cfg.landing_hero_trust_icon_3);
+    const heroTrustVisible1 = isLandingSettingEnabled(cfg.landing_hero_trust_enabled_1, true);
+    const heroTrustVisible2 = isLandingSettingEnabled(cfg.landing_hero_trust_enabled_2, true);
+    const heroTrustVisible3 = isLandingSettingEnabled(cfg.landing_hero_trust_enabled_3, true);
+    html = setElementDisplayById(html, 'heroTrustItem1', heroTrustVisible1);
+    html = setElementDisplayById(html, 'heroTrustItem2', heroTrustVisible2);
+    html = setElementDisplayById(html, 'heroTrustItem3', heroTrustVisible3);
+    html = setElementDisplayById(html, 'heroTrustGroup', heroTrustVisible1 || heroTrustVisible2 || heroTrustVisible3);
 
     html = replaceElementContentById(html, 'featuresSectionTitle', cfg.landing_features_title);
     html = replaceElementContentById(html, 'featuresSectionSubtitle', cfg.landing_features_subtitle);
