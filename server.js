@@ -1526,6 +1526,80 @@ function replaceLinkHrefById(html, id, value) {
     return replaceAttrById(html, id, 'href', normalized);
 }
 
+function normalizeMaterialIconName(value) {
+    return String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[ -]+/g, '_')
+        .replace(/[^a-z0-9_]/g, '')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '');
+}
+
+function resolveLandingFeatureItems(cfg = {}) {
+    const defaults = [
+        { icon: 'landscape', title: '絕美山景', desc: '每間房間都能欣賞到壯闊的山巒美景', enabled: true, order: 1 },
+        { icon: 'spa', title: '私人湯屋', desc: '獨立溫泉湯屋，24 小時供應天然溫泉', enabled: true, order: 2 },
+        { icon: 'restaurant', title: '精緻早餐', desc: '使用在地新鮮食材，每日現做的豐盛早餐', enabled: true, order: 3 },
+        { icon: 'pets', title: '寵物友善', desc: '帶著毛小孩一起來度假', enabled: true, order: 4 }
+    ];
+
+    let items = [];
+    const raw = cfg.landing_features_items;
+    if (raw) {
+        try {
+            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            if (Array.isArray(parsed)) {
+                items = parsed.map((item, index) => ({
+                    icon: normalizeMaterialIconName(item.icon) || 'check_circle',
+                    title: String(item.title || '').trim(),
+                    desc: String(item.desc || '').trim(),
+                    enabled: item.enabled !== false,
+                    order: Number(item.order) || (index + 1)
+                }));
+            }
+        } catch (_) {
+            // fallback to legacy fields
+        }
+    }
+
+    if (!items.length) {
+        for (let i = 1; i <= 4; i++) {
+            const icon = normalizeMaterialIconName(cfg[`landing_feature_${i}_icon`]);
+            const title = String(cfg[`landing_feature_${i}_title`] || '').trim();
+            const desc = String(cfg[`landing_feature_${i}_desc`] || '').trim();
+            if (!icon && !title && !desc) continue;
+            items.push({
+                icon: icon || 'check_circle',
+                title,
+                desc,
+                enabled: true,
+                order: i
+            });
+        }
+    }
+
+    if (!items.length) {
+        items = defaults.map(item => ({ ...item }));
+    }
+
+    return items
+        .filter(item => item.enabled !== false)
+        .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+}
+
+function buildLandingFeatureCardsHtml(cfg = {}) {
+    return resolveLandingFeatureItems(cfg).map((item) => `
+        <div class="feature-card">
+            <div class="feature-icon">
+                <span class="material-symbols-outlined">${escapeHtmlText(item.icon || 'check_circle')}</span>
+            </div>
+            <h3>${escapeHtmlText(item.title || '特色服務')}</h3>
+            <p>${escapeHtmlText(item.desc || '')}</p>
+        </div>
+    `).join('');
+}
+
 function hexToRgb(hex) {
     const normalized = String(hex || '').trim().replace('#', '');
     if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
@@ -1599,11 +1673,7 @@ function renderLandingTemplate(templateHtml, landingSettings, landingRoomTypes) 
 
     html = replaceElementContentById(html, 'featuresSectionTitle', cfg.landing_features_title);
     html = replaceElementContentById(html, 'featuresSectionSubtitle', cfg.landing_features_subtitle);
-    for (let i = 1; i <= 4; i++) {
-        html = replaceElementContentById(html, `featureIcon${i}`, cfg[`landing_feature_${i}_icon`]);
-        html = replaceElementContentById(html, `featureTitle${i}`, cfg[`landing_feature_${i}_title`]);
-        html = replaceElementContentById(html, `featureDesc${i}`, cfg[`landing_feature_${i}_desc`]);
-    }
+    html = replaceElementContentById(html, 'featuresGrid', buildLandingFeatureCardsHtml(cfg), { allowHtml: true });
 
     html = replaceElementContentById(html, 'roomsSectionTitle', cfg.landing_rooms_title);
     html = replaceElementContentById(html, 'roomsSectionSubtitle', cfg.landing_rooms_subtitle);

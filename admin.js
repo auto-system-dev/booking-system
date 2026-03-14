@@ -10318,6 +10318,13 @@ function switchLandingTab(tab) {
 }
 
 let landingFacilityGalleryItems = [];
+let landingFeatureItems = [];
+const DEFAULT_LANDING_FEATURE_ITEMS = [
+    { id: 'feat_landscape', icon: 'landscape', title: '絕美山景', desc: '每間房間都能欣賞到壯闊的山巒美景', enabled: true, order: 1 },
+    { id: 'feat_spa', icon: 'spa', title: '私人湯屋', desc: '獨立溫泉湯屋，24 小時供應天然溫泉', enabled: true, order: 2 },
+    { id: 'feat_breakfast', icon: 'restaurant', title: '精緻早餐', desc: '使用在地新鮮食材，每日現做的豐盛早餐', enabled: true, order: 3 },
+    { id: 'feat_pet', icon: 'pets', title: '寵物友善', desc: '帶著毛小孩一起來度假', enabled: true, order: 4 }
+];
 const DEFAULT_LANDING_FACILITY_GALLERY_ITEMS = [
     {
         id: 'default_facility_lounge',
@@ -10378,19 +10385,6 @@ const landingFieldMap = {
     landing_location_title: 'landingLocationTitle',
     landing_final_cta_title: 'landingFinalCtaTitle',
     landing_final_cta_desc: 'landingFinalCtaDesc',
-    // 特色賣點
-    landing_feature_1_icon: 'landingFeature1Icon',
-    landing_feature_1_title: 'landingFeature1Title',
-    landing_feature_1_desc: 'landingFeature1Desc',
-    landing_feature_2_icon: 'landingFeature2Icon',
-    landing_feature_2_title: 'landingFeature2Title',
-    landing_feature_2_desc: 'landingFeature2Desc',
-    landing_feature_3_icon: 'landingFeature3Icon',
-    landing_feature_3_title: 'landingFeature3Title',
-    landing_feature_3_desc: 'landingFeature3Desc',
-    landing_feature_4_icon: 'landingFeature4Icon',
-    landing_feature_4_title: 'landingFeature4Title',
-    landing_feature_4_desc: 'landingFeature4Desc',
     // 房型展示 — 名稱/圖片/價格從房型管理自動同步，此處只存設施和標籤（由 saveLandingRoomFeatures 處理）
     // 客戶評價
     landing_review_count: 'landingReviewCount',
@@ -10472,6 +10466,7 @@ async function loadLandingSettings() {
                     restoreFeatureCheckboxes('landingFacilities');
                 }
             }
+            loadLandingFeaturesEditor(data);
             loadLandingFacilityGalleryEditor(data['landing_facility_gallery']);
             // 還原色系主題
             restoreLandingTheme(data['landing_theme']);
@@ -10482,6 +10477,175 @@ async function loadLandingSettings() {
     } catch (error) {
         console.error('❌ 載入銷售頁設定錯誤:', error);
         showError('載入銷售頁設定時發生錯誤：' + error.message);
+    }
+}
+
+function createFeatureItemsFromLegacySettings(data) {
+    const items = [];
+    for (let i = 1; i <= 4; i++) {
+        const icon = String(data[`landing_feature_${i}_icon`] || '').trim();
+        const title = String(data[`landing_feature_${i}_title`] || '').trim();
+        const desc = String(data[`landing_feature_${i}_desc`] || '').trim();
+        if (!icon && !title && !desc) continue;
+        items.push({
+            id: `legacy_${i}`,
+            icon: icon || 'check_circle',
+            title,
+            desc,
+            enabled: true,
+            order: i
+        });
+    }
+    return items;
+}
+
+function loadLandingFeaturesEditor(data) {
+    landingFeatureItems = [];
+    const raw = data ? data['landing_features_items'] : null;
+    if (raw) {
+        try {
+            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            if (Array.isArray(parsed)) {
+                landingFeatureItems = parsed.map((item, index) => ({
+                    id: item.id || `feat_${Date.now()}_${index}`,
+                    icon: String(item.icon || '').trim() || 'check_circle',
+                    title: String(item.title || '').trim(),
+                    desc: String(item.desc || '').trim(),
+                    enabled: item.enabled !== false,
+                    order: Number(item.order) || (index + 1)
+                }));
+            }
+        } catch (error) {
+            console.warn('解析 landing_features_items 失敗，將嘗試舊版欄位:', error);
+        }
+    }
+
+    if (!landingFeatureItems.length && data) {
+        landingFeatureItems = createFeatureItemsFromLegacySettings(data);
+    }
+    if (!landingFeatureItems.length) {
+        landingFeatureItems = DEFAULT_LANDING_FEATURE_ITEMS.map((item, index) => ({
+            ...item,
+            id: `${item.id}_${Date.now()}_${index}`
+        }));
+    }
+    normalizeLandingFeatureOrder();
+    renderLandingFeaturesEditor();
+}
+
+function normalizeLandingFeatureOrder() {
+    landingFeatureItems.forEach((item, index) => {
+        item.order = index + 1;
+    });
+}
+
+function renderLandingFeaturesEditor() {
+    const container = document.getElementById('landingFeaturesContainer');
+    if (!container) return;
+
+    if (!landingFeatureItems.length) {
+        container.innerHTML = '<div style="color: #888; font-size: 13px;">尚未新增特色賣點</div>';
+        return;
+    }
+
+    container.innerHTML = landingFeatureItems.map((item, index) => `
+        <div class="settings-card" style="margin: 0; border: 1px solid #dbe4ee;" data-feature-item-id="${item.id}">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px;">
+                <h4 style="margin: 0; color: #2c3e50;">特色 ${index + 1}</h4>
+                <div style="display:flex; gap:6px;">
+                    <button type="button" class="facility-gallery-mini-btn" onclick="moveLandingFeatureItem('${item.id}', -1)" ${index === 0 ? 'disabled' : ''}>上移</button>
+                    <button type="button" class="facility-gallery-mini-btn" onclick="moveLandingFeatureItem('${item.id}', 1)" ${index === landingFeatureItems.length - 1 ? 'disabled' : ''}>下移</button>
+                    <button type="button" class="facility-gallery-mini-btn danger" onclick="removeLandingFeatureItem('${item.id}')">刪除</button>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 120px 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>圖示</label>
+                    <input type="text" value="${escapeHtml(item.icon)}" oninput="updateLandingFeatureItem('${item.id}', 'icon', this.value)" placeholder="例如：landscape">
+                    <small><a href="https://fonts.google.com/icons" target="_blank">圖示查詢</a></small>
+                </div>
+                <div class="form-group">
+                    <label>標題</label>
+                    <input type="text" value="${escapeHtml(item.title)}" oninput="updateLandingFeatureItem('${item.id}', 'title', this.value)" placeholder="例如：絕美山景">
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 8px;">
+                <label>說明</label>
+                <textarea rows="2" oninput="updateLandingFeatureItem('${item.id}', 'desc', this.value)" placeholder="例如：每間房間都能欣賞到壯闊的山巒美景">${escapeHtml(item.desc)}</textarea>
+            </div>
+            <label style="display:flex; align-items:center; gap:6px; font-size:13px;">
+                <input type="checkbox" ${item.enabled ? 'checked' : ''} onchange="updateLandingFeatureItem('${item.id}', 'enabled', this.checked)">
+                啟用顯示
+            </label>
+        </div>
+    `).join('');
+}
+
+function addLandingFeatureItem() {
+    landingFeatureItems.push({
+        id: `feat_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        icon: 'check_circle',
+        title: '',
+        desc: '',
+        enabled: true,
+        order: landingFeatureItems.length + 1
+    });
+    renderLandingFeaturesEditor();
+}
+
+function updateLandingFeatureItem(id, key, value) {
+    const item = landingFeatureItems.find(x => x.id === id);
+    if (!item) return;
+    item[key] = value;
+}
+
+function removeLandingFeatureItem(id) {
+    landingFeatureItems = landingFeatureItems.filter(x => x.id !== id);
+    normalizeLandingFeatureOrder();
+    renderLandingFeaturesEditor();
+}
+
+function moveLandingFeatureItem(id, direction) {
+    const index = landingFeatureItems.findIndex(x => x.id === id);
+    if (index < 0) return;
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= landingFeatureItems.length) return;
+    const temp = landingFeatureItems[index];
+    landingFeatureItems[index] = landingFeatureItems[targetIndex];
+    landingFeatureItems[targetIndex] = temp;
+    normalizeLandingFeatureOrder();
+    renderLandingFeaturesEditor();
+}
+
+async function saveLandingFeatureItems(silent = false) {
+    try {
+        const normalized = landingFeatureItems.map((item, index) => ({
+            id: item.id || `feat_${index + 1}`,
+            icon: String(item.icon || '').trim() || 'check_circle',
+            title: String(item.title || '').trim(),
+            desc: String(item.desc || '').trim(),
+            enabled: item.enabled !== false,
+            order: index + 1
+        }));
+
+        const response = await adminFetch('/api/admin/settings/landing_features_items', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                value: JSON.stringify(normalized),
+                description: '銷售頁-特色賣點清單（JSON）'
+            })
+        });
+        const result = await response.json();
+        if (!result.success) {
+            if (!silent) showError('特色賣點儲存失敗：' + (result.message || ''));
+            return false;
+        }
+        return true;
+    } catch (error) {
+        console.error('❌ 儲存特色賣點錯誤:', error);
+        if (!silent) showError('特色賣點儲存失敗：' + error.message);
+        return false;
     }
 }
 
@@ -10957,9 +11121,14 @@ async function saveLandingSettings(tab) {
             );
             break;
         case 'features':
-            keysToSave = Object.keys(landingFieldMap).filter(k =>
-                k.startsWith('landing_feature_') || ['landing_features_title', 'landing_features_subtitle'].includes(k)
-            );
+            {
+                const featuresSaved = await saveLandingFeatureItems(true);
+                if (!featuresSaved) {
+                    showError('特色賣點設定儲存失敗，請重試');
+                    return;
+                }
+                keysToSave = ['landing_features_title', 'landing_features_subtitle'];
+            }
             break;
         case 'rooms':
             {
@@ -11044,6 +11213,7 @@ async function saveLandingSettings(tab) {
             landing_final_guarantee_icon: '銷售頁-最終CTA信任圖示',
             landing_features_title: '銷售頁-特色賣點主標題',
             landing_features_subtitle: '銷售頁-特色賣點副標題',
+            landing_features_items: '銷售頁-特色賣點清單（JSON）',
             landing_rooms_title: '銷售頁-房型展示主標題',
             landing_rooms_subtitle: '銷售頁-房型展示副標題',
             landing_location_title: '銷售頁-交通資訊主標題',

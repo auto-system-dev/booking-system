@@ -7,6 +7,12 @@
 let landingConfig = {};
 let countdownDays = 7;
 const DEFAULT_HERO_IMAGE = 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=1920';
+const DEFAULT_FEATURE_ITEMS = [
+    { icon: 'landscape', title: '絕美山景', desc: '每間房間都能欣賞到壯闊的山巒美景', enabled: true, order: 1 },
+    { icon: 'spa', title: '私人湯屋', desc: '獨立溫泉湯屋，24 小時供應天然溫泉', enabled: true, order: 2 },
+    { icon: 'restaurant', title: '精緻早餐', desc: '使用在地新鮮食材，每日現做的豐盛早餐', enabled: true, order: 3 },
+    { icon: 'pets', title: '寵物友善', desc: '帶著毛小孩一起來度假', enabled: true, order: 4 }
+];
 const DEFAULT_FACILITY_GALLERY_ITEMS = [
     {
         id: 'default_facility_lounge',
@@ -200,14 +206,7 @@ async function applyConfig(cfg) {
     // ===== 特色賣點 =====
     setText('featuresSectionTitle', cfg.landing_features_title);
     setText('featuresSectionSubtitle', cfg.landing_features_subtitle);
-    for (let i = 1; i <= 4; i++) {
-        const icon = cfg[`landing_feature_${i}_icon`];
-        const title = cfg[`landing_feature_${i}_title`];
-        const desc = cfg[`landing_feature_${i}_desc`];
-        if (icon) setIcon(`featureIcon${i}`, icon);
-        if (title) setText(`featureTitle${i}`, title);
-        if (desc) setText(`featureDesc${i}`, desc);
-    }
+    renderFeatureCards(cfg);
 
     // ===== 房型展示 =====
     setText('roomsSectionTitle', cfg.landing_rooms_title);
@@ -281,6 +280,67 @@ async function applyConfig(cfg) {
     if (cfg.landing_favicon) {
         setFavicon(cfg.landing_favicon);
     }
+}
+
+function resolveFeatureItems(cfg) {
+    let items = [];
+    const raw = cfg.landing_features_items;
+    if (raw) {
+        try {
+            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            if (Array.isArray(parsed)) {
+                items = parsed.map((item, index) => ({
+                    icon: normalizeIconName(item.icon) || 'check_circle',
+                    title: String(item.title || '').trim(),
+                    desc: String(item.desc || '').trim(),
+                    enabled: item.enabled !== false,
+                    order: Number(item.order) || (index + 1)
+                }));
+            }
+        } catch (error) {
+            console.warn('⚠️ landing_features_items JSON 解析失敗，改用舊版欄位:', error.message);
+        }
+    }
+
+    if (!items.length) {
+        for (let i = 1; i <= 4; i++) {
+            const icon = normalizeIconName(cfg[`landing_feature_${i}_icon`]);
+            const title = String(cfg[`landing_feature_${i}_title`] || '').trim();
+            const desc = String(cfg[`landing_feature_${i}_desc`] || '').trim();
+            if (!icon && !title && !desc) continue;
+            items.push({
+                icon: icon || 'check_circle',
+                title,
+                desc,
+                enabled: true,
+                order: i
+            });
+        }
+    }
+
+    if (!items.length) {
+        items = DEFAULT_FEATURE_ITEMS.map(item => ({ ...item }));
+    }
+
+    return items
+        .filter(item => item.enabled !== false)
+        .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+}
+
+function renderFeatureCards(cfg) {
+    const grid = document.getElementById('featuresGrid');
+    if (!grid) return;
+
+    const items = resolveFeatureItems(cfg);
+    grid.innerHTML = items.map(item => `
+        <div class="feature-card">
+            <div class="feature-icon">
+                <span class="material-symbols-outlined">${escapeHtml(item.icon || 'check_circle')}</span>
+            </div>
+            <h3>${escapeHtml(item.title || '特色服務')}</h3>
+            <p>${escapeHtml(item.desc || '')}</p>
+        </div>
+    `).join('');
 }
 
 // ===== 工具函數 =====

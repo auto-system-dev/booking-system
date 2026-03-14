@@ -1716,83 +1716,18 @@
                             </div>
                             <small style="color: #666;">留空時會沿用銷售頁預設文案。</small>
                         </div>
-                        <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #2ecc71;">
-                            <span class="material-symbols-outlined" style="font-size: 24px; color: #2ecc71; margin-right: 10px;">auto_awesome</span>
-                            <h3 style="margin: 0; color: #2c3e50;">四大特色賣點</h3>
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #2ecc71;">
+                            <div style="display: flex; align-items: center;">
+                                <span class="material-symbols-outlined" style="font-size: 24px; color: #2ecc71; margin-right: 10px;">auto_awesome</span>
+                                <h3 style="margin: 0; color: #2c3e50;">特色賣點清單</h3>
+                            </div>
+                            <button type="button" class="btn-save" onclick="addLandingFeatureItem()" style="margin: 0;">
+                                <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">add</span>
+                                新增特色
+                            </button>
                         </div>
-                        <div id="landingFeaturesContainer">
-                            <div class="settings-card" style="margin-bottom: 15px;" data-feature="1">
-                                <h4 style="color: #2c3e50; margin-bottom: 15px;">特色 1</h4>
-                                <div style="display: grid; grid-template-columns: 120px 1fr; gap: 15px;">
-                                    <div class="form-group">
-                                        <label>圖示</label>
-                                        <input type="text" id="landingFeature1Icon" placeholder="landscape" value="landscape">
-                                        <small><a href="https://fonts.google.com/icons" target="_blank">圖示查詢</a></small>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>標題</label>
-                                        <input type="text" id="landingFeature1Title" placeholder="例如：絕美山景">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label>說明</label>
-                                    <textarea id="landingFeature1Desc" rows="2" placeholder="例如：每間房間都能欣賞到壯闊的山巒美景"></textarea>
-                                </div>
-                            </div>
-                            <div class="settings-card" style="margin-bottom: 15px;" data-feature="2">
-                                <h4 style="color: #2c3e50; margin-bottom: 15px;">特色 2</h4>
-                                <div style="display: grid; grid-template-columns: 120px 1fr; gap: 15px;">
-                                    <div class="form-group">
-                                        <label>圖示</label>
-                                        <input type="text" id="landingFeature2Icon" placeholder="spa" value="spa">
-                                        <small><a href="https://fonts.google.com/icons" target="_blank">圖示查詢</a></small>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>標題</label>
-                                        <input type="text" id="landingFeature2Title" placeholder="例如：私人湯屋">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label>說明</label>
-                                    <textarea id="landingFeature2Desc" rows="2" placeholder="例如：獨立溫泉湯屋，24 小時供應天然溫泉"></textarea>
-                                </div>
-                            </div>
-                            <div class="settings-card" style="margin-bottom: 15px;" data-feature="3">
-                                <h4 style="color: #2c3e50; margin-bottom: 15px;">特色 3</h4>
-                                <div style="display: grid; grid-template-columns: 120px 1fr; gap: 15px;">
-                                    <div class="form-group">
-                                        <label>圖示</label>
-                                        <input type="text" id="landingFeature3Icon" placeholder="restaurant" value="restaurant">
-                                        <small><a href="https://fonts.google.com/icons" target="_blank">圖示查詢</a></small>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>標題</label>
-                                        <input type="text" id="landingFeature3Title" placeholder="例如：精緻早餐">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label>說明</label>
-                                    <textarea id="landingFeature3Desc" rows="2" placeholder="例如：使用在地新鮮食材，每日現做的豐盛早餐"></textarea>
-                                </div>
-                            </div>
-                            <div class="settings-card" style="margin-bottom: 15px;" data-feature="4">
-                                <h4 style="color: #2c3e50; margin-bottom: 15px;">特色 4</h4>
-                                <div style="display: grid; grid-template-columns: 120px 1fr; gap: 15px;">
-                                    <div class="form-group">
-                                        <label>圖示</label>
-                                        <input type="text" id="landingFeature4Icon" placeholder="pets" value="pets">
-                                        <small><a href="https://fonts.google.com/icons" target="_blank">圖示查詢</a></small>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>標題</label>
-                                        <input type="text" id="landingFeature4Title" placeholder="例如：寵物友善">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label>說明</label>
-                                    <textarea id="landingFeature4Desc" rows="2" placeholder="例如：帶著毛小孩一起來度假"></textarea>
-                                </div>
-                            </div>
+                        <div id="landingFeaturesContainer" style="display: grid; gap: 12px;">
+                            <div style="color: #888; font-size: 13px;">尚未新增特色賣點</div>
                         </div>
                         <button class="btn-save" onclick="saveLandingSettings('features')" style="margin-top: 10px;">
                             <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">save</span>
