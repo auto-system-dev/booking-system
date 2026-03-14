@@ -4686,6 +4686,11 @@ async function saveHotelInfoSettings() {
     const hotelAddress = document.getElementById('hotelAddress').value;
     const hotelEmail = document.getElementById('hotelEmail').value;
     const adminEmail = document.getElementById('adminEmail').value;
+    const bookingNoticeEnabled = document.getElementById('bookingNoticeEnabled').checked ? '1' : '0';
+    const bookingNoticeRequireAgreement = document.getElementById('bookingNoticeRequireAgreement').checked ? '1' : '0';
+    const bookingNoticeSummary = document.getElementById('bookingNoticeSummary').value.trim();
+    const bookingNoticeContent = document.getElementById('bookingNoticeContent').value.trim();
+    const bookingCancellationPolicy = document.getElementById('bookingCancellationPolicy').value.trim();
     
     // 驗證管理員信箱
     if (!adminEmail) {
@@ -4701,7 +4706,11 @@ async function saveHotelInfoSettings() {
     }
     
     try {
-        const [hotelNameResponse, hotelPhoneResponse, hotelAddressResponse, hotelEmailResponse, adminEmailResponse] = await Promise.all([
+        const [
+            hotelNameResponse, hotelPhoneResponse, hotelAddressResponse, hotelEmailResponse, adminEmailResponse,
+            bookingNoticeEnabledResponse, bookingNoticeRequireAgreementResponse, bookingNoticeSummaryResponse, bookingNoticeContentResponse,
+            bookingCancellationPolicyResponse
+        ] = await Promise.all([
             adminFetch('/api/admin/settings/hotel_name', {
                 method: 'PUT',
                 headers: {
@@ -4751,6 +4760,56 @@ async function saveHotelInfoSettings() {
                     value: adminEmail,
                     description: '管理員通知信箱（新訂房通知郵件會寄到此信箱）'
                 })
+            }),
+            adminFetch('/api/admin/settings/booking_notice_enabled', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: bookingNoticeEnabled,
+                    description: '訂房頁是否顯示訂房須知區塊（1=顯示，0=隱藏）'
+                })
+            }),
+            adminFetch('/api/admin/settings/booking_notice_require_agreement', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: bookingNoticeRequireAgreement,
+                    description: '送出訂房前是否必須勾選同意訂房須知（1=必須，0=不必）'
+                })
+            }),
+            adminFetch('/api/admin/settings/booking_notice_summary', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: bookingNoticeSummary,
+                    description: '訂房頁按鈕上方顯示的訂房須知摘要'
+                })
+            }),
+            adminFetch('/api/admin/settings/booking_notice_content', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: bookingNoticeContent,
+                    description: '完整訂房須知內容（前台彈窗顯示）'
+                })
+            }),
+            adminFetch('/api/admin/settings/booking_cancellation_policy', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: bookingCancellationPolicy,
+                    description: '訂房取消政策內容（前台彈窗顯示）'
+                })
             })
         ]);
         
@@ -4759,7 +4818,12 @@ async function saveHotelInfoSettings() {
             hotelPhoneResponse.json(),
             hotelAddressResponse.json(),
             hotelEmailResponse.json(),
-            adminEmailResponse.json()
+            adminEmailResponse.json(),
+            bookingNoticeEnabledResponse.json(),
+            bookingNoticeRequireAgreementResponse.json(),
+            bookingNoticeSummaryResponse.json(),
+            bookingNoticeContentResponse.json(),
+            bookingCancellationPolicyResponse.json()
         ]);
         
         const allSuccess = results.every(r => r.success);
@@ -5148,6 +5212,15 @@ async function loadSettings() {
             
             // 管理員通知信箱
             document.getElementById('adminEmail').value = settings.admin_email || '';
+            
+            // 訂房頁訂房須知設定
+            document.getElementById('bookingNoticeEnabled').checked =
+                settings.booking_notice_enabled === '1' || settings.booking_notice_enabled === 'true';
+            document.getElementById('bookingNoticeRequireAgreement').checked =
+                settings.booking_notice_require_agreement === '1' || settings.booking_notice_require_agreement === 'true';
+            document.getElementById('bookingNoticeSummary').value = settings.booking_notice_summary || '';
+            document.getElementById('bookingNoticeContent').value = settings.booking_notice_content || '';
+            document.getElementById('bookingCancellationPolicy').value = settings.booking_cancellation_policy || '1. 入住日 14 天（含）前取消：可全額退款。\n2. 入住日 7-13 天前取消：退還已付金額 70%。\n3. 入住日 3-6 天前取消：退還已付金額 50%。\n4. 入住日前 0-2 天取消或未入住：恕不退款。\n5. 如遇天災等不可抗力因素，依政府公告與業者規範彈性處理。';
             
             // LINE 官方帳號設定
             document.getElementById('lineChannelAccessToken').value = settings.line_channel_access_token || '';

@@ -665,6 +665,83 @@ body {
     cursor: not-allowed;
 }
 
+/* 訂房須知 */
+.booking-notice-section {
+    background: #f8fbff;
+    border: 1px solid #dcebf5;
+    border-radius: 14px;
+    padding: 18px;
+}
+
+.booking-notice-section.form-section {
+    padding-bottom: 18px;
+    margin-bottom: 12px;
+}
+
+.booking-notice-summary {
+    color: #374151;
+    font-size: 14px;
+    line-height: 1.8;
+    white-space: pre-line;
+    margin-bottom: 10px;
+}
+
+.booking-notice-link {
+    border: none;
+    background: transparent;
+    color: #2C8EC4;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding: 0;
+}
+
+.booking-notice-link:hover {
+    color: #1f6f99;
+}
+
+.booking-notice-agreement {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 14px;
+    color: #111827;
+    cursor: pointer;
+}
+
+.booking-notice-agreement input[type="checkbox"] {
+    margin-top: 3px;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.booking-notice-dialog {
+    max-width: 620px;
+    text-align: left;
+}
+
+.booking-notice-content {
+    max-height: 52vh;
+    overflow: auto;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 14px;
+    color: #1f2937;
+    line-height: 1.8;
+    white-space: pre-line;
+}
+
+.booking-notice-subtitle {
+    font-size: 14px;
+    color: #374151;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
 /* 成功訊息 */
 .success-message {
     text-align: center;

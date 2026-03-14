@@ -1014,6 +1014,48 @@
                                     <input type="email" id="adminEmail" placeholder="例如：admin@hotel.com">
                                     <small>新訂房通知郵件會寄到此信箱</small>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 30px;">
+                            <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
+                                <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">gavel</span>
+                                <h3 style="margin: 0; color: #2c3e50;">訂房須知設定</h3>
+                            </div>
+                            <div class="settings-card" style="margin-top: 0;">
+                                <div class="form-group">
+                                    <label class="inline-slider-toggle">
+                                        <span class="inline-slider-switch">
+                                            <input type="checkbox" id="bookingNoticeEnabled">
+                                            <span class="inline-slider-track"><span class="inline-slider-thumb"></span></span>
+                                        </span>
+                                        <span>啟用訂房頁訂房須知</span>
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label class="inline-slider-toggle">
+                                        <span class="inline-slider-switch">
+                                            <input type="checkbox" id="bookingNoticeRequireAgreement">
+                                            <span class="inline-slider-track"><span class="inline-slider-thumb"></span></span>
+                                        </span>
+                                        <span>送出訂房前必須勾選同意</span>
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label>訂房須知摘要（顯示在按鈕上方）</label>
+                                    <textarea id="bookingNoticeSummary" rows="3" placeholder="例如：入住時間 15:00 後、退房 11:00 前；禁菸；不可攜帶寵物。"></textarea>
+                                    <small>建議精簡 1-3 行，讓客人送單前快速閱讀。</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>完整訂房須知（彈窗內容）</label>
+                                    <textarea id="bookingNoticeContent" rows="8" placeholder="例如：&#10;1. 入住時間為 15:00 後，退房時間為 11:00 前。&#10;2. 全館禁菸，違者將酌收清潔費。&#10;3. 取消規則與延期規則請詳閱本說明。"></textarea>
+                                    <small>可使用換行，前台會顯示於「查看完整訂房須知與取消政策」彈窗。</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>取消政策（彈窗內容）</label>
+                                    <textarea id="bookingCancellationPolicy" rows="6" placeholder="例如：&#10;1. 入住 14 天前取消，可全額退費。&#10;2. 入住前 7-13 天取消，酌收 30% 手續費。&#10;3. 入住前 0-6 天取消，恕不退費。"></textarea>
+                                    <small>可使用換行，前台會在彈窗獨立顯示此段內容。</small>
+                                </div>
                                 <button class="btn-save" onclick="saveHotelInfoSettings()">儲存設定</button>
                             </div>
                         </div>

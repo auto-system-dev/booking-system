@@ -214,6 +214,24 @@
                     </div>
                 </div>
 
+                <!-- 訂房須知同意區 -->
+                <div class="form-section booking-notice-section" id="bookingNoticeSection">
+                    <h2 class="section-title">
+                        <span class="material-symbols-outlined">gavel</span>
+                        訂房須知
+                    </h2>
+                    <p id="bookingNoticeSummary" class="booking-notice-summary">
+                        入住前請先閱讀訂房須知，送出訂房即表示您同意遵守住宿規範與取消政策。
+                    </p>
+                    <button type="button" class="booking-notice-link" id="bookingNoticeOpenBtn">
+                        查看完整訂房須知與取消政策
+                    </button>
+                    <label class="booking-notice-agreement">
+                        <input type="checkbox" id="bookingNoticeAgree">
+                        <span id="bookingNoticeAgreeText">我已閱讀並同意訂房須知與取消政策</span>
+                    </label>
+                </div>
+
                 <!-- 提交按鈕 -->
                 <button type="submit" class="submit-btn">
                     <span>確認訂房</span>
@@ -250,6 +268,20 @@
                     <div id="addonDetailBody" class="addon-detail-body"></div>
                     <div class="modal-actions">
                         <button type="button" id="addonDetailCloseBtn" class="modal-btn modal-btn-primary">關閉</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 訂房須知彈窗 -->
+            <div id="bookingNoticeModal" class="modal-overlay hidden">
+                <div class="modal-dialog booking-notice-dialog">
+                    <h3 class="modal-title">完整訂房須知與取消政策</h3>
+                    <div class="booking-notice-subtitle">訂房須知</div>
+                    <div id="bookingNoticeContent" class="booking-notice-content"></div>
+                    <div class="booking-notice-subtitle" style="margin-top: 14px;">取消政策</div>
+                    <div id="bookingCancellationPolicy" class="booking-notice-content"></div>
+                    <div class="modal-actions">
+                        <button type="button" id="bookingNoticeCloseBtn" class="modal-btn modal-btn-primary">我知道了</button>
                     </div>
                 </div>
             </div>

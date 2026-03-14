@@ -68,6 +68,13 @@ let lineUserId = null; // LINE User ID（如果從 LIFF 開啟）
 let appliedPromoCode = null; // 已套用的優惠代碼
 let earlyBirdDiscount = null; // 已偵測的早鳥優惠
 let memberLevelDiscount = null; // 已偵測的會員折扣
+let bookingNoticeConfig = {
+    enabled: true,
+    requireAgreement: true,
+    summary: '入住前請先閱讀訂房須知，送出訂房即表示您同意遵守住宿規範與取消政策。',
+    content: '入住前請先閱讀訂房須知，若有疑問請聯繫客服。',
+    cancellationPolicy: '1. 入住日 14 天（含）前取消：可全額退款。\n2. 入住日 7-13 天前取消：退還已付金額 70%。\n3. 入住日 3-6 天前取消：退還已付金額 50%。\n4. 入住日前 0-2 天取消或未入住：恕不退款。\n5. 如遇天災等不可抗力因素，依政府公告與業者規範彈性處理。'
+};
 
 // ===== Facebook Pixel 追蹤函數 =====
 
@@ -234,6 +241,8 @@ async function loadRoomTypesAndSettings() {
             depositPercentage = parseInt(settingsResult.data.deposit_percentage) || 30;
         }
         
+        applyBookingNoticeSettings(settingsResult.success ? settingsResult.data : null);
+        
         // 更新訂金百分比顯示
         updateDepositLabel();
         
@@ -249,6 +258,56 @@ async function loadRoomTypesAndSettings() {
         document.getElementById('roomTypeGrid').innerHTML = '<div class="error">載入房型失敗，請重新整理頁面</div>';
         document.getElementById('addonsGrid').innerHTML = '<div class="error">載入加購商品失敗</div>';
     }
+}
+
+function isSettingEnabled(value, defaultValue = false) {
+    if (value === undefined || value === null || value === '') return defaultValue;
+    const normalized = String(value).trim().toLowerCase();
+    return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+}
+
+function applyBookingNoticeSettings(settings) {
+    const summaryEl = document.getElementById('bookingNoticeSummary');
+    const contentEl = document.getElementById('bookingNoticeContent');
+    const cancellationEl = document.getElementById('bookingCancellationPolicy');
+    const sectionEl = document.getElementById('bookingNoticeSection');
+    const agreeCheckbox = document.getElementById('bookingNoticeAgree');
+    const agreeTextEl = document.getElementById('bookingNoticeAgreeText');
+    if (!summaryEl || !contentEl || !cancellationEl || !sectionEl || !agreeCheckbox || !agreeTextEl) return;
+
+    const summary = String(settings?.booking_notice_summary || '').trim();
+    const content = String(settings?.booking_notice_content || '').trim();
+    const cancellationPolicy = String(settings?.booking_cancellation_policy || '').trim();
+    bookingNoticeConfig = {
+        enabled: isSettingEnabled(settings?.booking_notice_enabled, true),
+        requireAgreement: isSettingEnabled(settings?.booking_notice_require_agreement, true),
+        summary: summary || bookingNoticeConfig.summary,
+        content: content || summary || bookingNoticeConfig.content,
+        cancellationPolicy: cancellationPolicy || bookingNoticeConfig.cancellationPolicy
+    };
+
+    summaryEl.textContent = bookingNoticeConfig.summary;
+    contentEl.textContent = bookingNoticeConfig.content;
+    cancellationEl.textContent = bookingNoticeConfig.cancellationPolicy;
+    sectionEl.style.display = bookingNoticeConfig.enabled ? '' : 'none';
+    agreeTextEl.textContent = bookingNoticeConfig.requireAgreement
+        ? '我已閱讀並同意訂房須知與取消政策（必填）'
+        : '我已閱讀訂房須知與取消政策';
+    agreeCheckbox.checked = false;
+    agreeCheckbox.required = bookingNoticeConfig.enabled && bookingNoticeConfig.requireAgreement;
+    clearSectionError('bookingNoticeSection');
+}
+
+function openBookingNoticeModal() {
+    const modal = document.getElementById('bookingNoticeModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+}
+
+function closeBookingNoticeModal() {
+    const modal = document.getElementById('bookingNoticeModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
 }
 
 // 渲染加購商品
@@ -677,6 +736,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const confirmBtn = document.getElementById('capacityConfirmBtn');
     const addonDetailCloseBtn = document.getElementById('addonDetailCloseBtn');
     const addonDetailModal = document.getElementById('addonDetailModal');
+    const bookingNoticeOpenBtn = document.getElementById('bookingNoticeOpenBtn');
+    const bookingNoticeCloseBtn = document.getElementById('bookingNoticeCloseBtn');
+    const bookingNoticeModal = document.getElementById('bookingNoticeModal');
+    const bookingNoticeAgree = document.getElementById('bookingNoticeAgree');
     if (cancelBtn) {
         cancelBtn.addEventListener('click', () => {
             hideCapacityModal();
@@ -702,9 +765,30 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    if (bookingNoticeOpenBtn) {
+        bookingNoticeOpenBtn.addEventListener('click', openBookingNoticeModal);
+    }
+    if (bookingNoticeCloseBtn) {
+        bookingNoticeCloseBtn.addEventListener('click', closeBookingNoticeModal);
+    }
+    if (bookingNoticeModal) {
+        bookingNoticeModal.addEventListener('click', (event) => {
+            if (event.target === bookingNoticeModal) {
+                closeBookingNoticeModal();
+            }
+        });
+    }
+    if (bookingNoticeAgree) {
+        bookingNoticeAgree.addEventListener('change', () => {
+            if (bookingNoticeAgree.checked) {
+                clearSectionError('bookingNoticeSection');
+            }
+        });
+    }
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
             hideAddonDetailModal();
+            closeBookingNoticeModal();
         }
     });
 });
@@ -1503,6 +1587,16 @@ document.getElementById('bookingForm').addEventListener('submit', async function
         }
     }
     
+    // 8. 訂房須知同意驗證
+    if (bookingNoticeConfig.enabled && bookingNoticeConfig.requireAgreement) {
+        const bookingNoticeAgree = document.getElementById('bookingNoticeAgree');
+        if (!bookingNoticeAgree || !bookingNoticeAgree.checked) {
+            showSectionError('bookingNoticeSection', '送出訂房前，請先勾選同意訂房須知與取消政策');
+            return;
+        }
+        clearSectionError('bookingNoticeSection');
+    }
+    
     // 所有驗證通過，開始提交
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span>處理中...</span>';
@@ -1536,7 +1630,8 @@ document.getElementById('bookingForm').addEventListener('submit', async function
         adults,
         children,
         paymentAmount: document.querySelector('input[name="paymentAmount"]:checked').value,
-        paymentMethod: paymentMethod.value
+        paymentMethod: paymentMethod.value,
+        bookingNoticeAgreed: !!document.getElementById('bookingNoticeAgree')?.checked
     };
     
     // 計算價格資訊（考慮假日）

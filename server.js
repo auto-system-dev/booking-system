@@ -760,12 +760,33 @@ async function handleCreateBooking(req, res) {
             addonsTotal,
             adults,
             children,
-            promoCode // 優惠代碼（選填）
+            promoCode, // 優惠代碼（選填）
+            bookingNoticeAgreed
         } = req.body;
 
         // 驗證必填欄位
         if (!checkInDate || !checkOutDate || !roomType || !guestName || !guestPhone || !guestEmail) {
             return res.status(400).json({ message: '請填寫所有必填欄位' });
+        }
+
+        // 驗證訂房須知同意（由後台設定控制）
+        try {
+            const [noticeEnabledSetting, noticeRequireSetting] = await Promise.all([
+                db.getSetting('booking_notice_enabled'),
+                db.getSetting('booking_notice_require_agreement')
+            ]);
+            const noticeEnabled = noticeEnabledSetting === null || noticeEnabledSetting === undefined || noticeEnabledSetting === ''
+                ? true
+                : ['1', 'true', 'yes', 'on'].includes(String(noticeEnabledSetting).trim().toLowerCase());
+            const noticeRequireAgreement = noticeRequireSetting === null || noticeRequireSetting === undefined || noticeRequireSetting === ''
+                ? true
+                : ['1', 'true', 'yes', 'on'].includes(String(noticeRequireSetting).trim().toLowerCase());
+            const agreed = ['1', 'true', 'yes', 'on'].includes(String(bookingNoticeAgreed).trim().toLowerCase());
+            if (noticeEnabled && noticeRequireAgreement && !agreed) {
+                return res.status(400).json({ message: '送出訂房前，請先勾選同意訂房須知與取消政策' });
+            }
+        } catch (noticeError) {
+            console.warn('訂房須知同意檢查失敗，沿用前端驗證:', noticeError.message);
         }
 
         // 驗證：如果入住日期是今天，不允許選擇匯款
