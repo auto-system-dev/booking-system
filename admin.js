@@ -10581,7 +10581,7 @@ function renderLandingReviewsEditor() {
     }
 
     container.innerHTML = landingReviewItems.map((item, index) => `
-        <div class="settings-card" style="margin: 0; border: 1px solid #dbe4ee;" data-review-item-id="${item.id}">
+        <div style="border: 1px solid #dbe4ee; border-radius: 10px; padding: 10px; background: #fff;" data-review-item-id="${item.id}">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px;">
                 <h4 style="margin: 0; color: #2c3e50;">評價 ${index + 1}</h4>
                 <div style="display:flex; gap:6px;">
@@ -10745,7 +10745,7 @@ function renderLandingFeaturesEditor() {
     }
 
     container.innerHTML = landingFeatureItems.map((item, index) => `
-        <div class="settings-card" style="margin: 0; border: 1px solid #dbe4ee;" data-feature-item-id="${item.id}">
+        <div style="border: 1px solid #dbe4ee; border-radius: 10px; padding: 10px; background: #fff;" data-feature-item-id="${item.id}">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px;">
                 <h4 style="margin: 0; color: #2c3e50;">特色 ${index + 1}</h4>
                 <div style="display:flex; gap:6px;">
@@ -11138,7 +11138,7 @@ async function loadLandingRoomTypes(landingData) {
                 : `<span style="font-size:36px;">${room.icon || '🏠'}</span>`;
 
             return `
-            <div class="settings-card" style="margin-bottom: 15px;" data-room-id="${room.id}">
+            <div style="border: 1px solid #dbe4ee; border-radius: 10px; padding: 10px; background: #fff; margin-bottom: 10px;" data-room-id="${room.id}">
                 <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
                     ${imgHtml}
                     <div>
