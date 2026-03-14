@@ -10573,9 +10573,12 @@ function renderLandingFeaturesEditor() {
                 <label>說明</label>
                 <textarea rows="2" oninput="updateLandingFeatureItem('${item.id}', 'desc', this.value)" placeholder="例如：每間房間都能欣賞到壯闊的山巒美景">${escapeHtml(item.desc)}</textarea>
             </div>
-            <label style="display:flex; align-items:center; gap:6px; font-size:13px;">
-                <input type="checkbox" ${item.enabled ? 'checked' : ''} onchange="updateLandingFeatureItem('${item.id}', 'enabled', this.checked)">
-                啟用顯示
+            <label class="inline-slider-toggle">
+                <span class="inline-slider-switch">
+                    <input type="checkbox" ${item.enabled ? 'checked' : ''} onchange="updateLandingFeatureItem('${item.id}', 'enabled', this.checked)">
+                    <span class="inline-slider-track"><span class="inline-slider-thumb"></span></span>
+                </span>
+                <span>啟用顯示</span>
             </label>
         </div>
     `).join('');
@@ -10753,9 +10756,12 @@ function renderLandingFacilityGalleryEditor() {
                         <input type="text" value="${escapeHtml(item.desc)}" oninput="updateLandingFacilityGalleryItem('${item.id}', 'desc', this.value)" placeholder="例如：寬敞舒適，適合聚會">
                     </div>
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
-                        <label style="display:flex; align-items:center; gap:6px; font-size:13px;">
-                            <input type="checkbox" ${item.enabled ? 'checked' : ''} onchange="updateLandingFacilityGalleryItem('${item.id}', 'enabled', this.checked)">
-                            啟用顯示
+                        <label class="inline-slider-toggle">
+                            <span class="inline-slider-switch">
+                                <input type="checkbox" ${item.enabled ? 'checked' : ''} onchange="updateLandingFacilityGalleryItem('${item.id}', 'enabled', this.checked)">
+                                <span class="inline-slider-track"><span class="inline-slider-thumb"></span></span>
+                            </span>
+                            <span>啟用顯示</span>
                         </label>
                         <div style="display:flex; gap:6px;">
                             <button type="button" class="facility-gallery-mini-btn" onclick="moveLandingFacilityGalleryItem('${item.id}', -1)" ${index === 0 ? 'disabled' : ''}>上移</button>
