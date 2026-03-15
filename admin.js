@@ -946,11 +946,17 @@ document.addEventListener('DOMContentLoaded', async function() {
         // 不顯示啟動遮罩，直接根據登入狀態切換畫面
         setBootLoadingVisible(false);
 
-        // 檢查登入狀態（單次判斷，逾時即中止請求，避免分頁長時間轉圈）
-        console.log('🔐 準備檢查登入狀態...');
-        const authenticated = await checkAuthStatus({ timeoutMs: 2200 });
-        if (!authenticated) {
+        const authHint = getAdminAuthHint();
+        if (!authHint) {
+            // 未登入提示：直接顯示登入頁，不發送 check-auth 請求，避免分頁持續轉圈
             showLoginPage();
+        } else {
+            // 有登入提示才檢查，並限制逾時避免卡住
+            console.log('🔐 準備檢查登入狀態...');
+            const authenticated = await checkAuthStatus({ timeoutMs: 2200 });
+            if (!authenticated) {
+                showLoginPage();
+            }
         }
         
         // 導航切換
