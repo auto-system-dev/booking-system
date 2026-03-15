@@ -282,8 +282,7 @@ async function checkAuthStatus() {
             } catch (e) {
                 console.warn('⚠️ 無法讀取錯誤訊息:', e);
             }
-            showLoginPage();
-            return;
+            throw new Error(`check-auth HTTP ${response?.status || 'unknown'}`);
         }
         
         console.log('📥 解析 JSON 回應...');
@@ -299,16 +298,17 @@ async function checkAuthStatus() {
             getCsrfToken().catch(err => {
                 console.warn('⚠️ 預取 CSRF Token 失敗（非關鍵）:', err);
             });
+            return true;
         } else {
             // 未登入，顯示登入頁面
             console.log('ℹ️ 未登入，顯示登入頁面');
             setAdminAuthHint(false);
             showLoginPage();
+            return false;
         }
     } catch (error) {
         console.error('❌ 檢查登入狀態錯誤:', error);
-        // 出錯時顯示登入頁面
-        showLoginPage();
+        throw error;
     }
 }
 
@@ -935,49 +935,18 @@ document.addEventListener('DOMContentLoaded', async function() {
             adminPageDisplay: adminPage ? window.getComputedStyle(adminPage).display : 'N/A'
         });
 
-        // 未登入：直接顯示登入頁；已登入：直接顯示載入中
-        const authHint = getAdminAuthHint();
-        if (authHint) {
-            setBootLoadingVisible(true, '正在檢查登入狀態...');
-        } else {
-            showLoginPage();
-            setBootLoadingVisible(false);
-        }
-        
-        // 檢查登入狀態（含冷啟動提示與自動重試）
-        console.log('🔐 準備檢查登入狀態...');
-        const tryCheckAuth = async (attempt, maxAttempts = 2) => {
-            try {
-                // 重新載入時優先快速回應，避免卡在白畫面太久
-                const timeoutMs = Math.min(2200 + (attempt - 1) * 1000, 3200);
-                await Promise.race([
-                    checkAuthStatus(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('檢查登入狀態逾時')), timeoutMs))
-                ]);
-                if (isAdminPageVisible()) {
-                    setLoginStatusMessage('');
-                    return true;
-                }
-            } catch (err) {
-                console.warn(`⚠️ checkAuthStatus 第 ${attempt} 次失敗:`, err?.message || err);
-                if (attempt === 1 && authHint) {
-                    setBootLoadingVisible(true, '服務喚醒中，正在嘗試連線...');
-                }
-            }
-
-            if (attempt < maxAttempts) {
-                const retryDelayMs = 600 + (attempt - 1) * 500;
-                await new Promise(resolve => setTimeout(resolve, retryDelayMs));
-                return tryCheckAuth(attempt + 1, maxAttempts);
-            }
-
-            showLoginPage();
-            setLoginStatusMessage('');
-            return false;
-        };
-
-        await tryCheckAuth(1);
+        // 不顯示啟動遮罩，直接根據登入狀態切換畫面
         setBootLoadingVisible(false);
+
+        // 檢查登入狀態（單次判斷）
+        console.log('🔐 準備檢查登入狀態...');
+        const authenticated = await Promise.race([
+            checkAuthStatus(),
+            new Promise((resolve) => setTimeout(() => resolve(false), 2200))
+        ]);
+        if (!authenticated) {
+            showLoginPage();
+        }
         
         // 導航切換
         const navItems = document.querySelectorAll('.nav-item');
