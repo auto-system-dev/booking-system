@@ -1247,6 +1247,59 @@ async function loadDashboard(options = {}) {
         ];
         return values.every(v => (Number(v) || 0) === 0);
     };
+    const deriveDashboardFromBookings = (bookings = []) => {
+        const normalizeStatus = (status) => String(status || '').trim().toLowerCase();
+        const isActiveStatus = (status) => {
+            const s = normalizeStatus(status);
+            return s === 'active' || s === '有效' || s === '已確認' || s === 'confirmed';
+        };
+        const isReservedStatus = (status) => {
+            const s = normalizeStatus(status);
+            return s === 'reserved' || s === '保留' || s === '保留中';
+        };
+        const isCancelledStatus = (status) => {
+            const s = normalizeStatus(status);
+            return s === 'cancelled' || s === '已取消' || s === '取消';
+        };
+        const toYmd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const todayStr = toYmd(new Date());
+
+        const todayCheckIns = bookings.filter((booking) =>
+            booking.check_in_date === todayStr && (isActiveStatus(booking.status) || isReservedStatus(booking.status))
+        ).length;
+        const todayCheckOuts = bookings.filter((booking) =>
+            booking.check_out_date === todayStr && isActiveStatus(booking.status)
+        ).length;
+
+        const todayBookings = bookings.filter((booking) => {
+            const rawDate = booking.created_at || booking.booking_date;
+            if (!rawDate) return false;
+            const d = new Date(rawDate);
+            if (Number.isNaN(d.getTime())) return false;
+            return toYmd(d) === todayStr;
+        });
+        const todayTransferOrders = todayBookings.filter((booking) =>
+            String(booking.payment_method || '').includes('匯款')
+        ).length;
+        const todayCardOrders = todayBookings.filter((booking) => {
+            const method = String(booking.payment_method || '');
+            return method.includes('線上') || method.includes('卡');
+        }).length;
+
+        const activeBookings = bookings.filter((booking) => isActiveStatus(booking.status)).length;
+        const reservedBookings = bookings.filter((booking) => isReservedStatus(booking.status)).length;
+        const cancelledBookings = bookings.filter((booking) => isCancelledStatus(booking.status)).length;
+
+        return {
+            todayCheckIns,
+            todayCheckOuts,
+            todayTransferOrders,
+            todayCardOrders,
+            activeBookings,
+            reservedBookings,
+            cancelledBookings
+        };
+    };
 
     const fetchJsonWithRetry = async (url, maxAttempts = 3, baseDelayMs = 600) => {
         let lastError = null;
@@ -1303,6 +1356,23 @@ async function loadDashboard(options = {}) {
                     }
                 } catch (retryError) {
                     console.warn('儀表板全 0 補查失敗，保留首次結果:', retryError.message || retryError);
+                }
+            }
+
+            // 若仍為全 0，再用 /api/bookings 回填一次，避免 API 冷啟動瞬間造成假 0
+            if (!options.__bookingsFallbackDone && isDashboardAllZero(data)) {
+                try {
+                    const bookingsResult = await fetchJsonWithRetry('/api/bookings', 2, 700);
+                    if (!bookingsResult || !isLatestRequest()) return;
+                    if (bookingsResult.success && Array.isArray(bookingsResult.data) && bookingsResult.data.length > 0) {
+                        const fallbackData = deriveDashboardFromBookings(bookingsResult.data);
+                        if (!isDashboardAllZero(fallbackData)) {
+                            data = fallbackData;
+                            console.log('✅ 儀表板已用 /api/bookings 回填，避免首次全 0');
+                        }
+                    }
+                } catch (fallbackError) {
+                    console.warn('儀表板 /api/bookings 回填失敗，保留原結果:', fallbackError.message || fallbackError);
                 }
             }
             
