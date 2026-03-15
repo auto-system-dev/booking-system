@@ -37,7 +37,7 @@ const { createApp } = require('./src/app');
 const requestIdMiddleware = require('./src/middlewares/requestId');
 const { logPaymentEvent } = require('./src/lib/logger');
 const { calculateDynamicPaymentDeadline, formatPaymentDeadline } = require('./src/lib/payment-deadline');
-const { requireAuth } = require('./src/middlewares/auth');
+const { requireAuth, validateAdminSession } = require('./src/middlewares/auth');
 const { createCheckPermission } = require('./src/middlewares/permission');
 const { createPaymentService } = require('./src/services/payment.service');
 const { createPaymentController } = require('./src/controllers/payment.controller');
@@ -1813,7 +1813,8 @@ app.get('/index.html', (req, res) => {
 // 管理後台登入頁面
 app.get('/admin/login', (req, res) => {
     // 如果已經登入，重導向到管理後台
-    if (req.session && req.session.admin) {
+    const sessionStatus = validateAdminSession(req, { touch: false });
+    if (sessionStatus.valid) {
         return res.redirect('/admin');
     }
     res.sendFile(path.join(__dirname, 'admin.html'));
@@ -1849,7 +1850,9 @@ app.post('/api/admin/login', loginLimiter, validateLogin, async (req, res) => {
                 role: admin.role,
                 role_id: adminDetail?.role_id,
                 role_display_name: roleName,
-                permissions: permissions
+                permissions: permissions,
+                session_started_at: Date.now(),
+                last_activity_at: Date.now()
             };
             
             // 記錄 Session 資訊（用於除錯）
@@ -1990,7 +1993,8 @@ app.post('/api/admin/change-password', requireAuth, adminLimiter, async (req, re
 
 // 檢查登入狀態 API（應用管理後台 rate limiting）
 app.get('/api/admin/check-auth', adminLimiter, async (req, res) => {
-    if (req.session && req.session.admin) {
+    const sessionStatus = validateAdminSession(req, { touch: true });
+    if (sessionStatus.valid && req.session && req.session.admin) {
         // 如果 session 中沒有權限列表，重新載入
         if (!req.session.admin.permissions) {
             req.session.admin.permissions = await db.getAdminPermissions(req.session.admin.id);
