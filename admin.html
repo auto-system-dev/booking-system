@@ -15,8 +15,16 @@
     <script defer src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 </head>
 <body>
+    <!-- 啟動載入遮罩（避免先閃登入頁） -->
+    <div id="bootLoadingOverlay" class="boot-loading-overlay">
+        <div class="boot-loading-card">
+            <div class="boot-loading-spinner"></div>
+            <div id="bootLoadingMessage" class="boot-loading-message">正在檢查登入狀態...</div>
+        </div>
+    </div>
+
     <!-- 登入頁面 -->
-    <div id="loginPage" class="login-page" style="display: flex;">
+    <div id="loginPage" class="login-page" style="display: none;">
         <div class="login-container">
             <div class="login-box">
                 <div class="login-box-header">

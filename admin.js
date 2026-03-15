@@ -353,6 +353,17 @@ function setLoginStatusMessage(message, isError = false) {
     }
 }
 
+function setBootLoadingVisible(visible, message = '') {
+    const overlay = document.getElementById('bootLoadingOverlay');
+    const msgEl = document.getElementById('bootLoadingMessage');
+    if (!overlay) return;
+
+    if (msgEl && message) {
+        msgEl.textContent = message;
+    }
+    overlay.classList.toggle('hidden', !visible);
+}
+
 function isAdminPageVisible() {
     const adminPage = document.getElementById('adminPage');
     return !!(adminPage && window.getComputedStyle(adminPage).display !== 'none');
@@ -900,9 +911,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             adminPageDisplay: adminPage ? window.getComputedStyle(adminPage).display : 'N/A'
         });
 
-        // 重要：先顯示登入頁，避免等待 API（CSRF/登入狀態）時整頁空白
-        // 後續 checkAuthStatus() 若判定已登入，會再切到管理後台
-        showLoginPage();
+        // 先顯示啟動載入層，避免先閃登入頁再切後台
+        setBootLoadingVisible(true, '正在檢查登入狀態...');
         
         // 檢查登入狀態（含冷啟動提示與自動重試）
         console.log('🔐 準備檢查登入狀態...');
@@ -921,7 +931,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             } catch (err) {
                 console.warn(`⚠️ checkAuthStatus 第 ${attempt} 次失敗:`, err?.message || err);
                 if (attempt === 1) {
-                    setLoginStatusMessage('服務喚醒中，正在嘗試連線...');
+                    setBootLoadingVisible(true, '服務喚醒中，正在嘗試連線...');
                 }
             }
 
@@ -937,6 +947,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         };
 
         await tryCheckAuth(1);
+        setBootLoadingVisible(false);
         
         // 導航切換
         const navItems = document.querySelectorAll('.nav-item');
@@ -967,6 +978,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.error('❌ 初始化錯誤:', error);
         // 即使出錯也嘗試顯示登入頁面
         showLoginPage();
+        setBootLoadingVisible(false);
     }
     
     // 根據 URL hash 載入對應區塊（僅在已登入時執行，避免登入頁持續背景請求）
