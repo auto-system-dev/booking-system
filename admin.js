@@ -3753,7 +3753,7 @@ function renderRoomTypes() {
     const filteredRoomTypes = allRoomTypes;
     
     if (filteredRoomTypes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="loading">沒有房型資料</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="loading">沒有房型資料</td></tr>';
         return;
     }
     
@@ -3771,11 +3771,6 @@ function renderRoomTypes() {
             <td>${room.extra_beds ?? 0}</td>
             <td>NT$ ${room.price.toLocaleString()}${room.original_price ? `<br><small style="color:#aaa;text-decoration:line-through;">NT$ ${room.original_price.toLocaleString()}</small>` : ''}</td>
             <td>${room.holiday_surcharge ? (room.holiday_surcharge > 0 ? '+' : '') + 'NT$ ' + room.holiday_surcharge.toLocaleString() : 'NT$ 0'}</td>
-            <td>
-                <span class="status-badge ${room.show_on_landing === 1 ? 'status-sent' : 'status-unsent'}">
-                    ${room.show_on_landing === 1 ? '啟用' : '停用'}
-                </span>
-            </td>
             <td>
                 <span class="status-badge ${room.is_active === 1 ? 'status-sent' : 'status-unsent'}">
                     ${room.is_active === 1 ? '啟用' : '停用'}
@@ -3895,16 +3890,8 @@ function showRoomTypeModal(room) {
             </div>
             <div class="form-group">
                 <label>銷售頁顯示</label>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="position: relative; display: inline-block; width: 50px; height: 26px;">
-                        <input type="checkbox" name="show_on_landing" value="1" ${!isEdit || room.show_on_landing === 1 ? 'checked' : ''} style="opacity: 0; width: 0; height: 0; position: absolute;" onchange="const s=this.nextElementSibling; s.style.backgroundColor=this.checked?'#27ae60':'#ccc'; s.querySelector('span').style.transform=this.checked?'translateX(24px)':'translateX(0)'; this.parentElement.nextElementSibling.textContent=this.checked?'顯示在銷售頁':'不顯示在銷售頁';">
-                        <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${!isEdit || room.show_on_landing === 1 ? '#27ae60' : '#ccc'}; transition: 0.3s; border-radius: 26px;" onclick="const cb=this.previousElementSibling; cb.checked=!cb.checked; cb.dispatchEvent(new Event('change'));">
-                            <span style="position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: 0.3s; border-radius: 50%; transform: ${!isEdit || room.show_on_landing === 1 ? 'translateX(24px)' : 'translateX(0)'};"></span>
-                        </span>
-                    </div>
-                    <span style="color: #666; font-size: 14px;">${!isEdit || room.show_on_landing === 1 ? '顯示在銷售頁' : '不顯示在銷售頁'}</span>
-                </div>
-                <small>開啟後此房型會出現在銷售頁的房型展示區</small>
+                <input type="hidden" name="show_on_landing" value="${isEdit ? (room.show_on_landing === 1 ? 1 : 0) : 1}">
+                <small>請改到「銷售頁管理 → 房型展示設定」中的「銷售頁啟用」滑動開關設定。</small>
             </div>
             <div class="form-group">
                 <label>狀態</label>
@@ -4117,7 +4104,7 @@ async function saveRoomType(event, id) {
         extra_beds: parseInt(formData.get('extra_beds')) || 0,
         icon: formData.get('icon') || '🏠',
         image_url: formData.get('image_url') || null,
-        show_on_landing: formData.get('show_on_landing') ? 1 : 0,
+        show_on_landing: Number(formData.get('show_on_landing')) === 1 ? 1 : 0,
         display_order: parseInt(formData.get('display_order')) || 0,
         is_active: parseInt(formData.get('is_active'))
     };
@@ -11326,6 +11313,11 @@ async function loadLandingRoomTypes(landingData) {
 
         // 只顯示啟用中的房型
         const activeRooms = result.data.filter(r => r.is_active === 1);
+        // 供銷售頁房型啟用開關儲存時使用
+        window.landingRoomTypeSourceMap = activeRooms.reduce((acc, room) => {
+            acc[String(room.id)] = room;
+            return acc;
+        }, {});
         if (activeRooms.length === 0) {
             container.innerHTML = `
                 <div style="text-align: center; padding: 40px; color: #888;">
@@ -11409,6 +11401,18 @@ async function loadLandingRoomTypes(landingData) {
                     <input type="text" id="landingRoomBadge_${room.id}" placeholder="例如：熱門、超值、頂級" value="">
                 </div>
                 <div class="form-group">
+                    <label>銷售頁啟用</label>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <label style="position: relative; display: inline-block; width: 50px; height: 26px;">
+                            <input type="checkbox" id="landingRoomEnabled_${room.id}" ${room.show_on_landing === 1 ? 'checked' : ''} style="opacity:0; width:0; height:0; position:absolute;" onchange="syncLandingRoomEnabledSwitch(${room.id}, this.checked)">
+                            <span style="position:absolute; cursor:pointer; inset:0; background-color:${room.show_on_landing === 1 ? '#27ae60' : '#ccc'}; transition:0.3s; border-radius:26px;" onclick="const cb=this.previousElementSibling; cb.checked=!cb.checked; cb.dispatchEvent(new Event('change'));">
+                                <span style="position:absolute; height:20px; width:20px; left:3px; bottom:3px; background-color:white; transition:0.3s; border-radius:50%; transform:${room.show_on_landing === 1 ? 'translateX(24px)' : 'translateX(0)'};"></span>
+                            </span>
+                        </label>
+                        <span id="landingRoomEnabledText_${room.id}" style="color:#666; font-size:14px;">${room.show_on_landing === 1 ? '顯示在銷售頁' : '不顯示在銷售頁'}</span>
+                    </div>
+                </div>
+                <div class="form-group">
                     <label>展示設施（勾選項目）</label>
                     ${checkboxGridHTML(room.id)}
                 </div>
@@ -11439,6 +11443,34 @@ async function loadLandingRoomTypes(landingData) {
     }
 }
 
+function syncLandingRoomEnabledSwitch(roomId, isEnabled) {
+    const textEl = document.getElementById(`landingRoomEnabledText_${roomId}`);
+    const checkbox = document.getElementById(`landingRoomEnabled_${roomId}`);
+    if (!checkbox) return;
+    const slider = checkbox.nextElementSibling;
+    const knob = slider ? slider.querySelector('span') : null;
+    if (slider) slider.style.backgroundColor = isEnabled ? '#27ae60' : '#ccc';
+    if (knob) knob.style.transform = isEnabled ? 'translateX(24px)' : 'translateX(0)';
+    if (textEl) textEl.textContent = isEnabled ? '顯示在銷售頁' : '不顯示在銷售頁';
+}
+
+function buildLandingRoomTypeUpdatePayload(room, showOnLanding) {
+    return {
+        name: room.name,
+        display_name: room.display_name,
+        price: Number(room.price) || 0,
+        original_price: Number(room.original_price) || 0,
+        holiday_surcharge: Number(room.holiday_surcharge) || 0,
+        max_occupancy: Number(room.max_occupancy) || 0,
+        extra_beds: Number(room.extra_beds) || 0,
+        icon: room.icon || '🏠',
+        image_url: room.image_url || null,
+        show_on_landing: showOnLanding ? 1 : 0,
+        display_order: Number(room.display_order) || 0,
+        is_active: Number(room.is_active) === 1 ? 1 : 0
+    };
+}
+
 // 儲存房型展示設定（設施 + 標籤）
 async function saveLandingRoomFeatures(silent = false) {
     const container = document.getElementById('landingRoomsContainer');
@@ -11454,6 +11486,7 @@ async function saveLandingRoomFeatures(silent = false) {
         const requests = [];
         cards.forEach(card => {
             const roomId = card.getAttribute('data-room-id');
+            const roomSource = window.landingRoomTypeSourceMap?.[String(roomId)];
             // 設施
             const featuresInput = document.getElementById(`landingRoomFeatures_${roomId}`);
             const featuresValue = featuresInput ? featuresInput.value : '';
@@ -11474,6 +11507,19 @@ async function saveLandingRoomFeatures(silent = false) {
                     body: JSON.stringify({ value: badgeValue, description: `房型ID${roomId}的銷售頁標籤` })
                 })
             );
+            // 銷售頁啟用（回寫到 room_types.show_on_landing）
+            if (roomSource) {
+                const enabledCheckbox = document.getElementById(`landingRoomEnabled_${roomId}`);
+                const showOnLanding = enabledCheckbox ? enabledCheckbox.checked : (Number(roomSource.show_on_landing) === 1);
+                const roomPayload = buildLandingRoomTypeUpdatePayload(roomSource, showOnLanding);
+                requests.push(
+                    adminFetch(`/api/admin/room-types/${roomId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(roomPayload)
+                    })
+                );
+            }
         });
 
         const responses = await Promise.all(requests);
