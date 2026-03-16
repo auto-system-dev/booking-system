@@ -11364,18 +11364,17 @@ async function loadLandingRoomTypes(landingData) {
                 <label class="feature-checkbox"><input type="checkbox" value="吹風機"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">air</span>吹風機</label>
                 <p style="font-size: 13px; color: #888; margin: 10px 0 10px 0; grid-column: 1 / -1;">🪑 設備</p>
                 <label class="feature-checkbox"><input type="checkbox" value="書桌"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">desk</span>書桌</label>
-                <label class="feature-checkbox"><input type="checkbox" value="化粧桌"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">table_restaurant</span>化粧桌</label>
+                <label class="feature-checkbox"><input type="checkbox" value="梳妝台"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">table_restaurant</span>梳妝台</label>
                 <label class="feature-checkbox"><input type="checkbox" value="沙發"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">weekend</span>沙發</label>
                 <label class="feature-checkbox"><input type="checkbox" value="小桌椅"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">table_restaurant</span>小桌椅</label>
-                <label class="feature-checkbox"><input type="checkbox" value="鏡子"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">crop_portrait</span>鏡子</label>
                 <p style="font-size: 13px; color: #888; margin: 10px 0 10px 0; grid-column: 1 / -1;">🎁 其他</p>
                 <label class="feature-checkbox"><input type="checkbox" value="寢具用品"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">bed</span>寢具用品</label>
                 <label class="feature-checkbox"><input type="checkbox" value="毛巾"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">dry_cleaning</span>毛巾</label>
                 <label class="feature-checkbox"><input type="checkbox" value="浴巾"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">dry_cleaning</span>浴巾</label>
                 <label class="feature-checkbox"><input type="checkbox" value="牙刷/牙膏"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">brush</span>牙刷/牙膏</label>
                 <label class="feature-checkbox"><input type="checkbox" value="盥洗用品"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">soap</span>盥洗用品</label>
-                <label class="feature-checkbox"><input type="checkbox" value="洗髮精"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">shower</span>洗髮精</label>
-                <label class="feature-checkbox"><input type="checkbox" value="潤髮乳"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">spa</span>潤髮乳</label>
+                <label class="feature-checkbox"><input type="checkbox" value="洗髮精"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">soap</span>洗髮精</label>
+                <label class="feature-checkbox"><input type="checkbox" value="潤髮乳"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">soap</span>潤髮乳</label>
                 <label class="feature-checkbox"><input type="checkbox" value="香皂/沐浴乳"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">soap</span>香皂/沐浴乳</label>
                 <label class="feature-checkbox"><input type="checkbox" value="拖鞋"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">footprint</span>拖鞋</label>
                 <p style="font-size: 13px; color: #888; margin: 10px 0 10px 0; grid-column: 1 / -1;">🏠 景觀</p>
