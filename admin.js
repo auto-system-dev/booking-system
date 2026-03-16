@@ -11335,7 +11335,7 @@ async function loadLandingRoomTypes(landingData) {
             return;
         }
 
-        // checkbox 清單 HTML（僅床型 + 衛浴，空間/電器/其他已移到「旅宿設施」分頁）
+        // checkbox 清單 HTML（房型展示設施）
         const checkboxGridHTML = (roomId) => `
             <input type="hidden" id="landingRoomFeatures_${roomId}" value="">
             <div class="room-features-checkbox-grid" data-target="landingRoomFeatures_${roomId}" onchange="syncFeatureCheckboxes(this)">
@@ -11346,6 +11346,7 @@ async function loadLandingRoomTypes(landingData) {
                 <label class="feature-checkbox"><input type="checkbox" value="特大雙人床"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">king_bed</span>特大雙人床</label>
                 <label class="feature-checkbox"><input type="checkbox" value="上下鋪"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">single_bed</span>上下鋪</label>
                 <label class="feature-checkbox"><input type="checkbox" value="和式床墊"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">airline_seat_flat</span>和式床墊</label>
+                <label class="feature-checkbox"><input type="checkbox" value="沙發床"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">weekend</span>沙發床</label>
                 <p style="font-size: 13px; color: #888; margin: 10px 0 10px 0; grid-column: 1 / -1;">🚿 衛浴</p>
                 <label class="feature-checkbox"><input type="checkbox" value="獨立衛浴"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">bathtub</span>獨立衛浴</label>
                 <label class="feature-checkbox"><input type="checkbox" value="共用衛浴"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">shower</span>共用衛浴</label>
@@ -11353,6 +11354,29 @@ async function loadLandingRoomTypes(landingData) {
                 <label class="feature-checkbox"><input type="checkbox" value="淋浴設備"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">shower</span>淋浴設備</label>
                 <label class="feature-checkbox"><input type="checkbox" value="免治馬桶"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">wash</span>免治馬桶</label>
                 <label class="feature-checkbox"><input type="checkbox" value="私人湯池"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">hot_tub</span>私人湯池</label>
+                <p style="font-size: 13px; color: #888; margin: 10px 0 10px 0; grid-column: 1 / -1;">📺 電器</p>
+                <label class="feature-checkbox"><input type="checkbox" value="免費 WiFi"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">wifi</span>免費 WiFi</label>
+                <label class="feature-checkbox"><input type="checkbox" value="冷暖空調"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">ac_unit</span>冷暖空調</label>
+                <label class="feature-checkbox"><input type="checkbox" value="智慧電視"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">tv</span>智慧電視</label>
+                <label class="feature-checkbox"><input type="checkbox" value="冰箱"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">kitchen</span>冰箱</label>
+                <label class="feature-checkbox"><input type="checkbox" value="咖啡機"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">coffee_maker</span>咖啡機</label>
+                <label class="feature-checkbox"><input type="checkbox" value="電熱水壺"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">kettle</span>電熱水壺</label>
+                <label class="feature-checkbox"><input type="checkbox" value="吹風機"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">air</span>吹風機</label>
+                <p style="font-size: 13px; color: #888; margin: 10px 0 10px 0; grid-column: 1 / -1;">🪑 設備</p>
+                <label class="feature-checkbox"><input type="checkbox" value="書桌"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">desk</span>書桌</label>
+                <label class="feature-checkbox"><input type="checkbox" value="化粧桌"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">table_restaurant</span>化粧桌</label>
+                <label class="feature-checkbox"><input type="checkbox" value="沙發"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">weekend</span>沙發</label>
+                <label class="feature-checkbox"><input type="checkbox" value="小桌椅"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">table_restaurant</span>小桌椅</label>
+                <p style="font-size: 13px; color: #888; margin: 10px 0 10px 0; grid-column: 1 / -1;">🎁 其他</p>
+                <label class="feature-checkbox"><input type="checkbox" value="寢具用品"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">bed</span>寢具用品</label>
+                <label class="feature-checkbox"><input type="checkbox" value="毛巾"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">dry_cleaning</span>毛巾</label>
+                <label class="feature-checkbox"><input type="checkbox" value="浴巾"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">dry_cleaning</span>浴巾</label>
+                <label class="feature-checkbox"><input type="checkbox" value="牙刷/牙膏"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">toothbrush</span>牙刷/牙膏</label>
+                <label class="feature-checkbox"><input type="checkbox" value="盥洗用品"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">soap</span>盥洗用品</label>
+                <label class="feature-checkbox"><input type="checkbox" value="洗髮精"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">shower</span>洗髮精</label>
+                <label class="feature-checkbox"><input type="checkbox" value="潤髮乳"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">spa</span>潤髮乳</label>
+                <label class="feature-checkbox"><input type="checkbox" value="香皂/沐浴乳"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">soap</span>香皂/沐浴乳</label>
+                <label class="feature-checkbox"><input type="checkbox" value="拖鞋"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">checkroom</span>拖鞋</label>
                 <p style="font-size: 13px; color: #888; margin: 10px 0 10px 0; grid-column: 1 / -1;">🏠 景觀</p>
                 <label class="feature-checkbox"><input type="checkbox" value="私人陽台"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">balcony</span>私人陽台</label>
                 <label class="feature-checkbox"><input type="checkbox" value="山景視野"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">landscape</span>山景視野</label>

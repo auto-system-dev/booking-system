@@ -460,6 +460,7 @@ function setLink(id, url) {
 const featureIconMap = {
     '單人床': 'single_bed', '雙人床': 'king_bed', '加大雙人床': 'king_bed',
     '特大雙人床': 'king_bed', '上下鋪': 'single_bed', '和式床墊': 'airline_seat_flat',
+    '沙發床': 'weekend',
     '獨立衛浴': 'bathtub', '共用衛浴': 'shower', '浴缸': 'bathtub',
     '淋浴設備': 'shower', '免治馬桶': 'wash', '私人湯池': 'hot_tub',
     '私人陽台': 'balcony', '客廳空間': 'living', '小廚房': 'countertops',
@@ -470,6 +471,9 @@ const featureIconMap = {
     '冰箱': 'kitchen', '咖啡機': 'coffee_maker', '電熱水壺': 'kettle',
     '飲水機': 'water_drop', '自動販賣機': 'local_drink', '電動車充電設備': 'ev_station',
     '吹風機': 'air', '洗衣機': 'local_laundry_service', '微波爐': 'microwave',
+    '書桌': 'desk', '化粧桌': 'table_restaurant', '沙發': 'weekend', '小桌椅': 'table_restaurant',
+    '寢具用品': 'bed', '毛巾': 'dry_cleaning', '浴巾': 'dry_cleaning', '牙刷/牙膏': 'toothbrush',
+    '盥洗用品': 'soap', '洗髮精': 'shower', '潤髮乳': 'spa', '香皂/沐浴乳': 'soap', '拖鞋': 'checkroom',
     '免費早餐': 'restaurant', '免費停車': 'local_parking', '寵物友善': 'pets',
     '保險箱': 'lock', '行李寄放': 'luggage', '嬰兒床': 'crib',
     '嬰兒澡盆': 'bathtub', '電梯': 'elevator', '燒烤設備': 'outdoor_grill',
@@ -481,7 +485,7 @@ const featureIconMap = {
 // 旅宿設施項目（不應顯示在個別房型卡片中）
 const propertyFacilities = new Set([
     '客廳空間', '小廚房', '和室空間', '兒童遊戲區', '餐廳空間', '庭院',
-    '免費 WiFi', '冷暖空調', '智慧電視', '冰箱', '咖啡機', '電熱水壺', '飲水機', '自動販賣機', '電動車充電設備', '吹風機', '洗衣機', '微波爐',
+    '飲水機', '自動販賣機', '電動車充電設備', '洗衣機', '微波爐',
     '免費早餐', '免費停車', '寵物友善', '保險箱', '行李寄放', '嬰兒床', '嬰兒澡盆', '電梯', '燒烤設備', '卡拉OK', '麻將桌', '電動麻將桌', '桌遊', '廚房用具', '無障礙設施', '機場接送'
 ]);
 
