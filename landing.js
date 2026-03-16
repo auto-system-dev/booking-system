@@ -463,21 +463,26 @@ const featureIconMap = {
     '獨立衛浴': 'bathtub', '共用衛浴': 'shower', '浴缸': 'bathtub',
     '淋浴設備': 'shower', '免治馬桶': 'wash', '私人湯池': 'hot_tub',
     '私人陽台': 'balcony', '客廳空間': 'living', '小廚房': 'countertops',
-    '和室空間': 'floor', '庭院': 'yard', '山景視野': 'landscape',
+    '和室空間': 'floor', '兒童遊戲區': 'toys', '餐廳空間': 'restaurant',
+    '庭院': 'yard', '山景視野': 'landscape',
     '海景視野': 'water', '庭園景觀': 'park',
     '免費 WiFi': 'wifi', '冷暖空調': 'ac_unit', '智慧電視': 'tv',
     '冰箱': 'kitchen', '咖啡機': 'coffee_maker', '電熱水壺': 'water_drop',
+    '飲水機': 'water_cooler', '自動販賣機': 'local_drink', '電動車充電設備': 'ev_station',
     '吹風機': 'air', '洗衣機': 'local_laundry_service', '微波爐': 'microwave',
     '免費早餐': 'restaurant', '免費停車': 'local_parking', '寵物友善': 'pets',
     '保險箱': 'lock', '行李寄放': 'luggage', '嬰兒床': 'crib',
+    '嬰兒澡盆': 'bathtub', '電梯': 'elevator', '燒烤設備': 'outdoor_grill',
+    '卡拉OK': 'mic', '麻將桌': 'table_restaurant', '電動麻將桌': 'electric_bolt',
+    '桌遊': 'casino', '廚房用具': 'kitchen',
     '無障礙設施': 'accessible', '機場接送': 'airport_shuttle'
 };
 
 // 旅宿設施項目（不應顯示在個別房型卡片中）
 const propertyFacilities = new Set([
-    '客廳空間', '小廚房', '和室空間', '庭院',
-    '免費 WiFi', '冷暖空調', '智慧電視', '冰箱', '咖啡機', '電熱水壺', '吹風機', '洗衣機', '微波爐',
-    '免費早餐', '免費停車', '寵物友善', '保險箱', '行李寄放', '嬰兒床', '無障礙設施', '機場接送'
+    '客廳空間', '小廚房', '和室空間', '兒童遊戲區', '餐廳空間', '庭院',
+    '免費 WiFi', '冷暖空調', '智慧電視', '冰箱', '咖啡機', '電熱水壺', '飲水機', '自動販賣機', '電動車充電設備', '吹風機', '洗衣機', '微波爐',
+    '免費早餐', '免費停車', '寵物友善', '保險箱', '行李寄放', '嬰兒床', '嬰兒澡盆', '電梯', '燒烤設備', '卡拉OK', '麻將桌', '電動麻將桌', '桌遊', '廚房用具', '無障礙設施', '機場接送'
 ]);
 
 // 將逗號分隔的設施字串轉為帶圖示的 HTML（自動過濾掉旅宿設施）
