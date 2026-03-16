@@ -467,7 +467,7 @@ const featureIconMap = {
     '庭院': 'yard', '山景視野': 'landscape',
     '海景視野': 'water', '庭園景觀': 'park',
     '免費 WiFi': 'wifi', '冷暖空調': 'ac_unit', '智慧電視': 'tv',
-    '冰箱': 'kitchen', '咖啡機': 'coffee_maker', '電熱水壺': 'water_drop',
+    '冰箱': 'kitchen', '咖啡機': 'coffee_maker', '電熱水壺': 'kettle',
     '飲水機': 'water_drop', '自動販賣機': 'local_drink', '電動車充電設備': 'ev_station',
     '吹風機': 'air', '洗衣機': 'local_laundry_service', '微波爐': 'microwave',
     '免費早餐': 'restaurant', '免費停車': 'local_parking', '寵物友善': 'pets',
