@@ -11373,9 +11373,9 @@ async function loadLandingRoomTypes(landingData) {
                 <label class="feature-checkbox"><input type="checkbox" value="浴巾"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">dry_cleaning</span>浴巾</label>
                 <label class="feature-checkbox"><input type="checkbox" value="牙刷/牙膏"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">brush</span>牙刷/牙膏</label>
                 <label class="feature-checkbox"><input type="checkbox" value="盥洗用品"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">soap</span>盥洗用品</label>
-                <label class="feature-checkbox"><input type="checkbox" value="洗髮精"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">soap</span>洗髮精</label>
-                <label class="feature-checkbox"><input type="checkbox" value="潤髮乳"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">soap</span>潤髮乳</label>
-                <label class="feature-checkbox"><input type="checkbox" value="香皂/沐浴乳"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">soap</span>香皂/沐浴乳</label>
+                <label class="feature-checkbox"><input type="checkbox" value="洗髮精"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">sanitizer</span>洗髮精</label>
+                <label class="feature-checkbox"><input type="checkbox" value="潤髮乳"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">sanitizer</span>潤髮乳</label>
+                <label class="feature-checkbox"><input type="checkbox" value="香皂/沐浴乳"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">sanitizer</span>香皂/沐浴乳</label>
                 <label class="feature-checkbox"><input type="checkbox" value="拖鞋"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">footprint</span>拖鞋</label>
                 <p style="font-size: 13px; color: #888; margin: 10px 0 10px 0; grid-column: 1 / -1;">🏠 景觀</p>
                 <label class="feature-checkbox"><input type="checkbox" value="私人陽台"><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;margin-right:4px;">balcony</span>私人陽台</label>

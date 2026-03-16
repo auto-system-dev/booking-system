@@ -473,7 +473,7 @@ const featureIconMap = {
     '吹風機': 'air', '洗衣機': 'local_laundry_service', '微波爐': 'microwave',
     '書桌': 'desk', '化粧桌': 'table_restaurant', '梳妝台': 'table_restaurant', '沙發': 'weekend', '小桌椅': 'table_restaurant', '鏡子': 'crop_portrait',
     '寢具用品': 'bed', '毛巾': 'dry_cleaning', '浴巾': 'dry_cleaning', '牙刷/牙膏': 'brush',
-    '盥洗用品': 'soap', '洗髮精': 'soap', '潤髮乳': 'soap', '香皂/沐浴乳': 'soap', '拖鞋': 'footprint',
+    '盥洗用品': 'soap', '洗髮精': 'sanitizer', '潤髮乳': 'sanitizer', '香皂/沐浴乳': 'sanitizer', '拖鞋': 'footprint',
     '免費早餐': 'restaurant', '免費停車': 'local_parking', '寵物友善': 'pets',
     '保險箱': 'lock', '行李寄放': 'luggage', '嬰兒床': 'crib',
     '嬰兒澡盆': 'bathtub', '電梯': 'elevator', '燒烤設備': 'outdoor_grill',
