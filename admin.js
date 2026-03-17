@@ -3899,6 +3899,11 @@ function showRoomTypeModal(room) {
                 <small>支援自由文字，建議格式：床型*數量（例如：雙人床*1, 單人床*2）</small>
             </div>
             <div class="form-group">
+                <label>訂房頁照片標籤</label>
+                <input type="text" name="booking_badge" value="${isEdit ? escapeHtml(room.booking_badge || '') : ''}" placeholder="例如：最後一間、熱門、限量">
+                <small>顯示在訂房頁房型照片左上角，留空則不顯示</small>
+            </div>
+            <div class="form-group">
                 <label>方案包含項目</label>
                 <input type="hidden" id="roomIncludedItemsInput" name="included_items" value="${isEdit ? escapeHtml(room.included_items || '') : ''}">
                 <div id="roomIncludedItemsPresetList" style="padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fafafa; margin-bottom: 8px;">
@@ -4173,6 +4178,7 @@ async function saveRoomType(event, id) {
         max_occupancy: parseInt(formData.get('max_occupancy')) || 0,
         extra_beds: parseInt(formData.get('extra_beds')) || 0,
         bed_config: (formData.get('bed_config') || '').trim(),
+        booking_badge: (formData.get('booking_badge') || '').trim(),
         included_items: (formData.get('included_items') || '').trim(),
         icon: formData.get('icon') || '🏠',
         image_url: formData.get('image_url') || null,
@@ -11536,6 +11542,7 @@ function buildLandingRoomTypeUpdatePayload(room, showOnLanding) {
         max_occupancy: Number(room.max_occupancy) || 0,
         extra_beds: Number(room.extra_beds) || 0,
         bed_config: String(room.bed_config || '').trim(),
+        booking_badge: String(room.booking_badge || '').trim(),
         included_items: String(room.included_items || '').trim(),
         icon: room.icon || '🏠',
         image_url: room.image_url || null,

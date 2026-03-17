@@ -302,6 +302,7 @@ async function initPostgreSQL() {
                     extra_beds INTEGER DEFAULT 0,
                     bed_config TEXT DEFAULT '',
                     included_items TEXT DEFAULT '',
+                    booking_badge TEXT DEFAULT '',
                     icon VARCHAR(255) DEFAULT '🏠',
                     image_url TEXT DEFAULT NULL,
                     show_on_landing INTEGER DEFAULT 1,
@@ -320,6 +321,7 @@ async function initPostgreSQL() {
                 { name: 'extra_beds', type: 'INTEGER', default: '0' },
                 { name: 'bed_config', type: 'TEXT', default: "''" },
                 { name: 'included_items', type: 'TEXT', default: "''" },
+                { name: 'booking_badge', type: 'TEXT', default: "''" },
                 { name: 'image_url', type: 'TEXT', default: "NULL" },
                 { name: 'original_price', type: 'INTEGER', default: '0' },
                 { name: 'show_on_landing', type: 'INTEGER', default: '1' }
@@ -2161,6 +2163,7 @@ function initSQLite() {
                                 extra_beds INTEGER DEFAULT 0,
                                 bed_config TEXT DEFAULT '',
                                 included_items TEXT DEFAULT '',
+                                booking_badge TEXT DEFAULT '',
                                 icon TEXT DEFAULT '🏠',
                                 image_url TEXT DEFAULT NULL,
                                 show_on_landing INTEGER DEFAULT 1,
@@ -2209,6 +2212,13 @@ function initSQLite() {
                                                     console.warn('⚠️  添加 included_items 欄位時發生錯誤:', err.message);
                                                 } else {
                                                     console.log('✅ 已添加 included_items 欄位');
+                                                }
+                                            });
+                                            db.run(`ALTER TABLE room_types ADD COLUMN booking_badge TEXT DEFAULT ''`, (err) => {
+                                                if (err && !err.message.includes('duplicate column')) {
+                                                    console.warn('⚠️  添加 booking_badge 欄位時發生錯誤:', err.message);
+                                                } else {
+                                                    console.log('✅ 已添加 booking_badge 欄位');
                                                 }
                                             });
                                             
@@ -5149,12 +5159,12 @@ async function getRoomTypeById(id) {
 async function createRoomType(roomData) {
     try {
         const sql = usePostgreSQL ? `
-            INSERT INTO room_types (name, display_name, price, original_price, holiday_surcharge, max_occupancy, extra_beds, bed_config, included_items, icon, image_url, show_on_landing, display_order, is_active) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            INSERT INTO room_types (name, display_name, price, original_price, holiday_surcharge, max_occupancy, extra_beds, bed_config, included_items, booking_badge, icon, image_url, show_on_landing, display_order, is_active) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
             RETURNING id
         ` : `
-            INSERT INTO room_types (name, display_name, price, original_price, holiday_surcharge, max_occupancy, extra_beds, bed_config, included_items, icon, image_url, show_on_landing, display_order, is_active) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO room_types (name, display_name, price, original_price, holiday_surcharge, max_occupancy, extra_beds, bed_config, included_items, booking_badge, icon, image_url, show_on_landing, display_order, is_active) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         
         const values = [
@@ -5167,6 +5177,7 @@ async function createRoomType(roomData) {
             roomData.extra_beds !== undefined ? roomData.extra_beds : 0,
             roomData.bed_config !== undefined ? roomData.bed_config : '',
             roomData.included_items !== undefined ? roomData.included_items : '',
+            roomData.booking_badge !== undefined ? roomData.booking_badge : '',
             roomData.icon || '🏠',
             roomData.image_url || null,
             roomData.show_on_landing !== undefined ? roomData.show_on_landing : 1,
@@ -5189,11 +5200,11 @@ async function updateRoomType(id, roomData) {
     try {
         const sql = usePostgreSQL ? `
             UPDATE room_types 
-            SET display_name = $1, price = $2, original_price = $3, holiday_surcharge = $4, max_occupancy = $5, extra_beds = $6, bed_config = $7, included_items = $8, icon = $9, image_url = $10, show_on_landing = $11, display_order = $12, is_active = $13, updated_at = CURRENT_TIMESTAMP
-            WHERE id = $14
+            SET display_name = $1, price = $2, original_price = $3, holiday_surcharge = $4, max_occupancy = $5, extra_beds = $6, bed_config = $7, included_items = $8, booking_badge = $9, icon = $10, image_url = $11, show_on_landing = $12, display_order = $13, is_active = $14, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $15
         ` : `
             UPDATE room_types 
-            SET display_name = ?, price = ?, original_price = ?, holiday_surcharge = ?, max_occupancy = ?, extra_beds = ?, bed_config = ?, included_items = ?, icon = ?, image_url = ?, show_on_landing = ?, display_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
+            SET display_name = ?, price = ?, original_price = ?, holiday_surcharge = ?, max_occupancy = ?, extra_beds = ?, bed_config = ?, included_items = ?, booking_badge = ?, icon = ?, image_url = ?, show_on_landing = ?, display_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         `;
         
@@ -5206,6 +5217,7 @@ async function updateRoomType(id, roomData) {
             roomData.extra_beds !== undefined ? roomData.extra_beds : 0,
             roomData.bed_config !== undefined ? roomData.bed_config : '',
             roomData.included_items !== undefined ? roomData.included_items : '',
+            roomData.booking_badge !== undefined ? roomData.booking_badge : '',
             roomData.icon || '🏠',
             roomData.image_url !== undefined ? roomData.image_url : null,
             roomData.show_on_landing !== undefined ? roomData.show_on_landing : 1,

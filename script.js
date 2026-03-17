@@ -690,12 +690,13 @@ async function renderRoomTypes() {
         let priceDisplay = '';
         
         if (isUnavailable) {
-            priceDisplay = '<span style="color: #e74c3c; font-weight: bold;">滿房</span>';
+            priceDisplay = '';
         } else {
             priceDisplay = `NT$ ${displayPrice.toLocaleString()}/晚`;
         }
 
         const displayName = String(room.display_name || room.name || '房型');
+        const bookingBadge = String(room.booking_badge || '').trim();
         const bedConfig = String(room.bed_config || '').trim();
         const maxOccupancy = room.max_occupancy != null ? Number(room.max_occupancy) : 0;
         const extraBeds = room.extra_beds != null ? Number(room.extra_beds) : 0;
@@ -736,6 +737,7 @@ async function renderRoomTypes() {
                     <div class="room-card-left">
                         ${room.image_url 
                             ? `<div class="room-icon room-icon-image">
+                                ${bookingBadge ? `<span class="room-photo-badge">${escapeRoomText(bookingBadge)}</span>` : ''}
                                 <img src="${room.image_url}" alt="${escapeRoomText(displayName)}" loading="lazy" ${galleryImages.length > 0 ? `onclick="openRoomGallery(event, '${roomId}')"` : ''}>
                                 ${galleryImages.length > 1 ? `<span class="room-gallery-hint"><span class="material-symbols-outlined">photo_library</span> ${galleryImages.length} 張照片</span>` : ''}
                             </div>` 
