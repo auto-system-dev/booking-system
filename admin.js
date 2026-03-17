@@ -3754,6 +3754,7 @@ function escapeHtml(text) {
 // ==================== 房型管理 ====================
 
 let allRoomTypes = [];
+let roomBookingConfig = { minRoomCount: 1, maxRoomCount: 1 };
 const ROOM_INCLUDED_ITEM_PRESETS = [
     '附早餐',
     '附下午茶',
@@ -3763,6 +3764,25 @@ const ROOM_INCLUDED_ITEM_PRESETS = [
     '迎賓飲品',
     '接駁服務'
 ];
+
+async function loadRoomBookingConfig() {
+    try {
+        const response = await adminFetch('/api/settings');
+        const result = await response.json();
+        if (result.success && result.data) {
+            const minRoomCount = parseInt(result.data.min_room_count || '1', 10) || 1;
+            const maxRoomCount = parseInt(result.data.max_room_count || '1', 10) || 1;
+            roomBookingConfig = {
+                minRoomCount: Math.max(1, minRoomCount),
+                maxRoomCount: Math.max(Math.max(1, minRoomCount), maxRoomCount)
+            };
+        }
+    } catch (error) {
+        console.warn('載入客房數設定失敗，使用預設值:', error.message);
+        roomBookingConfig = { minRoomCount: 1, maxRoomCount: 1 };
+    }
+    return roomBookingConfig;
+}
 
 function parseIncludedItemsConfig(rawValue) {
     const items = String(rawValue || '')
@@ -3809,84 +3829,18 @@ function syncIncludedItemsEditor() {
 // 載入房型列表
 async function loadRoomTypes() {
     try {
-        const [roomTypesResponse, settingsResponse] = await Promise.all([
-            adminFetch('/api/admin/room-types'),
-            adminFetch('/api/settings')
-        ]);
+        const roomTypesResponse = await adminFetch('/api/admin/room-types');
         const result = await roomTypesResponse.json();
-        const settingsResult = await settingsResponse.json();
         
         if (result.success) {
             allRoomTypes = result.data || [];
             renderRoomTypes();
-            if (settingsResult.success) {
-                loadRoomTypeBookingConfig(settingsResult.data);
-            }
         } else {
             showError('載入房型列表失敗：' + (result.message || '未知錯誤'));
         }
     } catch (error) {
         console.error('載入房型列表錯誤:', error);
         showError('載入房型列表時發生錯誤：' + error.message);
-    }
-}
-
-function loadRoomTypeBookingConfig(settings = {}) {
-    const minInput = document.getElementById('minRoomCount');
-    const maxInput = document.getElementById('maxRoomCount');
-    if (!minInput || !maxInput) return;
-    minInput.value = parseInt(settings.min_room_count || '1', 10) || 1;
-    maxInput.value = parseInt(settings.max_room_count || '1', 10) || 1;
-}
-
-async function saveRoomTypeBookingConfig() {
-    const minInput = document.getElementById('minRoomCount');
-    const maxInput = document.getElementById('maxRoomCount');
-    if (!minInput || !maxInput) return;
-    const minRoomCount = parseInt(minInput.value || '1', 10) || 1;
-    const maxRoomCount = parseInt(maxInput.value || '1', 10) || 1;
-
-    if (minRoomCount < 1 || maxRoomCount < 1) {
-        showError('客房數最小值與最大值都必須大於或等於 1');
-        return;
-    }
-    if (minRoomCount > maxRoomCount) {
-        showError('客房數最小值不可大於最大值');
-        return;
-    }
-
-    try {
-        const [minResponse, maxResponse] = await Promise.all([
-            adminFetch('/api/admin/settings/min_room_count', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    value: String(minRoomCount),
-                    description: '前台客房數最小值（預設 1）'
-                })
-            }),
-            adminFetch('/api/admin/settings/max_room_count', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    value: String(maxRoomCount),
-                    description: '前台客房數最大值（預設 1）'
-                })
-            })
-        ]);
-        const [minResult, maxResult] = await Promise.all([minResponse.json(), maxResponse.json()]);
-        if (minResult.success && maxResult.success) {
-            showSuccess('訂房詳情設定已儲存');
-        } else {
-            showError('儲存失敗：' + (minResult.message || maxResult.message || '請稍後再試'));
-        }
-    } catch (error) {
-        console.error('儲存訂房詳情設定錯誤:', error);
-        showError('儲存時發生錯誤：' + error.message);
     }
 }
 
@@ -3932,8 +3886,8 @@ function renderRoomTypes() {
 }
 
 // 顯示新增房型模態框
-function showAddRoomTypeModal() {
-    showRoomTypeModal(null);
+async function showAddRoomTypeModal() {
+    await showRoomTypeModal(null);
 }
 
 // 顯示編輯房型模態框
@@ -3941,7 +3895,7 @@ async function editRoomType(id) {
     try {
         const room = allRoomTypes.find(r => r.id === id);
         if (room) {
-            showRoomTypeModal(room);
+            await showRoomTypeModal(room);
         } else {
             showError('找不到該房型');
         }
@@ -3952,7 +3906,8 @@ async function editRoomType(id) {
 }
 
 // 顯示房型編輯模態框
-function showRoomTypeModal(room) {
+async function showRoomTypeModal(room) {
+    await loadRoomBookingConfig();
     const modal = document.getElementById('bookingModal');
     const modalBody = document.getElementById('modalBody');
     const isEdit = room !== null;
@@ -3976,6 +3931,20 @@ function showRoomTypeModal(room) {
             <div class="form-group">
                 <label>顯示名稱</label>
                 <input type="text" name="display_name" value="${isEdit ? escapeHtml(room.display_name) : ''}" required>
+            </div>
+            <div class="form-group">
+                <label style="font-size: 15px; color: #111827; font-weight: 700;">訂房詳情</label>
+                <div class="form-row">
+                    <div>
+                        <label style="font-size: 13px; color: #4b5563;">客房數最小值</label>
+                        <input type="number" name="min_room_count" value="${roomBookingConfig.minRoomCount}" min="1" step="1" required>
+                    </div>
+                    <div>
+                        <label style="font-size: 13px; color: #4b5563;">客房數最大值</label>
+                        <input type="number" name="max_room_count" value="${roomBookingConfig.maxRoomCount}" min="1" step="1" required>
+                    </div>
+                </div>
+                <small>這是全站設定。若最小值與最大值都為 1，前台客房數的 +/- 會自動隱藏。</small>
             </div>
             <div class="form-group">
                 <label>入住人數</label>
@@ -4262,6 +4231,18 @@ async function saveRoomType(event, id) {
     event.preventDefault();
     
     const formData = new FormData(event.target);
+    const minRoomCount = parseInt(formData.get('min_room_count') || '1', 10) || 1;
+    const maxRoomCountRaw = parseInt(formData.get('max_room_count') || '1', 10) || 1;
+    const maxRoomCount = Math.max(minRoomCount, maxRoomCountRaw);
+    if (minRoomCount < 1 || maxRoomCount < 1) {
+        showError('客房數最小值與最大值都必須大於或等於 1');
+        return;
+    }
+    if (minRoomCount > maxRoomCount) {
+        showError('客房數最小值不可大於最大值');
+        return;
+    }
+
     const editingRoom = id ? allRoomTypes.find(r => Number(r.id) === Number(id)) : null;
     const data = {
         name: formData.get('name'),
@@ -4296,6 +4277,30 @@ async function saveRoomType(event, id) {
         const result = await response.json();
         
         if (result.success) {
+            const [minResponse, maxResponse] = await Promise.all([
+                adminFetch('/api/admin/settings/min_room_count', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        value: String(minRoomCount),
+                        description: '前台客房數最小值（預設 1）'
+                    })
+                }),
+                adminFetch('/api/admin/settings/max_room_count', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        value: String(maxRoomCount),
+                        description: '前台客房數最大值（預設 1）'
+                    })
+                })
+            ]);
+            const [minResult, maxResult] = await Promise.all([minResponse.json(), maxResponse.json()]);
+            if (!minResult.success || !maxResult.success) {
+                showError('房型已儲存，但客房數設定更新失敗，請重試');
+                return;
+            }
+            roomBookingConfig = { minRoomCount, maxRoomCount };
             showSuccess(id ? '房型已更新' : '房型已新增');
             closeModal();
             await loadRoomTypes();

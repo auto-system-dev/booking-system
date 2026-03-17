@@ -95,6 +95,7 @@ function applyRoomCountSettings(settings) {
 
     const roomsInput = document.getElementById('rooms');
     const roomsDisplay = document.getElementById('roomsDisplay');
+    const roomCounterSection = document.querySelector('.booking-capacity-rooms');
     const roomCounterButtons = document.querySelectorAll('.booking-capacity-rooms .guest-counter .guest-counter-btn');
     const fixedRoomCount = minRoomCount === maxRoomCount;
 
@@ -105,6 +106,9 @@ function applyRoomCountSettings(settings) {
         roomsDisplay.textContent = String(clamped);
     }
 
+    if (roomCounterSection) {
+        roomCounterSection.classList.toggle('is-fixed-room-count', fixedRoomCount);
+    }
     roomCounterButtons.forEach((btn) => {
         btn.style.display = fixedRoomCount ? 'none' : '';
     });
