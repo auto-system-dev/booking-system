@@ -464,7 +464,7 @@ function updateRoomSelectButtons() {
         const selected = qty > 0;
         btn.classList.remove('is-unavailable');
         btn.classList.toggle('is-selected', selected);
-        btn.textContent = selected ? '已加入' : '加入客房';
+        btn.textContent = selected ? '已選取' : '選取房型';
         if (plusBtn) plusBtn.disabled = true;
     });
 }
@@ -788,7 +788,7 @@ async function renderRoomTypes() {
         if (isUnavailable) selectedRoomQuantities[room.name] = 0;
         const safeQty = isUnavailable ? 0 : currentQty;
         if (!isUnavailable) selectedRoomQuantities[room.name] = safeQty;
-        const selectBtnText = isUnavailable ? '滿房' : (safeQty > 0 ? '已加入' : '加入客房');
+        const selectBtnText = isUnavailable ? '滿房' : (safeQty > 0 ? '已選取' : '選取房型');
         const selectBtnClass = isUnavailable ? 'room-select-btn is-unavailable' : 'room-select-btn';
         const selectBtnAction = isUnavailable ? '' : `onclick='selectRoomTypeByName(event, ${JSON.stringify(room.name)})'`;
         
