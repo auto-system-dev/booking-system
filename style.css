@@ -928,6 +928,19 @@ body {
     cursor: not-allowed;
 }
 
+.booking-capacity-warning {
+    margin-top: 12px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid #f8c7a0;
+    border-left: 4px solid #f59e0b;
+    background: #fff7ed;
+    color: #7c2d12;
+    font-size: 15px;
+    line-height: 1.8;
+    font-weight: 600;
+}
+
 /* 訂房須知 */
 .booking-notice-section {
     background: #f8fbff;

@@ -1363,6 +1363,7 @@ function calculateMemberDiscountAmount(totalAmount) {
 
 // 計算價格（考慮平日/假日）
 async function calculatePrice() {
+    clearCapacityWarning();
     const roomSelections = getSelectedRoomSelections();
     const roomsCount = getTotalSelectedRoomCount();
     if (roomSelections.length === 0) {
@@ -1914,11 +1915,27 @@ function clearSectionError(sectionId) {
     }
 }
 
+function showCapacityWarning(message) {
+    const warningEl = document.getElementById('bookingCapacityWarning');
+    if (!warningEl) return;
+    warningEl.innerHTML = `<span class="material-symbols-outlined" style="font-size: 20px; vertical-align: middle; margin-right: 8px;">warning</span>${message}`;
+    warningEl.classList.remove('hidden');
+    warningEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function clearCapacityWarning() {
+    const warningEl = document.getElementById('bookingCapacityWarning');
+    if (!warningEl) return;
+    warningEl.textContent = '';
+    warningEl.classList.add('hidden');
+}
+
 // 表單提交
 document.getElementById('bookingForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
     const submitBtn = this.querySelector('.submit-btn');
+    clearCapacityWarning();
     
     // ============================================
     // 驗證順序：由上到下
@@ -2051,8 +2068,9 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     const totalCapacity = baseCapacity + addonExtraBedCapacity;
     
     if (totalCapacity > 0 && totalGuests > totalCapacity) {
-        const addonInfo = addonExtraBedCapacity > 0 ? `（含加購加床 +${addonExtraBedCapacity} 人）` : '';
-        showSectionError('roomTypeGrid', `目前選擇 ${selectedRoomCount} 間房，總容納上限為 ${totalCapacity} 人${addonInfo}，請調整房型或入住人數`);
+        const unassignedGuests = totalGuests - totalCapacity;
+        const addonInfo = addonExtraBedCapacity > 0 ? `（已含加購加床 ${addonExtraBedCapacity} 人）` : '';
+        showCapacityWarning(`請留意：目前入住人數已超過所選房型可安排上限${addonInfo}，建議依實際入住人數調整房型組合，若與現場房況不符可能無法安排入住（尚有 ${unassignedGuests} 位旅客未安排）。`);
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<span>確認訂房</span>';
         return;
