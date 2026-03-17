@@ -434,12 +434,11 @@ async function initPostgreSQL() {
             
             // 初始化預設加購商品
             const defaultAddons = [
-                ['extra_bed', '加床', 500, '床', '🛏️', 1],
-                ['breakfast', '早餐', 200, '人', '🍳', 2],
-                ['afternoon_tea', '下午茶', 300, '份', '☕', 3],
-                ['dinner', '晚餐', 600, '份', '🍽️', 4],
-                ['bbq', '烤肉', 800, '份', '🔥', 5],
-                ['spa', 'SPA', 1000, '人', '💆', 6]
+                ['breakfast', '早餐', 200, '人', '🍳', 1],
+                ['afternoon_tea', '下午茶', 300, '份', '☕', 2],
+                ['dinner', '晚餐', 600, '份', '🍽️', 3],
+                ['bbq', '烤肉', 800, '份', '🔥', 4],
+                ['spa', 'SPA', 1000, '人', '💆', 5]
             ];
             
             for (const [name, displayName, price, unitLabel, icon, displayOrder] of defaultAddons) {
@@ -456,6 +455,9 @@ async function initPostgreSQL() {
                 }
             }
             console.log('✅ 預設加購商品已初始化');
+
+            // 已改為「房型內加床」，清理舊版加購商品「加床」
+            await query(`DELETE FROM addons WHERE name = 'extra_bed'`);
             
             // 初始化預設房型
             const roomCount = await queryOne('SELECT COUNT(*) as count FROM room_types');
@@ -2331,12 +2333,11 @@ function initSQLite() {
                                                     });
 
                                                     const defaultAddons = [
-                                                        ['extra_bed', '加床', 500, '床', '🛏️', 1],
-                                                        ['breakfast', '早餐', 200, '人', '🍳', 2],
-                                                        ['afternoon_tea', '下午茶', 300, '份', '☕', 3],
-                                                        ['dinner', '晚餐', 600, '份', '🍽️', 4],
-                                                        ['bbq', '烤肉', 800, '份', '🔥', 5],
-                                                        ['spa', 'SPA', 1000, '人', '💆', 6]
+                                                        ['breakfast', '早餐', 200, '人', '🍳', 1],
+                                                        ['afternoon_tea', '下午茶', 300, '份', '☕', 2],
+                                                        ['dinner', '晚餐', 600, '份', '🍽️', 3],
+                                                        ['bbq', '烤肉', 800, '份', '🔥', 4],
+                                                        ['spa', 'SPA', 1000, '人', '💆', 5]
                                                     ];
                                                     
                                                     let addonCount = 0;
@@ -2357,6 +2358,13 @@ function initSQLite() {
                                                                 );
                                                             }
                                                         });
+                                                    });
+
+                                                    // 已改為「房型內加床」，清理舊版加購商品「加床」
+                                                    db.run(`DELETE FROM addons WHERE name = 'extra_bed'`, (err) => {
+                                                        if (err) {
+                                                            console.warn('⚠️  清理 extra_bed 加購商品失敗:', err.message);
+                                                        }
                                                     });
                                                 }
                                                 
