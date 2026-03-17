@@ -3726,6 +3726,57 @@ function escapeHtml(text) {
 // ==================== 房型管理 ====================
 
 let allRoomTypes = [];
+const ROOM_INCLUDED_ITEM_PRESETS = [
+    '附早餐',
+    '附下午茶',
+    '附晚餐',
+    '免費取消',
+    'SPA',
+    '迎賓飲品',
+    '接駁服務'
+];
+
+function parseIncludedItemsConfig(rawValue) {
+    const items = String(rawValue || '')
+        .split(/[,，、\n]/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    const presetSet = new Set(ROOM_INCLUDED_ITEM_PRESETS);
+    const selectedPresets = [];
+    const customItems = [];
+    items.forEach((item) => {
+        if (presetSet.has(item)) {
+            if (!selectedPresets.includes(item)) selectedPresets.push(item);
+        } else if (!customItems.includes(item)) {
+            customItems.push(item);
+        }
+    });
+    return {
+        presets: selectedPresets,
+        custom: customItems
+    };
+}
+
+function syncIncludedItemsEditor() {
+    const hiddenInput = document.getElementById('roomIncludedItemsInput');
+    const presetList = document.getElementById('roomIncludedItemsPresetList');
+    const customInput = document.getElementById('roomIncludedItemsCustom');
+    if (!hiddenInput || !presetList) return;
+
+    const selectedPresets = Array.from(presetList.querySelectorAll('input[type="checkbox"]:checked'))
+        .map((checkbox) => checkbox.value)
+        .filter(Boolean);
+    const customItems = String(customInput?.value || '')
+        .split(/[,，、\n]/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+    const merged = [];
+    selectedPresets.concat(customItems).forEach((item) => {
+        if (!merged.includes(item)) merged.push(item);
+    });
+    hiddenInput.value = merged.join(', ');
+}
 
 // 載入房型列表
 async function loadRoomTypes() {
@@ -3812,6 +3863,14 @@ function showRoomTypeModal(room) {
     const modalBody = document.getElementById('modalBody');
     const isEdit = room !== null;
     const currentImageUrl = isEdit ? (room.image_url || '') : '';
+    const includedConfig = parseIncludedItemsConfig(isEdit ? (room.included_items || '') : '');
+    const includedPresetHtml = ROOM_INCLUDED_ITEM_PRESETS.map((item) => `
+        <label style="display: inline-flex; align-items: center; gap: 6px; margin: 4px 10px 4px 0; font-size: 13px;">
+            <input type="checkbox" value="${escapeHtml(item)}" ${includedConfig.presets.includes(item) ? 'checked' : ''} onchange="syncIncludedItemsEditor()">
+            <span>${escapeHtml(item)}</span>
+        </label>
+    `).join('');
+    const includedCustomValue = includedConfig.custom.join(', ');
     
     modalBody.innerHTML = `
         <form id="roomTypeForm" onsubmit="saveRoomType(event, ${isEdit ? room.id : 'null'})">
@@ -3833,6 +3892,20 @@ function showRoomTypeModal(room) {
                 <label>加床人數</label>
                 <input type="number" name="extra_beds" value="${isEdit ? (room.extra_beds ?? 0) : 0}" min="0" step="1" required>
                 <small>最多可加床人數</small>
+            </div>
+            <div class="form-group">
+                <label>床型設定</label>
+                <input type="text" name="bed_config" value="${isEdit ? escapeHtml(room.bed_config || '') : ''}" placeholder="例如：雙人床*1, 單人床*2">
+                <small>支援自由文字，建議格式：床型*數量（例如：雙人床*1, 單人床*2）</small>
+            </div>
+            <div class="form-group">
+                <label>方案包含項目</label>
+                <input type="hidden" id="roomIncludedItemsInput" name="included_items" value="${isEdit ? escapeHtml(room.included_items || '') : ''}">
+                <div id="roomIncludedItemsPresetList" style="padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fafafa; margin-bottom: 8px;">
+                    ${includedPresetHtml}
+                </div>
+                <input type="text" id="roomIncludedItemsCustom" value="${escapeHtml(includedCustomValue)}" placeholder="其他自訂項目（例如：兒童備品, 迎賓水果）" oninput="syncIncludedItemsEditor()">
+                <small>前台僅在有設定時顯示。可勾選常用項目，也可輸入自訂項目（逗號分隔）</small>
             </div>
             <div class="form-group">
                 <label>平日價格（每晚）</label>
@@ -3903,6 +3976,7 @@ function showRoomTypeModal(room) {
     `;
     
     modal.classList.add('active');
+    syncIncludedItemsEditor();
     
     if (isEdit) {
         loadGalleryImages(room.id);
@@ -4098,6 +4172,8 @@ async function saveRoomType(event, id) {
         holiday_surcharge: parseInt(formData.get('holiday_surcharge')) || 0,
         max_occupancy: parseInt(formData.get('max_occupancy')) || 0,
         extra_beds: parseInt(formData.get('extra_beds')) || 0,
+        bed_config: (formData.get('bed_config') || '').trim(),
+        included_items: (formData.get('included_items') || '').trim(),
         icon: formData.get('icon') || '🏠',
         image_url: formData.get('image_url') || null,
         show_on_landing: editingRoom ? (Number(editingRoom.show_on_landing) === 1 ? 1 : 0) : 1,
@@ -11459,6 +11535,8 @@ function buildLandingRoomTypeUpdatePayload(room, showOnLanding) {
         holiday_surcharge: Number(room.holiday_surcharge) || 0,
         max_occupancy: Number(room.max_occupancy) || 0,
         extra_beds: Number(room.extra_beds) || 0,
+        bed_config: String(room.bed_config || '').trim(),
+        included_items: String(room.included_items || '').trim(),
         icon: room.icon || '🏠',
         image_url: room.image_url || null,
         show_on_landing: showOnLanding ? 1 : 0,
@@ -12260,6 +12338,7 @@ window.removeLandingFacilityGalleryImage = removeLandingFacilityGalleryImage;
 window.setLandingFacilityGalleryCover = setLandingFacilityGalleryCover;
 window.updateLandingFacilityGalleryItem = updateLandingFacilityGalleryItem;
 window.handleLandingFacilityGalleryImageUpload = handleLandingFacilityGalleryImageUpload;
+window.syncIncludedItemsEditor = syncIncludedItemsEditor;
 window.syncFeatureCheckboxes = syncFeatureCheckboxes;
 window.restoreFeatureCheckboxes = restoreFeatureCheckboxes;
 window.handleHeroImageUpload = handleHeroImageUpload;

@@ -4276,10 +4276,56 @@ async function handleDeleteBooking(req, res) {
 // API: 取得所有房型（公開，供前台使用）
 app.get('/api/room-types', publicLimiter, async (req, res) => {
     try {
-        const roomTypes = await db.getAllRoomTypes();
+        const [roomTypes, allGalleryImages, allSettings] = await Promise.all([
+            db.getAllRoomTypes(),
+            db.getAllRoomTypeGalleryImages(),
+            db.getAllSettings()
+        ]);
+
+        const galleryMap = {};
+        (allGalleryImages || []).forEach((image) => {
+            const roomTypeId = Number(image.room_type_id);
+            if (!galleryMap[roomTypeId]) {
+                galleryMap[roomTypeId] = [];
+            }
+            if (image.image_url) {
+                galleryMap[roomTypeId].push(image.image_url);
+            }
+        });
+
+        const settingsMap = {};
+        (allSettings || []).forEach((setting) => {
+            settingsMap[setting.key] = setting.value;
+        });
+        const bedTypeKeywords = new Set(['單人床', '雙人床', '加大雙人床', '特大雙人床', '上下鋪', '和式床墊', '沙發床']);
+
+        const normalizedRoomTypes = (roomTypes || []).map((roomType) => {
+            const roomTypeId = Number(roomType.id);
+            const featureKey = `landing_roomtype_${roomTypeId}_features`;
+            const featureText = String(settingsMap[featureKey] || '').trim();
+            const featureItems = featureText
+                ? featureText.split(',').map((item) => item.trim()).filter(Boolean)
+                : [];
+            const bedTypes = featureItems.filter((item) => bedTypeKeywords.has(item));
+            const roomFacilities = featureItems.filter((item) => !bedTypeKeywords.has(item));
+            const includedItems = String(roomType.included_items || '')
+                .split(/[,，、\n]/)
+                .map((item) => item.trim())
+                .filter(Boolean);
+            const galleryImages = galleryMap[roomTypeId] || [];
+
+            return {
+                ...roomType,
+                bed_types: bedTypes,
+                room_facilities: roomFacilities,
+                included_items_list: includedItems,
+                gallery_images: galleryImages
+            };
+        });
+
         res.json({
             success: true,
-            data: roomTypes
+            data: normalizedRoomTypes
         });
     } catch (error) {
         console.error('取得房型列表錯誤:', error);

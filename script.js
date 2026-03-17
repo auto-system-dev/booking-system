@@ -64,6 +64,8 @@ let unavailableRooms = []; // 已滿房的房型列表
 let datePicker = null; // 日期區間選擇器
 let guestCounts = { adults: 2, children: 0 };
 let capacityModalData = { capacity: 0, totalGuests: 0 };
+let roomGalleryData = {};
+let currentRoomGallery = { images: [], index: 0, title: '' };
 let lineUserId = null; // LINE User ID（如果從 LIFF 開啟）
 let appliedPromoCode = null; // 已套用的優惠代碼
 let earlyBirdDiscount = null; // 已偵測的早鳥優惠
@@ -310,6 +312,73 @@ function closeBookingNoticeModal() {
     modal.classList.add('hidden');
 }
 
+function escapeRoomText(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function openRoomGallery(event, roomId) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    const data = roomGalleryData[String(roomId)];
+    if (!data || !Array.isArray(data.images) || data.images.length === 0) return;
+
+    currentRoomGallery = {
+        images: data.images,
+        index: 0,
+        title: data.name || '房型照片'
+    };
+    renderRoomGallery();
+
+    const overlay = document.getElementById('roomGalleryModal');
+    if (overlay) overlay.classList.remove('hidden');
+}
+
+function hideRoomGalleryModal() {
+    const overlay = document.getElementById('roomGalleryModal');
+    if (overlay) overlay.classList.add('hidden');
+}
+
+function changeRoomGalleryImage(step) {
+    const total = currentRoomGallery.images.length;
+    if (!total) return;
+    const nextIndex = (currentRoomGallery.index + step + total) % total;
+    currentRoomGallery.index = nextIndex;
+    renderRoomGallery();
+}
+
+function renderRoomGallery() {
+    const titleEl = document.getElementById('roomGalleryTitle');
+    const imageEl = document.getElementById('roomGalleryImage');
+    const counterEl = document.getElementById('roomGalleryCounter');
+    const prevBtn = document.getElementById('roomGalleryPrevBtn');
+    const nextBtn = document.getElementById('roomGalleryNextBtn');
+    if (!titleEl || !imageEl || !counterEl || !prevBtn || !nextBtn) return;
+
+    const images = currentRoomGallery.images || [];
+    const total = images.length;
+    if (!total) return;
+
+    const index = Math.max(0, Math.min(currentRoomGallery.index, total - 1));
+    currentRoomGallery.index = index;
+
+    titleEl.textContent = currentRoomGallery.title || '房型照片';
+    imageEl.src = images[index];
+    imageEl.alt = `${currentRoomGallery.title || '房型照片'} ${index + 1}`;
+    counterEl.textContent = `${index + 1} / ${total}`;
+
+    const hideNav = total <= 1;
+    prevBtn.style.display = hideNav ? 'none' : '';
+    nextBtn.style.display = hideNav ? 'none' : '';
+}
+
 // 渲染加購商品
 function renderAddons() {
     const grid = document.getElementById('addonsGrid');
@@ -484,10 +553,13 @@ async function renderRoomTypes() {
         }
     }
     
+    roomGalleryData = {};
+
     grid.innerHTML = roomTypes.map((room, index) => {
         const isUnavailable = hasDates && unavailableRooms.includes(room.name);
         const roomOptionClass = isUnavailable ? 'room-option unavailable' : 'room-option';
         const disabledAttr = isUnavailable ? 'disabled' : '';
+        const roomId = room.id != null ? String(room.id) : `idx-${index}`;
         
         const holidaySurcharge = room.holiday_surcharge || 0;
         // 根據入住日期判斷顯示平日價格還是假日價格
@@ -502,10 +574,35 @@ async function renderRoomTypes() {
         } else {
             priceDisplay = `NT$ ${displayPrice.toLocaleString()}/晚`;
         }
+
+        const displayName = String(room.display_name || room.name || '房型');
+        const bedConfig = String(room.bed_config || '').trim();
+        const maxOccupancy = room.max_occupancy != null ? Number(room.max_occupancy) : 0;
+        const extraBeds = room.extra_beds != null ? Number(room.extra_beds) : 0;
+        const roomFacilities = Array.isArray(room.room_facilities) ? room.room_facilities.filter(Boolean) : [];
+        const includedItems = Array.isArray(room.included_items_list) ? room.included_items_list.filter(Boolean) : [];
+        const facilitySummary = roomFacilities.length > 0
+            ? roomFacilities.slice(0, 4).join('、') + (roomFacilities.length > 4 ? ` 等${roomFacilities.length}項` : '')
+            : '';
+
+        const galleryImages = [];
+        if (room.image_url) galleryImages.push(room.image_url);
+        if (Array.isArray(room.gallery_images)) {
+            room.gallery_images.forEach((imageUrl) => {
+                if (imageUrl && !galleryImages.includes(imageUrl)) {
+                    galleryImages.push(imageUrl);
+                }
+            });
+        }
+        roomGalleryData[roomId] = {
+            name: displayName,
+            images: galleryImages
+        };
         
         return `
         <div class="${roomOptionClass}" 
              data-room="${room.name}" 
+             data-room-id="${roomId}"
              data-price="${room.price}" 
              data-holiday-surcharge="${holidaySurcharge}"
              data-max-occupancy="${room.max_occupancy != null ? room.max_occupancy : 0}"
@@ -513,11 +610,21 @@ async function renderRoomTypes() {
             <input type="radio" id="room-${room.name}" name="roomType" value="${room.name}" ${disabledAttr}>
             <label for="room-${room.name}">
                 ${room.image_url 
-                    ? `<div class="room-icon room-icon-image"><img src="${room.image_url}" alt="${room.display_name}" loading="lazy"></div>` 
+                    ? `<div class="room-icon room-icon-image">
+                        <img src="${room.image_url}" alt="${escapeRoomText(displayName)}" loading="lazy">
+                        ${galleryImages.length > 1 ? `<button type="button" class="room-gallery-btn" onclick="openRoomGallery(event, '${roomId}')">查看 ${galleryImages.length} 張</button>` : ''}
+                    </div>` 
                     : `<div class="room-icon">${room.icon || '🏠'}</div>`}
-                <div class="room-name">${room.display_name}</div>
+                <div class="room-name">${escapeRoomText(displayName)}</div>
                 <div class="room-price ${isUnavailable ? 'unavailable-price' : ''}">
                     ${priceDisplay}
+                </div>
+                <div class="room-meta-list">
+                    <div class="room-meta-item"><strong>床型：</strong>${escapeRoomText(bedConfig || '依現場安排')}</div>
+                    <div class="room-meta-item"><strong>入住人數：</strong>${maxOccupancy} 人</div>
+                    <div class="room-meta-item"><strong>可加床數：</strong>${extraBeds} 人</div>
+                    ${facilitySummary ? `<div class="room-meta-item"><strong>房型設施：</strong>${escapeRoomText(facilitySummary)}</div>` : ''}
+                    ${includedItems.length > 0 ? `<div class="room-meta-item room-meta-item-included"><strong>方案包含：</strong>${escapeRoomText(includedItems.join('、'))}</div>` : ''}
                 </div>
             </label>
         </div>
@@ -740,6 +847,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const bookingNoticeCloseBtn = document.getElementById('bookingNoticeCloseBtn');
     const bookingNoticeModal = document.getElementById('bookingNoticeModal');
     const bookingNoticeAgree = document.getElementById('bookingNoticeAgree');
+    const roomGalleryModal = document.getElementById('roomGalleryModal');
+    const roomGalleryCloseBtn = document.getElementById('roomGalleryCloseBtn');
+    const roomGalleryPrevBtn = document.getElementById('roomGalleryPrevBtn');
+    const roomGalleryNextBtn = document.getElementById('roomGalleryNextBtn');
     if (cancelBtn) {
         cancelBtn.addEventListener('click', () => {
             hideCapacityModal();
@@ -778,6 +889,22 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    if (roomGalleryCloseBtn) {
+        roomGalleryCloseBtn.addEventListener('click', hideRoomGalleryModal);
+    }
+    if (roomGalleryPrevBtn) {
+        roomGalleryPrevBtn.addEventListener('click', () => changeRoomGalleryImage(-1));
+    }
+    if (roomGalleryNextBtn) {
+        roomGalleryNextBtn.addEventListener('click', () => changeRoomGalleryImage(1));
+    }
+    if (roomGalleryModal) {
+        roomGalleryModal.addEventListener('click', (event) => {
+            if (event.target === roomGalleryModal) {
+                hideRoomGalleryModal();
+            }
+        });
+    }
     if (bookingNoticeAgree) {
         bookingNoticeAgree.addEventListener('change', () => {
             if (bookingNoticeAgree.checked) {
@@ -789,6 +916,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (event.key === 'Escape') {
             hideAddonDetailModal();
             closeBookingNoticeModal();
+            hideRoomGalleryModal();
+        } else if (event.key === 'ArrowLeft') {
+            if (roomGalleryModal && !roomGalleryModal.classList.contains('hidden')) {
+                changeRoomGalleryImage(-1);
+            }
+        } else if (event.key === 'ArrowRight') {
+            if (roomGalleryModal && !roomGalleryModal.classList.contains('hidden')) {
+                changeRoomGalleryImage(1);
+            }
         }
     });
 });

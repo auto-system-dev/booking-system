@@ -285,6 +285,22 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 房型照片瀏覽彈窗 -->
+            <div id="roomGalleryModal" class="modal-overlay hidden">
+                <div class="modal-dialog room-gallery-dialog">
+                    <h3 id="roomGalleryTitle" class="modal-title">房型照片</h3>
+                    <div class="room-gallery-body">
+                        <button type="button" id="roomGalleryPrevBtn" class="room-gallery-nav room-gallery-nav-prev" aria-label="上一張">‹</button>
+                        <img id="roomGalleryImage" class="room-gallery-image" src="" alt="房型照片">
+                        <button type="button" id="roomGalleryNextBtn" class="room-gallery-nav room-gallery-nav-next" aria-label="下一張">›</button>
+                    </div>
+                    <div id="roomGalleryCounter" class="room-gallery-counter">1 / 1</div>
+                    <div class="modal-actions">
+                        <button type="button" id="roomGalleryCloseBtn" class="modal-btn modal-btn-primary">關閉</button>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <!-- 頁尾連結 -->

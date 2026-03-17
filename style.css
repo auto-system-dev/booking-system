@@ -261,7 +261,7 @@ body {
 .room-option label {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     padding: 20px;
     border: 2px solid #e0e0e0;
     border-radius: 16px;
@@ -290,6 +290,7 @@ body {
     border-radius: 8px;
     margin-bottom: 10px;
     font-size: inherit;
+    position: relative;
 }
 
 .room-icon.room-icon-image img {
@@ -312,11 +313,52 @@ body {
     font-weight: 600;
     color: #333;
     margin-bottom: 4px;
+    width: 100%;
+    text-align: left;
 }
 
 .room-price {
     font-size: 14px;
     color: #2C8EC4;
+    font-weight: 600;
+    width: 100%;
+    text-align: left;
+    margin-bottom: 8px;
+}
+
+.room-gallery-btn {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.65);
+    color: #fff;
+    font-size: 12px;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.room-meta-list {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.room-meta-item {
+    font-size: 13px;
+    color: #4b5563;
+    line-height: 1.45;
+    text-align: left;
+}
+
+.room-meta-item strong {
+    color: #1f2937;
+}
+
+.room-meta-item-included {
+    color: #0f766e;
     font-weight: 600;
 }
 
@@ -861,6 +903,58 @@ body {
 .addon-detail-dialog {
     text-align: left;
     max-width: 560px;
+}
+
+.room-gallery-dialog {
+    max-width: 760px;
+    width: min(92vw, 760px);
+}
+
+.room-gallery-body {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #111;
+    min-height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.room-gallery-image {
+    width: 100%;
+    max-height: 65vh;
+    object-fit: contain;
+}
+
+.room-gallery-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    border: 0;
+    background: rgba(0, 0, 0, 0.45);
+    color: #fff;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.room-gallery-nav-prev {
+    left: 10px;
+}
+
+.room-gallery-nav-next {
+    right: 10px;
+}
+
+.room-gallery-counter {
+    text-align: center;
+    margin: 10px 0 14px;
+    color: #475569;
+    font-size: 13px;
 }
 
 .addon-detail-body {
