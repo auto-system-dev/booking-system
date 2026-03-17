@@ -3865,7 +3865,7 @@ function showRoomTypeModal(room) {
     const currentImageUrl = isEdit ? (room.image_url || '') : '';
     const includedConfig = parseIncludedItemsConfig(isEdit ? (room.included_items || '') : '');
     const includedPresetHtml = ROOM_INCLUDED_ITEM_PRESETS.map((item) => `
-        <label style="display: inline-flex; align-items: center; gap: 6px; margin: 4px 10px 4px 0; font-size: 13px;">
+        <label style="display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; white-space: nowrap;">
             <input type="checkbox" value="${escapeHtml(item)}" ${includedConfig.presets.includes(item) ? 'checked' : ''} onchange="syncIncludedItemsEditor()">
             <span>${escapeHtml(item)}</span>
         </label>
@@ -3906,7 +3906,7 @@ function showRoomTypeModal(room) {
             <div class="form-group">
                 <label>方案包含項目</label>
                 <input type="hidden" id="roomIncludedItemsInput" name="included_items" value="${isEdit ? escapeHtml(room.included_items || '') : ''}">
-                <div id="roomIncludedItemsPresetList" style="padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fafafa; margin-bottom: 8px;">
+                <div id="roomIncludedItemsPresetList" style="padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fafafa; margin-bottom: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;">
                     ${includedPresetHtml}
                 </div>
                 <input type="text" id="roomIncludedItemsCustom" value="${escapeHtml(includedCustomValue)}" placeholder="其他自訂項目（例如：兒童備品, 迎賓水果）" oninput="syncIncludedItemsEditor()">
