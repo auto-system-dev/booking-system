@@ -602,10 +602,10 @@ body {
 }
 
 .booking-capacity-title {
-    font-size: 14px;
-    color: #666;
+    font-size: 16px;
+    color: #333;
     margin-bottom: 2px;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .booking-capacity-row .form-group {

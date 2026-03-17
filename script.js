@@ -402,15 +402,21 @@ function selectRoomTypeByName(event, roomName) {
 }
 
 function updateRoomSelectButtons() {
+    const roomLimit = getRoomCount();
+    const totalSelected = getTotalSelectedRoomCount();
+    const canAddMoreRooms = totalSelected < roomLimit;
+
     document.querySelectorAll('.room-option').forEach((optionEl) => {
         const radio = optionEl.querySelector('input[name="roomType"]');
         const btn = optionEl.querySelector('.room-select-btn');
+        const plusBtn = optionEl.querySelector('.room-qty-btn-plus');
         if (!radio || !btn) return;
 
         if (radio.disabled) {
             btn.classList.remove('is-selected');
             btn.classList.add('is-unavailable');
             btn.textContent = '滿房';
+            if (plusBtn) plusBtn.disabled = true;
             return;
         }
 
@@ -419,6 +425,7 @@ function updateRoomSelectButtons() {
         btn.classList.remove('is-unavailable');
         btn.classList.toggle('is-selected', selected);
         btn.textContent = selected ? '已加入' : '加入客房';
+        if (plusBtn) plusBtn.disabled = !canAddMoreRooms;
     });
 }
 
@@ -783,7 +790,7 @@ async function renderRoomTypes() {
                                 <div class="room-qty-control">
                                     <button type="button" class="room-qty-btn room-qty-btn-minus" onclick='event.preventDefault(); event.stopPropagation(); changeRoomTypeQuantity(${JSON.stringify(room.name)}, -1)' ${safeQty <= 0 ? 'disabled' : ''}>−</button>
                                     <span class="room-qty-value">${safeQty}</span>
-                                    <button type="button" class="room-qty-btn" onclick='event.preventDefault(); event.stopPropagation(); changeRoomTypeQuantity(${JSON.stringify(room.name)}, 1)'>+</button>
+                                    <button type="button" class="room-qty-btn room-qty-btn-plus" onclick='event.preventDefault(); event.stopPropagation(); changeRoomTypeQuantity(${JSON.stringify(room.name)}, 1)'>+</button>
                                 </div>
                             </div>
                         </div>
@@ -1017,7 +1024,22 @@ function syncRoomSelectionCard(roomName) {
 
 function changeRoomTypeQuantity(roomName, delta) {
     const current = parseInt(selectedRoomQuantities[roomName] || '0', 10) || 0;
-    const next = Math.min(20, Math.max(0, current + delta));
+    let next = current;
+
+    if (delta > 0) {
+        const roomLimit = getRoomCount();
+        const totalSelected = getTotalSelectedRoomCount();
+        const remaining = roomLimit - totalSelected;
+        if (remaining <= 0) {
+            showSectionError('roomTypeGrid', `客房數目前為 ${roomLimit} 間，若要再加入房型請先增加客房數或先減少其他房型數量`);
+            updateRoomSelectButtons();
+            return;
+        }
+        next = Math.min(20, current + Math.min(delta, remaining));
+    } else {
+        next = Math.max(0, current + delta);
+    }
+
     selectedRoomQuantities[roomName] = next;
     syncRoomSelectionCard(roomName);
     updateRoomSelectButtons();
@@ -1027,6 +1049,19 @@ function changeRoomTypeQuantity(roomName, delta) {
 }
 
 function toggleRoomTypeSelection(roomName, checked) {
+    const current = parseInt(selectedRoomQuantities[roomName] || '0', 10) || 0;
+    if (checked && current <= 0) {
+        const roomLimit = getRoomCount();
+        const totalSelected = getTotalSelectedRoomCount();
+        if (totalSelected >= roomLimit) {
+            const option = Array.from(document.querySelectorAll('.room-option')).find(el => el.dataset.room === roomName);
+            const checkbox = option ? option.querySelector('input[name="roomType"]') : null;
+            if (checkbox) checkbox.checked = false;
+            showSectionError('roomTypeGrid', `客房數目前為 ${roomLimit} 間，若要再加入房型請先增加客房數或先減少其他房型數量`);
+            updateRoomSelectButtons();
+            return;
+        }
+    }
     selectedRoomQuantities[roomName] = checked ? Math.max(1, parseInt(selectedRoomQuantities[roomName] || '1', 10) || 1) : 0;
     syncRoomSelectionCard(roomName);
     updateRoomSelectButtons();
@@ -1049,6 +1084,8 @@ function changeRoomCount(delta) {
     const next = Math.min(20, Math.max(1, current + delta));
     roomsInput.value = String(next);
     roomsDisplay.textContent = String(next);
+    Object.keys(selectedRoomQuantities).forEach((roomName) => syncRoomSelectionCard(roomName));
+    updateRoomSelectButtons();
     clearSectionError('roomTypeGrid');
     calculatePrice();
 }
