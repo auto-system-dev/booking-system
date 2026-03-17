@@ -357,6 +357,14 @@ body {
     margin-bottom: 8px;
 }
 
+.room-price-old {
+    margin-left: 8px;
+    color: #9ca3af;
+    font-size: 12px;
+    text-decoration: line-through;
+    font-weight: 500;
+}
+
 .room-gallery-hint {
     position: absolute;
     bottom: 12px;

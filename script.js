@@ -688,11 +688,15 @@ async function renderRoomTypes() {
             ? (room.price + holidaySurcharge) 
             : room.price;
         let priceDisplay = '';
+        const originalPrice = Number(room.original_price || 0);
         
         if (isUnavailable) {
             priceDisplay = '';
         } else {
-            priceDisplay = `NT$ ${displayPrice.toLocaleString()}/晚`;
+            const originalPriceHtml = originalPrice > 0
+                ? `<span class="room-price-old">NT$ ${originalPrice.toLocaleString()}</span>`
+                : '';
+            priceDisplay = `NT$ ${displayPrice.toLocaleString()}/晚${originalPriceHtml}`;
         }
 
         const displayName = String(room.display_name || room.name || '房型');
