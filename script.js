@@ -441,9 +441,7 @@ function selectRoomTypeByName(event, roomName) {
 }
 
 function updateRoomSelectButtons() {
-    const roomLimit = getRoomCount();
-    const totalSelected = getTotalSelectedRoomCount();
-    const canAddMoreRooms = totalSelected < roomLimit;
+    const canAddMoreRooms = true;
 
     document.querySelectorAll('.room-option').forEach((optionEl) => {
         const radio = optionEl.querySelector('input[name="roomType"]');
@@ -1069,15 +1067,7 @@ function changeRoomTypeQuantity(roomName, delta) {
     let next = current;
 
     if (delta > 0) {
-        const roomLimit = getRoomCount();
-        const totalSelected = getTotalSelectedRoomCount();
-        const remaining = roomLimit - totalSelected;
-        if (remaining <= 0) {
-            showSectionError('roomTypeGrid', `客房數目前為 ${roomLimit} 間，若要再加入房型請先增加客房數或先減少其他房型數量`);
-            updateRoomSelectButtons();
-            return;
-        }
-        next = Math.min(1, current + Math.min(delta, remaining));
+        next = Math.min(1, current + delta);
     } else {
         next = Math.max(0, current + delta);
     }
@@ -1091,19 +1081,6 @@ function changeRoomTypeQuantity(roomName, delta) {
 }
 
 function toggleRoomTypeSelection(roomName, checked) {
-    const current = parseInt(selectedRoomQuantities[roomName] || '0', 10) || 0;
-    if (checked && current <= 0) {
-        const roomLimit = getRoomCount();
-        const totalSelected = getTotalSelectedRoomCount();
-        if (totalSelected >= roomLimit) {
-            const option = Array.from(document.querySelectorAll('.room-option')).find(el => el.dataset.room === roomName);
-            const checkbox = option ? option.querySelector('input[name="roomType"]') : null;
-            if (checkbox) checkbox.checked = false;
-            showSectionError('roomTypeGrid', `客房數目前為 ${roomLimit} 間，若要再加入房型請先增加客房數或先減少其他房型數量`);
-            updateRoomSelectButtons();
-            return;
-        }
-    }
     selectedRoomQuantities[roomName] = checked ? 1 : 0;
     syncRoomSelectionCard(roomName);
     updateRoomSelectButtons();
@@ -1387,7 +1364,7 @@ function calculateMemberDiscountAmount(totalAmount) {
 // 計算價格（考慮平日/假日）
 async function calculatePrice() {
     const roomSelections = getSelectedRoomSelections();
-    const roomsCount = getTotalSelectedRoomCount() || getRoomCount();
+    const roomsCount = getTotalSelectedRoomCount();
     if (roomSelections.length === 0) {
         updatePriceDisplay(0, 0, 0, 0, 'deposit', 0, 0, null, 0, 0, 0, roomsCount, []);
         return;
@@ -1961,7 +1938,6 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     const roomTypeGrid = document.getElementById('roomTypeGrid');
     const roomSelections = getSelectedRoomSelections();
     const selectedRoomCount = roomSelections.reduce((sum, item) => sum + item.quantity, 0);
-    const roomsCount = getRoomCount();
 
     if (roomSelections.length === 0) {
         const roomTypeRadios = document.querySelectorAll('input[name="roomType"]');
@@ -1970,10 +1946,6 @@ document.getElementById('bookingForm').addEventListener('submit', async function
             return;
         }
         showSectionError('roomTypeGrid', '請至少選擇 1 間房型');
-        return;
-    }
-    if (selectedRoomCount !== roomsCount) {
-        showSectionError('roomTypeGrid', `目前客房數為 ${roomsCount}，請將房型分配總數調整為 ${roomsCount} 間（目前 ${selectedRoomCount} 間）`);
         return;
     }
     clearSectionError('roomTypeGrid');
@@ -2080,7 +2052,7 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     
     if (totalCapacity > 0 && totalGuests > totalCapacity) {
         const addonInfo = addonExtraBedCapacity > 0 ? `（含加購加床 +${addonExtraBedCapacity} 人）` : '';
-        showSectionError('roomTypeGrid', `目前選擇 ${roomsCount} 間房，總容納上限為 ${totalCapacity} 人${addonInfo}，請調整客房數、房型或入住人數`);
+        showSectionError('roomTypeGrid', `目前選擇 ${selectedRoomCount} 間房，總容納上限為 ${totalCapacity} 人${addonInfo}，請調整房型或入住人數`);
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<span>確認訂房</span>';
         return;
@@ -2096,7 +2068,7 @@ document.getElementById('bookingForm').addEventListener('submit', async function
         guestEmail: email, // 使用驗證後清理過的 Email（已轉小寫）
         adults,
         children,
-        rooms: roomsCount,
+        rooms: selectedRoomCount,
         roomSelections,
         paymentAmount: document.querySelector('input[name="paymentAmount"]:checked').value,
         paymentMethod: paymentMethod.value,
@@ -2112,7 +2084,7 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     
     // 使用 API 計算價格（考慮假日）
     let pricePerNight = roomSelections[0]?.price || 0; // 預設值
-    let roomTotal = pricePerNight * nights * roomsCount; // 預設值
+    let roomTotal = pricePerNight * nights * selectedRoomCount; // 預設值
     
     if (checkInDate && checkOutDate) {
         try {
