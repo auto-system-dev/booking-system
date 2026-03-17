@@ -76,13 +76,14 @@
                     </div>
                     <div class="date-range-info" id="dateRangeInfo"></div>
                     <div class="nights-display" id="nightsDisplay"></div>
-                    <div class="booking-capacity-row" style="margin-top: 14px;">
+                    <div class="booking-capacity-title" style="margin-top: 14px;">人數 / 客房數</div>
+                    <div class="booking-capacity-row" style="margin-top: 8px;">
                         <div class="form-group booking-capacity-guests">
                             <label>人數</label>
                             <div class="guest-count-row">
                                 <div class="guest-counter-wrapper">
                                     <div class="guest-counter-input">
-                                        <div class="guest-counter-label-inline">成人<br>（12 歲以上）</div>
+                                        <div class="guest-counter-label-inline">成人 <span class="guest-age-inline">（12 歲以上）</span></div>
                                         <div class="guest-counter">
                                             <button type="button" class="guest-counter-btn" onclick="changeGuestCount('adults', -1)">−</button>
                                             <span id="adultsDisplay" class="guest-counter-value">2</span>
@@ -93,7 +94,7 @@
                                 </div>
                                 <div class="guest-counter-wrapper">
                                     <div class="guest-counter-input">
-                                        <div class="guest-counter-label-inline">孩童<br>（3-11 歲）</div>
+                                        <div class="guest-counter-label-inline">孩童 <span class="guest-age-inline">（3-11 歲）</span></div>
                                         <div class="guest-counter">
                                             <button type="button" class="guest-counter-btn" onclick="changeGuestCount('children', -1)">−</button>
                                             <span id="childrenDisplay" class="guest-counter-value">0</span>
