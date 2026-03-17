@@ -63,6 +63,7 @@ let depositPercentage = 30; // 預設訂金百分比
 let unavailableRooms = []; // 已滿房的房型列表
 let datePicker = null; // 日期區間選擇器
 let guestCounts = { adults: 2, children: 0 };
+let selectedRoomQuantities = {};
 let capacityModalData = { capacity: 0, totalGuests: 0 };
 let roomGalleryData = {};
 let roomFacilitiesData = {};
@@ -394,10 +395,10 @@ function selectRoomTypeByName(event, roomName) {
         event.preventDefault();
         event.stopPropagation();
     }
-    const radio = document.getElementById(`room-${roomName}`);
-    if (!radio || radio.disabled) return;
-    radio.checked = true;
-    radio.dispatchEvent(new Event('change', { bubbles: true }));
+    const roomOption = Array.from(document.querySelectorAll('.room-option')).find(el => el.dataset.room === roomName);
+    const checkbox = roomOption ? roomOption.querySelector('input[name="roomType"]') : null;
+    if (!checkbox || checkbox.disabled) return;
+    changeRoomTypeQuantity(roomName, 1);
 }
 
 function updateRoomSelectButtons() {
@@ -413,10 +414,11 @@ function updateRoomSelectButtons() {
             return;
         }
 
-        const selected = !!radio.checked;
+        const roomName = optionEl.dataset.room;
+        const selected = (parseInt(selectedRoomQuantities[roomName] || '0', 10) || 0) > 0;
         btn.classList.remove('is-unavailable');
         btn.classList.toggle('is-selected', selected);
-        btn.textContent = selected ? '已選取' : '選取房型';
+        btn.textContent = selected ? '已加入' : '加入客房';
     });
 }
 
@@ -722,7 +724,10 @@ async function renderRoomTypes() {
             images: galleryImages
         };
 
-        const selectBtnText = isUnavailable ? '滿房' : '選取房型';
+        const currentQty = parseInt(selectedRoomQuantities[room.name] || '0', 10) || 0;
+        if (isUnavailable) selectedRoomQuantities[room.name] = 0;
+        const safeQty = isUnavailable ? 0 : currentQty;
+        const selectBtnText = isUnavailable ? '滿房' : (safeQty > 0 ? '已加入' : '加入客房');
         const selectBtnClass = isUnavailable ? 'room-select-btn is-unavailable' : 'room-select-btn';
         const selectBtnAction = isUnavailable ? '' : `onclick='selectRoomTypeByName(event, ${JSON.stringify(room.name)})'`;
         
@@ -734,7 +739,7 @@ async function renderRoomTypes() {
              data-holiday-surcharge="${holidaySurcharge}"
              data-max-occupancy="${room.max_occupancy != null ? room.max_occupancy : 0}"
              data-extra-beds="${room.extra_beds != null ? room.extra_beds : 0}">
-            <input type="radio" id="room-${room.name}" name="roomType" value="${room.name}" ${disabledAttr}>
+            <input type="checkbox" id="room-${room.name}" name="roomType" value="${room.name}" ${disabledAttr} ${safeQty > 0 ? 'checked' : ''} onchange='toggleRoomTypeSelection(${JSON.stringify(room.name)}, this.checked)'>
             <label for="room-${room.name}">
                 <div class="room-name">${escapeRoomText(displayName)}</div>
                 <div class="room-card-layout">
@@ -763,6 +768,11 @@ async function renderRoomTypes() {
                             </div>
                             <div class="room-option-actions">
                                 <button type="button" class="${selectBtnClass}" ${selectBtnAction}>${selectBtnText}</button>
+                                <div class="room-qty-control">
+                                    <button type="button" class="room-qty-btn room-qty-btn-minus" onclick='event.preventDefault(); event.stopPropagation(); changeRoomTypeQuantity(${JSON.stringify(room.name)}, -1)' ${safeQty <= 0 ? 'disabled' : ''}>−</button>
+                                    <span class="room-qty-value">${safeQty}</span>
+                                    <button type="button" class="room-qty-btn" onclick='event.preventDefault(); event.stopPropagation(); changeRoomTypeQuantity(${JSON.stringify(room.name)}, 1)'>+</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -772,20 +782,6 @@ async function renderRoomTypes() {
     `;
     }).join('');
     
-    // 重新綁定事件
-    document.querySelectorAll('input[name="roomType"]').forEach(radio => {
-        radio.addEventListener('change', function () {
-            // 清除房型選擇錯誤訊息
-            clearSectionError('roomTypeGrid');
-            updateRoomSelectButtons();
-            calculatePrice();
-            // 如果已套用優惠代碼，重新驗證
-            if (appliedPromoCode) {
-                applyPromoCode();
-            }
-        });
-    });
-
     updateRoomSelectButtons();
 }
 
@@ -932,6 +928,117 @@ function changeGuestCount(type, delta) {
     guestCounts[type] = current;
     displayEl.textContent = current;
     inputEl.value = current;
+    calculatePrice();
+}
+
+function getSelectedRoomSelections() {
+    return roomTypes
+        .map((room) => {
+            const quantity = parseInt(selectedRoomQuantities[room.name] || '0', 10) || 0;
+            if (quantity <= 0) return null;
+            return {
+                name: room.name,
+                displayName: room.display_name || room.name,
+                quantity,
+                price: Number(room.price || 0),
+                maxOccupancy: Number(room.max_occupancy || 0),
+                extraBeds: Number(room.extra_beds || 0)
+            };
+        })
+        .filter(Boolean);
+}
+
+function getTotalSelectedRoomCount() {
+    return getSelectedRoomSelections().reduce((sum, room) => sum + room.quantity, 0);
+}
+
+async function computeRoomPricing(checkInDate, checkOutDate, roomSelections) {
+    const selections = Array.isArray(roomSelections) ? roomSelections.filter(s => s && s.quantity > 0) : [];
+    if (selections.length === 0) {
+        return { roomTotal: 0, averagePricePerNight: 0, nights: 0 };
+    }
+
+    if (!checkInDate || !checkOutDate) {
+        const nights = calculateNights();
+        const roomTotal = selections.reduce((sum, room) => sum + (room.price * room.quantity * nights), 0);
+        const totalRooms = selections.reduce((sum, room) => sum + room.quantity, 0);
+        const averagePricePerNight = (nights > 0 && totalRooms > 0)
+            ? Math.round(roomTotal / (nights * totalRooms))
+            : 0;
+        return { roomTotal, averagePricePerNight, nights };
+    }
+
+    const perRoomResults = await Promise.all(selections.map(async (room) => {
+        const response = await fetch(`/api/calculate-price?checkInDate=${checkInDate}&checkOutDate=${checkOutDate}&roomTypeName=${encodeURIComponent(room.displayName)}`);
+        const result = await response.json();
+        if (!result.success || !result.data) {
+            throw new Error(result.message || `計算 ${room.displayName} 價格失敗`);
+        }
+        return {
+            quantity: room.quantity,
+            totalAmountPerRoom: Number(result.data.totalAmount || 0),
+            nights: Number(result.data.nights || 0)
+        };
+    }));
+
+    const nights = perRoomResults[0]?.nights || 0;
+    const roomTotal = perRoomResults.reduce((sum, row) => sum + (row.totalAmountPerRoom * row.quantity), 0);
+    const totalRooms = selections.reduce((sum, room) => sum + room.quantity, 0);
+    const averagePricePerNight = (nights > 0 && totalRooms > 0)
+        ? Math.round(roomTotal / (nights * totalRooms))
+        : 0;
+    return { roomTotal, averagePricePerNight, nights };
+}
+
+function syncRoomSelectionCard(roomName) {
+    const option = Array.from(document.querySelectorAll('.room-option')).find(el => el.dataset.room === roomName);
+    if (!option) return;
+    const checkbox = option.querySelector('input[name="roomType"]');
+    const qtyEl = option.querySelector('.room-qty-value');
+    const minusBtn = option.querySelector('.room-qty-btn-minus');
+    const qty = parseInt(selectedRoomQuantities[roomName] || '0', 10) || 0;
+    if (checkbox) checkbox.checked = qty > 0;
+    if (qtyEl) qtyEl.textContent = String(qty);
+    if (minusBtn) minusBtn.disabled = qty <= 0;
+    option.classList.toggle('selected-room', qty > 0);
+}
+
+function changeRoomTypeQuantity(roomName, delta) {
+    const current = parseInt(selectedRoomQuantities[roomName] || '0', 10) || 0;
+    const next = Math.min(20, Math.max(0, current + delta));
+    selectedRoomQuantities[roomName] = next;
+    syncRoomSelectionCard(roomName);
+    updateRoomSelectButtons();
+    clearSectionError('roomTypeGrid');
+    calculatePrice();
+    if (appliedPromoCode) applyPromoCode();
+}
+
+function toggleRoomTypeSelection(roomName, checked) {
+    selectedRoomQuantities[roomName] = checked ? Math.max(1, parseInt(selectedRoomQuantities[roomName] || '1', 10) || 1) : 0;
+    syncRoomSelectionCard(roomName);
+    updateRoomSelectButtons();
+    clearSectionError('roomTypeGrid');
+    calculatePrice();
+    if (appliedPromoCode) applyPromoCode();
+}
+
+function getRoomCount() {
+    const roomsInput = document.getElementById('rooms');
+    const rooms = parseInt(roomsInput?.value || '1', 10);
+    return Number.isFinite(rooms) && rooms > 0 ? rooms : 1;
+}
+
+function changeRoomCount(delta) {
+    const roomsInput = document.getElementById('rooms');
+    const roomsDisplay = document.getElementById('roomsDisplay');
+    if (!roomsInput || !roomsDisplay) return;
+    const current = parseInt(roomsInput.value || '1', 10) || 1;
+    const next = Math.min(20, Math.max(1, current + delta));
+    roomsInput.value = String(next);
+    roomsDisplay.textContent = String(next);
+    clearSectionError('roomTypeGrid');
+    calculatePrice();
 }
 
 // 頁面載入時執行
@@ -1185,16 +1292,16 @@ function calculateMemberDiscountAmount(totalAmount) {
 
 // 計算價格（考慮平日/假日）
 async function calculatePrice() {
-    const selectedRoom = document.querySelector('input[name="roomType"]:checked');
-    if (!selectedRoom) {
-        updatePriceDisplay(0, 0, 0, 0, 'deposit', 0, 0);
+    const roomSelections = getSelectedRoomSelections();
+    const roomsCount = getTotalSelectedRoomCount() || getRoomCount();
+    if (roomSelections.length === 0) {
+        updatePriceDisplay(0, 0, 0, 0, 'deposit', 0, 0, null, 0, 0, 0, roomsCount);
         return;
     }
 
     const checkInDate = document.getElementById('checkInDate').value;
     const checkOutDate = document.getElementById('checkOutDate').value;
-    const roomTypeName = selectedRoom.closest('.room-option').querySelector('.room-name').textContent.trim();
-    const roomTypeValue = selectedRoom.value; // 資料庫內部名稱（用於早鳥優惠比對）
+    const roomTypeValue = roomSelections[0]?.name || '';
     
     // 計算加購商品總金額（只有在啟用時才計算，考慮數量）
     const addonsTotal = enableAddons ? selectedAddons.reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0) : 0;
@@ -1243,55 +1350,38 @@ async function calculatePrice() {
         const paymentType = paymentAmount === 'deposit' ? depositRate : 1;
         const finalAmount = totalAmount * paymentType;
         
-        updatePriceDisplay(pricePerNight, nights, originalTotal, totalDiscount, paymentAmount, finalAmount, addonsTotal, null, memberDiscountAmount, ebDiscountAmount, promoDiscountAmount);
+        updatePriceDisplay(pricePerNight, nights, originalTotal, totalDiscount, paymentAmount, finalAmount, addonsTotal, null, memberDiscountAmount, ebDiscountAmount, promoDiscountAmount, roomsCount);
     }
     
     if (!checkInDate || !checkOutDate) {
-        // 如果沒有選擇日期，使用舊的計算方式（不考慮假日），也不檢查早鳥
+        // 如果沒有選擇日期，使用基礎價格估算
         earlyBirdDiscount = null;
-        const roomOption = selectedRoom.closest('.room-option');
-        const pricePerNight = parseInt(roomOption.dataset.price);
-        const nights = calculateNights();
-        const roomTotal = pricePerNight * nights;
+        const { roomTotal, averagePricePerNight: pricePerNight, nights } = await computeRoomPricing('', '', roomSelections);
         const guestEmail = document.getElementById('guestEmail')?.value || '';
         await checkMemberLevelDiscount(guestEmail, roomTotal + addonsTotal);
         applyDiscountsAndDisplay(pricePerNight, nights, roomTotal);
         return;
     }
 
-    const roomOption = selectedRoom.closest('.room-option');
-
     // 使用新的 API 計算價格（考慮假日）
     try {
-        const response = await fetch(`/api/calculate-price?checkInDate=${checkInDate}&checkOutDate=${checkOutDate}&roomTypeName=${encodeURIComponent(roomTypeName)}`);
-        const result = await response.json();
-        
-        if (result.success) {
-            const { totalAmount: roomTotal, averagePricePerNight, nights } = result.data;
-            
-            // 檢查早鳥優惠（使用精確金額，傳入資料庫名稱）
+        const { roomTotal, averagePricePerNight, nights } = await computeRoomPricing(checkInDate, checkOutDate, roomSelections);
+        if (roomSelections.length === 1) {
             await checkEarlyBirdDiscount(checkInDate, roomTypeValue, roomTotal + addonsTotal);
-            const guestEmail = document.getElementById('guestEmail')?.value || '';
-            await checkMemberLevelDiscount(guestEmail, roomTotal + addonsTotal);
-            applyDiscountsAndDisplay(averagePricePerNight, nights, roomTotal);
         } else {
-            console.error('計算價格失敗:', result.message);
-            const pricePerNight = parseInt(roomOption.dataset.price);
-            const nights = calculateNights();
-            const roomTotal = pricePerNight * nights;
-            // 用基礎價格檢查早鳥優惠
-            await checkEarlyBirdDiscount(checkInDate, roomTypeValue, roomTotal + addonsTotal);
-            const guestEmail = document.getElementById('guestEmail')?.value || '';
-            await checkMemberLevelDiscount(guestEmail, roomTotal + addonsTotal);
-            applyDiscountsAndDisplay(pricePerNight, nights, roomTotal);
+            earlyBirdDiscount = null;
         }
+        const guestEmail = document.getElementById('guestEmail')?.value || '';
+        await checkMemberLevelDiscount(guestEmail, roomTotal + addonsTotal);
+        applyDiscountsAndDisplay(averagePricePerNight, nights, roomTotal);
     } catch (error) {
         console.error('計算價格錯誤:', error);
-        const pricePerNight = parseInt(roomOption.dataset.price);
-        const nights = calculateNights();
-        const roomTotal = pricePerNight * nights;
-        // 用基礎價格檢查早鳥優惠
-        await checkEarlyBirdDiscount(checkInDate, roomTypeValue, roomTotal + addonsTotal);
+        const { roomTotal, averagePricePerNight: pricePerNight, nights } = await computeRoomPricing('', '', roomSelections);
+        if (roomSelections.length === 1) {
+            await checkEarlyBirdDiscount(checkInDate, roomTypeValue, roomTotal + addonsTotal);
+        } else {
+            earlyBirdDiscount = null;
+        }
         const guestEmail = document.getElementById('guestEmail')?.value || '';
         await checkMemberLevelDiscount(guestEmail, roomTotal + addonsTotal);
         applyDiscountsAndDisplay(pricePerNight, nights, roomTotal);
@@ -1413,13 +1503,12 @@ async function applyPromoCode() {
     
     // 取得當前訂房資訊
     const checkInDate = document.getElementById('checkInDate').value;
-    const selectedRoom = document.querySelector('input[name="roomType"]:checked');
-    if (!selectedRoom || !checkInDate) {
+    const roomSelections = getSelectedRoomSelections();
+    if (roomSelections.length === 0 || !checkInDate) {
         messageDiv.innerHTML = '<span style="color: #dc2626;">請先選擇房型和日期</span>';
         return;
     }
-    
-    const roomTypeName = selectedRoom.closest('.room-option').querySelector('.room-name').textContent.trim();
+    const roomTypeName = roomSelections[0]?.displayName || '';
     
     // 先計算當前總金額（不含折扣）
     const checkOutDate = document.getElementById('checkOutDate').value;
@@ -1430,16 +1519,14 @@ async function applyPromoCode() {
     
     try {
         // 取得當前總金額
-        const priceResponse = await fetch(`/api/calculate-price?checkInDate=${checkInDate}&checkOutDate=${checkOutDate}&roomTypeName=${encodeURIComponent(roomTypeName)}`);
-        const priceResult = await priceResponse.json();
-        
-        if (!priceResult.success) {
+        const pricing = await computeRoomPricing(checkInDate, checkOutDate, roomSelections);
+        if (!pricing || !Number.isFinite(pricing.roomTotal)) {
             messageDiv.innerHTML = '<span style="color: #dc2626;">無法計算價格，請重新選擇日期</span>';
             return;
         }
         
         const addonsTotal = enableAddons ? selectedAddons.reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0) : 0;
-        const totalAmount = priceResult.data.totalAmount + addonsTotal;
+        const totalAmount = pricing.roomTotal + addonsTotal;
         const guestEmail = document.getElementById('guestEmail').value;
         
         // 驗證優惠代碼
@@ -1503,14 +1590,15 @@ function calculatePromoCodeDiscount(promoCode, totalAmount) {
 }
 
 // 更新價格顯示
-function updatePriceDisplay(pricePerNight, nights, totalAmount, discountAmount = 0, paymentType, finalAmount = 0, addonsTotal = 0, depositPercent = null, memberAmount = 0, earlyBirdAmount = 0, promoAmount = 0) {
+function updatePriceDisplay(pricePerNight, nights, totalAmount, discountAmount = 0, paymentType, finalAmount = 0, addonsTotal = 0, depositPercent = null, memberAmount = 0, earlyBirdAmount = 0, promoAmount = 0, roomsCount = 1) {
     // 如果沒有提供 depositPercent，使用全域變數
     if (depositPercent === null) {
         depositPercent = depositPercentage;
     }
     
-    document.getElementById('roomPricePerNight').textContent = `NT$ ${pricePerNight.toLocaleString()}`;
-    document.getElementById('nightsCount').textContent = `${nights} 晚`;
+    const roomUnitText = roomsCount > 1 ? ` x ${roomsCount} 間` : '';
+    document.getElementById('roomPricePerNight').textContent = `NT$ ${pricePerNight.toLocaleString()}${roomUnitText}`;
+    document.getElementById('nightsCount').textContent = roomsCount > 1 ? `${nights} 晚 x ${roomsCount} 間` : `${nights} 晚`;
     
     // 顯示總金額（包含折扣明細）
     const totalAmountElement = document.getElementById('totalAmount');
@@ -1657,11 +1745,6 @@ async function checkRoomAvailability() {
 
 // 日期變更事件（已由 flatpickr 控制）
 
-// 房型選擇事件
-document.querySelectorAll('input[name="roomType"]').forEach(radio => {
-    radio.addEventListener('change', calculatePrice);
-});
-
 // 支付選項變更事件
 document.querySelectorAll('input[name="paymentAmount"]').forEach(radio => {
     radio.addEventListener('change', calculatePrice);
@@ -1773,21 +1856,22 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     clearFieldError('dateRange');
     
     // 2. 房型選擇驗證
-    const selectedRoomRadio = document.querySelector('input[name="roomType"]:checked');
     const roomTypeGrid = document.getElementById('roomTypeGrid');
-    
-    if (!selectedRoomRadio) {
+    const roomSelections = getSelectedRoomSelections();
+    const selectedRoomCount = roomSelections.reduce((sum, item) => sum + item.quantity, 0);
+    const roomsCount = getRoomCount();
+
+    if (roomSelections.length === 0) {
         const roomTypeRadios = document.querySelectorAll('input[name="roomType"]');
         if (roomTypeRadios.length === 0) {
             showSectionError('roomTypeGrid', '目前沒有可用的房型，請稍後再試');
             return;
         }
-        showSectionError('roomTypeGrid', '請選擇房型');
-        // 嘗試聚焦第一個房型選項
-        const firstRoomRadio = roomTypeRadios[0];
-        if (firstRoomRadio) {
-            firstRoomRadio.focus();
-        }
+        showSectionError('roomTypeGrid', '請至少選擇 1 間房型');
+        return;
+    }
+    if (selectedRoomCount !== roomsCount) {
+        showSectionError('roomTypeGrid', `目前客房數為 ${roomsCount}，請將房型分配總數調整為 ${roomsCount} 間（目前 ${selectedRoomCount} 間）`);
         return;
     }
     clearSectionError('roomTypeGrid');
@@ -1884,31 +1968,31 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     const adults = parseInt(document.getElementById('adults').value) || 0;
     const children = parseInt(document.getElementById('children').value) || 0;
     const totalGuests = adults + children;
-    
     // 選取的房型與容量檢查
-    const selectedRoom = document.querySelector('input[name="roomType"]:checked').closest('.room-option');
-    const maxOcc = parseInt(selectedRoom.dataset.maxOccupancy || '0');
-    const extraBeds = parseInt(selectedRoom.dataset.extraBeds || '0');
-    const capacity = (maxOcc || 0) + (extraBeds || 0);
+    const totalCapacity = roomSelections.reduce((sum, room) => {
+        const cap = (room.maxOccupancy || 0) + (room.extraBeds || 0);
+        return sum + (cap * room.quantity);
+    }, 0);
     
-    if (!window.__skipCapacityCheck && capacity > 0 && totalGuests > capacity) {
-        showCapacityModal(capacity, totalGuests);
+    if (totalCapacity > 0 && totalGuests > totalCapacity) {
+        showSectionError('roomTypeGrid', `目前選擇 ${roomsCount} 間房，總容納上限為 ${totalCapacity} 人（含可加床），請調整客房數、房型或入住人數`);
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<span>確認訂房</span>';
         return;
     }
-    window.__skipCapacityCheck = false;
     
     // 收集表單資料（使用驗證後清理過的資料）
     const formData = {
         checkInDate: document.getElementById('checkInDate').value,
         checkOutDate: document.getElementById('checkOutDate').value,
-        roomType: document.querySelector('input[name="roomType"]:checked').value,
+        roomType: roomSelections.map(room => `${room.displayName} x${room.quantity}`).join('、'),
         guestName: document.getElementById('guestName').value.trim(),
         guestPhone: phone, // 使用驗證後清理過的手機號碼（已移除 - 和空格）
         guestEmail: email, // 使用驗證後清理過的 Email（已轉小寫）
         adults,
         children,
+        rooms: roomsCount,
+        roomSelections,
         paymentAmount: document.querySelector('input[name="paymentAmount"]:checked').value,
         paymentMethod: paymentMethod.value,
         bookingNoticeAgreed: !!document.getElementById('bookingNoticeAgree')?.checked
@@ -1922,22 +2006,15 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     const addonsTotal = enableAddons ? selectedAddons.reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0) : 0;
     
     // 使用 API 計算價格（考慮假日）
-    let pricePerNight = parseInt(selectedRoom.dataset.price); // 預設值
-    let roomTotal = pricePerNight * nights; // 預設值
+    let pricePerNight = roomSelections[0]?.price || 0; // 預設值
+    let roomTotal = pricePerNight * nights * roomsCount; // 預設值
     
     if (checkInDate && checkOutDate) {
         try {
-            const roomTypeName = selectedRoom.closest('.room-option').querySelector('.room-name').textContent.trim();
-            const priceResponse = await fetch(`/api/calculate-price?checkInDate=${checkInDate}&checkOutDate=${checkOutDate}&roomTypeName=${encodeURIComponent(roomTypeName)}`);
-            const priceResult = await priceResponse.json();
-            
-            if (priceResult.success) {
-                roomTotal = priceResult.data.totalAmount;
-                pricePerNight = priceResult.data.averagePricePerNight;
-                console.log('✅ 使用 API 計算價格（考慮假日）:', { roomTotal, pricePerNight, nights });
-            } else {
-                console.warn('⚠️ API 計算價格失敗，使用基礎價格:', priceResult.message);
-            }
+            const pricing = await computeRoomPricing(checkInDate, checkOutDate, roomSelections);
+            roomTotal = pricing.roomTotal;
+            pricePerNight = pricing.averagePricePerNight;
+            console.log('✅ 使用 API 計算價格（多房型）:', { roomTotal, pricePerNight, nights });
         } catch (priceError) {
             console.error('❌ 計算價格錯誤，使用基礎價格:', priceError);
         }
@@ -2055,9 +2132,9 @@ document.getElementById('bookingForm').addEventListener('submit', async function
                 document.getElementById('successMessage').classList.remove('hidden');
                 
                 // Facebook Pixel: 追蹤訂房完成（Purchase 事件）
-                const selectedRoom = document.querySelector('input[name="roomType"]:checked');
-                const roomTypeName = selectedRoom ? 
-                    selectedRoom.closest('.room-option').querySelector('.room-name').textContent.trim() : '';
+                const roomTypeName = getSelectedRoomSelections()
+                    .map(room => `${room.displayName} x${room.quantity}`)
+                    .join('、');
                 const paidAmount = parseInt(document.getElementById('paymentAmount').textContent.replace(/[^0-9]/g, '')) || 0;
                 const totalAmount = parseInt(document.getElementById('totalAmount').textContent.replace(/[^0-9]/g, '')) || 0;
                 trackPurchase(result.bookingId, roomTypeName, totalAmount, paidAmount);

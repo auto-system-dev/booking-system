@@ -478,6 +478,8 @@ body {
     justify-content: flex-end;
     margin-top: 0;
     flex-shrink: 0;
+    align-items: center;
+    gap: 8px;
 }
 
 .room-select-btn {
@@ -509,6 +511,37 @@ body {
     color: #dc2626;
     border-color: #ef4444;
     background: #fff;
+}
+
+.room-qty-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.room-qty-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #334155;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.room-qty-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.room-qty-value {
+    min-width: 20px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1f2937;
 }
 
 /* 滿房狀態 */
