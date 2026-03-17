@@ -271,6 +271,19 @@ body {
     text-align: center;
 }
 
+.room-card-layout {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(280px, 1.1fr) minmax(260px, 1fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.room-card-left,
+.room-card-right {
+    min-width: 0;
+}
+
 .room-option input[type="radio"]:checked + label {
     border-color: #2C8EC4;
     background: rgba(44, 142, 196, 0.1);
@@ -316,7 +329,7 @@ body {
     font-size: 16px;
     font-weight: 600;
     color: #333;
-    margin-bottom: 4px;
+    margin-bottom: 8px;
     width: 100%;
     text-align: left;
 }
@@ -373,6 +386,28 @@ body {
     font-weight: 600;
 }
 
+.room-basic-info {
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.room-card-right {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    gap: 8px;
+}
+
+.room-card-bottom {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
 .room-facilities-block {
     margin-top: 2px;
 }
@@ -411,10 +446,10 @@ body {
 }
 
 .room-option-actions {
-    width: 100%;
+    width: auto;
     display: flex;
     justify-content: flex-end;
-    margin-top: 8px;
+    margin-top: 0;
 }
 
 .room-select-btn {
@@ -1165,6 +1200,16 @@ body {
 
     .booking-form {
         padding: 20px;
+    }
+
+    .room-card-layout {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .room-card-bottom {
+        flex-direction: row;
+        align-items: center;
     }
 }
 
