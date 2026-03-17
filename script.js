@@ -74,7 +74,6 @@ let appliedPromoCode = null; // 已套用的優惠代碼
 let earlyBirdDiscount = null; // 已偵測的早鳥優惠
 let memberLevelDiscount = null; // 已偵測的會員折扣
 let roomCountConfig = { min: 1, max: 20 };
-let roomTypeSupplyLimit = 1;
 let bookingNoticeConfig = {
     enabled: true,
     requireAgreement: true,
@@ -104,8 +103,6 @@ function updateTopRoomCounterButtonState() {
 }
 
 function applyRoomCountSettings(settings) {
-    roomTypeSupplyLimit = parsePositiveIntSetting(settings?.max_room_count, 1);
-
     const roomsInput = document.getElementById('rooms');
     const roomsDisplay = document.getElementById('roomsDisplay');
 
@@ -116,7 +113,7 @@ function applyRoomCountSettings(settings) {
         roomsDisplay.textContent = String(clamped);
     }
 
-    forceRoomCounterButtonsVisibility(roomTypeSupplyLimit <= 1);
+    forceRoomCounterButtonsVisibility(false);
     updateTopRoomCounterButtonState();
 }
 
@@ -468,7 +465,7 @@ function updateRoomSelectButtons() {
         btn.classList.remove('is-unavailable');
         btn.classList.toggle('is-selected', selected);
         btn.textContent = selected ? '已加入' : '加入客房';
-        if (plusBtn) plusBtn.disabled = !canAddMoreRooms || qty >= roomTypeSupplyLimit;
+        if (plusBtn) plusBtn.disabled = true;
     });
 }
 
@@ -739,7 +736,6 @@ async function renderRoomTypes() {
     roomGalleryData = {};
     roomFacilitiesData = {};
 
-    const showRoomQtyControl = roomTypeSupplyLimit > 1;
     grid.innerHTML = roomTypes.map((room, index) => {
         const isUnavailable = hasDates && unavailableRooms.includes(room.name);
         const roomOptionClass = isUnavailable ? 'room-option unavailable' : 'room-option';
@@ -765,6 +761,7 @@ async function renderRoomTypes() {
         }
 
         const displayName = String(room.display_name || room.name || '房型');
+        const showRoomQtyControl = false;
         const bookingBadge = String(room.booking_badge || '').trim();
         const bedConfig = String(room.bed_config || '').trim();
         const maxOccupancy = room.max_occupancy != null ? Number(room.max_occupancy) : 0;
@@ -787,9 +784,10 @@ async function renderRoomTypes() {
             images: galleryImages
         };
 
-        const currentQty = parseInt(selectedRoomQuantities[room.name] || '0', 10) || 0;
+        const currentQty = Math.min(1, parseInt(selectedRoomQuantities[room.name] || '0', 10) || 0);
         if (isUnavailable) selectedRoomQuantities[room.name] = 0;
         const safeQty = isUnavailable ? 0 : currentQty;
+        if (!isUnavailable) selectedRoomQuantities[room.name] = safeQty;
         const selectBtnText = isUnavailable ? '滿房' : (safeQty > 0 ? '已加入' : '加入客房');
         const selectBtnClass = isUnavailable ? 'room-select-btn is-unavailable' : 'room-select-btn';
         const selectBtnAction = isUnavailable ? '' : `onclick='selectRoomTypeByName(event, ${JSON.stringify(room.name)})'`;
@@ -1079,7 +1077,7 @@ function changeRoomTypeQuantity(roomName, delta) {
             updateRoomSelectButtons();
             return;
         }
-        next = Math.min(roomTypeSupplyLimit, current + Math.min(delta, remaining));
+        next = Math.min(1, current + Math.min(delta, remaining));
     } else {
         next = Math.max(0, current + delta);
     }
@@ -1106,7 +1104,7 @@ function toggleRoomTypeSelection(roomName, checked) {
             return;
         }
     }
-    selectedRoomQuantities[roomName] = checked ? Math.max(1, parseInt(selectedRoomQuantities[roomName] || '1', 10) || 1) : 0;
+    selectedRoomQuantities[roomName] = checked ? 1 : 0;
     syncRoomSelectionCard(roomName);
     updateRoomSelectButtons();
     clearSectionError('roomTypeGrid');
