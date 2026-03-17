@@ -722,7 +722,7 @@ async function renderRoomTypes() {
                 ${room.image_url 
                     ? `<div class="room-icon room-icon-image">
                         <img src="${room.image_url}" alt="${escapeRoomText(displayName)}" loading="lazy" ${galleryImages.length > 0 ? `onclick="openRoomGallery(event, '${roomId}')"` : ''}>
-                        ${galleryImages.length > 0 ? `<button type="button" class="room-gallery-btn" onclick="openRoomGallery(event, '${roomId}')">選取照片（${galleryImages.length}）</button>` : ''}
+                        ${galleryImages.length > 1 ? `<span class="room-gallery-hint"><span class="material-symbols-outlined">photo_library</span> ${galleryImages.length} 張照片</span>` : ''}
                     </div>` 
                     : `<div class="room-icon">${room.icon || '🏠'}</div>`}
                 <div class="room-name">${escapeRoomText(displayName)}</div>
