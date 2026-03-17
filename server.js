@@ -870,7 +870,7 @@ async function handleCreateBooking(req, res) {
                 const allAddons = await db.getAllAddonsAdmin();
                 addonsList = addons.map(addon => {
                     const addonInfo = allAddons.find(a => a.name === addon.name);
-                    const displayName = addonInfo ? addonInfo.display_name : addon.name;
+                    const displayName = addon.display_name || (addonInfo ? addonInfo.display_name : addon.name);
                     const quantity = addon.quantity || 1;
                     const itemTotal = addon.price * quantity;
                     const unitLabel = (addon.unit_label || addonInfo?.unit_label || '人').trim();
@@ -880,10 +880,11 @@ async function handleCreateBooking(req, res) {
                 console.error('取得加購商品資訊失敗:', err);
                 // 如果查詢失敗，使用原始名稱
                 addonsList = addons.map(addon => {
+                    const displayName = addon.display_name || addon.name;
                     const quantity = addon.quantity || 1;
                     const itemTotal = addon.price * quantity;
                     const unitLabel = String(addon.unit_label || '人').trim();
-                    return `${addon.name} x${quantity} (每${unitLabel}, NT$ ${itemTotal.toLocaleString()})`;
+                    return `${displayName} x${quantity} (每${unitLabel}, NT$ ${itemTotal.toLocaleString()})`;
                 }).join('、');
             }
         }

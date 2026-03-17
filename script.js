@@ -22,6 +22,20 @@ function formatAddonMultiline(value) {
     return escapeAddonText(value).replace(/\r?\n/g, '<br>');
 }
 
+function isExtraBedAddon(addon) {
+    const name = String(addon?.name || '').trim();
+    const displayName = String(addon?.display_name || '').trim();
+    return name === 'extra_bed' || /加床/.test(name) || /加床/.test(displayName);
+}
+
+function getExtraBedAddonDef() {
+    return Array.isArray(addons) ? addons.find((addon) => isExtraBedAddon(addon)) : null;
+}
+
+function getRoomExtraBedUnitPrice() {
+    return Number(getExtraBedAddonDef()?.price || 0);
+}
+
 function showAddonDetailModal(encodedAddonName) {
     const addonName = decodeURIComponent(encodedAddonName || '');
     const addon = addons.find(item => item.name === addonName);
@@ -64,6 +78,7 @@ let unavailableRooms = []; // 已滿房的房型列表
 let datePicker = null; // 日期區間選擇器
 let guestCounts = { adults: 2, children: 0 };
 let selectedRoomQuantities = {};
+let selectedRoomExtraBeds = {};
 let capacityModalData = { capacity: 0, totalGuests: 0 };
 let roomGalleryData = {};
 let roomFacilitiesData = {};
@@ -551,12 +566,13 @@ function renderAddons() {
     
     if (!grid) return;
     
-    if (addons.length === 0) {
+    const visibleAddons = addons.filter((addon) => !isExtraBedAddon(addon));
+    if (visibleAddons.length === 0) {
         grid.innerHTML = '<div class="loading">暫無加購商品</div>';
         return;
     }
     
-    grid.innerHTML = addons.map(addon => {
+    grid.innerHTML = visibleAddons.map(addon => {
         const selectedAddon = selectedAddons.find(a => a.name === addon.name);
         const quantity = selectedAddon ? selectedAddon.quantity : 0;
         const isSelected = quantity > 0;
@@ -591,6 +607,7 @@ function renderAddons() {
 function changeAddonQuantity(addonName, change) {
     const addonDef = addons.find(a => a.name === addonName);
     if (!addonDef) return;
+    if (isExtraBedAddon(addonDef)) return;
 
     const addonPrice = Number(addonDef.price) || 0;
     const unitLabel = formatAddonUnit(addonDef.unit_label);
@@ -635,6 +652,23 @@ function getExtraBedCapacityFromAddons() {
         if (!isExtraBed || quantity <= 0) return sum;
         return sum + quantity;
     }, 0);
+}
+
+function getTotalRoomExtraBeds() {
+    return Object.values(selectedRoomExtraBeds).reduce((sum, value) => sum + (parseInt(value || '0', 10) || 0), 0);
+}
+
+function buildRoomExtraBedAddonsForSubmit(roomSelections, unitPrice) {
+    if (!Array.isArray(roomSelections) || unitPrice <= 0) return [];
+    return roomSelections
+        .filter((room) => Number(room.selectedExtraBeds || 0) > 0)
+        .map((room) => ({
+            name: `room_extra_bed_${room.name}`,
+            display_name: `${room.displayName} 加床`,
+            price: unitPrice,
+            quantity: Number(room.selectedExtraBeds || 0),
+            unit_label: '人'
+        }));
 }
 
 // 檢查日期是否為假日（週末）
@@ -764,6 +798,7 @@ async function renderRoomTypes() {
         const bedConfig = String(room.bed_config || '').trim();
         const maxOccupancy = room.max_occupancy != null ? Number(room.max_occupancy) : 0;
         const extraBeds = room.extra_beds != null ? Number(room.extra_beds) : 0;
+        const extraBedUnitPrice = getRoomExtraBedUnitPrice();
         const roomFacilities = Array.isArray(room.room_facilities) ? room.room_facilities.filter(Boolean) : [];
         const includedItems = Array.isArray(room.included_items_list) ? room.included_items_list.filter(Boolean) : [];
         roomFacilitiesData[roomId] = roomFacilities;
@@ -786,6 +821,12 @@ async function renderRoomTypes() {
         if (isUnavailable) selectedRoomQuantities[room.name] = 0;
         const safeQty = isUnavailable ? 0 : currentQty;
         if (!isUnavailable) selectedRoomQuantities[room.name] = safeQty;
+        const roomExtraBedLimit = Math.max(0, extraBeds * safeQty);
+        const selectedExtraBedQty = Math.min(
+            roomExtraBedLimit,
+            Math.max(0, parseInt(selectedRoomExtraBeds[room.name] || '0', 10) || 0)
+        );
+        selectedRoomExtraBeds[room.name] = selectedExtraBedQty;
         const selectBtnText = isUnavailable ? '滿房' : (safeQty > 0 ? '已選取' : '選取房型');
         const selectBtnClass = isUnavailable ? 'room-select-btn is-unavailable' : 'room-select-btn';
         const selectBtnAction = isUnavailable ? '' : `onclick='selectRoomTypeByName(event, ${JSON.stringify(room.name)})'`;
@@ -818,6 +859,17 @@ async function renderRoomTypes() {
                             <div class="room-meta-item"><strong>入住人數：</strong>${maxOccupancy} 人</div>
                             <div class="room-meta-item"><strong>可加床數：</strong>${extraBeds} 人</div>
                         </div>
+                        ${safeQty > 0 && roomExtraBedLimit > 0 ? `
+                            <div class="room-extra-bed-control">
+                                <span class="room-extra-bed-label">房型加床${extraBedUnitPrice > 0 ? `（NT$ ${extraBedUnitPrice.toLocaleString()}/人）` : ''}</span>
+                                <div class="room-extra-bed-actions">
+                                    <button type="button" class="room-extra-bed-btn" onclick='event.preventDefault(); event.stopPropagation(); changeRoomExtraBed(${JSON.stringify(room.name)}, -1)' ${selectedExtraBedQty <= 0 ? 'disabled' : ''}>−</button>
+                                    <span class="room-extra-bed-value">${selectedExtraBedQty}</span>
+                                    <button type="button" class="room-extra-bed-btn" onclick='event.preventDefault(); event.stopPropagation(); changeRoomExtraBed(${JSON.stringify(room.name)}, 1)' ${selectedExtraBedQty >= roomExtraBedLimit ? 'disabled' : ''}>+</button>
+                                    <span class="room-extra-bed-limit">/ ${roomExtraBedLimit}</span>
+                                </div>
+                            </div>
+                        ` : ''}
                         ${roomFacilities.length > 0
                             ? `<div class="room-meta-item room-meta-item-facilities"><strong>房型設施：</strong></div><div id="roomFacilitiesBlock-${roomId}" class="room-facilities-block">${buildRoomFacilitiesBlock(roomId)}</div>`
                             : ''}
@@ -995,13 +1047,19 @@ function getSelectedRoomSelections() {
         .map((room) => {
             const quantity = parseInt(selectedRoomQuantities[room.name] || '0', 10) || 0;
             if (quantity <= 0) return null;
+            const maxExtraBeds = Math.max(0, Number(room.extra_beds || 0) * quantity);
+            const selectedExtraBeds = Math.min(
+                maxExtraBeds,
+                Math.max(0, parseInt(selectedRoomExtraBeds[room.name] || '0', 10) || 0)
+            );
             return {
                 name: room.name,
                 displayName: room.display_name || room.name,
                 quantity,
                 price: Number(room.price || 0),
                 maxOccupancy: Number(room.max_occupancy || 0),
-                extraBeds: Number(room.extra_beds || 0)
+                extraBeds: Number(room.extra_beds || 0),
+                selectedExtraBeds
             };
         })
         .filter(Boolean);
@@ -1055,10 +1113,25 @@ function syncRoomSelectionCard(roomName) {
     const checkbox = option.querySelector('input[name="roomType"]');
     const qtyEl = option.querySelector('.room-qty-value');
     const minusBtn = option.querySelector('.room-qty-btn-minus');
+    const extraBedValueEl = option.querySelector('.room-extra-bed-value');
+    const extraBedButtons = option.querySelectorAll('.room-extra-bed-btn');
     const qty = parseInt(selectedRoomQuantities[roomName] || '0', 10) || 0;
+    const roomDef = roomTypes.find((room) => room.name === roomName);
+    const extraBedLimit = Math.max(0, Number(roomDef?.extra_beds || 0) * qty);
+    const currentExtraBed = Math.min(
+        extraBedLimit,
+        Math.max(0, parseInt(selectedRoomExtraBeds[roomName] || '0', 10) || 0)
+    );
+    selectedRoomExtraBeds[roomName] = currentExtraBed;
     if (checkbox) checkbox.checked = qty > 0;
     if (qtyEl) qtyEl.textContent = String(qty);
     if (minusBtn) minusBtn.disabled = qty <= 0;
+    if (extraBedValueEl) extraBedValueEl.textContent = String(currentExtraBed);
+    if (extraBedButtons.length >= 2) {
+        const [minus, plus] = extraBedButtons;
+        if (minus) minus.disabled = currentExtraBed <= 0;
+        if (plus) plus.disabled = currentExtraBed >= extraBedLimit;
+    }
     option.classList.toggle('selected-room', qty > 0);
 }
 
@@ -1073,6 +1146,7 @@ function changeRoomTypeQuantity(roomName, delta) {
     }
 
     selectedRoomQuantities[roomName] = next;
+    if (next <= 0) selectedRoomExtraBeds[roomName] = 0;
     syncRoomSelectionCard(roomName);
     updateRoomSelectButtons();
     clearSectionError('roomTypeGrid');
@@ -1082,9 +1156,28 @@ function changeRoomTypeQuantity(roomName, delta) {
 
 function toggleRoomTypeSelection(roomName, checked) {
     selectedRoomQuantities[roomName] = checked ? 1 : 0;
+    if (!checked) selectedRoomExtraBeds[roomName] = 0;
     syncRoomSelectionCard(roomName);
     updateRoomSelectButtons();
     clearSectionError('roomTypeGrid');
+    calculatePrice();
+    if (appliedPromoCode) applyPromoCode();
+}
+
+function changeRoomExtraBed(roomName, delta) {
+    const roomDef = roomTypes.find((room) => room.name === roomName);
+    if (!roomDef) return;
+    const quantity = parseInt(selectedRoomQuantities[roomName] || '0', 10) || 0;
+    const limit = Math.max(0, Number(roomDef.extra_beds || 0) * quantity);
+    if (limit <= 0) {
+        selectedRoomExtraBeds[roomName] = 0;
+        syncRoomSelectionCard(roomName);
+        return;
+    }
+    const current = Math.max(0, parseInt(selectedRoomExtraBeds[roomName] || '0', 10) || 0);
+    const next = Math.min(limit, Math.max(0, current + delta));
+    selectedRoomExtraBeds[roomName] = next;
+    syncRoomSelectionCard(roomName);
     calculatePrice();
     if (appliedPromoCode) applyPromoCode();
 }
@@ -1375,12 +1468,15 @@ async function calculatePrice() {
     const checkOutDate = document.getElementById('checkOutDate').value;
     const roomTypeValue = roomSelections[0]?.name || '';
     
-    // 計算加購商品總金額（只有在啟用時才計算，考慮數量）
-    const addonsTotal = enableAddons ? selectedAddons.reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0) : 0;
+    // 計算加購商品總金額（排除「加床」，改由房型內加床處理）
+    const nonExtraBedAddons = enableAddons ? selectedAddons.filter((addon) => !isExtraBedAddon(addon)) : [];
+    const addonsTotal = nonExtraBedAddons.reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0);
+    const roomExtraBedUnitPrice = getRoomExtraBedUnitPrice();
+    const roomExtraBedTotal = getTotalRoomExtraBeds() * roomExtraBedUnitPrice;
     
     // 內部函數：計算折扣並更新顯示
     function applyDiscountsAndDisplay(pricePerNight, nights, roomTotal) {
-        let totalAmount = roomTotal + addonsTotal;
+        let totalAmount = roomTotal + addonsTotal + roomExtraBedTotal;
         const originalTotal = totalAmount;
         
         // 0. 計算會員等級折扣
@@ -1422,7 +1518,7 @@ async function calculatePrice() {
         const paymentType = paymentAmount === 'deposit' ? depositRate : 1;
         const finalAmount = totalAmount * paymentType;
         
-        updatePriceDisplay(pricePerNight, nights, originalTotal, totalDiscount, paymentAmount, finalAmount, addonsTotal, null, memberDiscountAmount, ebDiscountAmount, promoDiscountAmount, roomsCount, roomSelections);
+        updatePriceDisplay(pricePerNight, nights, originalTotal, totalDiscount, paymentAmount, finalAmount, addonsTotal, null, memberDiscountAmount, ebDiscountAmount, promoDiscountAmount, roomsCount, roomSelections, roomExtraBedTotal);
     }
     
     if (!checkInDate || !checkOutDate) {
@@ -1597,8 +1693,10 @@ async function applyPromoCode() {
             return;
         }
         
-        const addonsTotal = enableAddons ? selectedAddons.reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0) : 0;
-        const totalAmount = pricing.roomTotal + addonsTotal;
+        const addonsTotal = enableAddons
+            ? selectedAddons.filter((addon) => !isExtraBedAddon(addon)).reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0)
+            : 0;
+        const totalAmount = pricing.roomTotal + addonsTotal + (getTotalRoomExtraBeds() * getRoomExtraBedUnitPrice());
         const guestEmail = document.getElementById('guestEmail').value;
         
         // 驗證優惠代碼
@@ -1662,7 +1760,7 @@ function calculatePromoCodeDiscount(promoCode, totalAmount) {
 }
 
 // 更新價格顯示
-function updatePriceDisplay(pricePerNight, nights, totalAmount, discountAmount = 0, paymentType, finalAmount = 0, addonsTotal = 0, depositPercent = null, memberAmount = 0, earlyBirdAmount = 0, promoAmount = 0, roomsCount = 1, roomSelections = []) {
+function updatePriceDisplay(pricePerNight, nights, totalAmount, discountAmount = 0, paymentType, finalAmount = 0, addonsTotal = 0, depositPercent = null, memberAmount = 0, earlyBirdAmount = 0, promoAmount = 0, roomsCount = 1, roomSelections = [], roomExtraBedTotal = 0) {
     // 如果沒有提供 depositPercent，使用全域變數
     if (depositPercent === null) {
         depositPercent = depositPercentage;
@@ -1682,19 +1780,30 @@ function updatePriceDisplay(pricePerNight, nights, totalAmount, discountAmount =
     
     // 顯示總金額（包含折扣明細）
     const totalAmountElement = document.getElementById('totalAmount');
-    const roomTotal = totalAmount - addonsTotal;
+    const roomTotal = totalAmount - addonsTotal - roomExtraBedTotal;
     let html = '';
     
     // 房型總額
-    if (addonsTotal > 0) {
+    if (roomExtraBedTotal > 0 || addonsTotal > 0) {
         html += `<div style="margin-bottom: 5px; color: #666;">房型總額：NT$ ${roomTotal.toLocaleString()}</div>`;
+        if (roomExtraBedTotal > 0) {
+            const extraBedDetail = normalizedSelections
+                .filter((room) => Number(room.selectedExtraBeds || 0) > 0)
+                .map((room) => `${room.displayName} x${Number(room.selectedExtraBeds || 0)}`)
+                .join('、');
+            html += `<div style="margin-bottom: 5px; color: #666;">房型內加床（${extraBedDetail}）：NT$ ${roomExtraBedTotal.toLocaleString()}</div>`;
+        }
         // 加購商品明細
-        const addonsDetail = selectedAddons.map(addon => {
+        const addonsDetail = selectedAddons
+            .filter((addon) => !isExtraBedAddon(addon))
+            .map(addon => {
             const addonName = addons.find(a => a.name === addon.name)?.display_name || addon.name;
             const unitLabel = formatAddonUnit(addon.unit_label || addons.find(a => a.name === addon.name)?.unit_label);
             return `${addonName} x${addon.quantity || 1}（每${unitLabel}）`;
         }).join('、');
-        html += `<div style="margin-bottom: 5px; color: #666;">加購商品（${addonsDetail}）：NT$ ${addonsTotal.toLocaleString()}</div>`;
+        if (addonsTotal > 0) {
+            html += `<div style="margin-bottom: 5px; color: #666;">加購商品（${addonsDetail}）：NT$ ${addonsTotal.toLocaleString()}</div>`;
+        }
     }
     
     // 顯示總金額（原始總金額，折扣前）
@@ -2061,16 +2170,14 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     const totalGuests = adults + children;
     // 選取的房型與容量檢查
     const baseCapacity = roomSelections.reduce((sum, room) => {
-        const cap = (room.maxOccupancy || 0) + (room.extraBeds || 0);
-        return sum + (cap * room.quantity);
+        const roomCapacity = (room.maxOccupancy || 0) * room.quantity + (room.selectedExtraBeds || 0);
+        return sum + roomCapacity;
     }, 0);
-    const addonExtraBedCapacity = getExtraBedCapacityFromAddons();
-    const totalCapacity = baseCapacity + addonExtraBedCapacity;
+    const totalCapacity = baseCapacity;
     
     if (totalCapacity > 0 && totalGuests > totalCapacity) {
         const unassignedGuests = totalGuests - totalCapacity;
-        const addonInfo = addonExtraBedCapacity > 0 ? `（已含加購加床 ${addonExtraBedCapacity} 人）` : '';
-        showCapacityWarning(`請留意：目前入住人數已超過所選房型可安排上限${addonInfo}，建議依實際入住人數調整房型組合，若與現場房況不符可能無法安排入住（尚有 ${unassignedGuests} 位旅客未安排）。`);
+        showCapacityWarning(`請留意：目前入住人數已超過所選房型可安排上限，建議調整房型或該房型加床數量；若與現場房況不符可能無法安排入住（尚有 ${unassignedGuests} 位旅客未安排）。`);
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<span>確認訂房</span>';
         return;
@@ -2080,7 +2187,9 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     const formData = {
         checkInDate: document.getElementById('checkInDate').value,
         checkOutDate: document.getElementById('checkOutDate').value,
-        roomType: roomSelections.map(room => `${room.displayName} x${room.quantity}`).join('、'),
+        roomType: roomSelections
+            .map(room => `${room.displayName} x${room.quantity}${room.selectedExtraBeds > 0 ? `（加床 x${room.selectedExtraBeds}）` : ''}`)
+            .join('、'),
         guestName: document.getElementById('guestName').value.trim(),
         guestPhone: phone, // 使用驗證後清理過的手機號碼（已移除 - 和空格）
         guestEmail: email, // 使用驗證後清理過的 Email（已轉小寫）
@@ -2097,8 +2206,11 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     const checkInDate = formData.checkInDate;
     const checkOutDate = formData.checkOutDate;
     const nights = calculateNights();
-    // 計算加購商品總金額（只有在啟用時才計算，考慮數量）
-    const addonsTotal = enableAddons ? selectedAddons.reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0) : 0;
+    // 計算加購商品總金額（排除「加床」，改由房型內加床）
+    const nonExtraBedAddons = enableAddons ? selectedAddons.filter((addon) => !isExtraBedAddon(addon)) : [];
+    const addonsTotal = nonExtraBedAddons.reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0);
+    const roomExtraBedUnitPrice = getRoomExtraBedUnitPrice();
+    const roomExtraBedTotal = getTotalRoomExtraBeds() * roomExtraBedUnitPrice;
     
     // 使用 API 計算價格（考慮假日）
     let pricePerNight = roomSelections[0]?.price || 0; // 預設值
@@ -2115,7 +2227,7 @@ document.getElementById('bookingForm').addEventListener('submit', async function
         }
     }
     
-    let totalAmount = roomTotal + addonsTotal;
+    let totalAmount = roomTotal + addonsTotal + roomExtraBedTotal;
     
     // 計算早鳥優惠折扣
     let ebDiscount = 0;
@@ -2153,10 +2265,11 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     
     formData.pricePerNight = pricePerNight;
     formData.nights = nights;
-    formData.totalAmount = roomTotal + addonsTotal; // 原始總金額（不含折扣）
+    formData.totalAmount = roomTotal + addonsTotal + roomExtraBedTotal; // 原始總金額（不含折扣）
     formData.finalAmount = finalAmount; // 最終應付金額（含折扣）
-    formData.addons = enableAddons ? selectedAddons : []; // 加購商品陣列（只有在啟用時才包含，包含數量）
-    formData.addonsTotal = addonsTotal; // 加購商品總金額
+    const roomExtraBedAddons = buildRoomExtraBedAddonsForSubmit(roomSelections, roomExtraBedUnitPrice);
+    formData.addons = enableAddons ? nonExtraBedAddons.concat(roomExtraBedAddons) : roomExtraBedAddons; // 加購商品＋房型內加床
+    formData.addonsTotal = addonsTotal + roomExtraBedTotal; // 加購商品總金額（含房型內加床）
     formData.promoCode = appliedPromoCode ? appliedPromoCode.code : null; // 優惠代碼（如果有）
     formData.earlyBirdRuleId = earlyBirdDiscount && earlyBirdDiscount.applicable ? earlyBirdDiscount.rule.id : null; // 早鳥優惠規則ID
     
