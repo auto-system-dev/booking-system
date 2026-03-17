@@ -92,6 +92,16 @@ function forceRoomCounterButtonsVisibility(fixedRoomCount) {
     return fixedRoomCount;
 }
 
+function updateTopRoomCounterButtonState() {
+    const roomsInput = document.getElementById('rooms');
+    const controls = document.querySelectorAll('.booking-capacity-rooms .guest-counter .guest-counter-btn');
+    if (!roomsInput || controls.length < 2) return;
+    const current = parseInt(roomsInput.value || String(roomCountConfig.min || 1), 10) || (roomCountConfig.min || 1);
+    const [minusBtn, plusBtn] = controls;
+    if (minusBtn) minusBtn.disabled = current <= roomCountConfig.min;
+    if (plusBtn) plusBtn.disabled = current >= roomCountConfig.max;
+}
+
 function applyRoomCountSettings(settings) {
     const minRoomCount = parsePositiveIntSetting(settings?.min_room_count, 1);
     const maxRoomCountRaw = parsePositiveIntSetting(settings?.max_room_count, 1);
@@ -110,6 +120,7 @@ function applyRoomCountSettings(settings) {
     }
 
     forceRoomCounterButtonsVisibility(fixedRoomCount);
+    updateTopRoomCounterButtonState();
 }
 
 // ===== Facebook Pixel 追蹤函數 =====
@@ -1125,6 +1136,7 @@ function changeRoomCount(delta) {
     const next = Math.min(roomCountConfig.max, Math.max(roomCountConfig.min, current + delta));
     roomsInput.value = String(next);
     roomsDisplay.textContent = String(next);
+    updateTopRoomCounterButtonState();
     Object.keys(selectedRoomQuantities).forEach((roomName) => syncRoomSelectionCard(roomName));
     updateRoomSelectButtons();
     clearSectionError('roomTypeGrid');

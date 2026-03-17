@@ -3933,7 +3933,7 @@ async function showRoomTypeModal(room) {
                 <input type="text" name="display_name" value="${isEdit ? escapeHtml(room.display_name) : ''}" required>
             </div>
             <div class="form-group">
-                <label>客房可提供間數</label>
+                <label>房型可提供間數</label>
                 <input type="number" name="room_count_limit" value="${roomBookingConfig.maxRoomCount}" min="1" step="1" required>
             </div>
             <div class="form-group">
@@ -4223,7 +4223,7 @@ async function saveRoomType(event, id) {
     const formData = new FormData(event.target);
     const roomCountLimit = parseInt(formData.get('room_count_limit') || '1', 10) || 1;
     if (roomCountLimit < 1) {
-        showError('客房可提供間數必須大於或等於 1');
+        showError('房型可提供間數必須大於或等於 1');
         return;
     }
 
@@ -4275,7 +4275,7 @@ async function saveRoomType(event, id) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         value: String(roomCountLimit),
-                        description: '前台客房數最大值（由客房可提供間數設定）'
+                        description: '前台客房數最大值（由房型可提供間數設定）'
                     })
                 })
             ]);
