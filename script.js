@@ -804,7 +804,9 @@ async function renderRoomTypes() {
         const maxOccupancy = room.max_occupancy != null ? Number(room.max_occupancy) : 0;
         const extraBeds = room.extra_beds != null ? Number(room.extra_beds) : 0;
         const extraBedUnitPrice = room.extra_bed_price != null ? Number(room.extra_bed_price) : 0;
-        const roomFacilities = Array.isArray(room.room_facilities) ? room.room_facilities.filter(Boolean) : [];
+        const roomBedTypes = Array.isArray(room.bed_types) ? room.bed_types.filter(Boolean) : [];
+        const roomFacilitiesRaw = Array.isArray(room.room_facilities) ? room.room_facilities.filter(Boolean) : [];
+        const roomFacilities = [...new Set([...roomBedTypes, ...roomFacilitiesRaw])];
         const includedItems = Array.isArray(room.included_items_list) ? room.included_items_list.filter(Boolean) : [];
         roomFacilitiesData[roomId] = roomFacilities;
 
