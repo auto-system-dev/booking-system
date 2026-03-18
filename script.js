@@ -1309,6 +1309,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         }
     });
+
+    setupSpecialRequestToggle();
     
     setTimeout(() => {
         const checkInDate = document.getElementById('checkInDate').value;
@@ -1318,6 +1320,27 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }, 500);
 });
+
+function setupSpecialRequestToggle() {
+    const toggle = document.getElementById('specialRequestToggle');
+    const fields = document.getElementById('specialRequestFields');
+    const textarea = document.getElementById('specialRequest');
+    if (!toggle || !fields || !textarea) return;
+
+    const syncSpecialRequestVisibility = () => {
+        const enabled = !!toggle.checked;
+        fields.classList.toggle('is-open', enabled);
+        textarea.disabled = !enabled;
+
+        // 關閉時清空，避免送出舊資料。
+        if (!enabled && textarea.value) {
+            textarea.value = '';
+        }
+    };
+
+    toggle.addEventListener('change', syncSpecialRequestVisibility);
+    syncSpecialRequestVisibility();
+}
 
 // 容納人數提醒模態框按鈕事件
 document.addEventListener('DOMContentLoaded', function() {
@@ -2251,7 +2274,10 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     }
     
     // 收集表單資料（使用驗證後清理過的資料）
-    const specialRequest = String(document.getElementById('specialRequest')?.value || '').trim().slice(0, 300);
+    const specialRequestEnabled = !!document.getElementById('specialRequestToggle')?.checked;
+    const specialRequest = specialRequestEnabled
+        ? String(document.getElementById('specialRequest')?.value || '').trim().slice(0, 300)
+        : '';
     const formData = {
         checkInDate: document.getElementById('checkInDate').value,
         checkOutDate: document.getElementById('checkOutDate').value,

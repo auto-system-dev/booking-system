@@ -144,11 +144,21 @@
 
                 <!-- 特殊需求區 -->
                 <div class="form-section">
-                    <h2 class="section-title"><span class="material-symbols-outlined">edit_note</span> 特殊需求（選填）</h2>
-                    <div class="form-group">
-                        <label for="specialRequest">需求說明</label>
-                        <textarea id="specialRequest" name="specialRequest" rows="3" maxlength="300"></textarea>
-                        <small>我們會盡力協助安排，實際仍依現場房況為準</small>
+                    <div class="special-request-header">
+                        <h2 class="section-title"><span class="material-symbols-outlined">edit_note</span> 特殊需求（選填）</h2>
+                        <label class="special-request-toggle" for="specialRequestToggle">
+                            <input type="checkbox" id="specialRequestToggle" aria-label="開啟特殊需求輸入">
+                            <span class="special-request-switch" aria-hidden="true"></span>
+                        </label>
+                    </div>
+                    <div id="specialRequestFields" class="special-request-fields">
+                        <div class="special-request-fields-inner">
+                            <div class="form-group">
+                                <label for="specialRequest">需求說明</label>
+                                <textarea id="specialRequest" name="specialRequest" rows="3" maxlength="300"></textarea>
+                                <small>我們會盡力協助安排，實際仍依現場房況為準</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
