@@ -76,10 +76,22 @@ function createNotificationService(deps) {
                     const allAddons = await db.getAllAddonsAdmin();
                     addonsList = parsedAddons.map(addon => {
                         const addonInfo = allAddons.find(a => a.name === addon.name);
-                        const displayName = addonInfo ? addonInfo.display_name : addon.name;
+                        const rawDisplayName = String(
+                            addon.display_name ||
+                            addon.displayName ||
+                            (addonInfo ? addonInfo.display_name : '') ||
+                            ''
+                        ).trim();
+                        const normalizedAddonName = String(addon.name || '').trim();
+                        const displayName = rawDisplayName || (
+                            /(?:room[_-]?extra[_-]?bed|extra[_-]?bed)/i.test(normalizedAddonName)
+                                ? '加床'
+                                : (normalizedAddonName || '加購項目')
+                        );
                         const quantity = addon.quantity || 1;
                         const itemTotal = addon.price * quantity;
-                        return `${displayName} x${quantity} (NT$ ${itemTotal.toLocaleString()})`;
+                        const unitLabel = String(addon.unit_label || addon.unitLabel || addonInfo?.unit_label || '人').trim();
+                        return `${displayName} x${quantity} (每${unitLabel}, NT$ ${itemTotal.toLocaleString()})`;
                     }).join('、');
                 }
             } catch (err) {

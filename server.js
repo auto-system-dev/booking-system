@@ -892,20 +892,37 @@ async function handleCreateBooking(req, res) {
                 const allAddons = await db.getAllAddonsAdmin();
                 addonsList = addons.map(addon => {
                     const addonInfo = allAddons.find(a => a.name === addon.name);
-                    const displayName = addon.display_name || (addonInfo ? addonInfo.display_name : addon.name);
+                    const rawDisplayName = String(
+                        addon.display_name ||
+                        addon.displayName ||
+                        (addonInfo ? addonInfo.display_name : '') ||
+                        ''
+                    ).trim();
+                    const normalizedAddonName = String(addon.name || '').trim();
+                    const displayName = rawDisplayName || (
+                        /(?:room[_-]?extra[_-]?bed|extra[_-]?bed)/i.test(normalizedAddonName)
+                            ? '加床'
+                            : (normalizedAddonName || '加購項目')
+                    );
                     const quantity = addon.quantity || 1;
                     const itemTotal = addon.price * quantity;
-                    const unitLabel = (addon.unit_label || addonInfo?.unit_label || '人').trim();
+                    const unitLabel = String(addon.unit_label || addon.unitLabel || addonInfo?.unit_label || '人').trim();
                     return `${displayName} x${quantity} (每${unitLabel}, NT$ ${itemTotal.toLocaleString()})`;
                 }).join('、');
             } catch (err) {
                 console.error('取得加購商品資訊失敗:', err);
                 // 如果查詢失敗，使用原始名稱
                 addonsList = addons.map(addon => {
-                    const displayName = addon.display_name || addon.name;
+                    const rawDisplayName = String(addon.display_name || addon.displayName || '').trim();
+                    const normalizedAddonName = String(addon.name || '').trim();
+                    const displayName = rawDisplayName || (
+                        /(?:room[_-]?extra[_-]?bed|extra[_-]?bed)/i.test(normalizedAddonName)
+                            ? '加床'
+                            : (normalizedAddonName || '加購項目')
+                    );
                     const quantity = addon.quantity || 1;
                     const itemTotal = addon.price * quantity;
-                    const unitLabel = String(addon.unit_label || '人').trim();
+                    const unitLabel = String(addon.unit_label || addon.unitLabel || '人').trim();
                     return `${displayName} x${quantity} (每${unitLabel}, NT$ ${itemTotal.toLocaleString()})`;
                 }).join('、');
             }
@@ -9295,10 +9312,21 @@ ${htmlEnd}`;
                 const allAddons = await db.getAllAddonsAdmin();
                 addonsList = parsedAddons.map(addon => {
                     const addonInfo = allAddons.find(a => a.name === addon.name);
-                    const displayName = addonInfo ? addonInfo.display_name : addon.name;
+                    const rawDisplayName = String(
+                        addon.display_name ||
+                        addon.displayName ||
+                        (addonInfo ? addonInfo.display_name : '') ||
+                        ''
+                    ).trim();
+                    const normalizedAddonName = String(addon.name || '').trim();
+                    const displayName = rawDisplayName || (
+                        /(?:room[_-]?extra[_-]?bed|extra[_-]?bed)/i.test(normalizedAddonName)
+                            ? '加床'
+                            : (normalizedAddonName || '加購項目')
+                    );
                     const quantity = addon.quantity || 1;
                     const itemTotal = addon.price * quantity;
-                    const unitLabel = (addon.unit_label || addonInfo?.unit_label || '人').trim();
+                    const unitLabel = String(addon.unit_label || addon.unitLabel || addonInfo?.unit_label || '人').trim();
                     return `${displayName} x${quantity} (每${unitLabel}, NT$ ${itemTotal.toLocaleString()})`;
                 }).join('、');
                 addonsTotal = booking.addons_total || parsedAddons.reduce((sum, addon) => sum + (addon.price * (addon.quantity || 1)), 0);
