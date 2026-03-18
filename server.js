@@ -8665,33 +8665,6 @@ function ensureAutoMailNotice(content) {
     return `${content}\n${noticeHtml}`;
 }
 
-function ensureBookingConfirmationFooter(content, templateKey) {
-    if (templateKey !== 'booking_confirmation' || !content) return content;
-    const thanksText = '感謝您的預訂，期待為您服務！';
-    const noticeText = '此為系統自動發送郵件，請勿直接回覆';
-
-    const hasThanks = content.includes(thanksText);
-    const hasNotice = content.includes(noticeText);
-    if (hasThanks && hasNotice) return content;
-
-    const footerParts = [];
-    if (!hasThanks) {
-        footerParts.push('<p style="margin-top: 35px; font-size: 17px; font-weight: 500;">感謝您的預訂，期待為您服務！</p>');
-    }
-    if (!hasNotice) {
-        footerParts.push('<p style="text-align: center; margin-top: 30px; color: #666; font-size: 14px; padding-top: 20px; border-top: 1px solid #e0e0e0;">此為系統自動發送郵件，請勿直接回覆</p>');
-    }
-    const footerHtml = footerParts.join('\n');
-
-    if (/<\/body>/i.test(content)) {
-        return content.replace(/<\/body>/i, `${footerHtml}\n</body>`);
-    }
-    if (/<\/html>/i.test(content)) {
-        return content.replace(/<\/html>/i, `${footerHtml}\n</html>`);
-    }
-    return `${content}\n${footerHtml}`;
-}
-
 function enforceGoogleReviewButtonStyle(content) {
     if (!content || !/google-review-btn/i.test(content)) {
         return content;
@@ -9684,9 +9657,6 @@ ${htmlEnd}`;
     if (templateKey === 'booking_confirmation_admin') {
         content = injectSpecialRequestRowForLegacyTemplate(content, specialRequest);
     }
-
-    // 客戶訂房確認信保底補齊頁尾文案
-    content = ensureBookingConfirmationFooter(content, templateKey);
 
     // 確保模板主題存在（支援多種欄位名稱）
     let subject = template.subject || template.template_subject || '';
