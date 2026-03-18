@@ -1005,14 +1005,14 @@ body {
 
 /* 訂房須知 */
 .booking-notice-section {
-    background: #f8fbff;
-    border: 1px solid #dcebf5;
-    border-radius: 14px;
-    padding: 18px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
 }
 
 .booking-notice-section.form-section {
-    padding-bottom: 18px;
+    padding-bottom: 0;
     margin-bottom: 12px;
 }
 
