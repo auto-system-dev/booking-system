@@ -1620,6 +1620,10 @@ async function initEmailTemplates() {
                     <span class="contact-label">Email</span>
                     <span class="contact-value">{{guestEmail}}</span>
                 </div>
+                <div class="contact-row">
+                    <span class="contact-label">特殊需求</span>
+                    <span class="contact-value">{{specialRequest}}</span>
+                </div>
             </div>
         </div>
     </div>
@@ -2023,7 +2027,9 @@ async function initEmailTemplates() {
                 const hasNewContactLayout = existing.content.includes('.contact-row { display: flex; align-items: center;');
                 const hasLegacyInlineLayout = existing.content.includes('style="min-width: auto; font-size: 16px;">客戶姓名</span>') ||
                     existing.content.includes('style="text-align: right; font-size: 16px; font-weight: 600;">{{guestName}}</span>');
-                if (!hasNewContactLayout || hasLegacyInlineLayout) {
+                const missingSpecialRequestInContact = !existing.content.includes('<span class="contact-label">特殊需求</span>') ||
+                    !existing.content.includes('{{specialRequest}}');
+                if (!hasNewContactLayout || hasLegacyInlineLayout || missingSpecialRequestInContact) {
                     needsUpdateForBookingAdminContactAlign = true;
                     console.log('⚠️ 訂房確認（管理員）客戶聯絡資訊仍為舊排版，需要更新');
                 }

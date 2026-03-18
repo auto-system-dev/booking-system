@@ -6724,6 +6724,10 @@ app.post('/api/email-templates/reset-to-default', requireAuth, checkPermission('
                     <span class="contact-label">Email</span>
                     <span class="contact-value">{{guestEmail}}</span>
                 </div>
+                <div class="contact-row">
+                    <span class="contact-label">特殊需求</span>
+                    <span class="contact-value">{{specialRequest}}</span>
+                </div>
             </div>
         </div>
     </div>
@@ -7678,6 +7682,10 @@ app.get('/api/email-templates/:key/default', requireAuth, checkPermission('email
                 <div class="contact-row">
                     <span class="contact-label">Email</span>
                     <span class="contact-value">{{guestEmail}}</span>
+                </div>
+                <div class="contact-row">
+                    <span class="contact-label">特殊需求</span>
+                    <span class="contact-value">{{specialRequest}}</span>
                 </div>
             </div>
         </div>
@@ -8717,6 +8725,11 @@ function injectSpecialRequestRowForLegacyTemplate(content, specialRequest) {
     <span class="info-label">特殊需求</span>
     <span class="info-value">${escapedRequestText}</span>
 </div>`;
+    const contactRowHtml = `
+<div class="contact-row">
+    <span class="contact-label">特殊需求</span>
+    <span class="contact-value">${escapedRequestText}</span>
+</div>`;
 
     const tableRowHtml = `
 <tr>
@@ -8725,9 +8738,10 @@ function injectSpecialRequestRowForLegacyTemplate(content, specialRequest) {
 </tr>`;
 
     // 優先插在 Email 資訊列後方（常見模板結構）
+    const rowHtml = content.includes('class="contact-row"') ? contactRowHtml : infoRowHtml;
     const injectedInfoRow = content.replace(
-        /(<span[^>]*class=["'][^"']*info-label[^"']*["'][^>]*>\s*Email\s*<\/span>[\s\S]*?<span[^>]*class=["'][^"']*info-value[^"']*["'][^>]*>[\s\S]*?<\/span>\s*<\/div>)/i,
-        `$1${infoRowHtml}`
+        /(<span[^>]*class=["'][^"']*(?:info-label|contact-label)[^"']*["'][^>]*>\s*Email\s*<\/span>[\s\S]*?<span[^>]*class=["'][^"']*(?:info-value|contact-value)[^"']*["'][^>]*>[\s\S]*?<\/span>\s*<\/div>)/i,
+        `$1${rowHtml}`
     );
     if (injectedInfoRow !== content) return injectedInfoRow;
 
@@ -8737,15 +8751,8 @@ function injectSpecialRequestRowForLegacyTemplate(content, specialRequest) {
     );
     if (injectedTableRow !== content) return injectedTableRow;
 
-    const fallbackBlock = `
-<div style="margin-top: 12px; padding: 12px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0;">
-    <strong style="display: inline-block; margin-right: 6px;">特殊需求：</strong>
-    <span>${escapedRequestText}</span>
-</div>`;
-    if (/<\/body>/i.test(content)) {
-        return content.replace(/<\/body>/i, `${fallbackBlock}\n</body>`);
-    }
-    return `${content}\n${fallbackBlock}`;
+    // 找不到合適位置時不注入，避免落在聯絡資訊區塊外
+    return content;
 }
 
 // 替換郵件模板中的變數
