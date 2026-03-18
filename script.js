@@ -1918,14 +1918,15 @@ function updatePriceDisplay(pricePerNight, nights, totalAmount, discountAmount =
 function updateEarlyBirdNotice() {
     let noticeEl = document.getElementById('earlyBirdNotice');
     
-    // 如果元素不存在，在優惠代碼區之前建立
+    // 如果元素不存在，建立在價格摘要區之前
     if (!noticeEl) {
-        const promoSection = document.getElementById('promoCodeSection');
-        if (promoSection) {
+        const priceSummarySection = document.querySelector('.price-summary');
+        if (priceSummarySection && priceSummarySection.parentNode) {
             noticeEl = document.createElement('div');
             noticeEl.id = 'earlyBirdNotice';
             noticeEl.className = 'form-section';
-            promoSection.parentNode.insertBefore(noticeEl, promoSection);
+            noticeEl.style.display = 'none';
+            priceSummarySection.parentNode.insertBefore(noticeEl, priceSummarySection);
         } else {
             return;
         }
