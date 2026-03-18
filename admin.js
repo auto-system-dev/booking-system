@@ -2554,7 +2554,7 @@ function showBookingModal(booking) {
         </div>
         <div class="detail-row">
             <span class="detail-label">特殊需求</span>
-            <span class="detail-value">${booking.special_request ? escapeHtml(booking.special_request) : '-'}</span>
+            <span class="detail-value">${(booking.special_request || booking.specialRequest) ? escapeHtml(booking.special_request || booking.specialRequest) : '-'}</span>
         </div>
         <div class="detail-row">
             <span class="detail-label">房型</span>
@@ -3388,7 +3388,7 @@ function showEditModal(booking) {
             </div>
             <div class="form-group">
                 <label>特殊需求（選填）</label>
-                <textarea name="special_request" rows="3" maxlength="300">${escapeHtml(booking.special_request || '')}</textarea>
+                <textarea name="special_request" rows="3" maxlength="300">${escapeHtml(booking.special_request || booking.specialRequest || '')}</textarea>
             </div>
             <div class="form-group">
                 <label>房型</label>

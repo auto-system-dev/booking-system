@@ -769,7 +769,8 @@ async function handleCreateBooking(req, res) {
             promoCode, // 優惠代碼（選填）
             bookingNoticeAgreed,
             bookingTermsAgreed,
-            specialRequest
+            specialRequest,
+            special_request
         } = req.body;
 
         // 驗證必填欄位
@@ -911,6 +912,8 @@ async function handleCreateBooking(req, res) {
             }
         }
         
+        const normalizedSpecialRequest = String(specialRequest || special_request || '').trim().slice(0, 300);
+
         // 儲存訂房資料（這裡可以連接資料庫）
         const bookingData = {
             checkInDate,
@@ -935,7 +938,7 @@ async function handleCreateBooking(req, res) {
             addons: addons || null, // 加購商品陣列
             addonsTotal: addonsTotal || 0, // 加購商品總金額
             addonsList: addonsList, // 加購商品顯示字串（用於郵件）
-            specialRequest: String(specialRequest || '').trim().slice(0, 300)
+            specialRequest: normalizedSpecialRequest
         };
 
         // 取得匯款提醒模板的保留天數（用於計算到期日期）
@@ -9651,9 +9654,14 @@ ${htmlEnd}`;
     // 移除 {{hotelInfoFooter}} 變數（如果存在）
     content = content.replace(/\{\{hotelInfoFooter\}\}/g, '');
 
-    // 相容舊模板：若尚未配置特殊需求欄位，仍自動插入一列
-    if (templateKey === 'booking_confirmation' || templateKey === 'booking_confirmation_admin') {
+    // 相容舊模板：僅管理員訂房確認郵件自動插入特殊需求
+    if (templateKey === 'booking_confirmation_admin') {
         content = injectSpecialRequestRowForLegacyTemplate(content, specialRequest);
+    }
+
+    // 客戶訂房確認信不顯示特殊需求
+    if (templateKey === 'booking_confirmation') {
+        content = content.replace(/\{\{specialRequest\}\}/g, '');
     }
     
     // 確保模板主題存在（支援多種欄位名稱）
