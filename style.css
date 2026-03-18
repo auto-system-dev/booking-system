@@ -1555,8 +1555,49 @@ body {
     }
 
     .room-card-bottom {
-        flex-direction: row;
-        align-items: center;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .room-price {
+        margin-bottom: 0;
+        font-size: 17px;
+        line-height: 1.35;
+    }
+
+    .room-price-old {
+        display: block;
+        margin-left: 0;
+        margin-top: 2px;
+    }
+
+    .room-option-actions {
+        width: 100%;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    .room-extra-bed-control {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        padding: 10px;
+    }
+
+    .room-extra-bed-label {
+        font-size: 14px;
+        line-height: 1.45;
+    }
+
+    .room-extra-bed-actions {
+        justify-content: flex-end;
+        width: 100%;
+    }
+
+    .room-extra-bed-limit {
+        min-width: 16px;
+        text-align: right;
     }
 }
 
