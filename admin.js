@@ -4982,7 +4982,6 @@ async function saveHotelInfoSettings() {
     );
     const bookingCancellationPolicy = String(document.getElementById('bookingCancellationPolicy')?.value || '').trim() || ADMIN_DEFAULT_BOOKING_CANCELLATION_POLICY;
     const bookingTermsEnabled = document.getElementById('bookingTermsEnabled').checked ? '1' : '0';
-    const bookingTermsRequireCheckbox = document.getElementById('bookingTermsRequireCheckbox').checked ? '1' : '0';
     const bookingTermsAgreementText = document.getElementById('bookingTermsAgreementText').value.trim();
     
     // 驗證管理員信箱
@@ -5002,7 +5001,7 @@ async function saveHotelInfoSettings() {
         const [
             hotelNameResponse, hotelPhoneResponse, hotelAddressResponse, hotelEmailResponse, adminEmailResponse,
             bookingNoticeEnabledResponse, bookingNoticeRequireAgreementResponse, bookingNoticeContentResponse, bookingCancellationPolicyResponse,
-            bookingTermsEnabledResponse, bookingTermsRequireResponse, bookingTermsTextResponse
+            bookingTermsEnabledResponse, bookingTermsTextResponse
         ] = await Promise.all([
             adminFetch('/api/admin/settings/hotel_name', {
                 method: 'PUT',
@@ -5104,16 +5103,6 @@ async function saveHotelInfoSettings() {
                     description: '前台是否顯示使用條款與隱私政策同意區塊（1=顯示，0=隱藏）'
                 })
             }),
-            adminFetch('/api/admin/settings/booking_terms_require_checkbox', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    value: bookingTermsRequireCheckbox,
-                    description: '送出訂房前是否必須勾選同意（1=必須，0=不必）'
-                })
-            }),
             adminFetch('/api/admin/settings/booking_terms_agreement_text', {
                 method: 'PUT',
                 headers: {
@@ -5137,7 +5126,6 @@ async function saveHotelInfoSettings() {
             bookingNoticeContentResponse.json(),
             bookingCancellationPolicyResponse.json(),
             bookingTermsEnabledResponse.json(),
-            bookingTermsRequireResponse.json(),
             bookingTermsTextResponse.json()
         ]);
         
@@ -5539,10 +5527,6 @@ async function loadSettings() {
                 settings.booking_terms_enabled === undefined || settings.booking_terms_enabled === null || settings.booking_terms_enabled === ''
                     ? true
                     : (settings.booking_terms_enabled === '1' || settings.booking_terms_enabled === 'true');
-            document.getElementById('bookingTermsRequireCheckbox').checked =
-                settings.booking_terms_require_checkbox === undefined || settings.booking_terms_require_checkbox === null || settings.booking_terms_require_checkbox === ''
-                    ? true
-                    : (settings.booking_terms_require_checkbox === '1' || settings.booking_terms_require_checkbox === 'true');
             document.getElementById('bookingTermsAgreementText').value =
                 (settings.booking_terms_agreement_text === '若現場核對入住人數或年齡與預訂資訊不符，旅宿得依規範加收費用或保留入住安排權利。'
                     ? '我已閱讀並同意以上內容'

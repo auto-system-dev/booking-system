@@ -796,20 +796,14 @@ async function handleCreateBooking(req, res) {
             console.warn('訂房須知同意檢查失敗，沿用前端驗證:', noticeError.message);
         }
 
-        // 驗證使用條款與隱私政策同意（由後台設定控制）
+        // 驗證使用條款與隱私政策同意（顯示同意區塊時固定必填）
         try {
-            const [termsEnabledSetting, termsRequireSetting] = await Promise.all([
-                db.getSetting('booking_terms_enabled'),
-                db.getSetting('booking_terms_require_checkbox')
-            ]);
+            const termsEnabledSetting = await db.getSetting('booking_terms_enabled');
             const termsEnabled = termsEnabledSetting === null || termsEnabledSetting === undefined || termsEnabledSetting === ''
                 ? true
                 : ['1', 'true', 'yes', 'on'].includes(String(termsEnabledSetting).trim().toLowerCase());
-            const termsRequireCheckbox = termsRequireSetting === null || termsRequireSetting === undefined || termsRequireSetting === ''
-                ? true
-                : ['1', 'true', 'yes', 'on'].includes(String(termsRequireSetting).trim().toLowerCase());
             const termsAgreed = ['1', 'true', 'yes', 'on'].includes(String(bookingTermsAgreed).trim().toLowerCase());
-            if (termsEnabled && termsRequireCheckbox && !termsAgreed) {
+            if (termsEnabled && !termsAgreed) {
                 return res.status(400).json({ message: '送出訂房前，請先勾選同意使用條款與隱私政策' });
             }
         } catch (termsError) {

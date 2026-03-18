@@ -398,14 +398,14 @@ function applyBookingTermsSettings(settings) {
         : (agreementText || NEW_TERMS_AGREEMENT_TEXT);
     bookingTermsConfig = {
         enabled: isSettingEnabled(settings?.booking_terms_enabled, true),
-        requireCheckbox: isSettingEnabled(settings?.booking_terms_require_checkbox, true),
+        requireCheckbox: true,
         agreementText: normalizedAgreementText
     };
 
     textEl.textContent = bookingTermsConfig.agreementText;
     checkboxEl.checked = false;
     checkboxEl.required = bookingTermsConfig.enabled && bookingTermsConfig.requireCheckbox;
-    requiredHintEl.textContent = bookingTermsConfig.requireCheckbox ? '（必填）' : '（選填）';
+    requiredHintEl.textContent = '（必填）';
     sectionEl.classList.toggle('hidden', !bookingTermsConfig.enabled);
     clearSectionError('bookingTermsSection');
 }
@@ -2220,7 +2220,7 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     }
 
     // 8. 條款同意驗證（由後台設定控制）
-    if (bookingTermsConfig.enabled && bookingTermsConfig.requireCheckbox) {
+    if (bookingTermsConfig.enabled) {
         const bookingTermsAgree = document.getElementById('bookingTermsAgree');
         if (!bookingTermsAgree || !bookingTermsAgree.checked) {
             showSectionError('bookingTermsSection', '送出訂房前，請先勾選同意使用條款與隱私政策');
