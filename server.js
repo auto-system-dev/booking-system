@@ -8688,6 +8688,53 @@ function enforceGoogleReviewButtonStyle(content) {
     );
 }
 
+function injectSpecialRequestRowForLegacyTemplate(content, specialRequest) {
+    const requestText = String(specialRequest || '').trim();
+    if (!requestText || !content) return content;
+    if (content.includes('特殊需求')) return content;
+    const escapedRequestText = requestText
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    const infoRowHtml = `
+<div class="info-row">
+    <span class="info-label">特殊需求</span>
+    <span class="info-value">${escapedRequestText}</span>
+</div>`;
+
+    const tableRowHtml = `
+<tr>
+    <td style="padding: 8px 0; color: #666;">特殊需求</td>
+    <td style="padding: 8px 0; text-align: right; color: #333;">${escapedRequestText}</td>
+</tr>`;
+
+    // 優先插在 Email 資訊列後方（常見模板結構）
+    const injectedInfoRow = content.replace(
+        /(<span[^>]*class=["'][^"']*info-label[^"']*["'][^>]*>\s*Email\s*<\/span>[\s\S]*?<span[^>]*class=["'][^"']*info-value[^"']*["'][^>]*>[\s\S]*?<\/span>\s*<\/div>)/i,
+        `$1${infoRowHtml}`
+    );
+    if (injectedInfoRow !== content) return injectedInfoRow;
+
+    const injectedTableRow = content.replace(
+        /(<td[^>]*>\s*Email\s*<\/td>[\s\S]*?<\/tr>)/i,
+        `$1${tableRowHtml}`
+    );
+    if (injectedTableRow !== content) return injectedTableRow;
+
+    const fallbackBlock = `
+<div style="margin-top: 12px; padding: 12px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0;">
+    <strong style="display: inline-block; margin-right: 6px;">特殊需求：</strong>
+    <span>${escapedRequestText}</span>
+</div>`;
+    if (/<\/body>/i.test(content)) {
+        return content.replace(/<\/body>/i, `${fallbackBlock}\n</body>`);
+    }
+    return `${content}\n${fallbackBlock}`;
+}
+
 // 替換郵件模板中的變數
 async function replaceTemplateVariables(template, booking, bankInfo = null, additionalData = {}) {
     // 確保模板內容存在（支援多種欄位名稱）
@@ -9296,6 +9343,7 @@ ${htmlEnd}`;
     const roomType = booking.room_type || booking.roomType || '';
     const guestPhone = booking.guest_phone || booking.guestPhone || '';
     const guestEmail = booking.guest_email || booking.guestEmail || '';
+    const specialRequest = booking.special_request || booking.specialRequest || '';
 
     // 入住提醒區塊內容與顯示開關
     const defaultBookingInfoContent = `<div class="info-row">
@@ -9354,6 +9402,7 @@ ${htmlEnd}`;
         '{{paymentAmount}}': paymentAmount,
         '{{guestPhone}}': guestPhone,
         '{{guestEmail}}': guestEmail,
+        '{{specialRequest}}': specialRequest || '-',
         '{{bookingDate}}': bookingDate,
         '{{bookingDateTime}}': bookingDateTime,
         '{{bookingInfoContent}}': bookingInfoContent,
@@ -9601,6 +9650,11 @@ ${htmlEnd}`;
     
     // 移除 {{hotelInfoFooter}} 變數（如果存在）
     content = content.replace(/\{\{hotelInfoFooter\}\}/g, '');
+
+    // 相容舊模板：若尚未配置特殊需求欄位，仍自動插入一列
+    if (templateKey === 'booking_confirmation' || templateKey === 'booking_confirmation_admin') {
+        content = injectSpecialRequestRowForLegacyTemplate(content, specialRequest);
+    }
     
     // 確保模板主題存在（支援多種欄位名稱）
     let subject = template.subject || template.template_subject || '';

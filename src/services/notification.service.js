@@ -96,6 +96,7 @@ function createNotificationService(deps) {
             guestName: booking.guest_name,
             guestEmail: booking.guest_email,
             guestPhone: booking.guest_phone,
+            specialRequest: booking.special_request || '',
             checkInDate: booking.check_in_date,
             checkOutDate: booking.check_out_date,
             roomType: booking.room_type,
