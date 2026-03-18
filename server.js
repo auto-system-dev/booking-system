@@ -6606,6 +6606,10 @@ app.post('/api/email-templates/reset-to-default', requireAuth, checkPermission('
         .amount-value { font-size: 24px; font-weight: 700; color: #c62828; }
         .contact-section { background: #fff3e0; border: 2px solid #ff9800; border-radius: 8px; padding: 20px; margin: 25px 0; }
         .contact-title { font-size: 20px; font-weight: bold; color: #e65100; margin: 0 0 15px 0; }
+        .contact-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #ffcc80; }
+        .contact-row:last-child { border-bottom: none; }
+        .contact-label { min-width: 120px; font-size: 16px; font-weight: 700; color: #5d4037; }
+        .contact-value { flex: 1; font-size: 16px; color: #333; word-break: break-word; }
         
         /* 手機響應式設計 */
         @media only screen and (max-width: 600px) {
@@ -6626,6 +6630,9 @@ app.post('/api/email-templates/reset-to-default', requireAuth, checkPermission('
             .amount-value { font-size: 22px; }
             .contact-section { padding: 15px; margin: 20px 0; }
             .contact-title { font-size: 18px; }
+            .contact-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+            .contact-label { min-width: auto; font-size: 14px; }
+            .contact-value { font-size: 15px; }
         }
     </style>
 </head>
@@ -6705,17 +6712,17 @@ app.post('/api/email-templates/reset-to-default', requireAuth, checkPermission('
 
             <div class="contact-section">
                 <div class="contact-title">📞 客戶聯絡資訊</div>
-                <div class="info-row" style="border-bottom: 1px solid #ffcc80; padding: 10px 0;">
-                    <span class="info-label" style="min-width: auto; font-size: 16px;">客戶姓名</span>
-                    <span class="info-value" style="text-align: right; font-size: 16px; font-weight: 600;">{{guestName}}</span>
+                <div class="contact-row">
+                    <span class="contact-label">客戶姓名</span>
+                    <span class="contact-value">{{guestName}}</span>
                 </div>
-                <div class="info-row" style="border-bottom: 1px solid #ffcc80; padding: 10px 0;">
-                    <span class="info-label" style="min-width: auto; font-size: 16px;">聯絡電話</span>
-                    <span class="info-value" style="text-align: right; font-size: 16px;">{{guestPhone}}</span>
+                <div class="contact-row">
+                    <span class="contact-label">聯絡電話</span>
+                    <span class="contact-value">{{guestPhone}}</span>
                 </div>
-                <div class="info-row" style="border-bottom: none; padding: 10px 0;">
-                    <span class="info-label" style="min-width: auto; font-size: 16px;">Email</span>
-                    <span class="info-value" style="text-align: right; font-size: 16px;">{{guestEmail}}</span>
+                <div class="contact-row">
+                    <span class="contact-label">Email</span>
+                    <span class="contact-value">{{guestEmail}}</span>
                 </div>
             </div>
         </div>
@@ -7578,6 +7585,10 @@ app.get('/api/email-templates/:key/default', requireAuth, checkPermission('email
         .amount-value { font-size: 24px; font-weight: 700; color: #c62828; }
         .contact-section { background: #fff3e0; border: 2px solid #ff9800; border-radius: 8px; padding: 20px; margin: 25px 0; }
         .contact-title { font-size: 20px; font-weight: bold; color: #e65100; margin: 0 0 15px 0; }
+        .contact-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #ffcc80; }
+        .contact-row:last-child { border-bottom: none; }
+        .contact-label { min-width: 120px; font-size: 16px; font-weight: 700; color: #5d4037; }
+        .contact-value { flex: 1; font-size: 16px; color: #333; word-break: break-word; }
     </style>
 </head>
 <body>
@@ -7656,17 +7667,17 @@ app.get('/api/email-templates/:key/default', requireAuth, checkPermission('email
 
             <div class="contact-section">
                 <div class="contact-title">📞 客戶聯絡資訊</div>
-                <div class="info-row" style="border-bottom: 1px solid #ffcc80; padding: 10px 0;">
-                    <span class="info-label" style="min-width: auto; font-size: 16px;">客戶姓名</span>
-                    <span class="info-value" style="text-align: right; font-size: 16px; font-weight: 600;">{{guestName}}</span>
+                <div class="contact-row">
+                    <span class="contact-label">客戶姓名</span>
+                    <span class="contact-value">{{guestName}}</span>
                 </div>
-                <div class="info-row" style="border-bottom: 1px solid #ffcc80; padding: 10px 0;">
-                    <span class="info-label" style="min-width: auto; font-size: 16px;">聯絡電話</span>
-                    <span class="info-value" style="text-align: right; font-size: 16px;">{{guestPhone}}</span>
+                <div class="contact-row">
+                    <span class="contact-label">聯絡電話</span>
+                    <span class="contact-value">{{guestPhone}}</span>
                 </div>
-                <div class="info-row" style="border-bottom: none; padding: 10px 0;">
-                    <span class="info-label" style="min-width: auto; font-size: 16px;">Email</span>
-                    <span class="info-value" style="text-align: right; font-size: 16px;">{{guestEmail}}</span>
+                <div class="contact-row">
+                    <span class="contact-label">Email</span>
+                    <span class="contact-value">{{guestEmail}}</span>
                 </div>
             </div>
         </div>
