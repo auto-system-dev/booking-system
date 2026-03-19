@@ -1091,13 +1091,77 @@ function renderOpsTopSources(sources = []) {
         return;
     }
 
-    container.innerHTML = sources.map((source) => `
-        <div class="ops-source-row">
-            <div class="ops-source-name">${escapeHtml(sourceLabelMap[String(source.source || '').toLowerCase()] || String(source.source || '未分類'))}</div>
-            <div class="ops-source-orders">${Number(source.orders || 0).toLocaleString()} 筆</div>
-            <div class="ops-source-share">${(Number(source.share || 0)).toFixed(1)}%</div>
+    const colors = ['#2C8EC4', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#6b7280'];
+    const size = 180;
+    const strokeWidth = 24;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const totalOrders = sources.reduce((sum, item) => sum + Number(item.orders || 0), 0) || 0;
+    let offset = 0;
+
+    const ringSegments = sources.map((source, index) => {
+        const rawShare = Number(source.share || 0);
+        const share = Number.isFinite(rawShare) ? Math.max(0, rawShare) : 0;
+        const dashLength = (share / 100) * circumference;
+        const color = colors[index % colors.length];
+        const segment = `
+            <circle
+                class="ops-source-donut-segment"
+                cx="${size / 2}"
+                cy="${size / 2}"
+                r="${radius}"
+                fill="none"
+                stroke="${color}"
+                stroke-width="${strokeWidth}"
+                stroke-linecap="butt"
+                stroke-dasharray="${dashLength} ${Math.max(circumference - dashLength, 0)}"
+                stroke-dashoffset="${-offset}"
+                transform="rotate(-90 ${size / 2} ${size / 2})"
+            ></circle>
+        `;
+        offset += dashLength;
+        return segment;
+    }).join('');
+
+    const rows = sources.map((source, index) => {
+        const color = colors[index % colors.length];
+        const label = sourceLabelMap[String(source.source || '').toLowerCase()] || String(source.source || '未分類');
+        return `
+            <div class="ops-source-row">
+                <div class="ops-source-name">
+                    <span class="ops-source-dot" style="background:${color};"></span>
+                    ${escapeHtml(label)}
+                </div>
+                <div class="ops-source-orders">${Number(source.orders || 0).toLocaleString()} 筆</div>
+                <div class="ops-source-share">${(Number(source.share || 0)).toFixed(1)}%</div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="ops-top-sources-wrap">
+            <div class="ops-source-donut">
+                <svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="來源占比圓餅圖">
+                    <circle
+                        cx="${size / 2}"
+                        cy="${size / 2}"
+                        r="${radius}"
+                        fill="none"
+                        stroke="#eef2f7"
+                        stroke-width="${strokeWidth}"
+                    ></circle>
+                    ${ringSegments}
+                </svg>
+                <div class="ops-source-donut-center">
+                    <div class="ops-source-donut-total">${totalOrders.toLocaleString()}</div>
+                    <div class="ops-source-donut-label">總訂單</div>
+                </div>
+            </div>
+            <div class="ops-top-sources-list-inner">
+                ${rows}
+            </div>
         </div>
-    `).join('');
+    `;
 }
 
 function renderOpsTodoList(todos = []) {
