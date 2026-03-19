@@ -907,10 +907,10 @@ function renderOpsTrendChart(trendData = {}) {
 
     const width = Math.max(620, container.clientWidth || 620);
     const height = 240;
-    const left = 36;
-    const right = 18;
+    const left = 46;
+    const right = 52;
     const top = 14;
-    const bottom = 30;
+    const bottom = 34;
     const innerW = width - left - right;
     const innerH = height - top - bottom;
 
@@ -918,35 +918,158 @@ function renderOpsTrendChart(trendData = {}) {
     const maxRevenue = Math.max(1, ...revenue);
     const stepX = labels.length > 1 ? innerW / (labels.length - 1) : innerW;
 
-    const ordersPoints = orders.map((value, idx) => {
+    const orderY = (value) => top + innerH - (value / maxOrders) * innerH;
+    const revenueY = (value) => top + innerH - (value / maxRevenue) * innerH;
+
+    const pointsMeta = orders.map((orderValue, idx) => {
         const x = left + stepX * idx;
-        const y = top + innerH - (value / maxOrders) * innerH;
-        return `${x.toFixed(2)},${y.toFixed(2)}`;
+        const yOrder = orderY(orderValue);
+        const yRevenue = revenueY(revenue[idx] || 0);
+        return { idx, x, yOrder, yRevenue };
+    });
+
+    const ordersPoints = pointsMeta.map((point) => {
+        return `${point.x.toFixed(2)},${point.yOrder.toFixed(2)}`;
     }).join(' ');
 
-    const revenuePoints = revenue.map((value, idx) => {
-        const x = left + stepX * idx;
-        const y = top + innerH - (value / maxRevenue) * innerH;
-        return `${x.toFixed(2)},${y.toFixed(2)}`;
+    const revenuePoints = pointsMeta.map((point) => {
+        return `${point.x.toFixed(2)},${point.yRevenue.toFixed(2)}`;
     }).join(' ');
 
-    const firstLabel = labels[0] || '';
-    const lastLabel = labels[labels.length - 1] || '';
+    const toShortDate = (rawDate) => {
+        const d = new Date(`${rawDate}T00:00:00`);
+        if (Number.isNaN(d.getTime())) return rawDate;
+        return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const formatRevenue = (value) => {
+        const abs = Math.abs(Math.round(value));
+        if (abs >= 10000) return `${Math.round(value / 1000)}k`;
+        return Math.round(value).toLocaleString();
+    };
+
+    const yTicks = 4;
+    const yAxisHtml = Array.from({ length: yTicks + 1 }, (_, i) => {
+        const ratio = i / yTicks;
+        const y = top + innerH - ratio * innerH;
+        const orderTick = Math.round(maxOrders * ratio);
+        const revenueTick = maxRevenue * ratio;
+        return `
+            <line x1="${left}" y1="${y}" x2="${width - right}" y2="${y}" stroke="#eef2f7" stroke-width="1"/>
+            <text x="${left - 8}" y="${y + 4}" text-anchor="end" class="ops-trend-axis-text">${orderTick}</text>
+            <text x="${width - right + 8}" y="${y + 4}" text-anchor="start" class="ops-trend-axis-text">${formatRevenue(revenueTick)}</text>
+        `;
+    }).join('');
+
+    const xTickCount = Math.min(6, labels.length);
+    const xTickStep = Math.max(1, Math.floor((labels.length - 1) / Math.max(1, xTickCount - 1)));
+    const xTickIndexes = [];
+    for (let idx = 0; idx < labels.length; idx += xTickStep) xTickIndexes.push(idx);
+    if (!xTickIndexes.includes(labels.length - 1)) xTickIndexes.push(labels.length - 1);
+    const xAxisHtml = xTickIndexes.map((idx) => {
+        const x = left + stepX * idx;
+        return `<text x="${x}" y="${height - 8}" text-anchor="middle" class="ops-trend-axis-text">${escapeHtml(toShortDate(labels[idx]))}</text>`;
+    }).join(' ');
 
     container.innerHTML = `
         <svg class="ops-trend-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="近30天訂單與營收趨勢">
+            ${yAxisHtml}
             <line x1="${left}" y1="${top + innerH}" x2="${width - right}" y2="${top + innerH}" stroke="#dbe5ef" stroke-width="1"/>
             <line x1="${left}" y1="${top}" x2="${left}" y2="${top + innerH}" stroke="#dbe5ef" stroke-width="1"/>
+            <line x1="${width - right}" y1="${top}" x2="${width - right}" y2="${top + innerH}" stroke="#dbe5ef" stroke-width="1"/>
             <polyline points="${ordersPoints}" fill="none" stroke="#2C8EC4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
             <polyline points="${revenuePoints}" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <text x="${left}" y="${height - 8}" fill="#9aa6b2" font-size="11">${escapeHtml(firstLabel)}</text>
-            <text x="${width - right - 72}" y="${height - 8}" fill="#9aa6b2" font-size="11">${escapeHtml(lastLabel)}</text>
+            <line id="opsTrendGuideLine" x1="${left}" y1="${top}" x2="${left}" y2="${top + innerH}" stroke="#9aa6b2" stroke-dasharray="4 4" stroke-width="1" style="display:none;"/>
+            <circle id="opsTrendOrderDot" cx="${left}" cy="${top + innerH}" r="4" fill="#2C8EC4" stroke="#fff" stroke-width="1.5" style="display:none;"/>
+            <circle id="opsTrendRevenueDot" cx="${left}" cy="${top + innerH}" r="4" fill="#10b981" stroke="#fff" stroke-width="1.5" style="display:none;"/>
+            ${xAxisHtml}
         </svg>
+        <div id="opsTrendTooltip" class="ops-trend-tooltip" style="display:none;"></div>
         <div class="ops-trend-legend">
             <span><span class="ops-trend-dot orders"></span> 訂單數</span>
             <span><span class="ops-trend-dot revenue"></span> 營收（NT$）</span>
         </div>
     `;
+
+    const svg = container.querySelector('.ops-trend-svg');
+    const guideLine = container.querySelector('#opsTrendGuideLine');
+    const orderDot = container.querySelector('#opsTrendOrderDot');
+    const revenueDot = container.querySelector('#opsTrendRevenueDot');
+    const tooltip = container.querySelector('#opsTrendTooltip');
+    if (!svg || !guideLine || !orderDot || !revenueDot || !tooltip) return;
+
+    const hideTooltip = () => {
+        guideLine.style.display = 'none';
+        orderDot.style.display = 'none';
+        revenueDot.style.display = 'none';
+        tooltip.style.display = 'none';
+    };
+
+    const showAtIndex = (idx, clientX) => {
+        const point = pointsMeta[idx];
+        if (!point) return;
+        const dayLabel = labels[idx] || '';
+        const orderValue = orders[idx] || 0;
+        const revenueValue = revenue[idx] || 0;
+
+        guideLine.setAttribute('x1', String(point.x));
+        guideLine.setAttribute('x2', String(point.x));
+        guideLine.style.display = 'block';
+
+        orderDot.setAttribute('cx', String(point.x));
+        orderDot.setAttribute('cy', String(point.yOrder));
+        orderDot.style.display = 'block';
+
+        revenueDot.setAttribute('cx', String(point.x));
+        revenueDot.setAttribute('cy', String(point.yRevenue));
+        revenueDot.style.display = 'block';
+
+        tooltip.innerHTML = `
+            <div class="ops-trend-tooltip-date">${escapeHtml(dayLabel)}</div>
+            <div class="ops-trend-tooltip-line"><span class="ops-trend-dot orders"></span>訂單：${orderValue.toLocaleString()} 筆</div>
+            <div class="ops-trend-tooltip-line"><span class="ops-trend-dot revenue"></span>營收：NT$ ${Math.round(revenueValue).toLocaleString()}</div>
+        `;
+        tooltip.style.display = 'block';
+
+        const containerRect = container.getBoundingClientRect();
+        const svgRect = svg.getBoundingClientRect();
+        const xPx = ((point.x / width) * svgRect.width);
+        const yPx = ((Math.min(point.yOrder, point.yRevenue) / height) * svgRect.height);
+
+        const tipW = tooltip.offsetWidth || 180;
+        const tipH = tooltip.offsetHeight || 72;
+
+        let leftPx = xPx + 12;
+        if (leftPx + tipW > containerRect.width - 8) {
+            leftPx = Math.max(8, xPx - tipW - 12);
+        }
+        let topPx = yPx - tipH - 10;
+        if (topPx < 8) topPx = Math.min(containerRect.height - tipH - 8, yPx + 10);
+
+        tooltip.style.left = `${leftPx}px`;
+        tooltip.style.top = `${topPx}px`;
+    };
+
+    const onMove = (clientX) => {
+        const rect = svg.getBoundingClientRect();
+        const xInView = ((clientX - rect.left) / rect.width) * width;
+        const idx = Math.max(0, Math.min(labels.length - 1, Math.round((xInView - left) / stepX)));
+        showAtIndex(idx, clientX);
+    };
+
+    svg.addEventListener('mousemove', (event) => onMove(event.clientX));
+    svg.addEventListener('mouseleave', hideTooltip);
+    svg.addEventListener('touchstart', (event) => {
+        const touch = event.touches?.[0];
+        if (!touch) return;
+        onMove(touch.clientX);
+    }, { passive: true });
+    svg.addEventListener('touchmove', (event) => {
+        const touch = event.touches?.[0];
+        if (!touch) return;
+        onMove(touch.clientX);
+    }, { passive: true });
+    svg.addEventListener('touchend', hideTooltip, { passive: true });
 }
 
 function renderOpsTopSources(sources = []) {

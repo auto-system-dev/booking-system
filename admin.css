@@ -1240,6 +1240,7 @@ body.login-page-active {
 .ops-trend-chart {
     width: 100%;
     min-height: 280px;
+    position: relative;
 }
 
 .ops-top-sources-list {
@@ -1329,6 +1330,37 @@ body.login-page-active {
 .ops-trend-svg {
     width: 100%;
     height: 280px;
+    touch-action: pan-y;
+}
+
+.ops-trend-axis-text {
+    fill: #94a3b8;
+    font-size: 11px;
+}
+
+.ops-trend-tooltip {
+    position: absolute;
+    z-index: 3;
+    background: rgba(17, 24, 39, 0.92);
+    color: #fff;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.45;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+    pointer-events: none;
+    min-width: 170px;
+}
+
+.ops-trend-tooltip-date {
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.ops-trend-tooltip-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .ops-trend-legend {
