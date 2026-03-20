@@ -144,6 +144,10 @@
                         營運 KPI（近 30 天）
                     </h3>
                     <div class="ops-kpi-controls">
+                        <div class="ops-today-pill-group">
+                            <span class="ops-today-pill">今日住房 <strong id="todayCheckIns">0</strong></span>
+                            <span class="ops-today-pill">今日退房 <strong id="todayCheckOuts">0</strong></span>
+                        </div>
                         <div class="ops-kpi-toggle">
                             <button type="button" id="opsRangeWeekBtn" class="btn-secondary" onclick="setOpsDashboardRange('week')">本週</button>
                             <button type="button" id="opsRangeMonthBtn" class="btn-secondary" onclick="setOpsDashboardRange('month')">本月</button>
@@ -154,16 +158,6 @@
                             <input type="date" id="opsEndDate">
                             <button type="button" class="btn-secondary" onclick="applyCustomOpsRange()">套用</button>
                         </div>
-                    </div>
-                </div>
-                <div class="today-room-numbers-bar">
-                    <div class="today-room-number-item">
-                        <div class="today-room-number-label">今日住房</div>
-                        <div class="today-room-number-value" id="todayCheckIns">0</div>
-                    </div>
-                    <div class="today-room-number-item">
-                        <div class="today-room-number-label">今日退房</div>
-                        <div class="today-room-number-value" id="todayCheckOuts">0</div>
                     </div>
                 </div>
                 <div class="dashboard-grid dashboard-ops-grid">

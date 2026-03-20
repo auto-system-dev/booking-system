@@ -1196,34 +1196,29 @@ body.login-page-active {
     color: #dc2626;
 }
 
-.today-room-numbers-bar {
-    display: flex;
-    gap: 40px;
+.ops-today-pill-group {
+    display: inline-flex;
     align-items: center;
-    margin-top: 10px;
-    margin-bottom: 18px;
-    padding: 12px 14px;
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-}
-
-.today-room-number-item {
-    display: flex;
-    align-items: baseline;
     gap: 8px;
 }
 
-.today-room-number-label {
-    color: #6b7280;
-    font-size: 15px;
+.ops-today-pill {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    font-size: 13px;
     font-weight: 600;
+    white-space: nowrap;
 }
 
-.today-room-number-value {
+.ops-today-pill strong {
     color: #2C8EC4;
-    font-size: 32px;
-    font-weight: 700;
+    font-size: 20px;
     line-height: 1;
 }
 
@@ -1658,6 +1653,11 @@ body.login-page-active {
 
     .ops-kpi-dates {
         flex-wrap: wrap;
+    }
+
+    .ops-today-pill-group {
+        width: 100%;
+        justify-content: flex-start;
     }
 }
 
