@@ -10243,7 +10243,7 @@ function getModuleDisplayName(module) {
         'room_types': '房型管理',
         'addons': '加購商品',
         'promo_codes': '優惠代碼',
-        'statistics': '統計資料',
+        'statistics': '營運報表',
         'settings': '系統設定',
         'email_templates': '郵件模板',
         'admins': '權限管理',
