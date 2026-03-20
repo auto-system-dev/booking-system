@@ -875,21 +875,13 @@ function setOpsKpiDelta(elementId, currentValue, previousValue, options = {}) {
 
     el.classList.remove('up', 'down');
     if (Math.abs(diff) < 0.0001) {
-        el.textContent = '較上期 --';
+        el.textContent = '--';
         return;
     }
 
     const isGood = inverseGood ? diff < 0 : diff > 0;
     el.classList.add(isGood ? 'up' : 'down');
-
-    if (type === 'currency') {
-        const sign = diff >= 0 ? '+' : '-';
-        el.textContent = `較上期 ${sign}NT$ ${Math.abs(Math.round(diff)).toLocaleString()}`;
-        return;
-    }
-
-    const sign = diff >= 0 ? '+' : '-';
-    el.textContent = `較上期 ${sign}${Math.abs(diff).toFixed(1)}%`;
+    el.textContent = `${diff > 0 ? '▲' : '▼'} ${Math.abs(diff).toFixed(1)}%`;
 }
 
 function setOpsMomDelta(elementId, momValue) {
@@ -1776,12 +1768,28 @@ async function loadDashboard(options = {}) {
 
                     const occupancyEl = document.getElementById('opsOccupancyRate');
                     if (occupancyEl) occupancyEl.textContent = formatPercent(kpis.occupancyRate);
+                    setOpsKpiDelta(
+                        'opsOccupancyRateDelta',
+                        kpis.occupancyRate,
+                        opsResult.data?.previousKpis?.occupancyRate
+                    );
 
                     const paymentEl = document.getElementById('opsPaymentSuccessRate');
                     if (paymentEl) paymentEl.textContent = formatPercent(kpis.paymentSuccessRate);
+                    setOpsKpiDelta(
+                        'opsPaymentSuccessRateDelta',
+                        kpis.paymentSuccessRate,
+                        opsResult.data?.previousKpis?.paymentSuccessRate
+                    );
 
                     const cancellationEl = document.getElementById('opsCancellationRate');
                     if (cancellationEl) cancellationEl.textContent = formatPercent(kpis.cancellationRate);
+                    setOpsKpiDelta(
+                        'opsCancellationRateDelta',
+                        kpis.cancellationRate,
+                        opsResult.data?.previousKpis?.cancellationRate,
+                        { inverseGood: true }
+                    );
 
                     renderOpsTrendChart(opsResult.data.trend || {});
                     renderOpsTopSources(opsResult.data.sources || []);
