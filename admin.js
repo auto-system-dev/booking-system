@@ -1772,12 +1772,6 @@ async function loadDashboard(options = {}) {
                     const formatCurrency = (v) => `NT$ ${Math.round(Number(v) || 0).toLocaleString()}`;
                     const formatInteger = (v) => Math.round(Number(v) || 0).toLocaleString();
 
-                    const todayOrdersEl = document.getElementById('opsTodayOrders');
-                    if (todayOrdersEl) todayOrdersEl.textContent = formatInteger(overview.todayOrders);
-
-                    const todayRevenueEl = document.getElementById('opsTodayRevenue');
-                    if (todayRevenueEl) todayRevenueEl.textContent = formatCurrency(overview.todayRevenue);
-
                     const monthOrdersEl = document.getElementById('opsMonthOrders');
                     if (monthOrdersEl) monthOrdersEl.textContent = formatInteger(overview.monthOrders);
 
@@ -1789,6 +1783,9 @@ async function loadDashboard(options = {}) {
 
                     const occupancyEl = document.getElementById('opsOccupancyRate');
                     if (occupancyEl) occupancyEl.textContent = formatPercent(kpis.occupancyRate);
+
+                    const paymentEl = document.getElementById('opsPaymentSuccessRate');
+                    if (paymentEl) paymentEl.textContent = formatPercent(kpis.paymentSuccessRate);
 
                     const cancellationEl = document.getElementById('opsCancellationRate');
                     if (cancellationEl) cancellationEl.textContent = formatPercent(kpis.cancellationRate);
