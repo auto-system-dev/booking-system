@@ -2637,6 +2637,7 @@ function renderBookings() {
         
         // 確保金額是數字類型並正確顯示
         const finalAmount = parseInt(booking.final_amount) || 0;
+        const totalAmount = parseInt(booking.total_amount) || 0;
         
         // 判斷是否已過入住日期（一般管理員不可取消已付款且已入住的訂房）
         const today = new Date();
@@ -2657,7 +2658,10 @@ function renderBookings() {
             <td>${(booking.adults || 0)}大${(booking.children || 0)}小</td>
             <td>${formatDate(booking.check_in_date)}</td>
             <td>${booking.nights} 晚</td>
-            <td>NT$ ${finalAmount.toLocaleString()}</td>
+            <td>
+                NT$ ${finalAmount.toLocaleString()}
+                <small style="display:block;color:#6b7280;margin-top:2px;">總 NT$ ${totalAmount.toLocaleString()}</small>
+            </td>
             <td>${booking.payment_method}</td>
             <td>
                 <span class="status-badge ${getPaymentStatusClass(paymentStatus)}">
