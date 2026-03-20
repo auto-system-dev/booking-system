@@ -1568,6 +1568,16 @@ body.login-page-active {
     gap: 10px;
     align-items: center;
     flex-wrap: wrap;
+    width: 100%;
+    justify-content: space-between;
+}
+
+.ops-kpi-right-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    flex-wrap: wrap;
 }
 
 .ops-kpi-toggle,
@@ -1649,6 +1659,12 @@ body.login-page-active {
     .ops-kpi-controls {
         width: 100%;
         justify-content: flex-start;
+    }
+
+    .ops-kpi-right-controls {
+        width: 100%;
+        justify-content: flex-start;
+        margin-left: 0;
     }
 
     .ops-kpi-dates {

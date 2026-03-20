@@ -138,25 +138,23 @@
                     </button>
                 </div>
 
-                <div class="section-header" style="margin-top: 26px; align-items: flex-start; flex-direction: column; gap: 12px;">
-                    <h3 id="opsDashboardTitle" style="font-size: 22px; margin: 0;">
-                        <span class="material-symbols-outlined" style="font-size: 24px; vertical-align: middle; margin-right: 6px;">monitoring</span>
-                        營運 KPI
-                    </h3>
+                <div class="section-header" style="margin-top: 26px; margin-bottom: 16px;">
                     <div class="ops-kpi-controls">
                         <div class="ops-today-pill-group">
                             <span class="ops-today-pill">今日住房 <strong id="todayCheckIns">0</strong></span>
                             <span class="ops-today-pill">今日退房 <strong id="todayCheckOuts">0</strong></span>
                         </div>
-                        <div class="ops-kpi-toggle">
-                            <button type="button" id="opsRangeWeekBtn" class="btn-secondary" onclick="setOpsDashboardRange('week')">上月</button>
-                            <button type="button" id="opsRangeMonthBtn" class="btn-secondary" onclick="setOpsDashboardRange('month')">本月</button>
-                        </div>
-                        <div class="ops-kpi-dates">
-                            <input type="date" id="opsStartDate">
-                            <span>~</span>
-                            <input type="date" id="opsEndDate">
-                            <button type="button" class="btn-secondary" onclick="applyCustomOpsRange()">套用</button>
+                        <div class="ops-kpi-right-controls">
+                            <div class="ops-kpi-toggle">
+                                <button type="button" id="opsRangeWeekBtn" class="btn-secondary" onclick="setOpsDashboardRange('week')">上月</button>
+                                <button type="button" id="opsRangeMonthBtn" class="btn-secondary" onclick="setOpsDashboardRange('month')">本月</button>
+                            </div>
+                            <div class="ops-kpi-dates">
+                                <input type="date" id="opsStartDate">
+                                <span>~</span>
+                                <input type="date" id="opsEndDate">
+                                <button type="button" class="btn-secondary" onclick="applyCustomOpsRange()">套用</button>
+                            </div>
                         </div>
                     </div>
                 </div>
