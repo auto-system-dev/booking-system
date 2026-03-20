@@ -1747,18 +1747,11 @@ async function loadDashboard(options = {}) {
                 }
             }
             
-            // 更新今日房況
-            document.getElementById('todayCheckIns').textContent = data.todayCheckIns || 0;
-            document.getElementById('todayCheckOuts').textContent = data.todayCheckOuts || 0;
-            
-            // 更新今日訂單
-            document.getElementById('todayTransferOrders').textContent = data.todayTransferOrders || 0;
-            document.getElementById('todayCardOrders').textContent = data.todayCardOrders || 0;
-            
-            // 更新訂房狀態
-            document.getElementById('activeBookings').textContent = data.activeBookings || 0;
-            document.getElementById('reservedBookings').textContent = data.reservedBookings || 0;
-            document.getElementById('cancelledBookings').textContent = data.cancelledBookings || 0;
+            // 更新今日房況（僅顯示今日住房/退房）
+            const todayCheckInsEl = document.getElementById('todayCheckIns');
+            if (todayCheckInsEl) todayCheckInsEl.textContent = data.todayCheckIns || 0;
+            const todayCheckOutsEl = document.getElementById('todayCheckOuts');
+            if (todayCheckOutsEl) todayCheckOutsEl.textContent = data.todayCheckOuts || 0;
 
             // KPI 次要查詢：即使失敗也不影響上方儀表板顯示
             try {

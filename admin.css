@@ -1196,6 +1196,37 @@ body.login-page-active {
     color: #dc2626;
 }
 
+.today-room-numbers-bar {
+    display: flex;
+    gap: 40px;
+    align-items: center;
+    margin-top: 10px;
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+}
+
+.today-room-number-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.today-room-number-label {
+    color: #6b7280;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.today-room-number-value {
+    color: #2C8EC4;
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1;
+}
+
 .dashboard-insights-grid {
     display: grid;
     grid-template-columns: 1.8fr 1fr;
