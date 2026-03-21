@@ -472,26 +472,30 @@
                         </h2>
                     </div>
                     <div class="report-toolbar" role="group" aria-label="報表期間與匯出">
+                        <div class="report-toolbar-top">
+                            <div class="report-toolbar-top-right">
+                                <div class="report-toolbar-dates">
+                                    <label class="report-toolbar-label" for="statsStartDate">期間</label>
+                                    <input type="date" id="statsStartDate" class="report-date-input">
+                                    <span class="report-date-sep" aria-hidden="true">至</span>
+                                    <input type="date" id="statsEndDate" class="report-date-input">
+                                </div>
+                                <div class="report-toolbar-actions">
+                                    <button type="button" class="btn-secondary" onclick="applyStatisticsFilter()">套用</button>
+                                    <button type="button" class="btn-refresh" onclick="resetStatisticsFilter()">
+                                        <span class="material-symbols-outlined">refresh</span> 重設日期
+                                    </button>
+                                    <button type="button" class="btn-refresh permission-required" data-permission="statistics.export" onclick="exportStatisticsCSV()" title="匯出統計報表 CSV">
+                                        <span class="material-symbols-outlined">download</span> 匯出
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                         <div class="report-preset-row" role="group" aria-label="快捷期間">
                             <button type="button" class="report-preset-btn" data-report-preset="week" onclick="setStatisticsPreset('week')">本週</button>
                             <button type="button" class="report-preset-btn" data-report-preset="month" onclick="setStatisticsPreset('month')">本月</button>
                             <button type="button" class="report-preset-btn" data-report-preset="year" onclick="setStatisticsPreset('year')">今年</button>
                             <button type="button" class="report-preset-btn" data-report-preset="all" onclick="setStatisticsPreset('all')">全部期間</button>
-                        </div>
-                        <div class="report-toolbar-dates">
-                            <label class="report-toolbar-label" for="statsStartDate">期間</label>
-                            <input type="date" id="statsStartDate" class="report-date-input">
-                            <span class="report-date-sep" aria-hidden="true">至</span>
-                            <input type="date" id="statsEndDate" class="report-date-input">
-                        </div>
-                        <div class="report-toolbar-actions">
-                            <button type="button" class="btn-secondary" onclick="applyStatisticsFilter()">套用</button>
-                            <button type="button" class="btn-refresh" onclick="resetStatisticsFilter()">
-                                <span class="material-symbols-outlined">refresh</span> 重設日期
-                            </button>
-                            <button type="button" class="btn-refresh permission-required" data-permission="statistics.export" onclick="exportStatisticsCSV()" title="匯出統計報表 CSV">
-                                <span class="material-symbols-outlined">download</span> 匯出
-                            </button>
                         </div>
                     </div>
                 </header>

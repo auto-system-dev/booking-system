@@ -511,20 +511,13 @@ body.login-page-active {
     }
 }
 
+/* 標題獨立一列，工具列整塊在下方（全寬） */
 .report-page-header {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    align-items: stretch;
+    gap: 16px;
     margin-bottom: 24px;
-}
-
-@media (min-width: 960px) {
-    .report-page-header {
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
-        gap: 20px;
-    }
 }
 
 .report-page-title {
@@ -543,12 +536,28 @@ body.login-page-active {
     color: var(--report-accent);
 }
 
+.report-toolbar-top {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+}
+
+.report-toolbar-top-right {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px 12px;
+}
+
 .report-preset-row {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
     gap: 6px;
-    flex-shrink: 0;
+    width: 100%;
+    padding-top: 4px;
+    border-top: 1px solid var(--report-border);
 }
 
 .report-preset-btn {
@@ -577,24 +586,17 @@ body.login-page-active {
 
 .report-toolbar {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
     padding: 12px 16px;
     background: var(--report-surface);
     border: 1px solid var(--report-border);
     border-radius: 14px;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
-    flex: 1;
-    min-width: 0;
-}
-
-@media (min-width: 960px) {
-    .report-toolbar {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .report-toolbar-dates {
@@ -637,27 +639,23 @@ body.login-page-active {
 
 .report-toolbar-actions {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    margin-left: auto;
     flex-shrink: 0;
 }
 
 @media (max-width: 959px) {
-    .report-toolbar-actions {
-        margin-left: 0;
-        flex-basis: 100%;
-        justify-content: flex-start;
+    .report-toolbar-top {
+        justify-content: stretch;
     }
 
-    .report-preset-row {
-        flex-basis: 100%;
-        flex-wrap: wrap;
+    .report-toolbar-top-right {
+        width: 100%;
+        justify-content: flex-end;
     }
 
     .report-toolbar-dates {
-        flex-basis: 100%;
         flex-wrap: wrap;
     }
 }
