@@ -636,6 +636,9 @@ function exposeFunctionsToWindow() {
         if (typeof saveEmailTemplate === 'function') {
             window.saveEmailTemplate = saveEmailTemplate;
         }
+        if (typeof setStatisticsPreset === 'function') {
+            window.setStatisticsPreset = setStatisticsPreset;
+        }
     } catch (error) {
         console.error('暴露函數到 window 對象時發生錯誤:', error);
     }
@@ -3330,6 +3333,77 @@ function closeModal() {
     document.getElementById('bookingModal').classList.remove('active');
 }
 
+// —— 營運報表：快捷期間（週一至週日為「本週」）——
+function formatLocalYMDFromDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+function formatReportRangeLabel(ymd) {
+    if (!ymd) return '';
+    const p = String(ymd).split('-');
+    if (p.length !== 3) return ymd;
+    return `${p[0]}/${p[1]}/${p[2]}`;
+}
+
+function getReportRangeThisWeek() {
+    const now = new Date();
+    const day = now.getDay();
+    const diffToMon = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMon);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return { start: formatLocalYMDFromDate(monday), end: formatLocalYMDFromDate(sunday) };
+}
+
+function getReportRangeThisMonth() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const mo = now.getMonth();
+    const start = new Date(y, mo, 1);
+    const end = new Date(y, mo + 1, 0);
+    return { start: formatLocalYMDFromDate(start), end: formatLocalYMDFromDate(end) };
+}
+
+function getReportRangeThisYear() {
+    const y = new Date().getFullYear();
+    return { start: `${y}-01-01`, end: `${y}-12-31` };
+}
+
+function setReportPresetButtonsActive(presetKey) {
+    document.querySelectorAll('[data-report-preset]').forEach((btn) => {
+        const on = presetKey != null && btn.getAttribute('data-report-preset') === presetKey;
+        btn.classList.toggle('report-preset-btn--active', on);
+    });
+}
+
+function setStatisticsPreset(preset) {
+    const startInput = document.getElementById('statsStartDate');
+    const endInput = document.getElementById('statsEndDate');
+    if (!startInput || !endInput) return;
+
+    if (preset === 'all') {
+        startInput.value = '';
+        endInput.value = '';
+        setReportPresetButtonsActive('all');
+        loadStatistics();
+        return;
+    }
+
+    let r;
+    if (preset === 'week') r = getReportRangeThisWeek();
+    else if (preset === 'month') r = getReportRangeThisMonth();
+    else if (preset === 'year') r = getReportRangeThisYear();
+    else return;
+
+    startInput.value = r.start;
+    endInput.value = r.end;
+    setReportPresetButtonsActive(preset);
+    loadStatistics();
+}
+
 // 依目前日期篩選載入統計資料
 async function loadStatistics() {
     try {
@@ -3421,8 +3495,8 @@ async function loadStatistics() {
             // 渲染來源分析
             renderSourceAnalysis(stats.bySource || []);
             
-            // 載入月度統計資料
-            loadMonthlyStats();
+            // 區間比較（本期 vs 等長前期）
+            loadPeriodComparisonStats(startDate, endDate);
         } else {
             console.error('統計資料 API 返回失敗:', result);
             showError(result.message || '載入統計資料失敗');
@@ -3433,41 +3507,49 @@ async function loadStatistics() {
     }
 }
 
-// 載入上月與本月的統計資料
-async function loadMonthlyStats() {
+// 載入「區間比較」：所選期間 vs 等長前期（須已選開始與結束日）
+async function loadPeriodComparisonStats(startDate, endDate) {
+    const grid = document.getElementById('monthlyStatsGrid');
+    if (!grid) return;
+
+    if (!startDate || !endDate) {
+        grid.innerHTML = '<div class="report-panel-empty">請選擇期間或使用快捷（本週／本月／今年），以顯示<strong>本期與前期</strong>對照。<br><span style="font-size:13px;color:var(--report-muted);">前期定義：與本期<strong>天數相同</strong>，且<strong>緊接在本期開始日之前</strong>。</span></div>';
+        return;
+    }
+
     try {
-        const response = await adminFetch('/api/statistics/monthly-stats');
-        
+        const params = new URLSearchParams({ startDate, endDate });
+        const response = await adminFetch(`/api/statistics/period-comparison?${params.toString()}`);
+
         if (response.status === 401) {
-            console.warn('月度統計 API 返回 401，Session 可能已過期');
+            console.warn('區間比較 API 返回 401，Session 可能已過期');
             await checkAuthStatus();
             return;
         }
-        
+
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('月度統計 API 錯誤:', response.status, errorText);
-            document.getElementById('monthlyStatsGrid').innerHTML = '<div class="report-panel-error">載入月度統計資料失敗</div>';
+            console.error('區間比較 API 錯誤:', response.status, errorText);
+            grid.innerHTML = '<div class="report-panel-error">載入區間比較失敗</div>';
             return;
         }
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
-            const stats = result.data;
-            renderMonthlyStats(stats);
+            renderPeriodComparisonStats(result.data);
         } else {
-            console.error('月度統計 API 返回失敗:', result);
-            document.getElementById('monthlyStatsGrid').innerHTML = '<div class="report-panel-error">載入月度統計資料失敗</div>';
+            console.error('區間比較 API 返回失敗:', result);
+            grid.innerHTML = '<div class="report-panel-error">' + escapeHtml(result.message || '載入區間比較失敗') + '</div>';
         }
     } catch (error) {
-        console.error('載入月度統計資料錯誤:', error);
-        document.getElementById('monthlyStatsGrid').innerHTML = '<div class="report-panel-error">載入月度統計資料時發生錯誤</div>';
+        console.error('載入區間比較錯誤:', error);
+        grid.innerHTML = '<div class="report-panel-error">載入區間比較時發生錯誤</div>';
     }
 }
 
-// 渲染月度統計資料（營運報表版面）
-function renderMonthlyStats(stats) {
+// 渲染區間比較（本期 vs 前期）
+function renderPeriodComparisonStats(data) {
     const grid = document.getElementById('monthlyStatsGrid');
     if (!grid) return;
 
@@ -3501,37 +3583,34 @@ function renderMonthlyStats(stats) {
             ${occBar(pct)}
         </div>`;
 
-    const thisMonth = stats.thisMonth || {};
-    const lastMonth = stats.lastMonth || {};
-
-    const today = new Date();
-    const currentMonth = today.getMonth() + 1;
-    const lastMonthNum = currentMonth === 1 ? 12 : currentMonth - 1;
-    const monthNames = ['', '一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+    const cur = data.currentPeriod || {};
+    const prev = data.previousPeriod || {};
+    const curTitle = `${formatReportRangeLabel(cur.startDate)} ~ ${formatReportRangeLabel(cur.endDate)}`;
+    const prevTitle = `${formatReportRangeLabel(prev.startDate)} ~ ${formatReportRangeLabel(prev.endDate)}`;
 
     grid.innerHTML = `
         <div class="report-month-card report-month-card--this">
             <header class="report-month-card__head">
-                <span class="report-month-card__chip">本月</span>
-                <h4 class="report-month-card__title">${monthNames[currentMonth]}</h4>
+                <span class="report-month-card__chip">本期</span>
+                <h4 class="report-month-card__title">${escapeHtml(curTitle)}</h4>
             </header>
             <div class="report-month-card__body">
-                ${rowPlain('訂房數', String(thisMonth.bookingCount || 0))}
-                ${rowRevenue('總營收', thisMonth.totalRevenue)}
-                ${rowOcc('平日住房率', thisMonth.weekdayOccupancy)}
-                ${rowOcc('假日住房率', thisMonth.weekendOccupancy)}
+                ${rowPlain('訂房數', String(cur.bookingCount || 0))}
+                ${rowRevenue('總營收', cur.totalRevenue)}
+                ${rowOcc('平日住房率', cur.weekdayOccupancy)}
+                ${rowOcc('假日住房率', cur.weekendOccupancy)}
             </div>
         </div>
         <div class="report-month-card report-month-card--prev">
             <header class="report-month-card__head">
-                <span class="report-month-card__chip">上月</span>
-                <h4 class="report-month-card__title">${monthNames[lastMonthNum]}</h4>
+                <span class="report-month-card__chip">前期</span>
+                <h4 class="report-month-card__title">${escapeHtml(prevTitle)}</h4>
             </header>
             <div class="report-month-card__body">
-                ${rowPlain('訂房數', String(lastMonth.bookingCount || 0))}
-                ${rowRevenue('總營收', lastMonth.totalRevenue)}
-                ${rowOcc('平日住房率', lastMonth.weekdayOccupancy)}
-                ${rowOcc('假日住房率', lastMonth.weekendOccupancy)}
+                ${rowPlain('訂房數', String(prev.bookingCount || 0))}
+                ${rowRevenue('總營收', prev.totalRevenue)}
+                ${rowOcc('平日住房率', prev.weekdayOccupancy)}
+                ${rowOcc('假日住房率', prev.weekendOccupancy)}
             </div>
         </div>
     `;
@@ -3539,16 +3618,13 @@ function renderMonthlyStats(stats) {
 
 // 套用統計日期篩選
 function applyStatisticsFilter() {
+    setReportPresetButtonsActive(null);
     loadStatistics();
 }
 
-// 重設統計日期篩選（回到全部期間）
+// 重設統計日期篩選（清空日期＝全部期間）
 function resetStatisticsFilter() {
-    const startInput = document.getElementById('statsStartDate');
-    const endInput = document.getElementById('statsEndDate');
-    if (startInput) startInput.value = '';
-    if (endInput) endInput.value = '';
-    loadStatistics();
+    setStatisticsPreset('all');
 }
 
 /** 營運報表：來源 slug → 顯示名稱（與營運儀表來源 Top5 對齊） */

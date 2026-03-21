@@ -3672,493 +3672,222 @@ async function getStatistics(startDate, endDate) {
 }
 
 // 取得上月和本月的營收比較統計
+// 報表用：本地日期 YYYY-MM-DD
+function formatLocalYMD(dateObj) {
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const d = String(dateObj.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function parseLocalYMD(ymd) {
+    const parts = String(ymd || '').split('-').map(Number);
+    if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return null;
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+/** 含首尾日的天數 */
+function daysInclusive(ymdStart, ymdEnd) {
+    const a = parseLocalYMD(ymdStart);
+    const b = parseLocalYMD(ymdEnd);
+    if (!a || !b) return 0;
+    return Math.round((b - a) / 86400000) + 1;
+}
+
+/**
+ * 與本期等長、緊鄰的前一期（前期末日 = 本期首日的前一天）
+ */
+function computePreviousPeriod(ymdStart, ymdEnd) {
+    const n = daysInclusive(ymdStart, ymdEnd);
+    if (n <= 0) return null;
+    const start = parseLocalYMD(ymdStart);
+    const prevEnd = new Date(start);
+    prevEnd.setDate(prevEnd.getDate() - 1);
+    const prevStart = new Date(prevEnd);
+    prevStart.setDate(prevStart.getDate() - (n - 1));
+    return { start: formatLocalYMD(prevStart), end: formatLocalYMD(prevEnd) };
+}
+
+async function fetchTotalRoomsForReport() {
+    let totalRooms = 10;
+    try {
+        const totalRoomsSetting = await getSetting('total_rooms');
+        if (totalRoomsSetting) {
+            totalRooms = parseInt(totalRoomsSetting, 10) || 10;
+        }
+    } catch (_) { /* 預設 */ }
+    return totalRooms;
+}
+
+/** 依區間計算平日/假日住房率（與原月度邏輯相同，區間可為任意連續日期） */
+async function calculateOccupancyForRange(bookingsResult, rangeStart, rangeEnd, totalRooms) {
+    try {
+        let weekdayRoomNights = 0;
+        let weekendRoomNights = 0;
+        let weekdayDays = 0;
+        let weekendDays = 0;
+
+        const start = new Date(rangeStart + 'T00:00:00');
+        const end = new Date(rangeEnd + 'T00:00:00');
+
+        const holidayMap = new Map();
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            try {
+                const isHoliday = await isHolidayOrWeekend(dateStr, true);
+                holidayMap.set(dateStr, isHoliday);
+                if (isHoliday) weekendDays++;
+                else weekdayDays++;
+            } catch (err) {
+                console.warn(`⚠️ 檢查日期 ${dateStr} 是否為假日時發生錯誤:`, err.message);
+                holidayMap.set(dateStr, false);
+                weekdayDays++;
+            }
+        }
+
+        const rangeStartDate = new Date(rangeStart + 'T00:00:00');
+        const rangeEndDate = new Date(rangeEnd + 'T23:59:59');
+        const bookingRows = bookingsResult.rows || bookingsResult || [];
+
+        for (const booking of bookingRows) {
+            if (!booking || !booking.check_in_date || !booking.check_out_date) continue;
+            try {
+                const checkIn = new Date(booking.check_in_date + 'T00:00:00');
+                const checkOut = new Date(booking.check_out_date + 'T00:00:00');
+                const calcStart = checkIn < rangeStartDate ? rangeStartDate : checkIn;
+                const calcEnd = checkOut > rangeEndDate ? rangeEndDate : checkOut;
+                for (let d = new Date(calcStart); d < calcEnd; d.setDate(d.getDate() + 1)) {
+                    const dateStr = d.toISOString().split('T')[0];
+                    if (dateStr >= rangeStart && dateStr <= rangeEnd) {
+                        const isHoliday = holidayMap.get(dateStr) || false;
+                        if (isHoliday) weekendRoomNights += 1;
+                        else weekdayRoomNights += 1;
+                    }
+                }
+            } catch (err) {
+                console.warn('⚠️ 處理訂房記錄時發生錯誤:', err.message, booking);
+            }
+        }
+
+        const weekdayOccupancy = weekdayDays > 0 ? (weekdayRoomNights / (weekdayDays * totalRooms) * 100).toFixed(2) : 0;
+        const weekendOccupancy = weekendDays > 0 ? (weekendRoomNights / (weekendDays * totalRooms) * 100).toFixed(2) : 0;
+
+        return {
+            weekdayOccupancy: parseFloat(weekdayOccupancy),
+            weekendOccupancy: parseFloat(weekendOccupancy)
+        };
+    } catch (error) {
+        console.error('❌ 計算住房率時發生錯誤:', error.message);
+        return { weekdayOccupancy: 0, weekendOccupancy: 0 };
+    }
+}
+
+/** 單一期間：訂房數、營收、平日/假日住房率（入住日口徑 + 與區間重疊之夜數） */
+async function getComparisonSlice(rangeStart, rangeEnd, totalRooms) {
+    if (usePostgreSQL) {
+        const countSql = `
+            SELECT 
+                COUNT(*)::bigint as booking_count,
+                COALESCE(SUM(total_amount), 0)::bigint as total_revenue
+            FROM bookings
+            WHERE check_in_date::date BETWEEN $1::date AND $2::date
+            AND status != 'cancelled'
+        `;
+        const countRow = await query(countSql, [rangeStart, rangeEnd]).then((r) => r.rows[0] || {});
+        const bookingsSql = `
+            SELECT check_in_date, check_out_date, nights
+            FROM bookings
+            WHERE (check_in_date::date <= $2::date AND check_out_date::date > $1::date)
+            AND status != 'cancelled'
+        `;
+        const bookingsRes = await query(bookingsSql, [rangeStart, rangeEnd]);
+        const occ = await calculateOccupancyForRange(bookingsRes, rangeStart, rangeEnd, totalRooms);
+        return {
+            bookingCount: parseInt(countRow.booking_count || 0, 10),
+            totalRevenue: parseInt(countRow.total_revenue || 0, 10),
+            weekdayOccupancy: occ.weekdayOccupancy,
+            weekendOccupancy: occ.weekendOccupancy
+        };
+    }
+
+    const countSql = `
+        SELECT 
+            COUNT(*) as booking_count,
+            COALESCE(SUM(total_amount), 0) as total_revenue
+        FROM bookings
+        WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?)
+        AND status != 'cancelled'
+    `;
+    const countRow = await queryOne(countSql, [rangeStart, rangeEnd]) || {};
+    const bookingsSql = `
+        SELECT check_in_date, check_out_date, nights
+        FROM bookings
+        WHERE (DATE(check_in_date) <= DATE(?) AND DATE(check_out_date) > DATE(?))
+        AND status != 'cancelled'
+    `;
+    const bookingsRes = await query(bookingsSql, [rangeEnd, rangeStart]);
+    const occ = await calculateOccupancyForRange(bookingsRes, rangeStart, rangeEnd, totalRooms);
+    return {
+        bookingCount: parseInt(countRow.booking_count || 0, 10),
+        totalRevenue: parseInt(countRow.total_revenue || 0, 10),
+        weekdayOccupancy: occ.weekdayOccupancy,
+        weekendOccupancy: occ.weekendOccupancy
+    };
+}
+
+/** 所選期間 vs 等長前期（營運報表「區間比較」） */
+async function getPeriodComparison(currentStart, currentEnd) {
+    const prev = computePreviousPeriod(currentStart, currentEnd);
+    if (!prev) {
+        throw new Error('日期區間無效');
+    }
+    const totalRooms = await fetchTotalRoomsForReport();
+    const [currentSlice, previousSlice] = await Promise.all([
+        getComparisonSlice(currentStart, currentEnd, totalRooms),
+        getComparisonSlice(prev.start, prev.end, totalRooms)
+    ]);
+    return {
+        currentPeriod: {
+            ...currentSlice,
+            startDate: currentStart,
+            endDate: currentEnd
+        },
+        previousPeriod: {
+            ...previousSlice,
+            startDate: prev.start,
+            endDate: prev.end
+        }
+    };
+}
+
 async function getMonthlyComparison() {
     try {
         const today = new Date();
         const currentYear = today.getFullYear();
-        const currentMonth = today.getMonth() + 1; // 1-12
-        
-        // 計算本月第一天和最後一天（使用本地時區避免時區偏移）
+        const currentMonth = today.getMonth() + 1;
+
         const thisMonthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
-        // currentMonth 是 1-12，Date 構造函數的月份參數是 0-11
-        // 要獲取 currentMonth 月的最後一天，應該用 new Date(currentYear, currentMonth, 0)
-        // 因為 currentMonth 是 1-12，在 Date 中就是索引 1-12（即2月到13月）
-        // new Date(year, month, 0) 會返回 month 月的前一天
-        // 例如：currentMonth = 2（二月），Date(2026, 2, 0) = 2026年2月28日 ✓
-        // 例如：currentMonth = 1（一月），Date(2026, 1, 0) = 2026年1月31日 ✓
-        // 例如：currentMonth = 12（十二月），Date(2026, 12, 0) = 2026年12月31日 ✓
         const thisMonthEndDate = new Date(currentYear, currentMonth, 0);
-        // 使用本地時區格式化日期，避免 toISOString() 造成的時區偏移
-        const thisMonthEndYear = thisMonthEndDate.getFullYear();
-        const thisMonthEndMonth = String(thisMonthEndDate.getMonth() + 1).padStart(2, '0');
-        const thisMonthEndDay = String(thisMonthEndDate.getDate()).padStart(2, '0');
-        const thisMonthEnd = `${thisMonthEndYear}-${thisMonthEndMonth}-${thisMonthEndDay}`;
-        
-        // 計算上月第一天和最後一天（使用本地時區避免時區偏移）
-        const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+        const thisMonthEnd = formatLocalYMD(thisMonthEndDate);
+
+        const lastMonthNum = currentMonth === 1 ? 12 : currentMonth - 1;
         const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
-        const lastMonthStart = `${lastMonthYear}-${String(lastMonth).padStart(2, '0')}-01`;
-        // lastMonth 是 1-12，Date 構造函數的月份參數是 0-11
-        // 要獲取 lastMonth 月的最後一天，應該用 new Date(lastMonthYear, lastMonth, 0)
-        // 例如：lastMonth = 1（一月），Date(2026, 1, 0) = 2026年1月31日 ✓
-        // 例如：lastMonth = 12（十二月），Date(2025, 12, 0) = 2025年12月31日 ✓
-        const lastMonthEndDate = new Date(lastMonthYear, lastMonth, 0);
-        // 使用本地時區格式化日期，避免 toISOString() 造成的時區偏移
-        const lastMonthEndYear = lastMonthEndDate.getFullYear();
-        const lastMonthEndMonth = String(lastMonthEndDate.getMonth() + 1).padStart(2, '0');
-        const lastMonthEndDay = String(lastMonthEndDate.getDate()).padStart(2, '0');
-        const lastMonthEnd = `${lastMonthEndYear}-${lastMonthEndMonth}-${lastMonthEndDay}`;
-        
-        console.log(`📅 本月範圍: ${thisMonthStart} ~ ${thisMonthEnd}`);
-        console.log(`📅 上月範圍: ${lastMonthStart} ~ ${lastMonthEnd}`);
-        
-        // 驗證日期參數
-        if (!thisMonthStart || !thisMonthEnd || !lastMonthStart || !lastMonthEnd) {
-            throw new Error('日期參數計算錯誤：部分日期為空');
-        }
-        console.log('✅ 日期參數驗證通過');
-        
-        // 取得總房間數（從系統設定或預設值）
-        let totalRooms = 10; // 預設10間房
-        try {
-            const totalRoomsSetting = await getSetting('total_rooms');
-            if (totalRoomsSetting) {
-                totalRooms = parseInt(totalRoomsSetting) || 10;
-            }
-            console.log(`🏠 總房間數: ${totalRooms}`);
-        } catch (error) {
-            console.warn('⚠️ 取得總房間數設定失敗，使用預設值 10:', error.message);
-        }
-        
-        console.log(`📊 開始查詢月度比較統計 (資料庫類型: ${usePostgreSQL ? 'PostgreSQL' : 'SQLite'})`);
-        
-        if (usePostgreSQL) {
-            // 本月統計 - 以入住日期（check_in_date）為準，不是訂房日期（created_at 或 booking_date）
-            const thisMonthSql = `
-                SELECT 
-                    COUNT(*) as booking_count,
-                    COALESCE(SUM(total_amount), 0) as total_revenue,
-                    COUNT(DISTINCT check_in_date) as unique_dates
-                FROM bookings
-                WHERE check_in_date::date BETWEEN $1::date AND $2::date
-                AND status != 'cancelled'
-            `;
-            
-            // 上月統計 - 以入住日期（check_in_date）為準，不是訂房日期（created_at 或 booking_date）
-            const lastMonthSql = `
-                SELECT 
-                    COUNT(*) as booking_count,
-                    COALESCE(SUM(total_amount), 0) as total_revenue,
-                    COUNT(DISTINCT check_in_date) as unique_dates
-                FROM bookings
-                WHERE check_in_date::date BETWEEN $1::date AND $2::date
-                AND status != 'cancelled'
-            `;
-            
-            // 輸出實際的SQL語句和參數以便調試
-            console.log(`🔍 執行上月統計查詢:`);
-            console.log(`   SQL: ${lastMonthSql}`);
-            console.log(`   參數: [${lastMonthStart}, ${lastMonthEnd}]`);
-            
-            const [thisMonthResult, lastMonthResult] = await Promise.all([
-                query(thisMonthSql, [thisMonthStart, thisMonthEnd]).then(r => r.rows[0] || null),
-                query(lastMonthSql, [lastMonthStart, lastMonthEnd]).then(r => r.rows[0] || null)
-            ]);
-            
-            console.log(`📊 本月統計查詢參數: ${thisMonthStart} ~ ${thisMonthEnd}`);
-            console.log(`📊 本月統計結果:`, thisMonthResult);
-            console.log(`📊 上月統計查詢參數: ${lastMonthStart} ~ ${lastMonthEnd}`);
-            console.log(`📊 上月統計結果:`, lastMonthResult);
-            
-            // 查詢實際的訂房記錄以確認（以入住日期 check_in_date 為準）
-            const debugLastMonthSql = `
-                SELECT booking_id, check_in_date, check_out_date, total_amount, status
-                FROM bookings
-                WHERE check_in_date::date BETWEEN $1::date AND $2::date
-                AND status != 'cancelled'
-                ORDER BY check_in_date
-            `;
-            const debugLastMonthResult = await query(debugLastMonthSql, [lastMonthStart, lastMonthEnd]);
-            console.log(`🔍 上月實際查詢到的訂房記錄 (${debugLastMonthResult?.rows?.length || 0} 筆):`);
-            if (debugLastMonthResult?.rows && debugLastMonthResult.rows.length > 0) {
-                debugLastMonthResult.rows.forEach(booking => {
-                    console.log(`   - ${booking.booking_id}: 入住 ${booking.check_in_date}, 退房 ${booking.check_out_date}, 金額 ${booking.total_amount}, 狀態 ${booking.status}`);
-                });
-            } else {
-                console.log(`   (無訂房記錄)`);
-            }
-            
-            // 計算本月平日和假日的房間夜數（包含跨月份的訂房）
-            const thisMonthBookingsSql = `
-                SELECT check_in_date, check_out_date, nights
-                FROM bookings
-                WHERE (check_in_date::date <= $2::date AND check_out_date::date > $1::date)
-                AND status != 'cancelled'
-            `;
-            
-            // 計算上月平日和假日的房間夜數（包含跨月份的訂房）
-            const lastMonthBookingsSql = `
-                SELECT check_in_date, check_out_date, nights
-                FROM bookings
-                WHERE (check_in_date::date <= $2::date AND check_out_date::date > $1::date)
-                AND status != 'cancelled'
-            `;
-            
-            console.log('📊 查詢本月和上月的訂房記錄...');
-            console.log(`   本月查詢範圍: ${thisMonthStart} ~ ${thisMonthEnd}`);
-            console.log(`   上月查詢範圍: ${lastMonthStart} ~ ${lastMonthEnd}`);
-            const [thisMonthBookings, lastMonthBookings] = await Promise.all([
-                query(thisMonthBookingsSql, [thisMonthStart, thisMonthEnd]),
-                query(lastMonthBookingsSql, [lastMonthStart, lastMonthEnd])
-            ]);
-            console.log(`✅ 訂房記錄查詢完成: 本月 ${thisMonthBookings?.rows?.length || 0} 筆, 上月 ${lastMonthBookings?.rows?.length || 0} 筆`);
-            if (lastMonthBookings?.rows?.length > 0) {
-                console.log(`   上月訂房詳情:`, lastMonthBookings.rows.map(b => ({
-                    check_in: b.check_in_date,
-                    check_out: b.check_out_date,
-                    nights: b.nights
-                })));
-            }
-            
-            // 計算住房率
-            console.log('📊 計算住房率...');
-            const calculateOccupancyRate = async (bookings, monthStart, monthEnd) => {
-                try {
-                    let weekdayRoomNights = 0;
-                    let weekendRoomNights = 0;
-                    let weekdayDays = 0;
-                    let weekendDays = 0;
-                    
-                    // 計算該月的所有日期
-                    const start = new Date(monthStart + 'T00:00:00');
-                    const end = new Date(monthEnd + 'T00:00:00');
-                    
-                    // 預先計算所有日期的假日狀態
-                    const holidayMap = new Map();
-                    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                        const dateStr = d.toISOString().split('T')[0];
-                        try {
-                            const isHoliday = await isHolidayOrWeekend(dateStr, true);
-                            holidayMap.set(dateStr, isHoliday);
-                            if (isHoliday) {
-                                weekendDays++;
-                            } else {
-                                weekdayDays++;
-                            }
-                        } catch (err) {
-                            console.warn(`⚠️ 檢查日期 ${dateStr} 是否為假日時發生錯誤:`, err.message);
-                            // 預設為平日
-                            holidayMap.set(dateStr, false);
-                            weekdayDays++;
-                        }
-                    }
-                    
-                    // 計算已訂房的房間夜數（只計算該月份內的日期）
-                    const monthStartDate = new Date(monthStart + 'T00:00:00');
-                    const monthEndDate = new Date(monthEnd + 'T23:59:59');
-                    
-                    const bookingRows = bookings.rows || bookings || [];
-                    for (const booking of bookingRows) {
-                        if (!booking || !booking.check_in_date || !booking.check_out_date) {
-                            continue;
-                        }
-                        
-                        try {
-                            const checkIn = new Date(booking.check_in_date + 'T00:00:00');
-                            const checkOut = new Date(booking.check_out_date + 'T00:00:00');
-                            
-                            // 確定計算的開始和結束日期（限制在該月份內）
-                            const calcStart = checkIn < monthStartDate ? monthStartDate : checkIn;
-                            const calcEnd = checkOut > monthEndDate ? monthEndDate : checkOut;
-                            
-                            for (let d = new Date(calcStart); d < calcEnd; d.setDate(d.getDate() + 1)) {
-                                const dateStr = d.toISOString().split('T')[0];
-                                // 確保日期在該月份內
-                                if (dateStr >= monthStart && dateStr <= monthEnd) {
-                                    const isHoliday = holidayMap.get(dateStr) || false;
-                                    if (isHoliday) {
-                                        weekendRoomNights += 1;
-                                    } else {
-                                        weekdayRoomNights += 1;
-                                    }
-                                }
-                            }
-                        } catch (err) {
-                            console.warn(`⚠️ 處理訂房記錄時發生錯誤:`, err.message, booking);
-                            continue;
-                        }
-                    }
-                    
-                    const weekdayOccupancy = weekdayDays > 0 ? (weekdayRoomNights / (weekdayDays * totalRooms) * 100).toFixed(2) : 0;
-                    const weekendOccupancy = weekendDays > 0 ? (weekendRoomNights / (weekendDays * totalRooms) * 100).toFixed(2) : 0;
-                    
-                    return {
-                        weekdayOccupancy: parseFloat(weekdayOccupancy),
-                        weekendOccupancy: parseFloat(weekendOccupancy),
-                        weekdayRoomNights,
-                        weekendRoomNights,
-                        weekdayDays,
-                        weekendDays
-                    };
-                } catch (error) {
-                    console.error('❌ 計算住房率時發生錯誤:', error.message);
-                    // 返回預設值
-                    return {
-                        weekdayOccupancy: 0,
-                        weekendOccupancy: 0,
-                        weekdayRoomNights: 0,
-                        weekendRoomNights: 0,
-                        weekdayDays: 0,
-                        weekendDays: 0
-                    };
-                }
-            };
-            
-            console.log('📊 計算住房率...');
-            const [thisMonthOccupancy, lastMonthOccupancy] = await Promise.all([
-                calculateOccupancyRate(thisMonthBookings, thisMonthStart, thisMonthEnd),
-                calculateOccupancyRate(lastMonthBookings, lastMonthStart, lastMonthEnd)
-            ]);
-            console.log('✅ 住房率計算完成:', { thisMonthOccupancy, lastMonthOccupancy });
-            
-            // 確保 NULL 值被正確處理為 0
-            const thisMonthBookingCount = thisMonthResult?.booking_count ? parseInt(thisMonthResult.booking_count) : 0;
-            const thisMonthTotalRevenue = thisMonthResult?.total_revenue ? parseInt(thisMonthResult.total_revenue) : 0;
-            const lastMonthBookingCount = lastMonthResult?.booking_count ? parseInt(lastMonthResult.booking_count) : 0;
-            const lastMonthTotalRevenue = lastMonthResult?.total_revenue ? parseInt(lastMonthResult.total_revenue) : 0;
-            
-            console.log(`📊 處理後的統計數據:`, {
-                thisMonth: { bookingCount: thisMonthBookingCount, totalRevenue: thisMonthTotalRevenue },
-                lastMonth: { bookingCount: lastMonthBookingCount, totalRevenue: lastMonthTotalRevenue }
-            });
-            
-            const result = {
-                thisMonth: {
-                    bookingCount: thisMonthBookingCount,
-                    totalRevenue: thisMonthTotalRevenue,
-                    weekdayOccupancy: thisMonthOccupancy.weekdayOccupancy,
-                    weekendOccupancy: thisMonthOccupancy.weekendOccupancy
-                },
-                lastMonth: {
-                    bookingCount: lastMonthBookingCount,
-                    totalRevenue: lastMonthTotalRevenue,
-                    weekdayOccupancy: lastMonthOccupancy.weekdayOccupancy,
-                    weekendOccupancy: lastMonthOccupancy.weekendOccupancy
-                }
-            };
-            console.log('✅ 月度比較統計查詢完成:', result);
-            return result;
-        } else {
-            // SQLite 版本
-            // 本月統計 - 以入住日期（check_in_date）為準，不是訂房日期（created_at 或 booking_date）
-            const thisMonthSql = `
-                SELECT 
-                    COUNT(*) as booking_count,
-                    COALESCE(SUM(total_amount), 0) as total_revenue,
-                    COUNT(DISTINCT check_in_date) as unique_dates
-                FROM bookings
-                WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?)
-                AND status != 'cancelled'
-            `;
-            
-            // 上月統計 - 以入住日期（check_in_date）為準，不是訂房日期（created_at 或 booking_date）
-            const lastMonthSql = `
-                SELECT 
-                    COUNT(*) as booking_count,
-                    COALESCE(SUM(total_amount), 0) as total_revenue,
-                    COUNT(DISTINCT check_in_date) as unique_dates
-                FROM bookings
-                WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?)
-                AND status != 'cancelled'
-            `;
-            
-            // 輸出實際的SQL語句和參數以便調試
-            console.log(`🔍 執行上月統計查詢:`);
-            console.log(`   SQL: ${lastMonthSql}`);
-            console.log(`   參數: [${lastMonthStart}, ${lastMonthEnd}]`);
-            
-            const [thisMonthResult, lastMonthResult] = await Promise.all([
-                queryOne(thisMonthSql, [thisMonthStart, thisMonthEnd]),
-                queryOne(lastMonthSql, [lastMonthStart, lastMonthEnd])
-            ]);
-            
-            console.log(`📊 本月統計查詢參數: ${thisMonthStart} ~ ${thisMonthEnd}`);
-            console.log(`📊 本月統計結果:`, thisMonthResult);
-            console.log(`📊 上月統計查詢參數: ${lastMonthStart} ~ ${lastMonthEnd}`);
-            console.log(`📊 上月統計結果:`, lastMonthResult);
-            
-            // 查詢實際的訂房記錄以確認（以入住日期 check_in_date 為準）
-            const debugLastMonthSql = `
-                SELECT booking_id, check_in_date, check_out_date, total_amount, status
-                FROM bookings
-                WHERE DATE(check_in_date) BETWEEN DATE(?) AND DATE(?)
-                AND status != 'cancelled'
-                ORDER BY check_in_date
-            `;
-            const debugLastMonthResult = await query(debugLastMonthSql, [lastMonthStart, lastMonthEnd]);
-            console.log(`🔍 上月實際查詢到的訂房記錄 (${debugLastMonthResult?.length || 0} 筆):`);
-            if (debugLastMonthResult && debugLastMonthResult.length > 0) {
-                debugLastMonthResult.forEach(booking => {
-                    console.log(`   - ${booking.booking_id}: 入住 ${booking.check_in_date}, 退房 ${booking.check_out_date}, 金額 ${booking.total_amount}, 狀態 ${booking.status}`);
-                });
-            } else {
-                console.log(`   (無訂房記錄)`);
-            }
-            
-            // 計算本月平日和假日的房間夜數（包含跨月份的訂房）
-            const thisMonthBookingsSql = `
-                SELECT check_in_date, check_out_date, nights
-                FROM bookings
-                WHERE (DATE(check_in_date) <= DATE(?) AND DATE(check_out_date) > DATE(?))
-                AND status != 'cancelled'
-            `;
-            
-            // 計算上月平日和假日的房間夜數（包含跨月份的訂房）
-            const lastMonthBookingsSql = `
-                SELECT check_in_date, check_out_date, nights
-                FROM bookings
-                WHERE (DATE(check_in_date) <= DATE(?) AND DATE(check_out_date) > DATE(?))
-                AND status != 'cancelled'
-            `;
-            
-            // 參數順序：第一個 ? 是月份結束日期，第二個 ? 是月份開始日期
-            // 查詢邏輯：找出所有在該月份期間有房間夜數的訂房（包括跨月份的訂房）
-            const [thisMonthBookings, lastMonthBookings] = await Promise.all([
-                query(thisMonthBookingsSql, [thisMonthEnd, thisMonthStart]),
-                query(lastMonthBookingsSql, [lastMonthEnd, lastMonthStart])
-            ]);
-            
-            const calculateOccupancyRate = async (bookings, monthStart, monthEnd) => {
-                try {
-                    let weekdayRoomNights = 0;
-                    let weekendRoomNights = 0;
-                    let weekdayDays = 0;
-                    let weekendDays = 0;
-                    
-                    // 計算該月的所有日期
-                    const start = new Date(monthStart + 'T00:00:00');
-                    const end = new Date(monthEnd + 'T00:00:00');
-                    
-                    // 預先計算所有日期的假日狀態
-                    const holidayMap = new Map();
-                    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                        const dateStr = d.toISOString().split('T')[0];
-                        try {
-                            const isHoliday = await isHolidayOrWeekend(dateStr, true);
-                            holidayMap.set(dateStr, isHoliday);
-                            if (isHoliday) {
-                                weekendDays++;
-                            } else {
-                                weekdayDays++;
-                            }
-                        } catch (err) {
-                            console.warn(`⚠️ 檢查日期 ${dateStr} 是否為假日時發生錯誤:`, err.message);
-                            // 預設為平日
-                            holidayMap.set(dateStr, false);
-                            weekdayDays++;
-                        }
-                    }
-                    
-                    // 計算已訂房的房間夜數（只計算該月份內的日期）
-                    const monthStartDate = new Date(monthStart + 'T00:00:00');
-                    const monthEndDate = new Date(monthEnd + 'T23:59:59');
-                    
-                    const bookingRows = bookings.rows || bookings || [];
-                    for (const booking of bookingRows) {
-                        if (!booking || !booking.check_in_date || !booking.check_out_date) {
-                            continue;
-                        }
-                        
-                        try {
-                            const checkIn = new Date(booking.check_in_date + 'T00:00:00');
-                            const checkOut = new Date(booking.check_out_date + 'T00:00:00');
-                            
-                            // 確定計算的開始和結束日期（限制在該月份內）
-                            const calcStart = checkIn < monthStartDate ? monthStartDate : checkIn;
-                            const calcEnd = checkOut > monthEndDate ? monthEndDate : checkOut;
-                            
-                            for (let d = new Date(calcStart); d < calcEnd; d.setDate(d.getDate() + 1)) {
-                                const dateStr = d.toISOString().split('T')[0];
-                                // 確保日期在該月份內
-                                if (dateStr >= monthStart && dateStr <= monthEnd) {
-                                    const isHoliday = holidayMap.get(dateStr) || false;
-                                    if (isHoliday) {
-                                        weekendRoomNights += 1;
-                                    } else {
-                                        weekdayRoomNights += 1;
-                                    }
-                                }
-                            }
-                        } catch (err) {
-                            console.warn(`⚠️ 處理訂房記錄時發生錯誤:`, err.message, booking);
-                            continue;
-                        }
-                    }
-                    
-                    const weekdayOccupancy = weekdayDays > 0 ? (weekdayRoomNights / (weekdayDays * totalRooms) * 100).toFixed(2) : 0;
-                    const weekendOccupancy = weekendDays > 0 ? (weekendRoomNights / (weekendDays * totalRooms) * 100).toFixed(2) : 0;
-                    
-                    return {
-                        weekdayOccupancy: parseFloat(weekdayOccupancy),
-                        weekendOccupancy: parseFloat(weekendOccupancy),
-                        weekdayRoomNights,
-                        weekendRoomNights,
-                        weekdayDays,
-                        weekendDays
-                    };
-                } catch (error) {
-                    console.error('❌ 計算住房率時發生錯誤:', error.message);
-                    // 返回預設值
-                    return {
-                        weekdayOccupancy: 0,
-                        weekendOccupancy: 0,
-                        weekdayRoomNights: 0,
-                        weekendRoomNights: 0,
-                        weekdayDays: 0,
-                        weekendDays: 0
-                    };
-                }
-            };
-            
-            const [thisMonthOccupancy, lastMonthOccupancy] = await Promise.all([
-                calculateOccupancyRate(thisMonthBookings, thisMonthStart, thisMonthEnd),
-                calculateOccupancyRate(lastMonthBookings, lastMonthStart, lastMonthEnd)
-            ]);
-            
-            // 確保 NULL 值被正確處理為 0
-            const thisMonthBookingCount = thisMonthResult?.booking_count ? parseInt(thisMonthResult.booking_count) : 0;
-            const thisMonthTotalRevenue = thisMonthResult?.total_revenue ? parseInt(thisMonthResult.total_revenue) : 0;
-            const lastMonthBookingCount = lastMonthResult?.booking_count ? parseInt(lastMonthResult.booking_count) : 0;
-            const lastMonthTotalRevenue = lastMonthResult?.total_revenue ? parseInt(lastMonthResult.total_revenue) : 0;
-            
-            console.log(`📊 處理後的統計數據:`, {
-                thisMonth: { bookingCount: thisMonthBookingCount, totalRevenue: thisMonthTotalRevenue },
-                lastMonth: { bookingCount: lastMonthBookingCount, totalRevenue: lastMonthTotalRevenue }
-            });
-            
-            return {
-                thisMonth: {
-                    bookingCount: thisMonthBookingCount,
-                    totalRevenue: thisMonthTotalRevenue,
-                    weekdayOccupancy: thisMonthOccupancy.weekdayOccupancy,
-                    weekendOccupancy: thisMonthOccupancy.weekendOccupancy
-                },
-                lastMonth: {
-                    bookingCount: lastMonthBookingCount,
-                    totalRevenue: lastMonthTotalRevenue,
-                    weekdayOccupancy: lastMonthOccupancy.weekdayOccupancy,
-                    weekendOccupancy: lastMonthOccupancy.weekendOccupancy
-                }
-            };
-        }
+        const lastMonthStart = `${lastMonthYear}-${String(lastMonthNum).padStart(2, '0')}-01`;
+        const lastMonthEndDate = new Date(lastMonthYear, lastMonthNum, 0);
+        const lastMonthEnd = formatLocalYMD(lastMonthEndDate);
+
+        const totalRooms = await fetchTotalRoomsForReport();
+        const [thisSlice, lastSlice] = await Promise.all([
+            getComparisonSlice(thisMonthStart, thisMonthEnd, totalRooms),
+            getComparisonSlice(lastMonthStart, lastMonthEnd, totalRooms)
+        ]);
+
+        return {
+            thisMonth: thisSlice,
+            lastMonth: lastSlice
+        };
     } catch (error) {
         console.error('❌ 查詢月度比較統計失敗:', error.message);
-        console.error('錯誤堆疊:', error.stack);
-        console.error('錯誤詳情:', {
-            name: error.name,
-            message: error.message,
-            stack: error.stack
-        });
         throw error;
     }
 }
@@ -7342,6 +7071,7 @@ module.exports = {
     deleteBooking,
     getStatistics,
     getMonthlyComparison,
+    getPeriodComparison,
     // 房型管理
     getAllRoomTypes,
     getAllRoomTypesAdmin,

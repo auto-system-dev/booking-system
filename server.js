@@ -3954,7 +3954,7 @@ app.get('/api/statistics', requireAuth, checkPermission('statistics.view'), admi
     }
 });
 
-// API: 取得上月和本月的統計資料（不含比較）
+// API: 取得上月和本月的統計資料（曆月；供其他頁面或相容用）
 app.get('/api/statistics/monthly-stats', requireAuth, checkPermission('statistics.view'), adminLimiter, async (req, res) => {
     try {
         const stats = await db.getMonthlyComparison();
@@ -3970,6 +3970,33 @@ app.get('/api/statistics/monthly-stats', requireAuth, checkPermission('statistic
             success: false, 
             message: '查詢月度統計失敗',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+// API: 營運報表「區間比較」— 所選期間 vs 等長前期（入住日口徑）
+app.get('/api/statistics/period-comparison', requireAuth, checkPermission('statistics.view'), adminLimiter, async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        if (!startDate || !endDate) {
+            return res.status(400).json({
+                success: false,
+                message: '請提供 startDate 與 endDate（YYYY-MM-DD）'
+            });
+        }
+        if (String(startDate) > String(endDate)) {
+            return res.status(400).json({
+                success: false,
+                message: '開始日期不能晚於結束日期'
+            });
+        }
+        const stats = await db.getPeriodComparison(startDate, endDate);
+        res.json({ success: true, data: stats });
+    } catch (error) {
+        console.error('查詢區間比較錯誤:', error);
+        res.status(500).json({
+            success: false,
+            message: '查詢區間比較失敗：' + (error.message || '')
         });
     }
 });
