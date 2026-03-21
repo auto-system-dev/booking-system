@@ -3445,7 +3445,7 @@ async function loadMonthlyStats() {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('月度統計 API 錯誤:', response.status, errorText);
-            document.getElementById('monthlyStatsGrid').innerHTML = '<div class="error">載入月度統計資料失敗</div>';
+            document.getElementById('monthlyStatsGrid').innerHTML = '<div class="report-panel-error">載入月度統計資料失敗</div>';
             return;
         }
         
@@ -3456,80 +3456,80 @@ async function loadMonthlyStats() {
             renderMonthlyStats(stats);
         } else {
             console.error('月度統計 API 返回失敗:', result);
-            document.getElementById('monthlyStatsGrid').innerHTML = '<div class="error">載入月度統計資料失敗</div>';
+            document.getElementById('monthlyStatsGrid').innerHTML = '<div class="report-panel-error">載入月度統計資料失敗</div>';
         }
     } catch (error) {
         console.error('載入月度統計資料錯誤:', error);
-        document.getElementById('monthlyStatsGrid').innerHTML = '<div class="error">載入月度統計資料時發生錯誤</div>';
+        document.getElementById('monthlyStatsGrid').innerHTML = '<div class="report-panel-error">載入月度統計資料時發生錯誤</div>';
     }
 }
 
-// 渲染月度統計資料
+// 渲染月度統計資料（營運報表版面）
 function renderMonthlyStats(stats) {
     const grid = document.getElementById('monthlyStatsGrid');
     if (!grid) return;
-    
+
+    const occBar = (pct) => {
+        const v = Math.min(100, Math.max(0, Number(pct) || 0));
+        return `<div class="report-occ-track" aria-hidden="true"><div class="report-occ-fill" style="width:${v}%"></div></div>`;
+    };
+
+    const rowPlain = (label, valueHtml) => `
+        <div class="report-month-row">
+            <div class="report-month-row__top">
+                <span class="report-month-row__label">${label}</span>
+                <span class="report-month-row__value">${valueHtml}</span>
+            </div>
+        </div>`;
+
+    const rowRevenue = (label, amount) => `
+        <div class="report-month-row report-month-row--revenue">
+            <div class="report-month-row__top">
+                <span class="report-month-row__label">${label}</span>
+                <span class="report-month-row__value">NT$ ${Number(amount || 0).toLocaleString()}</span>
+            </div>
+        </div>`;
+
+    const rowOcc = (label, pct) => `
+        <div class="report-month-row">
+            <div class="report-month-row__top">
+                <span class="report-month-row__label">${label}</span>
+                <span class="report-month-row__value">${(Number(pct) || 0).toFixed(2)}%</span>
+            </div>
+            ${occBar(pct)}
+        </div>`;
+
     const thisMonth = stats.thisMonth || {};
     const lastMonth = stats.lastMonth || {};
-    
+
     const today = new Date();
     const currentMonth = today.getMonth() + 1;
     const lastMonthNum = currentMonth === 1 ? 12 : currentMonth - 1;
     const monthNames = ['', '一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
-    
+
     grid.innerHTML = `
-        <div class="month-stat-card" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <h4 style="margin-top: 0; margin-bottom: 15px; color: #333; font-size: 18px;">本月（${monthNames[currentMonth]}）</h4>
-            <div class="stat-item" style="margin-bottom: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #666;">訂房數：</span>
-                    <span style="font-weight: bold; font-size: 16px;">${thisMonth.bookingCount || 0}</span>
-                </div>
-            </div>
-            <div class="stat-item" style="margin-bottom: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #666;">總營收：</span>
-                    <span style="font-weight: bold; font-size: 16px; color: #2196F3;">NT$ ${(thisMonth.totalRevenue || 0).toLocaleString()}</span>
-                </div>
-            </div>
-            <div class="stat-item" style="margin-bottom: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #666;">平日住房率：</span>
-                    <span style="font-weight: bold; font-size: 16px;">${(thisMonth.weekdayOccupancy || 0).toFixed(2)}%</span>
-                </div>
-            </div>
-            <div class="stat-item">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #666;">假日住房率：</span>
-                    <span style="font-weight: bold; font-size: 16px;">${(thisMonth.weekendOccupancy || 0).toFixed(2)}%</span>
-                </div>
+        <div class="report-month-card report-month-card--this">
+            <header class="report-month-card__head">
+                <span class="report-month-card__chip">本月</span>
+                <h4 class="report-month-card__title">${monthNames[currentMonth]}</h4>
+            </header>
+            <div class="report-month-card__body">
+                ${rowPlain('訂房數', String(thisMonth.bookingCount || 0))}
+                ${rowRevenue('總營收', thisMonth.totalRevenue)}
+                ${rowOcc('平日住房率', thisMonth.weekdayOccupancy)}
+                ${rowOcc('假日住房率', thisMonth.weekendOccupancy)}
             </div>
         </div>
-        <div class="month-stat-card" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <h4 style="margin-top: 0; margin-bottom: 15px; color: #333; font-size: 18px;">上月（${monthNames[lastMonthNum]}）</h4>
-            <div class="stat-item" style="margin-bottom: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #666;">訂房數：</span>
-                    <span style="font-weight: bold; font-size: 16px;">${lastMonth.bookingCount || 0}</span>
-                </div>
-            </div>
-            <div class="stat-item" style="margin-bottom: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #666;">總營收：</span>
-                    <span style="font-weight: bold; font-size: 16px; color: #2196F3;">NT$ ${(lastMonth.totalRevenue || 0).toLocaleString()}</span>
-                </div>
-            </div>
-            <div class="stat-item" style="margin-bottom: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #666;">平日住房率：</span>
-                    <span style="font-weight: bold; font-size: 16px;">${(lastMonth.weekdayOccupancy || 0).toFixed(2)}%</span>
-                </div>
-            </div>
-            <div class="stat-item">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #666;">假日住房率：</span>
-                    <span style="font-weight: bold; font-size: 16px;">${(lastMonth.weekendOccupancy || 0).toFixed(2)}%</span>
-                </div>
+        <div class="report-month-card report-month-card--prev">
+            <header class="report-month-card__head">
+                <span class="report-month-card__chip">上月</span>
+                <h4 class="report-month-card__title">${monthNames[lastMonthNum]}</h4>
+            </header>
+            <div class="report-month-card__body">
+                ${rowPlain('訂房數', String(lastMonth.bookingCount || 0))}
+                ${rowRevenue('總營收', lastMonth.totalRevenue)}
+                ${rowOcc('平日住房率', lastMonth.weekdayOccupancy)}
+                ${rowOcc('假日住房率', lastMonth.weekendOccupancy)}
             </div>
         </div>
     `;
@@ -3549,21 +3549,28 @@ function resetStatisticsFilter() {
     loadStatistics();
 }
 
-// 渲染房型統計
+// 渲染房型統計（營運報表版面）
 function renderRoomStats(roomStats) {
     const container = document.getElementById('roomStatsList');
-    
+
     if (roomStats.length === 0) {
-        container.innerHTML = '<div class="loading">沒有資料</div>';
+        container.innerHTML = '<div class="report-panel-empty">目前沒有房型統計資料</div>';
         return;
     }
-    
-    container.innerHTML = roomStats.map(stat => `
-        <div class="room-stat-item">
-            <span class="room-stat-name">${stat.room_type}</span>
-            <span class="room-stat-count">${stat.count} 筆</span>
+
+    const rows = roomStats.map((stat) => `
+        <div class="report-room-row">
+            <span class="report-room-name">${escapeHtml(stat.room_type || '')}</span>
+            <span class="report-room-count">${Number(stat.count) || 0} 筆</span>
         </div>
     `).join('');
+
+    container.innerHTML = `
+        <div class="report-room-table">
+            <div class="report-room-thead"><span>房型名稱</span><span>訂房筆數</span></div>
+            ${rows}
+        </div>
+    `;
 }
 
 // 格式化日期

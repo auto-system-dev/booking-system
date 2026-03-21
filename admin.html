@@ -463,74 +463,94 @@
             </section>
 
             <!-- 營運報表區 -->
-            <section id="statistics-section" class="content-section">
-                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
-                    <h2 style="display: flex; align-items: center; gap: 8px; margin: 0;">
-                        <span class="material-symbols-outlined" style="font-size: 28px;">monitoring</span>
-                        <span>營運報表</span>
-                    </h2>
-                    <div class="header-actions" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                        <div class="date-range-filter" style="display: flex; align-items: center; gap: 6px;">
-                            <label for="statsStartDate" style="font-size: 13px; color: #666;">期間</label>
-                            <input type="date" id="statsStartDate" style="padding: 4px 8px; font-size: 13px;">
-                            <span>~</span>
-                            <input type="date" id="statsEndDate" style="padding: 4px 8px; font-size: 13px;">
+            <section id="statistics-section" class="content-section report-page">
+                <header class="report-page-header">
+                    <div class="report-page-heading">
+                        <h2 class="report-page-title">
+                            <span class="material-symbols-outlined report-page-title-icon">monitoring</span>
+                            營運報表
+                        </h2>
+                        <p class="report-page-desc">上方 KPI 依您選擇的期間匯總；下方「上月與本月」為曆月自然月對照。</p>
+                    </div>
+                    <div class="report-toolbar" role="group" aria-label="報表期間與匯出">
+                        <div class="report-toolbar-dates">
+                            <label class="report-toolbar-label" for="statsStartDate">期間</label>
+                            <input type="date" id="statsStartDate" class="report-date-input">
+                            <span class="report-date-sep" aria-hidden="true">至</span>
+                            <input type="date" id="statsEndDate" class="report-date-input">
                         </div>
-                        <button class="btn-secondary" onclick="applyStatisticsFilter()">套用</button>
-                        <button class="btn-refresh" onclick="resetStatisticsFilter()">
-                            <span class="material-symbols-outlined">refresh</span> 全部期間
-                        </button>
-                        <button class="btn-refresh permission-required" data-permission="statistics.export" onclick="exportStatisticsCSV()" title="匯出統計報表 CSV">
-                            <span class="material-symbols-outlined">download</span> 匯出
-                        </button>
+                        <div class="report-toolbar-actions">
+                            <button type="button" class="btn-secondary" onclick="applyStatisticsFilter()">套用</button>
+                            <button type="button" class="btn-refresh" onclick="resetStatisticsFilter()">
+                                <span class="material-symbols-outlined">refresh</span> 全部期間
+                            </button>
+                            <button type="button" class="btn-refresh permission-required" data-permission="statistics.export" onclick="exportStatisticsCSV()" title="匯出統計報表 CSV">
+                                <span class="material-symbols-outlined">download</span> 匯出
+                            </button>
+                        </div>
                     </div>
+                </header>
+
+                <div class="stats-grid report-kpi-grid" id="statsGrid">
+                    <article class="stat-card report-kpi-card report-kpi-card--bookings">
+                        <div class="report-kpi-card-head">
+                            <div class="stat-icon report-kpi-icon"><span class="material-symbols-outlined">event_note</span></div>
+                            <span class="stat-label report-kpi-label">總訂房數</span>
+                        </div>
+                        <div class="stat-value report-kpi-value" id="totalBookings">-</div>
+                        <div class="stat-detail report-kpi-detail" id="totalBookingsDetail">-</div>
+                    </article>
+                    <article class="stat-card report-kpi-card report-kpi-card--revenue">
+                        <div class="report-kpi-card-head">
+                            <div class="stat-icon report-kpi-icon"><span class="material-symbols-outlined">money_bag</span></div>
+                            <span class="stat-label report-kpi-label">總營收</span>
+                        </div>
+                        <div class="stat-value report-kpi-value" id="totalRevenue">-</div>
+                        <div class="stat-detail report-kpi-detail" id="totalRevenueDetail">-</div>
+                    </article>
+                    <article class="stat-card report-kpi-card report-kpi-card--transfer">
+                        <div class="report-kpi-card-head">
+                            <div class="stat-icon report-kpi-icon"><span class="material-symbols-outlined">account_balance</span></div>
+                            <span class="stat-label report-kpi-label" id="transferBookingsLabel">匯款轉帳</span>
+                        </div>
+                        <div class="stat-value report-kpi-value" id="transferBookings">-</div>
+                        <div class="stat-detail report-kpi-detail" id="transferBookingsDetail">-</div>
+                    </article>
+                    <article class="stat-card report-kpi-card report-kpi-card--cardpay">
+                        <div class="report-kpi-card-head">
+                            <div class="stat-icon report-kpi-icon"><span class="material-symbols-outlined">credit_card</span></div>
+                            <span class="stat-label report-kpi-label">線上刷卡</span>
+                        </div>
+                        <div class="stat-value report-kpi-value" id="cardBookings">-</div>
+                        <div class="stat-detail report-kpi-detail" id="cardBookingsDetail">-</div>
+                    </article>
                 </div>
 
-                <div class="stats-grid" id="statsGrid">
-                    <div class="stat-card">
-                        <div class="stat-icon"><span class="material-symbols-outlined">event_note</span></div>
-                        <div class="stat-value" id="totalBookings">-</div>
-                        <div class="stat-label">總訂房數</div>
-                        <div class="stat-detail" id="totalBookingsDetail" style="margin-top: 8px; font-size: 14px; color: #666;">-</div>
+                <section class="report-panel report-panel-monthly" aria-labelledby="report-monthly-heading">
+                    <div class="report-panel-head" id="report-monthly-heading">
+                        <span class="material-symbols-outlined report-panel-head-icon">calendar_month</span>
+                        <div>
+                            <h3 class="report-panel-title">上月與本月統計</h3>
+                            <p class="report-panel-sub">自然月對照 · 訂房數與營收</p>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon"><span class="material-symbols-outlined">money_bag</span></div>
-                        <div class="stat-value" id="totalRevenue">-</div>
-                        <div class="stat-label">總營收</div>
-                        <div class="stat-detail" id="totalRevenueDetail" style="margin-top: 8px; font-size: 14px; color: #666;">-</div>
+                    <div class="monthly-stats-grid" id="monthlyStatsGrid">
+                        <div class="loading report-panel-loading">載入中...</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon"><span class="material-symbols-outlined">account_balance</span></div>
-                        <div class="stat-value" id="transferBookings">-</div>
-                        <div class="stat-label" id="transferBookingsLabel">匯款轉帳</div>
-                        <div class="stat-detail" id="transferBookingsDetail" style="margin-top: 8px; font-size: 14px; color: #666;">-</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon"><span class="material-symbols-outlined">credit_card</span></div>
-                        <div class="stat-value" id="cardBookings">-</div>
-                        <div class="stat-label">線上刷卡</div>
-                        <div class="stat-detail" id="cardBookingsDetail" style="margin-top: 8px; font-size: 14px; color: #666;">-</div>
-                    </div>
-                </div>
+                </section>
 
-                <!-- 上月與本月統計 -->
-                <div class="monthly-stats" style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-                    <h3 style="margin-top: 0; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-                        <span class="material-symbols-outlined" style="font-size: 24px;">calendar_month</span>
-                        上月與本月統計
-                    </h3>
-                    <div class="monthly-stats-grid" id="monthlyStatsGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div class="loading">載入中...</div>
+                <section class="report-panel report-panel-rooms" aria-labelledby="report-rooms-heading">
+                    <div class="report-panel-head" id="report-rooms-heading">
+                        <span class="material-symbols-outlined report-panel-head-icon">king_bed</span>
+                        <div>
+                            <h3 class="report-panel-title">房型統計</h3>
+                            <p class="report-panel-sub">依所選期間內之訂房筆數</p>
+                        </div>
                     </div>
-                </div>
-
-                <!-- 房型統計 -->
-                <div class="room-stats">
-                    <h3>房型統計</h3>
-                    <div class="room-stats-list" id="roomStatsList">
-                        <div class="loading">載入中...</div>
+                    <div class="room-stats-list report-room-list" id="roomStatsList">
+                        <div class="loading report-panel-loading">載入中...</div>
                     </div>
-                </div>
+                </section>
             </section>
 
             <!-- 房型管理區（包含假日管理分頁） -->
