@@ -497,18 +497,11 @@ body.login-page-active {
     --report-text: #1e293b;
     --report-muted: #64748b;
     --report-surface: #ffffff;
-    --report-page-bg: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 48%, #ffffff 100%);
-    background: var(--report-page-bg);
-    margin: -10px -8px 0;
-    padding: 8px 8px 32px;
+    /* 與儀表板相同：沿用主內容區／body 底色，不另套漸層 */
+    background: transparent;
+    margin: 0;
+    padding: 0;
     border-radius: 0;
-}
-
-@media (min-width: 900px) {
-    .report-page {
-        margin: -10px -16px 0;
-        padding: 12px 16px 40px;
-    }
 }
 
 /* 標題獨立一列，工具列整塊在下方（全寬） */
@@ -873,124 +866,6 @@ body.login-page-active {
     color: #b91c1c;
     border-color: #fecaca;
     background: #fef2f2;
-}
-
-.monthly-stats-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 16px;
-}
-
-@media (min-width: 768px) {
-    .monthly-stats-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-    }
-}
-
-.report-month-card {
-    border: 1px solid var(--report-border);
-    border-radius: 14px;
-    overflow: hidden;
-    background: #fafbfc;
-}
-
-.report-month-card--this {
-    background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
-    border-color: #cfe8f5;
-    box-shadow: 0 2px 10px rgba(44, 142, 196, 0.08);
-}
-
-.report-month-card--prev {
-    opacity: 0.98;
-}
-
-.report-month-card__head {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 18px;
-    background: rgba(44, 142, 196, 0.08);
-    border-bottom: 1px solid var(--report-border);
-}
-
-.report-month-card--prev .report-month-card__head {
-    background: #f1f5f9;
-}
-
-.report-month-card__chip {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: var(--report-accent);
-    color: #fff;
-}
-
-.report-month-card--prev .report-month-card__chip {
-    background: #94a3b8;
-}
-
-.report-month-card__title {
-    margin: 0;
-    font-size: 17px;
-    font-weight: 700;
-    color: var(--report-text);
-}
-
-.report-month-card__body {
-    padding: 6px 0;
-}
-
-.report-month-row {
-    padding: 12px 18px;
-    border-bottom: 1px solid #f1f5f9;
-}
-
-.report-month-row:last-child {
-    border-bottom: none;
-}
-
-.report-month-row__top {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 12px;
-    margin-bottom: 6px;
-}
-
-.report-month-row__label {
-    font-size: 13px;
-    color: var(--report-muted);
-}
-
-.report-month-row__value {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--report-text);
-    font-variant-numeric: tabular-nums;
-}
-
-.report-month-row--revenue .report-month-row__value {
-    color: var(--report-accent);
-    font-size: 16px;
-}
-
-.report-occ-track {
-    height: 6px;
-    border-radius: 999px;
-    background: #e2e8f0;
-    overflow: hidden;
-}
-
-.report-occ-fill {
-    height: 100%;
-    border-radius: 999px;
-    background: linear-gradient(90deg, #2C8EC4, #5ab0db);
-    min-width: 0;
-    transition: width 0.35s ease;
 }
 
 .report-room-list {

@@ -1546,7 +1546,7 @@ function switchSection(section) {
 
 /**
  * 登入或重新整理後，依 URL hash 只載入「目前要看」的區塊資料。
- * 避免同時請求儀表板 + 全量訂房 + 營運報表（後者含區間比較，後端極重）。
+ * 避免同時請求儀表板 + 全量訂房 + 營運報表（後端極重）。
  */
 function loadInitialAdminRoute() {
     if (typeof isAdminPageVisible !== 'function' || !isAdminPageVisible()) {
@@ -3432,13 +3432,6 @@ function formatLocalYMDFromDate(d) {
     return `${y}-${m}-${day}`;
 }
 
-function formatReportRangeLabel(ymd) {
-    if (!ymd) return '';
-    const p = String(ymd).split('-');
-    if (p.length !== 3) return ymd;
-    return `${p[0]}/${p[1]}/${p[2]}`;
-}
-
 function getReportRangeThisWeek() {
     const now = new Date();
     const day = now.getDay();
@@ -3559,9 +3552,6 @@ async function loadStatistics() {
             // 渲染來源分析
             renderSourceAnalysis(stats.bySource || []);
 
-            // 區間比較（本期 vs 等長前期）
-            loadPeriodComparisonStats(startDate, endDate);
-
             let opsKpiStart = startDate;
             let opsKpiEnd = endDate;
             if (!opsKpiStart || !opsKpiEnd) {
@@ -3597,115 +3587,6 @@ async function loadStatistics() {
         console.error('載入統計資料錯誤:', error);
         showError('載入統計資料時發生錯誤: ' + (error.message || '未知錯誤'));
     }
-}
-
-// 載入「區間比較」：所選期間 vs 等長前期（須已選開始與結束日）
-async function loadPeriodComparisonStats(startDate, endDate) {
-    const grid = document.getElementById('monthlyStatsGrid');
-    if (!grid) return;
-
-    if (!startDate || !endDate) {
-        grid.innerHTML = '<div class="report-panel-empty">請選擇期間或使用快捷（本週／本月／今年），以顯示<strong>本期與前期</strong>對照。<br><span style="font-size:13px;color:var(--report-muted);">前期定義：與本期<strong>天數相同</strong>，且<strong>緊接在本期開始日之前</strong>。</span></div>';
-        return;
-    }
-
-    try {
-        const params = new URLSearchParams({ startDate, endDate });
-        const response = await adminFetch(`/api/statistics/period-comparison?${params.toString()}`);
-
-        if (response.status === 401) {
-            console.warn('區間比較 API 返回 401，Session 可能已過期');
-            await checkAuthStatus();
-            return;
-        }
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('區間比較 API 錯誤:', response.status, errorText);
-            grid.innerHTML = '<div class="report-panel-error">載入區間比較失敗</div>';
-            return;
-        }
-
-        const result = await response.json();
-
-        if (result.success) {
-            renderPeriodComparisonStats(result.data);
-        } else {
-            console.error('區間比較 API 返回失敗:', result);
-            grid.innerHTML = '<div class="report-panel-error">' + escapeHtml(result.message || '載入區間比較失敗') + '</div>';
-        }
-    } catch (error) {
-        console.error('載入區間比較錯誤:', error);
-        grid.innerHTML = '<div class="report-panel-error">載入區間比較時發生錯誤</div>';
-    }
-}
-
-// 渲染區間比較（本期 vs 前期）
-function renderPeriodComparisonStats(data) {
-    const grid = document.getElementById('monthlyStatsGrid');
-    if (!grid) return;
-
-    const occBar = (pct) => {
-        const v = Math.min(100, Math.max(0, Number(pct) || 0));
-        return `<div class="report-occ-track" aria-hidden="true"><div class="report-occ-fill" style="width:${v}%"></div></div>`;
-    };
-
-    const rowPlain = (label, valueHtml) => `
-        <div class="report-month-row">
-            <div class="report-month-row__top">
-                <span class="report-month-row__label">${label}</span>
-                <span class="report-month-row__value">${valueHtml}</span>
-            </div>
-        </div>`;
-
-    const rowRevenue = (label, amount) => `
-        <div class="report-month-row report-month-row--revenue">
-            <div class="report-month-row__top">
-                <span class="report-month-row__label">${label}</span>
-                <span class="report-month-row__value">NT$ ${Number(amount || 0).toLocaleString()}</span>
-            </div>
-        </div>`;
-
-    const rowOcc = (label, pct) => `
-        <div class="report-month-row">
-            <div class="report-month-row__top">
-                <span class="report-month-row__label">${label}</span>
-                <span class="report-month-row__value">${(Number(pct) || 0).toFixed(2)}%</span>
-            </div>
-            ${occBar(pct)}
-        </div>`;
-
-    const cur = data.currentPeriod || {};
-    const prev = data.previousPeriod || {};
-    const curTitle = `${formatReportRangeLabel(cur.startDate)} ~ ${formatReportRangeLabel(cur.endDate)}`;
-    const prevTitle = `${formatReportRangeLabel(prev.startDate)} ~ ${formatReportRangeLabel(prev.endDate)}`;
-
-    grid.innerHTML = `
-        <div class="report-month-card report-month-card--this">
-            <header class="report-month-card__head">
-                <span class="report-month-card__chip">本期</span>
-                <h4 class="report-month-card__title">${escapeHtml(curTitle)}</h4>
-            </header>
-            <div class="report-month-card__body">
-                ${rowPlain('訂房數', String(cur.bookingCount || 0))}
-                ${rowRevenue('總營收', cur.totalRevenue)}
-                ${rowOcc('平日住房率', cur.weekdayOccupancy)}
-                ${rowOcc('假日住房率', cur.weekendOccupancy)}
-            </div>
-        </div>
-        <div class="report-month-card report-month-card--prev">
-            <header class="report-month-card__head">
-                <span class="report-month-card__chip">前期</span>
-                <h4 class="report-month-card__title">${escapeHtml(prevTitle)}</h4>
-            </header>
-            <div class="report-month-card__body">
-                ${rowPlain('訂房數', String(prev.bookingCount || 0))}
-                ${rowRevenue('總營收', prev.totalRevenue)}
-                ${rowOcc('平日住房率', prev.weekdayOccupancy)}
-                ${rowOcc('假日住房率', prev.weekendOccupancy)}
-            </div>
-        </div>
-    `;
 }
 
 // 套用統計日期篩選
