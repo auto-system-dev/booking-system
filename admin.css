@@ -719,7 +719,8 @@ body.login-page-active {
 #dashboard-section .report-kpi-card--bookings::before,
 #dashboard-section .report-kpi-card--revenue::before,
 #dashboard-section .report-kpi-card--transfer::before,
-#dashboard-section .report-kpi-card--cardpay::before {
+#dashboard-section .report-kpi-card--cardpay::before,
+.report-page .report-kpi-card--ops-metric::before {
     background: linear-gradient(180deg, #2C8EC4, #1d6a94);
 }
 
@@ -734,6 +735,26 @@ body.login-page-active {
     align-items: center;
     gap: 10px;
     margin-bottom: 12px;
+}
+
+.report-kpi-card-head--ops {
+    align-items: flex-start;
+}
+
+.report-kpi-head-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    min-width: 0;
+    flex: 1;
+}
+
+.report-kpi-subtitle {
+    font-size: 12px;
+    line-height: 1.45;
+    font-weight: 500;
+    color: var(--report-muted);
 }
 
 .report-page .report-kpi-icon,
@@ -778,6 +799,25 @@ body.login-page-active {
     font-size: 12px !important;
     line-height: 1.5;
     color: var(--report-muted) !important;
+}
+
+/* 營運報表頂部五張營運 KPI：趨勢列沿用 dashboard-kpi-delta 的 up/down 色 */
+.report-kpi-detail.dashboard-kpi-delta {
+    font-size: 13px !important;
+    font-weight: 600;
+}
+
+.report-kpi-detail.dashboard-kpi-delta.up {
+    color: #047857 !important;
+}
+
+.report-kpi-detail.dashboard-kpi-delta.down {
+    color: #dc2626 !important;
+}
+
+.report-page .report-ops-kpi-grid {
+    margin-top: 0;
+    margin-bottom: 24px;
 }
 
 .report-panel {
@@ -1773,25 +1813,6 @@ body.login-page-active {
 
 .dashboard-ops-grid {
     gap: 20px;
-}
-
-#statistics-section .dashboard-ops-grid--report {
-    margin-top: 0;
-    margin-bottom: 24px;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 16px;
-}
-
-/* 營運報表頁頂五張 KPI：與報表區白底卡片（工具列／區塊）視覺一致 */
-#statistics-section .dashboard-ops-grid--report .dashboard-card.dashboard-kpi-card {
-    border: 1px solid var(--report-border);
-    border-radius: 16px;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
-}
-
-#statistics-section .dashboard-ops-grid--report .dashboard-card.dashboard-kpi-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1);
 }
 
 .dashboard-kpi-card {
