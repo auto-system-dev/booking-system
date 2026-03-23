@@ -716,7 +716,7 @@ let currentBookingView = 'list';
 let calendarStartDate = null;
 let sortColumn = null; // 當前排序欄位
 let sortDirection = 'asc'; // 排序方向：'asc' 或 'desc'
-/** 訂房列表快速篩選（與儀表板今日住房/退房口徑一致）：null | 'today_checkin' | 'today_checkout' */
+/** 訂房列表快速篩選（與儀表板今日入住/退房口徑一致）：null | 'today_checkin' | 'today_checkout' */
 let bookingListQuickFilter = null;
 
 let isHtmlMode = false;
@@ -1676,6 +1676,7 @@ async function loadDashboard(options = {}) {
         const values = [
             data.todayCheckIns,
             data.todayCheckOuts,
+            data.tomorrowCheckIns,
             data.todayTransferOrders,
             data.todayCardOrders,
             data.activeBookings,
@@ -1699,13 +1700,20 @@ async function loadDashboard(options = {}) {
             return s === 'cancelled' || s === '已取消' || s === '取消';
         };
         const toYmd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const todayStr = toYmd(new Date());
+        const today = new Date();
+        const todayStr = toYmd(today);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+        const tomorrowStr = toYmd(tomorrow);
 
         const todayCheckIns = bookings.filter((booking) =>
             booking.check_in_date === todayStr && (isActiveStatus(booking.status) || isReservedStatus(booking.status))
         ).length;
         const todayCheckOuts = bookings.filter((booking) =>
             booking.check_out_date === todayStr && isActiveStatus(booking.status)
+        ).length;
+        const tomorrowCheckIns = bookings.filter((booking) =>
+            booking.check_in_date === tomorrowStr && (isActiveStatus(booking.status) || isReservedStatus(booking.status))
         ).length;
 
         const todayBookings = bookings.filter((booking) => {
@@ -1730,6 +1738,7 @@ async function loadDashboard(options = {}) {
         return {
             todayCheckIns,
             todayCheckOuts,
+            tomorrowCheckIns,
             todayTransferOrders,
             todayCardOrders,
             activeBookings,
@@ -1852,11 +1861,13 @@ async function loadDashboard(options = {}) {
                 }
             }
             
-            // 更新今日房況（僅顯示今日住房/退房）；僅當筆數 > 0 時數字可點擊
+            // 更新今日房況（今日入住/退房可點擊；明日入住僅顯示）
             const todayCheckInsEl = document.getElementById('todayCheckIns');
             updateTodayStayCountPill(todayCheckInsEl, data.todayCheckIns || 0, 'checkin');
             const todayCheckOutsEl = document.getElementById('todayCheckOuts');
             updateTodayStayCountPill(todayCheckOutsEl, data.todayCheckOuts || 0, 'checkout');
+            const tomorrowCheckInsEl = document.getElementById('tomorrowCheckIns');
+            updateTodayStayCountPill(tomorrowCheckInsEl, data.tomorrowCheckIns || 0, 'tomorrow_checkin');
 
             // KPI：bundle 已帶入時不再重複請求 /api/dashboard/ops
             try {
@@ -2843,13 +2854,14 @@ function updateTodayStayCountPill(el, count, mode) {
     if (!el) return;
     const n = Math.max(0, Math.floor(Number(count) || 0));
     el.textContent = String(n);
-    const enabled = n > 0;
+    const supportsQuickOpen = mode === 'checkin' || mode === 'checkout';
+    const enabled = supportsQuickOpen && n > 0;
     el.classList.toggle('ops-today-pill-count--disabled', !enabled);
     if (enabled) {
         el.setAttribute('tabindex', '0');
         el.setAttribute('role', 'link');
         el.removeAttribute('aria-disabled');
-        el.title = mode === 'checkout' ? '點擊查看今日退房列表' : '點擊查看今日住房列表';
+        el.title = mode === 'checkout' ? '點擊查看今日退房列表' : '點擊查看今日入住列表';
     } else {
         el.setAttribute('tabindex', '-1');
         el.removeAttribute('role');
@@ -2886,7 +2898,7 @@ function updateBookingQuickFilterBanner() {
         return;
     }
     const labels = {
-        today_checkin: '目前篩選：今日住房（入住日為今天，狀態為有效或保留；與儀表板口徑一致）',
+        today_checkin: '目前篩選：今日入住（入住日為今天，狀態為有效或保留；與儀表板口徑一致）',
         today_checkout: '目前篩選：今日退房（退房日為今天，狀態為有效；與儀表板口徑一致）'
     };
     textEl.textContent = labels[bookingListQuickFilter] || '';

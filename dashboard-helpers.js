@@ -23,6 +23,9 @@ function computeDashboardSummaryFromBookings(allBookings) {
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     const todayStr = `${year}-${month}-${day}`;
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
 
     const list = allBookings || [];
 
@@ -34,6 +37,12 @@ function computeDashboardSummaryFromBookings(allBookings) {
 
     const todayCheckOuts = list.filter(
         (booking) => booking.check_out_date === todayStr && isActiveStatus(booking.status)
+    ).length;
+
+    const tomorrowCheckIns = list.filter(
+        (booking) =>
+            booking.check_in_date === tomorrowStr &&
+            (isActiveStatus(booking.status) || isReservedStatus(booking.status))
     ).length;
 
     const todayBookings = list.filter((booking) => {
@@ -59,6 +68,7 @@ function computeDashboardSummaryFromBookings(allBookings) {
     return {
         todayCheckIns,
         todayCheckOuts,
+        tomorrowCheckIns,
         todayTransferOrders,
         todayCardOrders,
         activeBookings,
