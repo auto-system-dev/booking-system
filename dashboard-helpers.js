@@ -335,9 +335,9 @@ function buildDashboardOpsPayload(allBookings, roomTypes, start, end) {
     });
 
     const todos = [
+        { key: 'upcoming_checkins', title: '3 日內即將入住', value: upcomingCheckIns, severity: '' },
         { key: 'pending_due', title: '2 日內待付款到期', value: pendingDueSoon, severity: pendingDueSoon > 0 ? 'warn' : '' },
         { key: 'overdue_unpaid', title: '已逾期未付款', value: overdueUnpaid, severity: overdueUnpaid > 0 ? 'alert' : '' },
-        { key: 'upcoming_checkins', title: '3 日內即將入住', value: upcomingCheckIns, severity: '' },
         {
             key: 'cancel_rate',
             title: '取消率預警',
