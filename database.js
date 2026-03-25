@@ -5361,7 +5361,7 @@ async function deleteBuilding(id) {
 async function getAllRoomTypes() {
     try {
         // 目前前台維持單館流程：只回傳「預設館」（building_id = 1）的房型
-        const sql = `SELECT * FROM room_types WHERE is_active = 1 AND (building_id = 1 OR building_id IS NULL) ORDER BY display_order ASC, id ASC`;
+        const sql = `SELECT * FROM room_types WHERE is_active = 1 AND (building_id = 1 OR building_id IS NULL OR building_id = 0) ORDER BY display_order ASC, id ASC`;
         const result = await query(sql);
         return result.rows;
     } catch (error) {
@@ -5378,8 +5378,8 @@ async function getAllRoomTypesAdmin(buildingId) {
         const sql = hasBuildingFilter
             ? (bid === 1
                 ? (usePostgreSQL
-                    ? `SELECT * FROM room_types WHERE (building_id = $1 OR building_id IS NULL) ORDER BY display_order ASC, id ASC`
-                    : `SELECT * FROM room_types WHERE (building_id = ? OR building_id IS NULL) ORDER BY display_order ASC, id ASC`)
+                    ? `SELECT * FROM room_types WHERE (building_id = $1 OR building_id IS NULL OR building_id = 0) ORDER BY display_order ASC, id ASC`
+                    : `SELECT * FROM room_types WHERE (building_id = ? OR building_id IS NULL OR building_id = 0) ORDER BY display_order ASC, id ASC`)
                 : (usePostgreSQL
                     ? `SELECT * FROM room_types WHERE building_id = $1 ORDER BY display_order ASC, id ASC`
                     : `SELECT * FROM room_types WHERE building_id = ? ORDER BY display_order ASC, id ASC`))
