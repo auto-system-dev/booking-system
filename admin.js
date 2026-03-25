@@ -3127,6 +3127,11 @@ function handleCalendarCellClick(cellElement, roomTypeName, dateStr) {
 function showBookingModal(booking) {
     const modal = document.getElementById('bookingModal');
     const modalBody = document.getElementById('modalBody');
+
+    // 訂房詳情彈窗重用同一個 modal；每次開啟都要確保標題正確
+    const titleEl = modal?.querySelector?.('.modal-header h3');
+    if (titleEl) titleEl.textContent = '訂房詳情';
+
     let parsedAddons = [];
     if (booking?.addons) {
         if (Array.isArray(booking.addons)) {
@@ -4574,6 +4579,11 @@ function showBuildingModal(buildingId) {
     const modal = document.getElementById('bookingModal');
     const modalBody = document.getElementById('modalBody');
     if (!modal || !modalBody) return;
+
+    // 此 modal 會被訂房詳情/房型編輯/館別編輯重用
+    // 所以開啟館別時要先把標題改成「館別詳情」
+    const titleEl = modal.querySelector('.modal-header h3');
+    if (titleEl) titleEl.textContent = '館別詳情';
 
     const isEdit = buildingId !== null && buildingId !== undefined;
     const b = isEdit ? allBuildings.find((x) => Number(x.id) === Number(buildingId)) : null;
