@@ -97,24 +97,25 @@ body {
 }
 
 #buildingSection .section-title {
-    margin-bottom: 0;
+    margin-bottom: 12px;
 }
 
 #buildingSection .building-toolbar {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    align-items: stretch;
+    justify-content: flex-start;
+    flex-direction: column;
     gap: 12px;
 }
 
 #buildingSection .building-toolbar-control {
-    flex: 0 0 auto;
-    min-width: 220px;
+    width: 100%;
+    min-width: 0;
 }
 
 #buildingSection select {
     width: 100%;
-    max-width: 280px;
+    max-width: none;
     padding: 12px 16px;
     border: 2px solid #e0e0e0;
     border-radius: 12px;
@@ -129,15 +130,13 @@ body {
 
 @media (max-width: 520px) {
     #buildingSection .building-toolbar {
-        align-items: flex-start;
-        flex-direction: column;
+        align-items: stretch;
     }
     #buildingSection .building-toolbar-control {
         width: 100%;
         min-width: 0;
     }
     #buildingSection select {
-        max-width: none;
         font-size: 14px;
         padding: 10px 12px;
     }
