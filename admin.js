@@ -2674,6 +2674,10 @@ async function viewCustomerDetails(email) {
             const customer = result.data;
             const modal = document.getElementById('bookingModal');
             const modalBody = document.getElementById('modalBody');
+
+            // 顯示客戶詳情彈窗重用同一個 modal；確保標題正確
+            const titleEl = modal?.querySelector?.('.modal-header h3');
+            if (titleEl) titleEl.textContent = '客戶詳情';
             
             // 顯示客戶詳情
             modalBody.innerHTML = `
@@ -4006,6 +4010,10 @@ if (document.getElementById('adminPage')) {
 function showEditModal(booking) {
     const modal = document.getElementById('bookingModal');
     const modalBody = document.getElementById('modalBody');
+
+    // 編輯訂房也會重用 bookingModal；確保標題正確
+    const titleEl = modal?.querySelector?.('.modal-header h3');
+    if (titleEl) titleEl.textContent = '訂房編輯';
     
     // 計算初始價格（優先使用資料庫中儲存的實際每晚價格）
     const pricePerNight = booking.price_per_night || roomPrices[booking.room_type] || 2000;
@@ -5341,6 +5349,10 @@ function showAddonModal(addon) {
     const modal = document.getElementById('bookingModal');
     const modalBody = document.getElementById('modalBody');
     const isEdit = addon !== null;
+
+    // 加購商品管理彈窗重用同一個 modal；確保標題正確
+    const titleEl = modal?.querySelector?.('.modal-header h3');
+    if (titleEl) titleEl.textContent = '加購商品詳情';
     
     modalBody.innerHTML = `
         <form id="addonForm" onsubmit="saveAddon(event, ${isEdit ? addon.id : 'null'})">
