@@ -590,6 +590,10 @@
                 <div class="section-header">
                     <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">king_bed</span> 房型管理</h2>
                     <div class="header-actions" style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: nowrap;">
+                        <div id="roomTypesBuildingFilter" style="display:none; align-items:center; gap:10px;">
+                            <label style="margin:0; color:#666; font-size: 13px; white-space: nowrap;">館別</label>
+                            <select id="roomTypesBuildingSelect" style="min-width: 180px; padding: 8px; border: 1px solid #ddd; border-radius: 8px;" onchange="onRoomTypesBuildingChange(this.value)"></select>
+                        </div>
                         <button class="btn-primary permission-required" id="addRoomTypeBtn" data-permission="room_types.create" onclick="showAddRoomTypeModal()">
                             <span class="material-symbols-outlined">add</span> 新增房型
                         </button>
@@ -599,10 +603,6 @@
                         <button class="btn-refresh" id="holidayRefreshBtn" onclick="loadHolidays()" style="display: none;">
                             <span class="material-symbols-outlined">refresh</span> 重新整理
                         </button>
-                        <div id="roomTypesBuildingFilter" style="display:none; align-items:center; gap:10px;">
-                            <label style="margin:0; color:#666; font-size: 13px; white-space: nowrap;">館別</label>
-                            <select id="roomTypesBuildingSelect" style="min-width: 180px; padding: 8px; border: 1px solid #ddd; border-radius: 8px;" onchange="onRoomTypesBuildingChange(this.value)"></select>
-                        </div>
                     </div>
                 </div>
 
