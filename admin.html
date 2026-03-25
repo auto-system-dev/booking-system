@@ -593,16 +593,16 @@
                         <button class="btn-primary permission-required" id="addRoomTypeBtn" data-permission="room_types.create" onclick="showAddRoomTypeModal()">
                             <span class="material-symbols-outlined">add</span> 新增房型
                         </button>
-                        <div id="roomTypesBuildingFilter" style="display:none; align-items:center; gap:10px; margin-right: 10px;">
-                            <label style="margin:0; color:#666; font-size: 13px; white-space: nowrap;">館別</label>
-                            <select id="roomTypesBuildingSelect" style="min-width: 180px; padding: 8px; border: 1px solid #ddd; border-radius: 8px;" onchange="onRoomTypesBuildingChange(this.value)"></select>
-                        </div>
                         <button class="btn-refresh" id="roomTypeRefreshBtn" onclick="loadRoomTypes()" style="display: none;">
                             <span class="material-symbols-outlined">refresh</span> 重新整理
                         </button>
                         <button class="btn-refresh" id="holidayRefreshBtn" onclick="loadHolidays()" style="display: none;">
                             <span class="material-symbols-outlined">refresh</span> 重新整理
                         </button>
+                        <div id="roomTypesBuildingFilter" style="display:none; align-items:center; gap:10px; margin-top: 10px; width: 100%; justify-content: flex-end;">
+                            <label style="margin:0; color:#666; font-size: 13px; white-space: nowrap;">館別</label>
+                            <select id="roomTypesBuildingSelect" style="min-width: 180px; padding: 8px; border: 1px solid #ddd; border-radius: 8px;" onchange="onRoomTypesBuildingChange(this.value)"></select>
+                        </div>
                     </div>
                 </div>
 
