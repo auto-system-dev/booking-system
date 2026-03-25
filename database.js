@@ -5376,9 +5376,13 @@ async function getAllRoomTypesAdmin(buildingId) {
         const bid = parseInt(buildingId, 10);
         const hasBuildingFilter = Number.isFinite(bid) && bid > 0;
         const sql = hasBuildingFilter
-            ? (usePostgreSQL
-                ? `SELECT * FROM room_types WHERE building_id = $1 ORDER BY display_order ASC, id ASC`
-                : `SELECT * FROM room_types WHERE building_id = ? ORDER BY display_order ASC, id ASC`)
+            ? (bid === 1
+                ? (usePostgreSQL
+                    ? `SELECT * FROM room_types WHERE (building_id = $1 OR building_id IS NULL) ORDER BY display_order ASC, id ASC`
+                    : `SELECT * FROM room_types WHERE (building_id = ? OR building_id IS NULL) ORDER BY display_order ASC, id ASC`)
+                : (usePostgreSQL
+                    ? `SELECT * FROM room_types WHERE building_id = $1 ORDER BY display_order ASC, id ASC`
+                    : `SELECT * FROM room_types WHERE building_id = ? ORDER BY display_order ASC, id ASC`))
             : `SELECT * FROM room_types ORDER BY display_order ASC, id ASC`;
         const result = hasBuildingFilter ? await query(sql, [bid]) : await query(sql);
         return result.rows;
