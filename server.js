@@ -1601,9 +1601,8 @@ async function getLandingPagePayload() {
         room.bed_types = featureItems.filter((item) => bedTypeKeywords.has(item));
         room.room_facilities = featureItems.filter((item) => !bedTypeKeywords.has(item));
         const customBadge = String(settingsMap[badgeKey] || '').trim();
-        if (customBadge) {
-            room.booking_badge = customBadge;
-        }
+        // 僅以後台銷售頁設定為準，未設定時不顯示標籤
+        room.booking_badge = customBadge;
         room.gallery_images = galleryMap[room.id] || [];
     });
 
@@ -4415,7 +4414,8 @@ app.get('/api/room-types', publicLimiter, async (req, res) => {
                 ...roomType,
                 bed_types: bedTypes,
                 room_facilities: roomFacilities,
-                booking_badge: customBadge || roomType.booking_badge || '',
+                // 僅以後台銷售頁設定為準，未設定時不顯示標籤
+                booking_badge: customBadge,
                 included_items_list: includedItems,
                 gallery_images: galleryImages
             };
