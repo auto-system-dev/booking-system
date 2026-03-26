@@ -11993,6 +11993,7 @@ async function loadLandingSettings() {
 
         if (result.success) {
             const data = result.data;
+            window.__landingSettingsCache = data;
             // 將每個設定值填入對應的表單欄位
             for (const [key, elementId] of Object.entries(landingFieldMap)) {
                 const el = document.getElementById(elementId);
@@ -12053,6 +12054,62 @@ async function loadLandingSettings() {
         console.error('❌ 載入銷售頁設定錯誤:', error);
         showError('載入銷售頁設定時發生錯誤：' + error.message);
     }
+}
+
+const LANDING_ROOMS_BUILDING_STORAGE_KEY = 'landingRoomsBuildingId_v1';
+let selectedBuildingIdForLandingRooms = 1;
+
+function getSelectedBuildingIdForLandingRooms() {
+    try {
+        const raw = localStorage.getItem(LANDING_ROOMS_BUILDING_STORAGE_KEY);
+        const parsed = raw ? parseInt(raw, 10) : NaN;
+        if (Number.isFinite(parsed) && parsed > 0) {
+            selectedBuildingIdForLandingRooms = parsed;
+            return parsed;
+        }
+    } catch (_) {}
+    return selectedBuildingIdForLandingRooms || 1;
+}
+
+function setSelectedBuildingIdForLandingRooms(nextId) {
+    const parsed = parseInt(String(nextId ?? ''), 10);
+    const safe = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+    selectedBuildingIdForLandingRooms = safe;
+    try {
+        localStorage.setItem(LANDING_ROOMS_BUILDING_STORAGE_KEY, String(safe));
+    } catch (_) {}
+}
+
+function syncLandingRoomsBuildingSelect() {
+    const wrap = document.getElementById('landingRoomsBuildingFilterWrap');
+    const selectEl = document.getElementById('landingRoomsBuildingFilter');
+    if (!wrap || !selectEl) return;
+
+    const buildings = Array.isArray(allBuildings) ? allBuildings.filter((b) => Number(b?.is_active) !== 0) : [];
+    const show = buildings.length > 1;
+    wrap.style.display = show ? 'flex' : 'none';
+    if (!show) {
+        setSelectedBuildingIdForLandingRooms(1);
+        selectEl.innerHTML = '';
+        return;
+    }
+
+    const current = getSelectedBuildingIdForLandingRooms();
+    const exists = buildings.some((b) => Number(b?.id) === Number(current));
+    const effective = exists ? current : Number(buildings[0]?.id || 1);
+    setSelectedBuildingIdForLandingRooms(effective);
+
+    selectEl.innerHTML = buildings
+        .map((b) => `<option value="${Number(b.id)}">${escapeHtml(String(b.name || b.code || `館別 ${b.id}`))}</option>`)
+        .join('');
+    selectEl.value = String(effective);
+}
+
+function onLandingRoomsBuildingChange(buildingId) {
+    setSelectedBuildingIdForLandingRooms(buildingId);
+    syncLandingRoomsBuildingSelect();
+    const data = window.__landingSettingsCache || null;
+    if (data) loadLandingRoomTypes(data);
 }
 
 function createFeatureItemsFromLegacySettings(data) {
@@ -12651,6 +12708,7 @@ async function loadLandingRoomTypes(landingData) {
     if (!container) return;
 
     try {
+        syncLandingRoomsBuildingSelect();
         const response = await adminFetch('/api/admin/room-types');
         const result = await response.json();
 
@@ -12664,7 +12722,16 @@ async function loadLandingRoomTypes(landingData) {
         }
 
         // 只顯示啟用中的房型
-        const activeRooms = result.data.filter(r => r.is_active === 1);
+        const bid = getSelectedBuildingIdForLandingRooms();
+        const activeRooms = result.data
+            .filter(r => r.is_active === 1)
+            .filter((r) => {
+                const raw = r?.building_id ?? r?.buildingId ?? 1;
+                const rBid = raw === null || raw === undefined ? 1 : Number(raw);
+                // 預設館相容舊資料
+                if (Number(bid) === 1) return rBid === 1 || rBid === 0 || Number.isNaN(rBid);
+                return rBid === Number(bid);
+            });
         // 供銷售頁房型啟用開關儲存時使用
         window.landingRoomTypeSourceMap = activeRooms.reduce((acc, room) => {
             acc[String(room.id)] = room;

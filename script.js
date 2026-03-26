@@ -375,11 +375,11 @@ function autoSelectRoomTypeIfRequested() {
         return;
     }
 
-    // 視覺上把選取結果帶到使用者視線
+    // 需求：從銷售頁點「預訂」後，帶到訂房頁的日期選擇區（最上方）
     try {
-        const optionEl = Array.from(document.querySelectorAll('.room-option')).find(el => el.dataset.room === roomName);
-        if (optionEl && typeof optionEl.scrollIntoView === 'function') {
-            optionEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const dateRangeEl = document.getElementById('dateRange');
+        if (dateRangeEl && typeof dateRangeEl.scrollIntoView === 'function') {
+            dateRangeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     } catch (_) {}
 }

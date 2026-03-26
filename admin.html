@@ -1922,9 +1922,13 @@
                             </div>
                             <small style="color: #666;">留空時會沿用銷售頁預設文案。</small>
                         </div>
-                        <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">
                             <span class="material-symbols-outlined" style="font-size: 24px; color: #3498db; margin-right: 10px;">king_bed</span>
-                            <h3 style="margin: 0; color: #2c3e50;">房型展示設定</h3>
+                            <h3 style="margin: 0; color: #2c3e50; flex: 1;">房型展示設定</h3>
+                            <div id="landingRoomsBuildingFilterWrap" style="display:none; align-items:center; gap:8px;">
+                                <label for="landingRoomsBuildingFilter" style="font-size:13px; font-weight:600; color:#64748b;">館別</label>
+                                <select id="landingRoomsBuildingFilter" style="min-width: 160px; padding: 8px 10px; border: 1px solid #dbe4ee; border-radius: 8px; background: #fff;" onchange="onLandingRoomsBuildingChange(this.value)"></select>
+                            </div>
                         </div>
                         <div style="background-color: #d1fae5; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
                             <p style="margin: 0; color: #059669; font-size: 14px;">
