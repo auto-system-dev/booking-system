@@ -67,7 +67,7 @@ async function loadLandingConfig() {
             console.log('📋 SSR 載入房型數量:', landingConfig._roomTypes.length);
             await applyConfig(landingConfig);
             console.log('✅ 銷售頁設定已由 SSR 注入');
-            return;
+            // 仍會再以 API 覆蓋一次，避免 SSR/快取造成後台設定未即時同步
         } catch (error) {
             console.warn('⚠️ SSR 設定套用失敗，改用 API 重新載入:', error.message);
         }
@@ -88,6 +88,21 @@ async function loadLandingConfig() {
         }
     } catch (error) {
         console.warn('⚠️ 載入銷售頁設定失敗:', error.message);
+    }
+}
+
+async function refreshLandingRoomTypesByBuilding(buildingId) {
+    try {
+        const bid = parseInt(String(buildingId ?? ''), 10);
+        const safeBid = Number.isFinite(bid) && bid > 0 ? bid : 1;
+        const res = await fetch(`/api/room-types?buildingId=${encodeURIComponent(String(safeBid))}`);
+        const j = await res.json();
+        if (!j || !j.success) return [];
+        const list = Array.isArray(j.data) ? j.data : [];
+        // 銷售頁只顯示 show_on_landing 的房型
+        return list.filter((r) => Number(r?.show_on_landing ?? 1) === 1);
+    } catch (_) {
+        return [];
     }
 }
 
@@ -1263,8 +1278,10 @@ function syncLandingBuildingSwitch(cfg) {
     selectEl.value = String(effective);
 
     if (!selectEl.dataset.boundChange) {
-        selectEl.addEventListener('change', () => {
+        selectEl.addEventListener('change', async () => {
             setLandingSelectedBuildingId(selectEl.value);
+            const bid = getLandingSelectedBuildingId();
+            landingConfig._roomTypes = await refreshLandingRoomTypesByBuilding(bid);
             renderRoomCards(cfg);
             updateBookingLinks();
         });
@@ -1281,6 +1298,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     landingAllBuildings = await loadLandingBuildings();
     landingSelectedBuildingId = getLandingSelectedBuildingId();
     syncLandingBuildingSwitch(landingConfig);
+
+    // 依目前館別重新抓房型（含設施/標籤），確保與後台同步
+    landingConfig._roomTypes = await refreshLandingRoomTypesByBuilding(getLandingSelectedBuildingId());
+    renderRoomCards(landingConfig);
     
     // 再初始化各元件
     initCountdown();
