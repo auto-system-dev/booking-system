@@ -12907,6 +12907,7 @@ function syncLandingRoomEnabledSwitch(roomId, isEnabled) {
 
 function buildLandingRoomTypeUpdatePayload(room, showOnLanding) {
     return {
+        building_id: room.building_id ?? room.buildingId ?? 1,
         name: room.name,
         display_name: room.display_name,
         price: Number(room.price) || 0,
