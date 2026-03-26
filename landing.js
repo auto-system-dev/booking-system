@@ -521,12 +521,7 @@ function getRoomFeatureItemsForLanding(room, cfg) {
     const bedTypes = Array.isArray(room?.bed_types) ? room.bed_types.filter(Boolean) : [];
     const roomFacilities = Array.isArray(room?.room_facilities) ? room.room_facilities.filter(Boolean) : [];
     const merged = [...new Set([...bedTypes, ...roomFacilities])];
-    if (merged.length > 0) return merged;
-
-    // 向後相容：若尚未提供 bed_types/room_facilities，退回舊的 settings 字串
-    const fallback = String(cfg?.[`landing_roomtype_${room?.id}_features`] || '').trim();
-    if (!fallback) return [];
-    return fallback.split(',').map((item) => item.trim()).filter(Boolean);
+    return merged;
 }
 
 // ===== 動態生成旅宿設施區塊 =====
@@ -699,7 +694,7 @@ function renderRoomCards(cfg) {
         const bookingUrl = appendQueryParam(getLandingBookingUrl(), 'roomTypeId', room.id);
         const featureItemsList = getRoomFeatureItemsForLanding(room, cfg);
         const features = featureItemsList.join(',');
-        const badge = String(room.booking_badge || cfg[`landing_roomtype_${room.id}_badge`] || '').trim();
+        const badge = String(room.booking_badge || '').trim();
         const featureItems = buildFeatureHTML(features);
         const badgeClass = badgeClassMap[badge] || '';
         const price = room.price || 0;
