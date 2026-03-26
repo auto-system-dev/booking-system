@@ -74,7 +74,7 @@ async function loadLandingConfig() {
     }
 
     try {
-        const response = await fetch('/api/landing-settings');
+        const response = await fetch(`/api/landing-settings?_ts=${Date.now()}`, { cache: 'no-store' });
         const result = await response.json();
 
         if (result.success && result.data) {
@@ -95,7 +95,10 @@ async function refreshLandingRoomTypesByBuilding(buildingId) {
     try {
         const bid = parseInt(String(buildingId ?? ''), 10);
         const safeBid = Number.isFinite(bid) && bid > 0 ? bid : 1;
-        const res = await fetch(`/api/room-types?buildingId=${encodeURIComponent(String(safeBid))}`);
+        const res = await fetch(
+            `/api/room-types?buildingId=${encodeURIComponent(String(safeBid))}&_ts=${Date.now()}`,
+            { cache: 'no-store' }
+        );
         const j = await res.json();
         if (!j || !j.success) return [];
         const list = Array.isArray(j.data) ? j.data : [];
@@ -1231,7 +1234,7 @@ function updateBookingLinks() {
 
 async function loadLandingBuildings() {
     try {
-        const res = await fetch('/api/buildings');
+        const res = await fetch(`/api/buildings?_ts=${Date.now()}`, { cache: 'no-store' });
         if (!res.ok) return [];
         const j = await res.json();
         if (!j || !j.success) return [];
