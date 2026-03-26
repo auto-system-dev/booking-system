@@ -494,12 +494,24 @@ function buildFeatureHTML(featuresStr) {
     if (!featuresStr || !featuresStr.trim()) return '';
     return featuresStr.split(',')
         .map(f => f.trim())
-        .filter(f => f.length > 0 && !propertyFacilities.has(f))
+        .filter(f => f.length > 0)
         .map(name => {
             const icon = featureIconMap[name] || 'check_circle';
             return `<span><span class="material-symbols-outlined">${icon}</span> ${name}</span>`;
         })
         .join('');
+}
+
+function getRoomFeatureItemsForLanding(room, cfg) {
+    const bedTypes = Array.isArray(room?.bed_types) ? room.bed_types.filter(Boolean) : [];
+    const roomFacilities = Array.isArray(room?.room_facilities) ? room.room_facilities.filter(Boolean) : [];
+    const merged = [...new Set([...bedTypes, ...roomFacilities])];
+    if (merged.length > 0) return merged;
+
+    // 向後相容：若尚未提供 bed_types/room_facilities，退回舊的 settings 字串
+    const fallback = String(cfg?.[`landing_roomtype_${room?.id}_features`] || '').trim();
+    if (!fallback) return [];
+    return fallback.split(',').map((item) => item.trim()).filter(Boolean);
 }
 
 // ===== 動態生成旅宿設施區塊 =====
@@ -670,7 +682,8 @@ function renderRoomCards(cfg) {
     
     grid.innerHTML = roomTypes.map(room => {
         const bookingUrl = appendQueryParam(getLandingBookingUrl(), 'roomTypeId', room.id);
-        const features = cfg[`landing_roomtype_${room.id}_features`] || '';
+        const featureItemsList = getRoomFeatureItemsForLanding(room, cfg);
+        const features = featureItemsList.join(',');
         const badge = cfg[`landing_roomtype_${room.id}_badge`] || '';
         const featureItems = buildFeatureHTML(features);
         const badgeClass = badgeClassMap[badge] || '';

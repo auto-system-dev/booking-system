@@ -1572,14 +1572,17 @@ app.get('/order-query', (req, res) => {
 async function getLandingPagePayload() {
     const allSettings = await db.getAllSettings();
     const landingSettings = {};
+    const settingsMap = {};
     allSettings.forEach(setting => {
         if (setting.key.startsWith('landing_')) {
             landingSettings[setting.key] = setting.value;
         }
+        settingsMap[setting.key] = setting.value;
     });
 
     const allRoomTypes = await db.getAllRoomTypes();
     const landingRoomTypes = (allRoomTypes || []).filter(r => r.show_on_landing === 1);
+    const bedTypeKeywords = new Set(['單人床', '雙人床', '加大雙人床', '特大雙人床', '上下鋪', '和式床墊', '沙發床']);
 
     const allGalleryImages = await db.getAllRoomTypeGalleryImages();
     const galleryMap = {};
@@ -1588,6 +1591,14 @@ async function getLandingPagePayload() {
         galleryMap[img.room_type_id].push(img.image_url);
     });
     landingRoomTypes.forEach(room => {
+        const roomTypeId = Number(room.id);
+        const featureKey = `landing_roomtype_${roomTypeId}_features`;
+        const featureText = String(settingsMap[featureKey] || '').trim();
+        const featureItems = featureText
+            ? featureText.split(',').map((item) => item.trim()).filter(Boolean)
+            : [];
+        room.bed_types = featureItems.filter((item) => bedTypeKeywords.has(item));
+        room.room_facilities = featureItems.filter((item) => !bedTypeKeywords.has(item));
         room.gallery_images = galleryMap[room.id] || [];
     });
 
