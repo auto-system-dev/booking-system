@@ -258,6 +258,8 @@ function buildDashboardOpsPayload(allBookings, roomTypes, start, end) {
         bookings.forEach((booking) => {
             const checkIn = normalizeDay(booking.check_in_date);
             if (!checkIn || checkIn < rangeStart || checkIn > rangeEnd) return;
+            // 與 getStatistics 口徑一致：總訂單／總營收排除已取消
+            if (isCancelledStatus(booking.status)) return;
             orders += 1;
             revenue += Number(booking.total_amount || 0) || 0;
         });
@@ -296,6 +298,7 @@ function buildDashboardOpsPayload(allBookings, roomTypes, start, end) {
     bookings.forEach((booking) => {
         const checkIn = normalizeDay(booking.check_in_date);
         if (!checkIn || checkIn < trendStart || checkIn > trendEnd) return;
+        if (isCancelledStatus(booking.status)) return;
         const key = `${checkIn.getFullYear()}-${String(checkIn.getMonth() + 1).padStart(2, '0')}-${String(checkIn.getDate()).padStart(2, '0')}`;
         const item = trendMap.get(key);
         if (!item) return;
@@ -306,7 +309,8 @@ function buildDashboardOpsPayload(allBookings, roomTypes, start, end) {
     const sourceMap = new Map();
     const sourceBookings = bookings.filter((booking) => {
         const checkIn = normalizeDay(booking.check_in_date);
-        return checkIn && checkIn >= start && checkIn <= end;
+        if (!checkIn || checkIn < start || checkIn > end) return false;
+        return !isCancelledStatus(booking.status);
     });
 
     const resolveSource = (booking) => {
