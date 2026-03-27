@@ -192,6 +192,7 @@ async function initPostgreSQL() {
                     email_sent VARCHAR(255) DEFAULT '0',
                     payment_status VARCHAR(255) DEFAULT 'pending',
                     status VARCHAR(255) DEFAULT 'active',
+                    booking_mode VARCHAR(50) DEFAULT 'retail',
                     utm_source VARCHAR(120),
                     utm_medium VARCHAR(120),
                     utm_campaign VARCHAR(160),
@@ -217,6 +218,19 @@ async function initPostgreSQL() {
             } catch (err) {
                 if (!err.message.includes('duplicate column') && !err.message.includes('already exists')) {
                     console.warn('⚠️  新增 line_user_id 欄位時發生錯誤:', err.message);
+                }
+            }
+
+            // 新增 booking_mode 欄位（如果不存在）
+            try {
+                await query(`
+                    ALTER TABLE bookings
+                    ADD COLUMN IF NOT EXISTS booking_mode VARCHAR(50) DEFAULT 'retail'
+                `);
+                console.log('✅ booking_mode 欄位已準備就緒');
+            } catch (err) {
+                if (!err.message.includes('duplicate column') && !err.message.includes('already exists')) {
+                    console.warn('⚠️  新增 booking_mode 欄位時發生錯誤:', err.message);
                 }
             }
             
@@ -693,6 +707,7 @@ async function initPostgreSQL() {
                 ['bank_branch', '', '分行名稱'],
                 ['bank_account', '', '匯款帳號'],
                 ['enable_addons', '1', '啟用前台加購商品功能（1=啟用，0=停用）'],
+                ['system_mode', 'retail', '系統模式（retail=散客訂房，whole_property=包棟訂房；每次僅啟用一種）'],
                 ['min_room_count', '1', '前台客房數最小值（預設 1）'],
                 ['max_room_count', '1', '前台客房數最大值（預設 1）'],
                 ['account_name', '', '帳戶戶名'],
@@ -2317,6 +2332,7 @@ function initSQLite() {
                     email_sent VARCHAR(255) DEFAULT '0',
                     payment_status TEXT DEFAULT 'pending',
                     status TEXT DEFAULT 'active',
+                    booking_mode TEXT DEFAULT 'retail',
                     utm_source TEXT,
                     utm_medium TEXT,
                     utm_campaign TEXT,
@@ -2354,6 +2370,12 @@ function initSQLite() {
                             } else {
                                 console.log('✅ 資料表欄位已更新');
                             }
+
+                            db.run(`ALTER TABLE bookings ADD COLUMN booking_mode TEXT DEFAULT 'retail'`, (modeErr) => {
+                                if (modeErr && !modeErr.message.includes('duplicate column')) {
+                                    console.warn('⚠️  新增 booking_mode 欄位時發生錯誤:', modeErr.message);
+                                }
+                            });
                             
                             // 新增 discount_amount 和 discount_description 欄位
                             db.run(`ALTER TABLE bookings ADD COLUMN discount_amount DECIMAL(10,2) DEFAULT 0`, (err) => {
@@ -2780,6 +2802,7 @@ function initSQLite() {
                                         ['enable_transfer', '1', '啟用匯款轉帳（1=啟用，0=停用）'],
                                         ['enable_card', '1', '啟用線上刷卡（1=啟用，0=停用）'],
                                         ['enable_addons', '1', '啟用前台加購商品功能（1=啟用，0=停用）'],
+                                        ['system_mode', 'retail', '系統模式（retail=散客訂房，whole_property=包棟訂房；每次僅啟用一種）'],
                                         ['min_room_count', '1', '前台客房數最小值（預設 1）'],
                                         ['max_room_count', '1', '前台客房數最大值（預設 1）'],
                                         ['ecpay_merchant_id', '', '綠界商店代號（MerchantID）'],
@@ -3109,11 +3132,11 @@ async function saveBooking(bookingData) {
                 adults, children,
                 payment_amount, payment_method,
                 price_per_night, nights, total_amount, final_amount,
-                booking_date, email_sent, payment_status, status, addons, addons_total,
+                booking_date, email_sent, payment_status, status, booking_mode, addons, addons_total,
                 payment_deadline, days_reserved, line_user_id,
                 utm_source, utm_medium, utm_campaign, booking_source, referrer,
                 discount_amount, discount_description
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35)
             RETURNING id
         ` : `
             INSERT INTO bookings (
@@ -3124,11 +3147,11 @@ async function saveBooking(bookingData) {
                 adults, children,
                 payment_amount, payment_method,
                 price_per_night, nights, total_amount, final_amount,
-                booking_date, email_sent, payment_status, status, addons, addons_total,
+                booking_date, email_sent, payment_status, status, booking_mode, addons, addons_total,
                 payment_deadline, days_reserved, line_user_id,
                 utm_source, utm_medium, utm_campaign, booking_source, referrer,
                 discount_amount, discount_description
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         
         const addonsJson = bookingData.addons ? JSON.stringify(bookingData.addons) : null;
@@ -3167,6 +3190,7 @@ async function saveBooking(bookingData) {
             bookingData.emailSent || '0',
             bookingData.paymentStatus || 'pending',
             bookingData.status || 'active',
+            bookingData.bookingMode || 'retail',
             bookingData.addons ? JSON.stringify(bookingData.addons) : null,
             bookingData.addonsTotal || 0,
             bookingData.paymentDeadline || null,
@@ -3253,18 +3277,42 @@ async function updateEmailStatus(bookingId, emailSent, append = false) {
 }
 
 // 查詢所有訂房記錄（可選館別）
-async function getAllBookings(buildingId) {
+async function getAllBookings(buildingId, bookingMode) {
     try {
         const bid = parseInt(buildingId, 10);
         const hasBuildingFilter = Number.isFinite(bid) && bid > 0;
         const safeBid = hasBuildingFilter ? bid : 1;
-        const sql = hasBuildingFilter
-            ? (usePostgreSQL
-                ? `SELECT * FROM bookings WHERE (building_id = $1 OR ($1 = 1 AND (building_id IS NULL OR building_id = 0))) ORDER BY created_at DESC`
-                : `SELECT * FROM bookings WHERE (building_id = ? OR (? = 1 AND (building_id IS NULL OR building_id = 0))) ORDER BY created_at DESC`)
-            : `SELECT * FROM bookings ORDER BY created_at DESC`;
-        const params = hasBuildingFilter ? (usePostgreSQL ? [safeBid] : [safeBid, safeBid]) : [];
-        const result = params.length ? await query(sql, params) : await query(sql);
+        const mode = ['retail', 'whole_property'].includes((bookingMode || '').toString().trim())
+            ? (bookingMode || '').toString().trim()
+            : '';
+
+        let sql = `SELECT * FROM bookings WHERE 1=1`;
+        const params = [];
+        let paramIndex = 1;
+
+        if (hasBuildingFilter) {
+            if (usePostgreSQL) {
+                sql += ` AND (building_id = $${paramIndex} OR ($${paramIndex} = 1 AND (building_id IS NULL OR building_id = 0)))`;
+                params.push(safeBid);
+                paramIndex += 1;
+            } else {
+                sql += ` AND (building_id = ? OR (? = 1 AND (building_id IS NULL OR building_id = 0)))`;
+                params.push(safeBid, safeBid);
+            }
+        }
+
+        if (mode) {
+            if (usePostgreSQL) {
+                sql += ` AND COALESCE(booking_mode, 'retail') = $${paramIndex}`;
+                params.push(mode);
+            } else {
+                sql += ` AND COALESCE(booking_mode, 'retail') = ?`;
+                params.push(mode);
+            }
+        }
+
+        sql += ` ORDER BY created_at DESC`;
+        const result = await query(sql, params);
         return result.rows || result || [];
     } catch (error) {
         console.error('❌ 查詢訂房記錄失敗:', error.message);
@@ -3368,12 +3416,16 @@ async function getBookingById(bookingId) {
 }
 
 // 根據 Email 查詢訂房記錄
-async function getBookingsByEmail(email) {
+async function getBookingsByEmail(email, bookingMode) {
     try {
-        const sql = usePostgreSQL 
-            ? `SELECT * FROM bookings WHERE guest_email = $1 ORDER BY created_at DESC`
-            : `SELECT * FROM bookings WHERE guest_email = ? ORDER BY created_at DESC`;
-        const result = await query(sql, [email]);
+        const mode = ['retail', 'whole_property'].includes((bookingMode || '').toString().trim())
+            ? (bookingMode || '').toString().trim()
+            : '';
+        const sql = usePostgreSQL
+            ? `SELECT * FROM bookings WHERE guest_email = $1 ${mode ? `AND COALESCE(booking_mode, 'retail') = $2` : ''} ORDER BY created_at DESC`
+            : `SELECT * FROM bookings WHERE guest_email = ? ${mode ? `AND COALESCE(booking_mode, 'retail') = ?` : ''} ORDER BY created_at DESC`;
+        const params = mode ? [email, mode] : [email];
+        const result = await query(sql, params);
         return result.rows;
     } catch (error) {
         console.error('❌ 查詢訂房記錄失敗:', error.message);
@@ -6655,32 +6707,41 @@ async function getRoomAvailability(checkInDate, checkOutDate, buildingId = 1) {
 }
 
 // 取得指定日期範圍內的訂房資料（供日曆視圖使用，可選館別）
-async function getBookingsInRange(startDate, endDate, buildingId) {
+async function getBookingsInRange(startDate, endDate, buildingId, bookingMode) {
     try {
         const bid = parseInt(buildingId, 10);
         const hasBuildingFilter = Number.isFinite(bid) && bid > 0;
         const safeBid = hasBuildingFilter ? bid : 1;
+        const mode = ['retail', 'whole_property'].includes((bookingMode || '').toString().trim())
+            ? (bookingMode || '').toString().trim()
+            : '';
 
         const sql = usePostgreSQL ? `
-            SELECT booking_id, room_type, check_in_date, check_out_date, status, guest_name
+            SELECT booking_id, room_type, check_in_date, check_out_date, status, guest_name, COALESCE(booking_mode, 'retail') AS booking_mode
             FROM bookings
             WHERE check_in_date::date <= $2::date
               AND check_out_date::date >= $1::date
               AND status IN ('active', 'reserved', 'cancelled')
               ${hasBuildingFilter ? `AND (building_id = $3 OR ($3 = 1 AND (building_id IS NULL OR building_id = 0)))` : ''}
+              ${mode ? `AND COALESCE(booking_mode, 'retail') = ${hasBuildingFilter ? '$4' : '$3'}` : ''}
             ORDER BY check_in_date, room_type
         ` : `
-            SELECT booking_id, room_type, check_in_date, check_out_date, status, guest_name
+            SELECT booking_id, room_type, check_in_date, check_out_date, status, guest_name, COALESCE(booking_mode, 'retail') AS booking_mode
             FROM bookings
             WHERE DATE(check_in_date) <= DATE(?)
               AND DATE(check_out_date) >= DATE(?)
               AND status IN ('active', 'reserved', 'cancelled')
               ${hasBuildingFilter ? `AND (building_id = ? OR (? = 1 AND (building_id IS NULL OR building_id = 0)))` : ''}
+              ${mode ? `AND COALESCE(booking_mode, 'retail') = ?` : ''}
             ORDER BY check_in_date, room_type
         `;
         const params = usePostgreSQL
-            ? (hasBuildingFilter ? [startDate, endDate, safeBid] : [startDate, endDate])
-            : (hasBuildingFilter ? [startDate, endDate, safeBid, safeBid] : [startDate, endDate]);
+            ? (hasBuildingFilter
+                ? (mode ? [startDate, endDate, safeBid, mode] : [startDate, endDate, safeBid])
+                : (mode ? [startDate, endDate, mode] : [startDate, endDate]))
+            : (hasBuildingFilter
+                ? (mode ? [startDate, endDate, safeBid, safeBid, mode] : [startDate, endDate, safeBid, safeBid])
+                : (mode ? [startDate, endDate, mode] : [startDate, endDate]));
         const result = await query(sql, params);
         return result.rows || result;
     } catch (error) {

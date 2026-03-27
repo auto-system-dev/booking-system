@@ -1085,6 +1085,27 @@
                 <div class="settings-container">
                     <!-- 基本設定分頁 -->
                     <div id="settingsTabBasicContent" class="tab-content active">
+                        <div style="margin-top: 0;">
+                            <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #7c3aed;">
+                                <span class="material-symbols-outlined" style="font-size: 24px; color: #7c3aed; margin-right: 10px;">toggle_on</span>
+                                <h3 style="margin: 0; color: #2c3e50;">訂房模式切換（單一啟用）</h3>
+                            </div>
+                            <div class="settings-card" style="margin-top: 0;">
+                                <div class="form-group">
+                                    <label>目前啟用模式</label>
+                                    <select id="systemModeSelect">
+                                        <option value="retail">散客模式</option>
+                                        <option value="whole_property">包棟模式</option>
+                                    </select>
+                                    <small id="systemModeCurrentHint">切換後僅會啟用所選模式，另一模式將被停用。</small>
+                                </div>
+                                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                    <input type="text" id="systemModeSwitchReason" placeholder="切換原因（選填，例如：淡季改包棟）" style="flex: 1; min-width: 260px;">
+                                    <button class="btn-save" onclick="switchSystemModeFromAdmin()">切換模式</button>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- 旅宿資訊區塊 -->
                         <div style="margin-top: 0;">
                             <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">

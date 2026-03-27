@@ -515,6 +515,9 @@ function showAdminPage(admin) {
             
             // 根據權限更新側邊欄顯示
             updateSidebarByPermissions();
+
+            // 載入單一模式資訊並更新 UI（不阻塞主要流程）
+            loadSystemModeContext().catch(() => {});
         }
         
         // 不在此預載訂房／營運報表（改由 loadInitialAdminRoute 依當前區塊 lazy load，減少登入時同時打多支重 API）
@@ -628,6 +631,9 @@ function exposeFunctionsToWindow() {
         if (typeof onRoomTypesBuildingChange === 'function') {
             window.onRoomTypesBuildingChange = onRoomTypesBuildingChange;
         }
+        if (typeof switchSystemModeFromAdmin === 'function') {
+            window.switchSystemModeFromAdmin = switchSystemModeFromAdmin;
+        }
     } catch (error) {
         console.error('暴露函數到 window 對象時發生錯誤:', error);
     }
@@ -729,6 +735,7 @@ let selectedBuildingIdForStats = 1;
 const STATS_BUILDING_STORAGE_KEY = 'statsBuildingId_v1';
 let selectedBuildingIdForDashboard = 1;
 const DASHBOARD_BUILDING_STORAGE_KEY = 'dashboardBuildingId_v1';
+let currentSystemMode = '';
 let sortColumn = null; // 當前排序欄位
 let sortDirection = 'asc'; // 排序方向：'asc' 或 'desc'
 /** 訂房列表快速篩選（與儀表板今日入住/退房口徑一致）：null | 'today_checkin' | 'today_checkout' */
@@ -741,6 +748,163 @@ let isSimpleMode = false; // 簡化編輯模式：只編輯文字內容，保護
 let opsDashboardRangeMode = 'month';
 let kpiHelpHideTimer = null;
 let dashboardRequestSeq = 0;
+
+function normalizeSystemMode(mode) {
+    const value = String(mode || '').trim();
+    return value === 'whole_property' ? 'whole_property' : 'retail';
+}
+
+function getSystemModeLabel(mode = currentSystemMode) {
+    return normalizeSystemMode(mode) === 'whole_property' ? '包棟模式' : '散客模式';
+}
+
+function ensureSystemModeUi() {
+    const sidebarFooter = document.querySelector('.sidebar-footer');
+    if (sidebarFooter) {
+        let badge = document.getElementById('systemModeBadge');
+        if (!badge) {
+            badge = document.createElement('div');
+            badge.id = 'systemModeBadge';
+            badge.style.marginBottom = '10px';
+            badge.style.padding = '8px 10px';
+            badge.style.borderRadius = '8px';
+            badge.style.fontSize = '12px';
+            badge.style.fontWeight = '600';
+            badge.style.background = '#eef6ff';
+            badge.style.color = '#1e4f8f';
+            sidebarFooter.prepend(badge);
+        }
+        badge.textContent = `目前系統模式：${getSystemModeLabel(currentSystemMode)}`;
+    }
+
+    const bookingsSectionHeaderActions = document.querySelector('#bookings-section .section-header .header-actions');
+    if (bookingsSectionHeaderActions) {
+        let hint = document.getElementById('bookingsModeHint');
+        if (!hint) {
+            hint = document.createElement('span');
+            hint.id = 'bookingsModeHint';
+            hint.style.padding = '6px 10px';
+            hint.style.borderRadius = '999px';
+            hint.style.background = '#f3f4f6';
+            hint.style.color = '#374151';
+            hint.style.fontSize = '12px';
+            hint.style.fontWeight = '600';
+            bookingsSectionHeaderActions.prepend(hint);
+        }
+        hint.textContent = `只顯示：${getSystemModeLabel(currentSystemMode)}`;
+    }
+}
+
+async function loadSystemModeContext() {
+    try {
+        const response = await adminFetch('/api/system/mode');
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        const result = await response.json();
+        if (result && result.success && result.data && result.data.system_mode) {
+            currentSystemMode = normalizeSystemMode(result.data.system_mode);
+        } else {
+            currentSystemMode = 'retail';
+        }
+    } catch (error) {
+        console.warn('載入系統模式失敗，改用預設散客模式:', error.message || error);
+        currentSystemMode = 'retail';
+    }
+    updateSystemModeSettingsUi(currentSystemMode);
+    ensureSystemModeUi();
+}
+
+function updateSystemModeSettingsUi(mode) {
+    const normalizedMode = normalizeSystemMode(mode);
+    const select = document.getElementById('systemModeSelect');
+    const hint = document.getElementById('systemModeCurrentHint');
+    if (select) {
+        select.value = normalizedMode;
+    }
+    if (hint) {
+        hint.textContent = `目前模式：${getSystemModeLabel(normalizedMode)}。切換後僅會啟用所選模式，另一模式將被停用。`;
+    }
+}
+
+async function switchSystemModeFromAdmin() {
+    try {
+        const select = document.getElementById('systemModeSelect');
+        if (!select) {
+            showError('找不到模式切換欄位');
+            return;
+        }
+
+        const targetMode = normalizeSystemMode(select.value);
+        const reasonInput = document.getElementById('systemModeSwitchReason');
+        const reason = reasonInput ? String(reasonInput.value || '').trim() : '';
+        const fromMode = normalizeSystemMode(currentSystemMode || 'retail');
+
+        if (targetMode === fromMode) {
+            showSuccess(`目前已是${getSystemModeLabel(fromMode)}，無需切換`);
+            return;
+        }
+
+        const confirmMessage = `確定要切換為「${getSystemModeLabel(targetMode)}」嗎？\n\n目前模式：${getSystemModeLabel(fromMode)}\n切換後非當前模式 API 會立即停用。`;
+        if (!window.confirm(confirmMessage)) {
+            return;
+        }
+
+        const response = await adminFetch('/api/admin/system/mode/switch', {
+            method: 'POST',
+            body: JSON.stringify({
+                target_mode: targetMode,
+                reason,
+                force: false
+            })
+        });
+        const result = await response.json();
+
+        if (!response.ok && result && result.code === 'ACTIVE_ORDER_EXISTS') {
+            const activeUnpaid = Number(result?.data?.active_unpaid_count || 0);
+            const reservedPending = Number(result?.data?.reserved_pending_count || 0);
+            const forceConfirm = window.confirm(
+                `目前仍有未完成訂單，建議先處理後再切換。\n\n` +
+                `未完成訂單數：${activeUnpaid}\n` +
+                `其中待付款保留單：${reservedPending}\n\n` +
+                `確定仍要強制切換為「${getSystemModeLabel(targetMode)}」嗎？`
+            );
+
+            if (!forceConfirm) {
+                return;
+            }
+
+            const forceResponse = await adminFetch('/api/admin/system/mode/switch', {
+                method: 'POST',
+                body: JSON.stringify({
+                    target_mode: targetMode,
+                    reason,
+                    force: true
+                })
+            });
+            const forceResult = await forceResponse.json();
+            if (!forceResponse.ok || !forceResult.success) {
+                throw new Error(forceResult.message || `HTTP ${forceResponse.status}`);
+            }
+        } else if (!response.ok || !result.success) {
+            throw new Error(result.message || `HTTP ${response.status}`);
+        }
+
+        currentSystemMode = targetMode;
+        updateSystemModeSettingsUi(currentSystemMode);
+        ensureSystemModeUi();
+        if (reasonInput) {
+            reasonInput.value = '';
+        }
+
+        await loadBookings().catch(() => {});
+        await loadBookingCalendar().catch(() => {});
+        showSuccess(`模式已切換為：${getSystemModeLabel(currentSystemMode)}`);
+    } catch (error) {
+        console.error('切換系統模式失敗:', error);
+        showError('切換系統模式失敗：' + (error.message || '未知錯誤'));
+    }
+}
 
 const kpiHelpContentMap = {
     occupancy: {
@@ -1878,7 +2042,8 @@ async function loadDashboard(options = {}) {
             // 若仍為全 0，再用 /api/bookings 回填一次，避免 API 冷啟動瞬間造成假 0
             if (!options.__bookingsFallbackDone && isDashboardAllZero(data)) {
                 try {
-                    const bookingsResult = await fetchJsonWithRetry(`/api/bookings?buildingId=${encodeURIComponent(String(buildingId))}`, 2, 700);
+                    const mode = currentSystemMode || 'retail';
+                    const bookingsResult = await fetchJsonWithRetry(`/api/bookings?buildingId=${encodeURIComponent(String(buildingId))}&bookingMode=${encodeURIComponent(mode)}`, 2, 700);
                     if (!bookingsResult || !isLatestRequest()) return;
                     if (bookingsResult.success && Array.isArray(bookingsResult.data) && bookingsResult.data.length > 0) {
                         const fallbackData = deriveDashboardFromBookings(bookingsResult.data);
@@ -1952,8 +2117,11 @@ async function loadDashboard(options = {}) {
 // 載入訂房記錄
 async function loadBookings() {
     try {
+        if (!currentSystemMode) {
+            await loadSystemModeContext();
+        }
         const bid = getSelectedBuildingIdForBookings();
-        const response = await adminFetch(`/api/bookings?buildingId=${encodeURIComponent(String(bid))}`);
+        const response = await adminFetch(`/api/bookings?buildingId=${encodeURIComponent(String(bid))}&bookingMode=${encodeURIComponent(currentSystemMode)}`);
         if (response.status === 401) {
             console.warn('載入訂房記錄收到 401，登入已過期');
             showLoginPage();
@@ -2065,6 +2233,9 @@ function changeCalendarMonth(direction) {
 // 載入訂房日曆 (月檢視)
 async function loadBookingCalendar() {
     try {
+        if (!currentSystemMode) {
+            await loadSystemModeContext();
+        }
         const container = document.getElementById('bookingCalendarContainer');
         if (!container) return;
         
@@ -2118,7 +2289,7 @@ async function loadBookingCalendar() {
         
         // 獲取訂房資料
         const bid = getSelectedBuildingIdForBookings();
-        const calendarUrl = `${window.location.origin}/api/bookings?startDate=${encodeURIComponent(startDateStr)}&endDate=${encodeURIComponent(endDateStr)}&buildingId=${encodeURIComponent(String(bid))}`;
+        const calendarUrl = `${window.location.origin}/api/bookings?startDate=${encodeURIComponent(startDateStr)}&endDate=${encodeURIComponent(endDateStr)}&buildingId=${encodeURIComponent(String(bid))}&bookingMode=${encodeURIComponent(currentSystemMode)}`;
         const bookingsResponse = await adminFetch(calendarUrl);
         if (bookingsResponse.status === 401) {
             console.warn('載入訂房日曆收到 401，登入已過期');
@@ -3516,7 +3687,7 @@ async function openQuickBookingModal(roomTypeName, dateStr) {
         try {
             const [roomTypesResponse, bookingsResponse] = await Promise.all([
                 adminFetch('/api/room-types'),
-                adminFetch(`/api/bookings?startDate=${encodeURIComponent(checkInDate)}&endDate=${encodeURIComponent(checkInDate)}`)
+                adminFetch(`/api/bookings?startDate=${encodeURIComponent(checkInDate)}&endDate=${encodeURIComponent(checkInDate)}&bookingMode=${encodeURIComponent(currentSystemMode || 'retail')}`)
             ]);
             const roomTypesResult = await roomTypesResponse.json();
             const bookingsResult = await bookingsResponse.json();
@@ -6668,6 +6839,9 @@ async function loadSettings() {
         
         if (result.success) {
             const settings = result.data;
+            currentSystemMode = normalizeSystemMode(settings.system_mode || currentSystemMode || 'retail');
+            updateSystemModeSettingsUi(currentSystemMode);
+            ensureSystemModeUi();
             document.getElementById('depositPercentage').value = settings.deposit_percentage || '30';
             document.getElementById('bankName').value = settings.bank_name || '';
             document.getElementById('bankBranch').value = settings.bank_branch || '';
@@ -10168,6 +10342,7 @@ async function deleteHoliday(holidayDate) {
             if (typeof saveEmailTemplate === 'function') window.saveEmailTemplate = saveEmailTemplate;
             if (typeof toggleEditorMode === 'function') window.toggleEditorMode = toggleEditorMode;
             if (typeof resetCurrentTemplateToDefault === 'function') window.resetCurrentTemplateToDefault = resetCurrentTemplateToDefault;
+            if (typeof switchSystemModeFromAdmin === 'function') window.switchSystemModeFromAdmin = switchSystemModeFromAdmin;
             console.log('✅ 方法 2: 延遲暴露完成');
         } catch (error) {
             console.error('❌ 方法 2 失敗:', error);

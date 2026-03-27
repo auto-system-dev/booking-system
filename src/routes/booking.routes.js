@@ -7,19 +7,33 @@ function createBookingRoutes(deps) {
         publicLimiter,
         verifyCsrfToken,
         validateBooking,
+        validateWholePropertyBooking,
         requireAuth,
         checkPermission,
-        adminLimiter
+        adminLimiter,
+        retailModeGuard,
+        wholePropertyModeGuard
     } = deps;
 
     const router = express.Router();
 
-    router.post('/booking', publicLimiter, verifyCsrfToken, validateBooking, handlers.createBooking);
+    router.post('/booking', publicLimiter, retailModeGuard, verifyCsrfToken, validateBooking, handlers.createBooking);
+    router.post('/whole-property/booking', publicLimiter, wholePropertyModeGuard, verifyCsrfToken, validateWholePropertyBooking, handlers.createBooking);
 
     router.get('/bookings', requireAuth, checkPermission('bookings.view'), adminLimiter, async (req, res) => {
         try {
-            const { startDate, endDate, buildingId } = req.query;
-            const bookings = await bookingService.getBookings(startDate, endDate, buildingId);
+            const { startDate, endDate, buildingId, bookingMode } = req.query;
+            const systemMode = await bookingService.getCurrentSystemMode();
+            if (bookingMode && bookingMode !== systemMode) {
+                return res.status(403).json({
+                    success: false,
+                    code: 'MODE_DISABLED',
+                    message: `目前系統模式為 ${systemMode}，不可查詢其他模式資料`
+                });
+            }
+
+            const effectiveMode = bookingMode || systemMode;
+            const bookings = await bookingService.getBookings(startDate, endDate, buildingId, effectiveMode);
             const bookingsWithDefaults = bookingService.addBookingDefaults(bookings);
 
             return res.json({
@@ -39,7 +53,17 @@ function createBookingRoutes(deps) {
     router.get('/bookings/email/:email', requireAuth, checkPermission('bookings.view'), adminLimiter, async (req, res) => {
         try {
             const { email } = req.params;
-            const bookings = await bookingService.getBookingsByEmail(email);
+            const { bookingMode } = req.query;
+            const systemMode = await bookingService.getCurrentSystemMode();
+            if (bookingMode && bookingMode !== systemMode) {
+                return res.status(403).json({
+                    success: false,
+                    code: 'MODE_DISABLED',
+                    message: `目前系統模式為 ${systemMode}，不可查詢其他模式資料`
+                });
+            }
+            const effectiveMode = bookingMode || systemMode;
+            const bookings = await bookingService.getBookingsByEmail(email, effectiveMode);
 
             return res.json({
                 success: true,

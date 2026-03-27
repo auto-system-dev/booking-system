@@ -65,6 +65,7 @@ const { loadResendProvider } = require('./src/bootstrap/email-provider-loader');
 const { createEmailRuntime, resetEmailRuntime, getConfiguredSenderEmail } = require('./src/bootstrap/email-runtime');
 const { createBookingRoutes } = require('./src/routes/booking.routes');
 const { createOrderQueryRoutes } = require('./src/routes/order-query.routes');
+const { createModeGuard } = require('./src/middlewares/modeGuard');
 
 // 本地 uploads 目錄（當未設定 R2 時作為回退儲存）
 const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
@@ -391,6 +392,41 @@ const validateBooking = createValidationMiddleware([
     (req) => {
         if (req.body.children !== undefined) {
             return validateNumberRange(req.body.children, 0, 20, '孩童人數');
+        }
+        return { valid: true };
+    }
+]);
+
+// 包棟訂房驗證中間件（先沿用現有訂房流程，補上包棟必要欄位）
+const validateWholePropertyBooking = createValidationMiddleware([
+    (req) => {
+        const required = ['checkInDate', 'checkOutDate', 'roomType', 'guestName', 'guestPhone', 'guestEmail', 'totalGuests'];
+        return validateRequired(required, req.body);
+    },
+    (req) => validateDateRange(req.body.checkInDate, req.body.checkOutDate),
+    (req) => {
+        const email = sanitizeEmail(req.body.guestEmail);
+        if (!email) return { valid: false, message: 'Email 格式不正確' };
+        req.body.guestEmail = email;
+        return { valid: true };
+    },
+    (req) => {
+        const phone = sanitizePhone(req.body.guestPhone);
+        if (!phone) {
+            return { valid: false, message: '手機號碼格式不正確（需為 09 開頭，共 10 碼）' };
+        }
+        req.body.guestPhone = phone;
+        return { valid: true };
+    },
+    (req) => {
+        const guests = Number(req.body.totalGuests);
+        if (!Number.isFinite(guests) || guests < 1 || guests > 60) {
+            return { valid: false, message: '包棟總人數需介於 1 到 60 人' };
+        }
+        req.body.totalGuests = guests;
+        // 先映射到 adults，讓現有流程可計算人數相關欄位
+        if (req.body.adults === undefined || req.body.adults === null || req.body.adults === '') {
+            req.body.adults = guests;
         }
         return { valid: true };
     }
@@ -1224,7 +1260,8 @@ async function handleCreateBooking(req, res) {
                 utmMedium: bookingData.utmMedium || null,
                 utmCampaign: bookingData.utmCampaign || null,
                 bookingSource: bookingData.bookingSource || null,
-                referrer: bookingData.referrer || null
+                referrer: bookingData.referrer || null,
+                bookingMode: req.systemMode || 'retail'
             });
             
             console.log('✅ 訂房資料已成功儲存到資料庫 (ID:', savedId, ')');
@@ -1482,6 +1519,7 @@ app.post('/api/admin/bookings/quick', requireAuth, checkPermission('bookings.cre
             emailSent: '0',
             paymentStatus: paymentStatus || 'paid',
             status: status || 'active',
+            bookingMode: ((await db.getSetting('system_mode')) || 'retail').toString().trim() || 'retail',
             addons: null,
             addonsTotal: 0
         };
@@ -2820,6 +2858,16 @@ app.get('/admin', generateCsrfToken, (req, res) => {
 });
 
 const bookingService = createBookingService({ db });
+const retailModeGuard = createModeGuard({
+    db,
+    allowedModes: ['retail'],
+    getMessage: () => '目前為包棟模式，散客訂房功能未啟用'
+});
+const wholePropertyModeGuard = createModeGuard({
+    db,
+    allowedModes: ['whole_property'],
+    getMessage: () => '目前為散客模式，包棟訂房功能未啟用'
+});
 app.use('/api', createBookingRoutes({
     bookingService,
     handlers: {
@@ -2829,8 +2877,11 @@ app.use('/api', createBookingRoutes({
         deleteBooking: handleDeleteBooking
     },
     publicLimiter,
+    retailModeGuard,
+    wholePropertyModeGuard,
     verifyCsrfToken,
     validateBooking,
+    validateWholePropertyBooking,
     requireAuth,
     checkPermission,
     adminLimiter
@@ -5029,6 +5080,121 @@ app.delete('/api/admin/addons/:id', requireAuth, checkPermission('addons.delete'
 });
 
 // ==================== 系統設定 API ====================
+
+// API: 取得目前系統模式（公開）
+app.get('/api/system/mode', publicLimiter, async (req, res) => {
+    try {
+        const systemMode = ((await db.getSetting('system_mode')) || 'retail').toString().trim() || 'retail';
+        return res.json({
+            success: true,
+            data: {
+                system_mode: systemMode
+            }
+        });
+    } catch (error) {
+        console.error('取得系統模式錯誤:', error);
+        return res.status(500).json({
+            success: false,
+            message: '取得系統模式失敗'
+        });
+    }
+});
+
+// API: 切換系統模式（管理員）
+app.post('/api/admin/system/mode/switch', requireAuth, checkPermission('settings.edit'), adminLimiter, async (req, res) => {
+    try {
+        const { target_mode, reason, force } = req.body || {};
+        const targetMode = (target_mode || '').toString().trim();
+
+        if (!['retail', 'whole_property'].includes(targetMode)) {
+            return res.status(400).json({
+                success: false,
+                message: 'target_mode 必須為 retail 或 whole_property'
+            });
+        }
+
+        const fromMode = ((await db.getSetting('system_mode')) || 'retail').toString().trim() || 'retail';
+        if (fromMode === targetMode) {
+            return res.json({
+                success: true,
+                message: '系統模式未變更',
+                data: { from_mode: fromMode, to_mode: targetMode }
+            });
+        }
+
+        // 切換前檢查：避免仍有未完成訂單時直接切換模式
+        const allBookings = await db.getAllBookings();
+        const currentModeBookings = (allBookings || []).filter((booking) => {
+            const mode = (booking.booking_mode || 'retail').toString().trim() || 'retail';
+            return mode === fromMode;
+        });
+        const activeUnpaidBookings = currentModeBookings.filter((booking) => {
+            const status = (booking.status || '').toString().trim();
+            const paymentStatus = (booking.payment_status || '').toString().trim();
+            return status !== 'cancelled' && paymentStatus !== 'paid';
+        });
+        const reservedPendingBookings = currentModeBookings.filter((booking) => {
+            const status = (booking.status || '').toString().trim();
+            const paymentStatus = (booking.payment_status || '').toString().trim();
+            return status === 'reserved' && paymentStatus === 'pending';
+        });
+
+        if (activeUnpaidBookings.length > 0 && !force) {
+            return res.status(409).json({
+                success: false,
+                code: 'ACTIVE_ORDER_EXISTS',
+                message: '目前模式仍有未完成訂單，請先處理後再切換，或使用強制切換。',
+                data: {
+                    from_mode: fromMode,
+                    to_mode: targetMode,
+                    active_unpaid_count: activeUnpaidBookings.length,
+                    reserved_pending_count: reservedPendingBookings.length
+                }
+            });
+        }
+
+        await db.updateSetting('system_mode', targetMode, '系統模式（retail=散客訂房，whole_property=包棟訂房；每次僅啟用一種）');
+
+        // 操作日誌（不影響主要流程）
+        try {
+            const admin = req.session?.admin || {};
+            await db.logAdminAction({
+                adminId: admin.id,
+                adminUsername: admin.username,
+                action: 'system_mode.switch',
+                resourceType: 'settings',
+                resourceId: 'system_mode',
+                details: {
+                    from_mode: fromMode,
+                    to_mode: targetMode,
+                    reason: reason || '',
+                    forced: !!force,
+                    active_unpaid_count: activeUnpaidBookings.length,
+                    reserved_pending_count: reservedPendingBookings.length
+                },
+                ipAddress: req.ip,
+                userAgent: req.get('user-agent')
+            });
+        } catch (e) {
+            // ignore
+        }
+
+        return res.json({
+            success: true,
+            message: '系統模式已切換',
+            data: {
+                from_mode: fromMode,
+                to_mode: targetMode
+            }
+        });
+    } catch (error) {
+        console.error('切換系統模式錯誤:', error);
+        return res.status(500).json({
+            success: false,
+            message: '切換系統模式失敗: ' + error.message
+        });
+    }
+});
 
 // API: 取得系統設定
 app.get('/api/settings', publicLimiter, async (req, res) => {
