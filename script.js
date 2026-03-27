@@ -89,7 +89,17 @@ let earlyBirdDiscount = null; // 已偵測的早鳥優惠
 let memberLevelDiscount = null; // 已偵測的會員折扣
 let roomCountConfig = { min: 1, max: 20 };
 const BOOKING_ATTRIBUTION_STORAGE_KEY = 'booking_attribution_v1';
+const SYSTEM_MODE_STORAGE_KEY = 'booking_system_mode_v1';
+const BOOKING_STATE_STORAGE_KEYS = [
+    'booking_cart_retail_v1',
+    'booking_cart_whole_property_v1',
+    'booking_draft_retail_v1',
+    'booking_draft_whole_property_v1',
+    'booking_selected_addons_v1',
+    'booking_selected_rooms_v1'
+];
 const bookingAttribution = initBookingAttribution();
+let currentSystemMode = 'retail';
 const DEFAULT_BOOKING_NOTICE_REQUIRED_LINES = [
     '4. 若需提前入住或延後退房，請提前告知，實際安排與費用依現場公告為準。',
     '5. 請妥善保管個人物品，離房時請再次確認；若有遺失請儘速聯繫櫃檯協助。',
@@ -168,6 +178,127 @@ function initBookingAttribution() {
     }
 
     return merged;
+}
+
+function normalizeSystemMode(mode) {
+    const value = String(mode || '').trim();
+    return value === 'whole_property' ? 'whole_property' : 'retail';
+}
+
+function showModeToast(message) {
+    if (!message) return;
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.position = 'fixed';
+    toast.style.top = '18px';
+    toast.style.right = '18px';
+    toast.style.zIndex = '9999';
+    toast.style.background = '#1f2937';
+    toast.style.color = '#fff';
+    toast.style.padding = '10px 14px';
+    toast.style.borderRadius = '10px';
+    toast.style.boxShadow = '0 8px 20px rgba(0,0,0,0.2)';
+    toast.style.fontSize = '13px';
+    toast.style.maxWidth = '320px';
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.remove();
+    }, 3200);
+}
+
+function clearCrossModeClientState(previousMode, nextMode) {
+    if (!previousMode || previousMode === nextMode) return;
+    try {
+        BOOKING_STATE_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
+        // 清除舊版/未知命名但含 cart/draft 關鍵字的暫存資料
+        for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+            const key = localStorage.key(i);
+            if (!key) continue;
+            const normalizedKey = key.toLowerCase();
+            if (normalizedKey.includes('cart') || normalizedKey.includes('draft')) {
+                localStorage.removeItem(key);
+            }
+        }
+    } catch (error) {
+        console.warn('⚠️ 清除跨模式暫存失敗:', error.message);
+    }
+    const fromLabel = previousMode === 'whole_property' ? '包棟模式' : '散客模式';
+    const toLabel = nextMode === 'whole_property' ? '包棟模式' : '散客模式';
+    showModeToast(`已切換為${toLabel}，${fromLabel}的收藏/購物車/草稿已清除`);
+}
+
+function applySingleModeUi(mode) {
+    const normalized = normalizeSystemMode(mode);
+    const roomSection = document.getElementById('roomTypeGrid')?.closest('.form-section');
+    const addonSection = document.getElementById('addonsGrid')?.closest('.form-section');
+    const roomTitle = roomSection?.querySelector('.section-title');
+    const cardHeaderTitle = document.querySelector('.card-header h1');
+    const cardHeaderSubtitle = document.querySelector('.card-header .subtitle');
+    const submitBtn = document.querySelector('#bookingForm .submit-btn span');
+    const dateTitle = document.querySelector('#bookingForm .form-section .section-title');
+
+    if (normalized === 'whole_property') {
+        if (roomTitle) roomTitle.innerHTML = '<span class="material-symbols-outlined">villa</span> 選擇包棟方案';
+        if (addonSection) addonSection.style.display = 'none';
+        selectedAddons = [];
+        if (cardHeaderTitle) cardHeaderTitle.textContent = '包棟訂房系統';
+        if (cardHeaderSubtitle) cardHeaderSubtitle.textContent = '僅提供包棟方案，快速完成整棟預訂';
+        if (submitBtn) submitBtn.textContent = '確認包棟訂房';
+        if (dateTitle) dateTitle.innerHTML = '<span class="material-symbols-outlined">calendar_month</span> 選擇包棟日期';
+        // 包棟模式只允許選擇一個方案
+        const selectedNames = Object.keys(selectedRoomQuantities).filter((name) => Number(selectedRoomQuantities[name] || 0) > 0);
+        if (selectedNames.length > 1) {
+            const keepName = selectedNames[0];
+            Object.keys(selectedRoomQuantities).forEach((name) => {
+                selectedRoomQuantities[name] = name === keepName ? 1 : 0;
+                if (name !== keepName) {
+                    selectedRoomExtraBeds[name] = 0;
+                }
+            });
+        }
+    } else {
+        if (roomTitle) roomTitle.innerHTML = '<span class="material-symbols-outlined">king_bed</span> 選擇房型';
+        if (addonSection) addonSection.style.display = '';
+        if (cardHeaderTitle) cardHeaderTitle.textContent = '線上訂房系統';
+        if (cardHeaderSubtitle) cardHeaderSubtitle.textContent = '預訂您的完美住宿體驗';
+        if (submitBtn) submitBtn.textContent = '確認訂房';
+        if (dateTitle) dateTitle.innerHTML = '<span class="material-symbols-outlined">calendar_month</span> 選擇日期';
+    }
+}
+
+function enforceWholePropertySingleSelection(activeRoomName) {
+    if (currentSystemMode !== 'whole_property') return;
+    Object.keys(selectedRoomQuantities).forEach((name) => {
+        if (name !== activeRoomName) {
+            selectedRoomQuantities[name] = 0;
+            selectedRoomExtraBeds[name] = 0;
+            syncRoomSelectionCard(name);
+        }
+    });
+}
+
+async function initSystemMode() {
+    let mode = 'retail';
+    try {
+        const response = await fetch('/api/system/mode', { credentials: 'include' });
+        if (response.ok) {
+            const result = await response.json();
+            mode = normalizeSystemMode(result?.data?.system_mode);
+        }
+    } catch (error) {
+        console.warn('⚠️ 讀取系統模式失敗，預設散客模式:', error.message);
+    }
+
+    let previousMode = '';
+    try {
+        previousMode = normalizeSystemMode(localStorage.getItem(SYSTEM_MODE_STORAGE_KEY));
+        localStorage.setItem(SYSTEM_MODE_STORAGE_KEY, mode);
+    } catch (_) {
+        // ignore storage errors
+    }
+    clearCrossModeClientState(previousMode, mode);
+    currentSystemMode = mode;
+    applySingleModeUi(mode);
 }
 
 function applyBuildingIdFromUrl() {
@@ -1386,6 +1517,9 @@ function changeRoomTypeQuantity(roomName, delta) {
     }
 
     selectedRoomQuantities[roomName] = next;
+    if (next > 0) {
+        enforceWholePropertySingleSelection(roomName);
+    }
     if (next <= 0) selectedRoomExtraBeds[roomName] = 0;
     syncRoomSelectionCard(roomName);
     updateRoomSelectButtons();
@@ -1396,6 +1530,9 @@ function changeRoomTypeQuantity(roomName, delta) {
 
 function toggleRoomTypeSelection(roomName, checked) {
     selectedRoomQuantities[roomName] = checked ? 1 : 0;
+    if (checked) {
+        enforceWholePropertySingleSelection(roomName);
+    }
     if (!checked) selectedRoomExtraBeds[roomName] = 0;
     syncRoomSelectionCard(roomName);
     updateRoomSelectButtons();
@@ -1451,6 +1588,7 @@ loadRoomTypesAndSettings();
 
 // 頁面載入後，如果有日期，檢查房間可用性
 document.addEventListener('DOMContentLoaded', async function() {
+    await initSystemMode();
     forceRoomCounterButtonsVisibility(true);
     // 初始化時檢查入住日期，如果為今天則禁用匯款選項
     setTimeout(() => {
@@ -2540,6 +2678,7 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     
     formData.pricePerNight = pricePerNight;
     formData.nights = nights;
+    formData.totalGuests = Number(formData.adults || 0) + Number(formData.children || 0);
     formData.totalAmount = roomTotal + addonsTotal + roomExtraBedTotal; // 原始總金額（不含折扣）
     formData.finalAmount = finalAmount; // 最終應付金額（含折扣）
     const roomExtraBedAddons = buildRoomExtraBedAddonsForSubmit(roomSelections);
@@ -2571,7 +2710,8 @@ document.getElementById('bookingForm').addEventListener('submit', async function
             console.warn('無法取得 CSRF Token:', tokenError);
         }
         
-        console.log('正在發送請求到 /api/booking...');
+        const bookingApiEndpoint = currentSystemMode === 'whole_property' ? '/api/whole-property/booking' : '/api/booking';
+        console.log(`正在發送請求到 ${bookingApiEndpoint}...`);
         const headers = {
             'Content-Type': 'application/json',
         };
@@ -2579,7 +2719,7 @@ document.getElementById('bookingForm').addEventListener('submit', async function
             headers['X-CSRF-Token'] = csrfToken;
         }
         
-        const response = await fetch('/api/booking', {
+        const response = await fetch(bookingApiEndpoint, {
             method: 'POST',
             headers: headers,
             credentials: 'include',
