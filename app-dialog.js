@@ -27,8 +27,8 @@
             '#appDialogActions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;}',
             '#appDialogOverlay button{font:inherit;cursor:pointer;border-radius:8px;padding:10px 18px;',
             'border:none;min-width:88px;}',
-            '#appDialogOk{background:#0f766e;color:#fff;}',
-            '#appDialogOk:hover{filter:brightness(1.06);}',
+            '#appDialogOk{background:#2C8EC4;color:#fff;}',
+            '#appDialogOk:hover{background:#2474a0;}',
             '#appDialogCancel{background:#e2e8f0;color:#334155;}',
             '#appDialogCancel:hover{background:#cbd5e1;}'
         ].join('');
