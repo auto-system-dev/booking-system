@@ -4419,15 +4419,21 @@ app.get('/api/admin/debug/room-types-building-stats', requireAuth, checkPermissi
 });
 
 // API: 取得所有房型（公開，供前台使用）
+// 可選 query：listScope=retail|whole_property（銷售頁精選房型需固定 retail 時傳入，不受系統模式影響）
 app.get('/api/room-types', publicLimiter, async (req, res) => {
     try {
         const buildingId = req.query.buildingId ? parseInt(req.query.buildingId, 10) : 1;
+        const rawScope = String(req.query.listScope || '').trim().toLowerCase();
         let listScope = 'retail';
-        try {
-            const mode = String((await db.getSetting('system_mode')) || 'retail').trim();
-            listScope = mode === 'whole_property' ? 'whole_property' : 'retail';
-        } catch (_) {
-            listScope = 'retail';
+        if (rawScope === 'retail' || rawScope === 'whole_property') {
+            listScope = rawScope;
+        } else {
+            try {
+                const mode = String((await db.getSetting('system_mode')) || 'retail').trim();
+                listScope = mode === 'whole_property' ? 'whole_property' : 'retail';
+            } catch (_) {
+                listScope = 'retail';
+            }
         }
         const [roomTypes, allGalleryImages, allSettings] = await Promise.all([
             db.getRoomTypesByBuilding

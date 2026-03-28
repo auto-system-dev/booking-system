@@ -98,7 +98,7 @@ async function refreshLandingRoomTypesByBuilding(buildingId) {
         const bid = parseInt(String(buildingId ?? ''), 10);
         const safeBid = Number.isFinite(bid) && bid > 0 ? bid : 1;
         const res = await fetch(
-            `/api/room-types?buildingId=${encodeURIComponent(String(safeBid))}&_ts=${Date.now()}`,
+            `/api/room-types?buildingId=${encodeURIComponent(String(safeBid))}&listScope=retail&_ts=${Date.now()}`,
             { cache: 'no-store' }
         );
         const j = await res.json();
