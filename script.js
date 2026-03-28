@@ -1120,7 +1120,9 @@ async function renderRoomTypes() {
     const grid = document.getElementById('roomTypeGrid');
     
     if (roomTypes.length === 0) {
-        grid.innerHTML = '<div class="loading">目前沒有可用的房型</div>';
+        const emptyMsg =
+            currentSystemMode === 'whole_property' ? '目前沒有可用的包棟方案' : '目前沒有可用的房型';
+        grid.innerHTML = `<div class="loading">${emptyMsg}</div>`;
         return;
     }
     
@@ -2496,7 +2498,11 @@ document.getElementById('bookingForm').addEventListener('submit', async function
     if (roomSelections.length === 0) {
         const roomTypeRadios = document.querySelectorAll('input[name="roomType"]');
         if (roomTypeRadios.length === 0) {
-            showSectionError('roomTypeGrid', '目前沒有可用的房型，請稍後再試');
+            const errMsg =
+                currentSystemMode === 'whole_property'
+                    ? '目前沒有可用的包棟方案，請稍後再試'
+                    : '目前沒有可用的房型，請稍後再試';
+            showSectionError('roomTypeGrid', errMsg);
             return;
         }
         showSectionError('roomTypeGrid', '請至少選擇 1 間房型');
