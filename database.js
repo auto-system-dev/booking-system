@@ -6995,7 +6995,18 @@ async function getRoomAvailability(checkInDate, checkOutDate, buildingId = 1) {
             }
         }
 
-        // 判斷滿房
+        // 包棟模式：同一館別下各方案為同一棟物業，任一方案於區間內已有有效／保留訂房，
+        // 則同館其餘包棟方案亦應滿房（避免 10 人／16 人方案可同時被訂）。
+        if (listScope === 'whole_property') {
+            const anyPlanBooked = roomTypes.some(
+                (rt) => (usedByRoomTypeId.get(Number(rt.id)) || 0) > 0
+            );
+            if (anyPlanBooked) {
+                return roomTypes.map((rt) => rt.name).filter(Boolean);
+            }
+        }
+
+        // 判斷滿房（一般訂房：逐房型庫存；包棟且尚無任何方案被占用時亦走此邏輯）
         const unavailable = [];
         for (const rt of roomTypes) {
             const qtyTotal = qtyTotalByRoomTypeId.has(Number(rt.id))

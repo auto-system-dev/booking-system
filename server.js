@@ -1211,6 +1211,19 @@ async function handleCreateBooking(req, res) {
 
         // 儲存訂房資料到資料庫
         try {
+            // 庫存／滿房檢查（與 /api/room-availability 同口徑；包棟模式任一案被訂則同館方案皆不可訂）
+            try {
+                const unavailableList = await db.getRoomAvailability(checkInDate, checkOutDate, safeBuildingId);
+                const requestedKey = String(roomType || '').trim();
+                if (Array.isArray(unavailableList) && unavailableList.includes(requestedKey)) {
+                    return res.status(409).json({
+                        message: '此日期區間已無可訂房量（可能已被預訂或已滿房），請重新選擇日期或方案'
+                    });
+                }
+            } catch (availErr) {
+                console.warn('⚠️ 訂房庫存檢查失敗，仍嘗試寫入:', availErr.message);
+            }
+
             // 判斷付款狀態和訂房狀態
             let paymentStatus = 'pending';
             let bookingStatus = 'active';
