@@ -768,6 +768,7 @@ body.login-page-active {
 }
 
 /* 營運報表 KPI：說明為 button，避免被當成一般 div 且確保可點 */
+/* 字級須與同列「口徑：入住日」div.report-kpi-subtitle 一致（勿用 font:inherit，否則會繼承 body 字級變大） */
 .report-page .report-kpi-subtitle.kpi-help-trigger {
     display: block;
     width: 100%;
@@ -775,10 +776,13 @@ body.login-page-active {
     padding: 0;
     border: none;
     background: none;
-    font: inherit;
+    font-size: 12px;
+    line-height: 1.45;
+    font-weight: 500;
+    font-family: inherit;
     text-align: left;
     cursor: pointer;
-    color: inherit;
+    color: var(--report-muted);
 }
 
 .report-page .report-kpi-icon,

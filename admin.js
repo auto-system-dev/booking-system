@@ -800,7 +800,17 @@ function ensureSystemModeUi() {
 
     updateWholePropertyPlansTabVisibility();
     updateRoomTypesSectionLabelsForSystemMode();
+    updateReportRoomsPanelLabelsForSystemMode();
     refreshRoomTypesRetailTableIfSectionActive();
+}
+
+/** 營運報表：包棟模式下「房型分析」改為「包棟分析」（表格欄位由 renderRoomStats 依模式套用） */
+function updateReportRoomsPanelLabelsForSystemMode() {
+    const titleEl = document.getElementById('reportRoomsPanelTitle');
+    const iconEl = document.getElementById('reportRoomsPanelHeadIcon');
+    const wp = isWholePropertySystemMode();
+    if (titleEl) titleEl.textContent = wp ? '包棟分析' : '房型分析';
+    if (iconEl) iconEl.textContent = wp ? 'villa' : 'king_bed';
 }
 
 function isWholePropertySystemMode() {
@@ -4132,7 +4142,8 @@ async function loadStatistics() {
         if (result.success) {
             const stats = result.data;
 
-            // 渲染房型分析
+            updateReportRoomsPanelLabelsForSystemMode();
+            // 渲染房型／包棟分析（依系統模式）
             renderRoomStats(stats.byRoomType || []);
             // 渲染來源分析
             renderSourceAnalysis(stats.bySource || []);
@@ -4248,9 +4259,10 @@ function renderSourceAnalysis(sourceStats) {
 // 渲染房型統計（營運報表版面）
 function renderRoomStats(roomStats) {
     const container = document.getElementById('roomStatsList');
+    const planWord = isWholePropertySystemMode() ? '包棟' : '房型';
 
     if (roomStats.length === 0) {
-        container.innerHTML = '<div class="report-panel-empty">目前沒有房型分析資料</div>';
+        container.innerHTML = `<div class="report-panel-empty">目前沒有${planWord}分析資料</div>`;
         return;
     }
 
@@ -4273,7 +4285,7 @@ function renderRoomStats(roomStats) {
         <div class="report-room-table-wrap">
         <div class="report-room-table">
             <div class="report-room-thead">
-                <span>房型名稱</span>
+                <span>${planWord}名稱</span>
                 <span>訂房筆數</span>
                 <span>營收</span>
                 <span>平均房價</span>
