@@ -158,6 +158,7 @@ async function initDatabase() {
         }
         await seedDefaultWholePropertyPlansIfEmpty();
         await normalizeRetailRoomTypeDisplayNamesIfPackagedByMistake();
+        await applyRetailRoomTypesSeedDefaultsBuilding1Once();
     } catch (error) {
         console.error('❌ 資料庫初始化失敗:', error);
         throw error;
@@ -6087,6 +6088,147 @@ async function normalizeRetailRoomTypeDisplayNamesIfPackagedByMistake() {
         }
     } catch (e) {
         console.warn('⚠️ 零售房型顯示名稱校正略過:', e.message || e);
+    }
+}
+
+/** 預設館四筆零售房型（standard/deluxe/suite/family）一次性還原為與系統種子相同（價格／人數／庫存等） */
+async function applyRetailRoomTypesSeedDefaultsBuilding1Once() {
+    const flagKey = 'retail_room_types_full_seed_v1';
+    try {
+        const done = await getSetting(flagKey);
+        if (String(done || '').trim() === '1') {
+            return;
+        }
+
+        const scopeSql = `COALESCE(NULLIF(TRIM(list_scope), ''), 'retail') = 'retail'`;
+        const defaults = [
+            {
+                name: 'standard',
+                display_name: '標準雙人房',
+                price: 2000,
+                max_occupancy: 2,
+                extra_beds: 0,
+                display_order: 1,
+                icon: '🏠',
+                image_url: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80'
+            },
+            {
+                name: 'deluxe',
+                display_name: '豪華雙人房',
+                price: 3500,
+                max_occupancy: 2,
+                extra_beds: 0,
+                display_order: 2,
+                icon: '✨',
+                image_url: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80'
+            },
+            {
+                name: 'suite',
+                display_name: '尊爵套房',
+                price: 5000,
+                max_occupancy: 2,
+                extra_beds: 0,
+                display_order: 3,
+                icon: '👑',
+                image_url: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80'
+            },
+            {
+                name: 'family',
+                display_name: '家庭四人房',
+                price: 4500,
+                max_occupancy: 4,
+                extra_beds: 0,
+                display_order: 4,
+                icon: '👨‍👩‍👧‍👦',
+                image_url: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800&q=80'
+            }
+        ];
+
+        let touched = 0;
+        for (const d of defaults) {
+            if (usePostgreSQL) {
+                const res = await query(
+                    `UPDATE room_types SET
+                        display_name = $1,
+                        price = $2,
+                        original_price = 0,
+                        holiday_surcharge = 0,
+                        max_occupancy = $3,
+                        extra_beds = $4,
+                        extra_bed_price = 0,
+                        bed_config = '',
+                        booking_badge = '',
+                        included_items = '',
+                        icon = $5,
+                        image_url = $6,
+                        display_order = $7,
+                        updated_at = CURRENT_TIMESTAMP
+                     WHERE building_id = 1 AND name = $8 AND ${scopeSql}`,
+                    [
+                        d.display_name,
+                        d.price,
+                        d.max_occupancy,
+                        d.extra_beds,
+                        d.icon,
+                        d.image_url,
+                        d.display_order,
+                        d.name
+                    ]
+                );
+                touched += res.changes || 0;
+            } else {
+                const res = await query(
+                    `UPDATE room_types SET
+                        display_name = ?,
+                        price = ?,
+                        original_price = 0,
+                        holiday_surcharge = 0,
+                        max_occupancy = ?,
+                        extra_beds = ?,
+                        extra_bed_price = 0,
+                        bed_config = '',
+                        booking_badge = '',
+                        included_items = '',
+                        icon = ?,
+                        image_url = ?,
+                        display_order = ?,
+                        updated_at = CURRENT_TIMESTAMP
+                     WHERE building_id = 1 AND name = ? AND ${scopeSql}`,
+                    [
+                        d.display_name,
+                        d.price,
+                        d.max_occupancy,
+                        d.extra_beds,
+                        d.icon,
+                        d.image_url,
+                        d.display_order,
+                        d.name
+                    ]
+                );
+                touched += res.changes || 0;
+            }
+
+            const row = await queryOne(
+                usePostgreSQL
+                    ? `SELECT id FROM room_types WHERE building_id = 1 AND name = $1 AND ${scopeSql}`
+                    : `SELECT id FROM room_types WHERE building_id = 1 AND name = ? AND ${scopeSql}`,
+                [d.name]
+            );
+            if (row && row.id) {
+                await upsertRoomTypeInventory(1, row.id, 1);
+            }
+        }
+
+        if (touched > 0) {
+            await updateSetting(
+                flagKey,
+                '1',
+                '預設館四筆零售房型已套用與系統種子相同之預設值（一次性）'
+            );
+            console.log('✅ 預設館零售房型（standard/deluxe/suite/family）已還原為系統預設值');
+        }
+    } catch (e) {
+        console.warn('⚠️ 零售房型預設值還原略過:', e.message || e);
     }
 }
 
