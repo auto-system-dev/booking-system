@@ -1138,6 +1138,18 @@ function setOpsKpiDelta(elementId, currentValue, previousValue, options = {}) {
         inverseGood = false
     } = options;
 
+    // 上期或本期無母體（後端傳 null）時不顯示點差，避免「上期無資料卻顯示較上期上升」
+    if (previousValue === null || previousValue === undefined) {
+        el.classList.remove('up', 'down');
+        el.textContent = '--';
+        return;
+    }
+    if (currentValue === null || currentValue === undefined) {
+        el.classList.remove('up', 'down');
+        el.textContent = '--';
+        return;
+    }
+
     const current = Number(currentValue) || 0;
     const previous = Number(previousValue) || 0;
     const diff = current - previous;
@@ -1229,7 +1241,8 @@ function applyOpsKpiCardsToDom(opsData) {
 
     const kpis = opsData.kpis;
     const overview = opsData.overview || {};
-    const formatPercent = (v) => `${(Number(v) || 0).toFixed(1)}%`;
+    const formatPercent = (v) =>
+        v === null || v === undefined ? '--' : `${(Number(v) || 0).toFixed(1)}%`;
     const formatCurrency = (v) => `NT$ ${Math.round(Number(v) || 0).toLocaleString()}`;
     const formatInteger = (v) => Math.round(Number(v) || 0).toLocaleString();
 
@@ -1600,18 +1613,21 @@ function showKpiHelpPopover(triggerEl, key) {
 }
 
 function initOpsKpiHelp() {
-    const triggers = document.querySelectorAll('.kpi-help-trigger');
-    if (!triggers.length) return;
-
-    triggers.forEach((el) => {
-        el.addEventListener('click', (event) => {
-            event.stopPropagation();
-            const key = el.dataset.kpiHelpKey;
-            showKpiHelpPopover(el, key);
-        });
-    });
+    if (window.__kpiHelpOpsDelegationBound) return;
+    window.__kpiHelpOpsDelegationBound = true;
 
     document.addEventListener('click', (event) => {
+        const trigger = event.target && event.target.closest && event.target.closest('.kpi-help-trigger');
+        if (trigger) {
+            const key = trigger.dataset.kpiHelpKey;
+            if (key) {
+                event.preventDefault();
+                event.stopPropagation();
+                showKpiHelpPopover(trigger, key);
+            }
+            return;
+        }
+
         const popover = document.getElementById('kpiHelpPopover');
         if (!popover || !popover.classList.contains('active')) return;
         if (!popover.contains(event.target)) {

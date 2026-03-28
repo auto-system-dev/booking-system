@@ -231,9 +231,10 @@ function buildDashboardOpsPayload(allBookings, roomTypes, start, end) {
         const denom = Math.max(1, totalRoomsCapacity) * rangeDayCount;
         const occupancyRate = (occupiedRoomNights / denom) * 100;
         const averageRoomRate = activeReservedNights > 0 ? activeReservedRevenue / activeReservedNights : 0;
-        const conversionRate = conversionDenominator > 0 ? (conversionNumerator / conversionDenominator) * 100 : 0;
-        const paymentSuccessRate = paymentDenominator > 0 ? (paymentNumerator / paymentDenominator) * 100 : 0;
-        const cancellationRate = cancellationDenominator > 0 ? (cancellationNumerator / cancellationDenominator) * 100 : 0;
+        // 分母為 0 時回傳 null（非 0%），避免與「有訂單且比率為 0」混淆；較上期無資料時應顯示 --
+        const conversionRate = conversionDenominator > 0 ? (conversionNumerator / conversionDenominator) * 100 : null;
+        const paymentSuccessRate = paymentDenominator > 0 ? (paymentNumerator / paymentDenominator) * 100 : null;
+        const cancellationRate = cancellationDenominator > 0 ? (cancellationNumerator / cancellationDenominator) * 100 : null;
 
         return {
             occupancyRate,
@@ -372,8 +373,16 @@ function buildDashboardOpsPayload(allBookings, roomTypes, start, end) {
         {
             key: 'cancel_rate',
             title: '取消率預警',
-            value: `${(Number(currentKpis.cancellationRate) || 0).toFixed(1)}%`,
-            severity: (Number(currentKpis.cancellationRate) || 0) >= 20 ? 'alert' : ''
+            value:
+                currentKpis.cancellationRate == null
+                    ? '—'
+                    : `${(Number(currentKpis.cancellationRate) || 0).toFixed(1)}%`,
+            severity:
+                currentKpis.cancellationRate == null
+                    ? ''
+                    : (Number(currentKpis.cancellationRate) || 0) >= 20
+                      ? 'alert'
+                      : ''
         }
     ];
 
