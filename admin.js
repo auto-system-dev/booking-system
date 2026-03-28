@@ -807,19 +807,24 @@ function isWholePropertySystemMode() {
     return normalizeSystemMode(currentSystemMode) === 'whole_property';
 }
 
-/** 包棟模式下：側欄、區塊標題、分頁「房型管理」改為「包棟管理」；新增按鈕改為「新增方案」 */
+/** 包棟模式下：側欄與區塊標題為「包棟管理」；中間分頁與新增按鈕仍為「房型管理／新增房型」；圖示改為 villa 與包棟方案一致 */
 function updateRoomTypesSectionLabelsForSystemMode() {
-    const label = isWholePropertySystemMode() ? '包棟管理' : '房型管理';
     const navEl = document.getElementById('navRoomTypesLabel');
-    if (navEl) navEl.textContent = label;
     const secEl = document.getElementById('roomTypesSectionTitle');
-    if (secEl) secEl.textContent = label;
     const tabEl = document.getElementById('roomTypesTabLabel');
-    if (tabEl) tabEl.textContent = label;
     const addBtnLabelEl = document.getElementById('addRoomTypeBtnLabel');
-    if (addBtnLabelEl) {
-        addBtnLabelEl.textContent = isWholePropertySystemMode() ? '新增方案' : '新增房型';
-    }
+    const navIcon = document.getElementById('navRoomTypesIcon');
+    const sectionIcon = document.getElementById('roomTypesSectionTitleIcon');
+    const tabIcon = document.getElementById('roomTypesTabIcon');
+    const sectionNavLabel = isWholePropertySystemMode() ? '包棟管理' : '房型管理';
+    const iconName = isWholePropertySystemMode() ? 'villa' : 'king_bed';
+    if (navEl) navEl.textContent = sectionNavLabel;
+    if (secEl) secEl.textContent = sectionNavLabel;
+    if (tabEl) tabEl.textContent = '房型管理';
+    if (addBtnLabelEl) addBtnLabelEl.textContent = '新增房型';
+    [navIcon, sectionIcon, tabIcon].forEach((el) => {
+        if (el) el.textContent = iconName;
+    });
 }
 
 function getRoomTypesRetailTableHeadHtml() {

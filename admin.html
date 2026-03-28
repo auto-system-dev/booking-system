@@ -81,7 +81,7 @@
                     <span>館別管理</span>
                 </a>
                 <a href="#room-types" class="nav-item permission-required" data-section="room-types" data-permission="room_types.view" onclick="handleNavClick(event, 'room-types')">
-                    <span class="nav-icon"><span class="material-symbols-outlined">king_bed</span></span>
+                    <span class="nav-icon"><span id="navRoomTypesIcon" class="material-symbols-outlined">king_bed</span></span>
                     <span id="navRoomTypesLabel">房型管理</span>
                 </a>
                 <a href="#addons" class="nav-item permission-required" data-section="addons" data-permission="addons.view" onclick="handleNavClick(event, 'addons')">
@@ -601,7 +601,7 @@
             <!-- 房型管理區（包含假日管理分頁） -->
             <section id="room-types-section" class="content-section">
                 <div class="section-header">
-                    <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">king_bed</span> <span id="roomTypesSectionTitle">房型管理</span></h2>
+                    <h2><span id="roomTypesSectionTitleIcon" class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">king_bed</span> <span id="roomTypesSectionTitle">房型管理</span></h2>
                     <div class="header-actions" style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: nowrap;">
                         <div id="roomTypesBuildingFilter" style="display:none; align-items:center; gap:10px;">
                             <label style="margin:0; color:#666; font-size: 13px; white-space: nowrap;">館別</label>
@@ -626,7 +626,7 @@
                         包棟方案
                     </button>
                     <button type="button" class="tab-button active" onclick="switchRoomTypeTab('room-types')" id="roomTypesTab">
-                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">king_bed</span>
+                        <span id="roomTypesTabIcon" class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">king_bed</span>
                         <span id="roomTypesTabLabel">房型管理</span>
                     </button>
                     <button type="button" class="tab-button" onclick="switchRoomTypeTab('holidays')" id="holidaysTab">

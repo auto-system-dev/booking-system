@@ -157,6 +157,7 @@ async function initDatabase() {
             await initSQLite();
         }
         await seedDefaultWholePropertyPlansIfEmpty();
+        await normalizeRetailRoomTypeDisplayNamesIfPackagedByMistake();
     } catch (error) {
         console.error('❌ 資料庫初始化失敗:', error);
         throw error;
@@ -6055,6 +6056,37 @@ async function seedDefaultWholePropertyPlansIfEmpty() {
         if (!String(e.message || '').includes('list_scope')) {
             console.warn('⚠️ 預設包棟方案種子略過:', e.message);
         }
+    }
+}
+
+/** 零售房型若曾被誤設為「○人包棟」等，啟動時還原為與房型代碼對應的預設顯示名稱 */
+async function normalizeRetailRoomTypeDisplayNamesIfPackagedByMistake() {
+    const defaults = [
+        ['standard', '標準雙人房'],
+        ['deluxe', '豪華雙人房'],
+        ['suite', '尊爵套房'],
+        ['family', '家庭四人房']
+    ];
+    const scopeClause = `COALESCE(NULLIF(TRIM(list_scope), ''), 'retail') = 'retail'`;
+    const mistakeClause = `(display_name LIKE '%包棟%' OR display_name IN ('10人包棟','16人包棟','20人包棟','30人包棟'))`;
+    try {
+        for (const [name, display] of defaults) {
+            if (usePostgreSQL) {
+                await query(
+                    `UPDATE room_types SET display_name = $1
+                     WHERE name = $2 AND ${scopeClause} AND ${mistakeClause}`,
+                    [display, name]
+                );
+            } else {
+                await query(
+                    `UPDATE room_types SET display_name = ?
+                     WHERE name = ? AND ${scopeClause} AND ${mistakeClause}`,
+                    [display, name]
+                );
+            }
+        }
+    } catch (e) {
+        console.warn('⚠️ 零售房型顯示名稱校正略過:', e.message || e);
     }
 }
 
