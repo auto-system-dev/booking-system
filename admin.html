@@ -1060,7 +1060,11 @@
 
                 <!-- 分頁導航 -->
                 <div class="tab-container" style="margin-bottom: 20px;">
-                    <button class="tab-button active" onclick="switchSettingsTab('basic')" id="settingsTabBasic">
+                    <button type="button" class="tab-button" onclick="switchSettingsTab('mode')" id="settingsTabMode" style="display: none;">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">toggle_on</span>
+                        訂房模式
+                    </button>
+                    <button type="button" class="tab-button active" onclick="switchSettingsTab('basic')" id="settingsTabBasic">
                         <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle;">info</span>
                         基本設定
                     </button>
@@ -1083,8 +1087,8 @@
                 </div>
 
                 <div class="settings-container">
-                    <!-- 基本設定分頁 -->
-                    <div id="settingsTabBasicContent" class="tab-content active">
+                    <!-- 訂房模式分頁（僅超級管理員可見分頁按鈕，由 admin.js 控制） -->
+                    <div id="settingsTabModeContent" class="tab-content">
                         <div style="margin-top: 0;">
                             <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #7c3aed;">
                                 <span class="material-symbols-outlined" style="font-size: 24px; color: #7c3aed; margin-right: 10px;">toggle_on</span>
@@ -1100,12 +1104,14 @@
                                     <small id="systemModeCurrentHint">切換後僅會啟用所選模式，另一模式將被停用。</small>
                                 </div>
                                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                    <input type="text" id="systemModeSwitchReason" placeholder="切換原因（選填，例如：淡季改包棟）" style="flex: 1; min-width: 260px;">
-                                    <button class="btn-save" onclick="switchSystemModeFromAdmin()">切換模式</button>
+                                    <button type="button" class="btn-save" onclick="switchSystemModeFromAdmin()">切換模式</button>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
+                    <!-- 基本設定分頁 -->
+                    <div id="settingsTabBasicContent" class="tab-content active">
                         <!-- 旅宿資訊區塊 -->
                         <div style="margin-top: 0;">
                             <div style="display: flex; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #3498db;">

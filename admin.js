@@ -516,6 +516,8 @@ function showAdminPage(admin) {
             // 根據權限更新側邊欄顯示
             updateSidebarByPermissions();
 
+            updateSystemModeSwitchSectionVisibility();
+
             // 載入單一模式資訊並更新 UI（不阻塞主要流程）
             loadSystemModeContext().catch(() => {});
         }
@@ -815,6 +817,18 @@ async function loadSystemModeContext() {
     ensureSystemModeUi();
 }
 
+function updateSystemModeSwitchSectionVisibility() {
+    const modeTabBtn = document.getElementById('settingsTabMode');
+    if (!modeTabBtn) {
+        return;
+    }
+    const isSuperAdmin = window.currentAdminInfo && window.currentAdminInfo.role === 'super_admin';
+    modeTabBtn.style.display = isSuperAdmin ? 'flex' : 'none';
+    if (!isSuperAdmin && localStorage.getItem('settingsTab') === 'mode') {
+        localStorage.setItem('settingsTab', 'basic');
+    }
+}
+
 function updateSystemModeSettingsUi(mode) {
     const normalizedMode = normalizeSystemMode(mode);
     const select = document.getElementById('systemModeSelect');
@@ -829,6 +843,11 @@ function updateSystemModeSettingsUi(mode) {
 
 async function switchSystemModeFromAdmin() {
     try {
+        if (!window.currentAdminInfo || window.currentAdminInfo.role !== 'super_admin') {
+            showError('僅超級管理員可切換訂房模式');
+            return;
+        }
+
         const select = document.getElementById('systemModeSelect');
         if (!select) {
             showError('找不到模式切換欄位');
@@ -836,8 +855,6 @@ async function switchSystemModeFromAdmin() {
         }
 
         const targetMode = normalizeSystemMode(select.value);
-        const reasonInput = document.getElementById('systemModeSwitchReason');
-        const reason = reasonInput ? String(reasonInput.value || '').trim() : '';
         const fromMode = normalizeSystemMode(currentSystemMode || 'retail');
 
         if (targetMode === fromMode) {
@@ -854,7 +871,6 @@ async function switchSystemModeFromAdmin() {
             method: 'POST',
             body: JSON.stringify({
                 target_mode: targetMode,
-                reason,
                 force: false
             })
         });
@@ -878,7 +894,6 @@ async function switchSystemModeFromAdmin() {
                 method: 'POST',
                 body: JSON.stringify({
                     target_mode: targetMode,
-                    reason,
                     force: true
                 })
             });
@@ -893,9 +908,6 @@ async function switchSystemModeFromAdmin() {
         currentSystemMode = targetMode;
         updateSystemModeSettingsUi(currentSystemMode);
         ensureSystemModeUi();
-        if (reasonInput) {
-            reasonInput.value = '';
-        }
 
         await loadBookings().catch(() => {});
         await loadBookingCalendar().catch(() => {});
@@ -1697,6 +1709,7 @@ function switchSection(section) {
         const savedTab = localStorage.getItem('promotionTab') || 'promo-codes';
         switchPromotionTab(savedTab);
     } else if (section === 'settings') {
+        updateSystemModeSwitchSectionVisibility();
         loadSettings();
         // 恢復上次選擇的分頁
         const savedTab = localStorage.getItem('settingsTab') || 'basic';
@@ -6798,6 +6811,11 @@ async function saveGmailSettings() {
 // 載入系統設定
 // 切換系統設定分頁
 function switchSettingsTab(tab) {
+    if (tab === 'mode' && (!window.currentAdminInfo || window.currentAdminInfo.role !== 'super_admin')) {
+        tab = 'basic';
+        localStorage.setItem('settingsTab', 'basic');
+    }
+
     // 隱藏所有分頁內容
     const allTabContents = document.querySelectorAll('#settings-section .tab-content');
     allTabContents.forEach(content => {

@@ -5100,10 +5100,17 @@ app.get('/api/system/mode', publicLimiter, async (req, res) => {
     }
 });
 
-// API: 切換系統模式（管理員）
+// API: 切換系統模式（管理員，僅超級管理員）
 app.post('/api/admin/system/mode/switch', requireAuth, checkPermission('settings.edit'), adminLimiter, async (req, res) => {
     try {
-        const { target_mode, reason, force } = req.body || {};
+        if (!req.session.admin || req.session.admin.role !== 'super_admin') {
+            return res.status(403).json({
+                success: false,
+                message: '僅超級管理員可切換訂房模式'
+            });
+        }
+
+        const { target_mode, force } = req.body || {};
         const targetMode = (target_mode || '').toString().trim();
 
         if (!['retail', 'whole_property'].includes(targetMode)) {
@@ -5167,7 +5174,6 @@ app.post('/api/admin/system/mode/switch', requireAuth, checkPermission('settings
                 details: {
                     from_mode: fromMode,
                     to_mode: targetMode,
-                    reason: reason || '',
                     forced: !!force,
                     active_unpaid_count: activeUnpaidBookings.length,
                     reserved_pending_count: reservedPendingBookings.length
