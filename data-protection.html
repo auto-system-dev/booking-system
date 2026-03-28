@@ -270,6 +270,7 @@
         </div>
     </div>
     
+    <script src="app-dialog.js"></script>
     <script>
         let currentEmail = null;
         
@@ -442,7 +443,7 @@
                 return;
             }
             
-            if (!confirm('確定要刪除您的個人資料嗎？此操作無法復原！')) {
+            if (!(await appConfirm('確定要刪除您的個人資料嗎？此操作無法復原！'))) {
                 return;
             }
             

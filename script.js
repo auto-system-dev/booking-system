@@ -2558,9 +2558,9 @@ document.getElementById('bookingForm').addEventListener('submit', async function
         const paymentMethodGroup = document.querySelector('.payment-method-group');
         const hasPaymentMethodInputs = document.querySelectorAll('input[name="paymentMethod"]').length > 0;
         if (hasPaymentMethodInputs) {
-            alert('目前無可用付款方式，請聯繫客服協助下單');
+            await appAlert('目前無可用付款方式，請聯繫客服協助下單');
         } else {
-            alert('付款方式載入中，請稍後再試');
+            await appAlert('付款方式載入中，請稍後再試');
         }
         if (paymentMethodGroup) {
             paymentMethodGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2576,7 +2576,7 @@ document.getElementById('bookingForm').addEventListener('submit', async function
         today.setHours(0, 0, 0, 0);
         
         if (checkInDate.getTime() === today.getTime()) {
-            alert('入住日期為今天時，無法選擇匯款轉帳，請選擇線上刷卡');
+            await appAlert('入住日期為今天時，無法選擇匯款轉帳，請選擇線上刷卡');
             const cardOption = document.querySelector('input[name="paymentMethod"][value="card"]');
             if (cardOption) {
                 cardOption.checked = true;
@@ -2813,7 +2813,7 @@ document.getElementById('bookingForm').addEventListener('submit', async function
                 showSectionError('roomTypeGrid', errorMsg);
             } else {
                 // 其他錯誤顯示 alert
-                alert('訂房失敗：' + errorMsg);
+                await appAlert('訂房失敗：' + errorMsg);
             }
             
             submitBtn.disabled = false;
@@ -2821,7 +2821,7 @@ document.getElementById('bookingForm').addEventListener('submit', async function
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('發生錯誤，請稍後再試');
+        await appAlert('發生錯誤，請稍後再試');
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<span>確認訂房</span>';
     }

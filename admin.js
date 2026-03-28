@@ -159,7 +159,11 @@ if (typeof window !== 'undefined') {
                 console.log('✅ 錯誤訊息已顯示給用戶');
             } else {
                 console.error('❌ 找不到 errorDiv 元素，無法顯示錯誤訊息');
-                alert(errorMessage); // 備用方案：使用 alert
+                if (typeof window.appAlert === 'function') {
+                    await window.appAlert(errorMessage);
+                } else {
+                    alert(errorMessage);
+                }
             }
         } finally {
             // 恢復按鈕狀態
@@ -539,7 +543,7 @@ function showAdminPage(admin) {
 
 // 處理登出
 async function handleLogout() {
-    if (!confirm('確定要登出嗎？')) {
+    if (!(await appConfirm('確定要登出嗎？'))) {
         return;
     }
     
@@ -966,7 +970,7 @@ async function switchSystemModeFromAdmin() {
         }
 
         const confirmMessage = `確定要切換為「${getSystemModeLabel(targetMode)}」嗎？\n\n目前模式：${getSystemModeLabel(fromMode)}\n切換後非當前模式 API 會立即停用。`;
-        if (!window.confirm(confirmMessage)) {
+        if (!(await appConfirm(confirmMessage))) {
             return;
         }
 
@@ -982,7 +986,7 @@ async function switchSystemModeFromAdmin() {
         if (!response.ok && result && result.code === 'ACTIVE_ORDER_EXISTS') {
             const activeUnpaid = Number(result?.data?.active_unpaid_count || 0);
             const reservedPending = Number(result?.data?.reserved_pending_count || 0);
-            const forceConfirm = window.confirm(
+            const forceConfirm = await appConfirm(
                 `目前仍有未完成訂單，建議先處理後再切換。\n\n` +
                 `未完成訂單數：${activeUnpaid}\n` +
                 `其中待付款保留單：${reservedPending}\n\n` +
@@ -2937,7 +2941,7 @@ async function deleteCustomer(email, bookingCount) {
         return;
     }
     
-    if (!confirm(`確定要刪除客戶 ${email} 嗎？此操作無法復原。`)) {
+    if (!(await appConfirm(`確定要刪除客戶 ${email} 嗎？此操作無法復原。`))) {
         return;
     }
     
@@ -3140,7 +3144,7 @@ async function saveMemberLevel(event) {
 
 // 刪除會員等級
 async function deleteMemberLevel(id, levelName) {
-    if (!confirm(`確定要刪除等級「${levelName}」嗎？此操作無法復原。`)) {
+    if (!(await appConfirm(`確定要刪除等級「${levelName}」嗎？此操作無法復原。`))) {
         return;
     }
     
@@ -4328,7 +4332,11 @@ function showError(message) {
         console.warn('ℹ️ 已攔截 401 錯誤提示，改由登入頁流程處理');
         return;
     }
-    alert(message);
+    if (typeof window.appAlert === 'function') {
+        void window.appAlert(message);
+    } else {
+        alert(message);
+    }
 }
 
 // 顯示成功訊息
@@ -4914,7 +4922,7 @@ async function saveBookingEdit(event, bookingId) {
 
 // 取消訂房
 async function cancelBooking(bookingId) {
-    if (!confirm('確定要取消這筆訂房嗎？此操作無法復原。')) {
+    if (!(await appConfirm('確定要取消這筆訂房嗎？此操作無法復原。'))) {
         return;
     }
     
@@ -4932,7 +4940,7 @@ async function cancelBooking(bookingId) {
         console.log('取消結果:', result);
         
         if (result.success) {
-            alert('訂房已取消');
+            await appAlert('訂房已取消');
             loadBookings(); // 重新載入列表
         } else {
             showError('取消失敗：' + (result.message || '請稍後再試'));
@@ -4945,7 +4953,7 @@ async function cancelBooking(bookingId) {
 
 // 刪除訂房（僅限已取消的訂房）
 async function deleteBooking(bookingId) {
-    if (!confirm('確定要刪除這筆訂房嗎？此操作無法復原。')) {
+    if (!(await appConfirm('確定要刪除這筆訂房嗎？此操作無法復原。'))) {
         return;
     }
     
@@ -4972,7 +4980,7 @@ async function deleteBooking(bookingId) {
         console.log('刪除結果:', result);
         
         if (result.success) {
-            alert('訂房已刪除');
+            await appAlert('訂房已刪除');
             loadBookings(); // 重新載入列表
         } else {
             showError('刪除失敗：' + (result.message || '請稍後再試'));
@@ -5275,7 +5283,7 @@ async function saveBuildingFromModal(event, id) {
 }
 
 async function deleteBuilding(id) {
-    if (!confirm('確定要刪除此館別嗎？（若仍有房型，系統會阻擋刪除）')) return;
+    if (!(await appConfirm('確定要刪除此館別嗎？（若仍有房型，系統會阻擋刪除）'))) return;
     try {
         const res = await adminFetch(`/api/admin/buildings/${encodeURIComponent(String(id))}`, { method: 'DELETE' });
         const j = await res.json();
@@ -5673,7 +5681,7 @@ async function handleGalleryImageUpload(input, roomTypeId) {
 
 // 刪除圖庫照片
 async function deleteGalleryImage(imageId, roomTypeId) {
-    if (!confirm('確定要刪除這張圖庫照片嗎？')) return;
+    if (!(await appConfirm('確定要刪除這張圖庫照片嗎？'))) return;
     
     try {
         const response = await adminFetch(`/api/admin/room-types/gallery/${imageId}`, {
@@ -5852,7 +5860,7 @@ async function saveRoomType(event, id) {
 
 // 刪除房型
 async function deleteRoomType(id) {
-    if (!confirm('確定要永久刪除這個房型嗎？\n\n⚠️ 注意：\n- 此操作無法復原\n- 如果該房型有訂房記錄，將無法刪除\n- 刪除後將完全從資料庫中移除')) {
+    if (!(await appConfirm('確定要永久刪除這個房型嗎？\n\n⚠️ 注意：\n- 此操作無法復原\n- 如果該房型有訂房記錄，將無法刪除\n- 刪除後將完全從資料庫中移除'))) {
         return;
     }
     
@@ -6208,7 +6216,7 @@ async function toggleAddonStatus(id, isActive) {
 
 // 刪除加購商品
 async function deleteAddon(id) {
-    if (!confirm('確定要刪除這個加購商品嗎？此操作無法復原。')) {
+    if (!(await appConfirm('確定要刪除這個加購商品嗎？此操作無法復原。'))) {
         return;
     }
     
@@ -7646,7 +7654,7 @@ window.resetCurrentTemplateToDefault = async function resetCurrentTemplateToDefa
     const templateKey = form.dataset.templateKey;
     const templateName = document.getElementById('emailTemplateModalTitle')?.textContent?.replace('編輯郵件模板：', '') || templateKey;
     
-    if (!confirm(`確定要將郵件模板「${templateName}」重置為預設的圖卡樣式嗎？此操作將覆蓋現有的模板內容。`)) {
+    if (!(await appConfirm(`確定要將郵件模板「${templateName}」重置為預設的圖卡樣式嗎？此操作將覆蓋現有的模板內容。`))) {
         return;
     }
     
@@ -7662,7 +7670,7 @@ window.resetCurrentTemplateToDefault = async function resetCurrentTemplateToDefa
         const result = await response.json();
         
         if (result.success) {
-            alert(`✅ ${result.message}`);
+            await appAlert(`✅ ${result.message}`);
             
             // 重新載入當前模板內容
             await showEmailTemplateModal(templateKey);
@@ -7680,7 +7688,7 @@ window.resetCurrentTemplateToDefault = async function resetCurrentTemplateToDefa
 
 // 清除入住提醒郵件的區塊內容（使用新的預設格式）
 async function clearCheckinBlocks() {
-    if (!confirm('確定要清除入住提醒郵件的區塊內容嗎？系統將使用最新的預設格式。此操作不會影響其他設定。')) {
+    if (!(await appConfirm('確定要清除入住提醒郵件的區塊內容嗎？系統將使用最新的預設格式。此操作不會影響其他設定。'))) {
         return;
     }
     
@@ -8300,7 +8308,7 @@ async function showEmailTemplateModal(templateKey) {
                     const templateKey = form ? form.dataset.templateKey : null;
                     
                     if (!templateKey) {
-                        alert('找不到模板代碼');
+                        await appAlert('找不到模板代碼');
                         return;
                     }
                     
@@ -8490,11 +8498,11 @@ async function showEmailTemplateModal(templateKey) {
                             await window.resetCurrentTemplateToDefault();
                         } else {
                             console.error('❌ resetCurrentTemplateToDefault 函數未定義');
-                            alert('重置功能無法使用，請重新整理頁面');
+                            await appAlert('重置功能無法使用，請重新整理頁面');
                         }
                     } catch (error) {
                         console.error('❌ 調用 resetCurrentTemplateToDefault 時發生錯誤:', error);
-                        alert('重置時發生錯誤：' + error.message);
+                        await appAlert('重置時發生錯誤：' + error.message);
                     }
                 });
                 console.log('✅ resetTemplateStyleBtn 按鈕事件監聽器已設置');
@@ -8521,18 +8529,18 @@ async function showEmailTemplateModal(templateKey) {
                 const newSimpleBtn = toggleSimpleModeBtn.cloneNode(true);
                 toggleSimpleModeBtn.parentNode.replaceChild(newSimpleBtn, toggleSimpleModeBtn);
                 
-                newSimpleBtn.addEventListener('click', function(e) {
+                newSimpleBtn.addEventListener('click', async function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     try {
                         if (typeof window.toggleSimpleMode === 'function') {
                             window.toggleSimpleMode();
                         } else {
-                            alert('簡化模式功能尚未載入，請稍候再試');
+                            await appAlert('簡化模式功能尚未載入，請稍候再試');
                         }
                     } catch (error) {
                         console.error('❌ 調用 toggleSimpleMode 時發生錯誤:', error);
-                        alert('切換簡化模式時發生錯誤：' + error.message);
+                        await appAlert('切換簡化模式時發生錯誤：' + error.message);
                     }
                 });
                 console.log('✅ toggleSimpleModeBtn 按鈕事件監聽器已設置');
@@ -8544,7 +8552,7 @@ async function showEmailTemplateModal(templateKey) {
                 const newToggleBtn = togglePreviewBtn.cloneNode(true);
                 togglePreviewBtn.parentNode.replaceChild(newToggleBtn, togglePreviewBtn);
                 
-                newToggleBtn.addEventListener('click', function(e) {
+                newToggleBtn.addEventListener('click', async function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     try {
@@ -8565,10 +8573,10 @@ async function showEmailTemplateModal(templateKey) {
                                 return;
                             }
                         }
-                        alert('預覽功能尚未載入，請稍候再試');
+                        await appAlert('預覽功能尚未載入，請稍候再試');
                     } catch (error) {
                         console.error('❌ 調用 toggleEmailPreview 時發生錯誤:', error);
-                        alert('預覽時發生錯誤：' + error.message);
+                        await appAlert('預覽時發生錯誤：' + error.message);
                     }
                 });
                 console.log('✅ togglePreviewBtn 按鈕事件監聽器已設置');
@@ -9028,7 +9036,7 @@ async function saveEmailTemplate(event) {
         
         if (result.success) {
             console.log('✅ 儲存成功，開始重新載入模板列表...');
-            alert('郵件模板已儲存');
+            await appAlert('郵件模板已儲存');
             closeEmailTemplateModal();
             // 重新載入模板列表以確保顯示最新內容
             await loadEmailTemplates();
@@ -9367,7 +9375,7 @@ async function restoreEmailTemplate() {
         return;
     }
     
-    if (!confirm('確定要還原為預設範本嗎？此操作將覆蓋目前的內容，且無法復原。')) {
+    if (!(await appConfirm('確定要還原為預設範本嗎？此操作將覆蓋目前的內容，且無法復原。'))) {
         return;
     }
     
@@ -9579,7 +9587,7 @@ window.restoreEmailTemplate = restoreEmailTemplate;
 
 // 重置單個郵件模板為預設文字樣式（從模板卡片中調用，保留以備將來需要）
 async function resetEmailTemplateToDefault(templateKey, templateName) {
-    if (!confirm(`確定要將郵件模板「${templateName}」重置為預設的文字樣式嗎？此操作將覆蓋現有的模板內容。`)) {
+    if (!(await appConfirm(`確定要將郵件模板「${templateName}」重置為預設的文字樣式嗎？此操作將覆蓋現有的模板內容。`))) {
         return;
     }
     
@@ -9595,7 +9603,7 @@ async function resetEmailTemplateToDefault(templateKey, templateName) {
         const result = await response.json();
         
         if (result.success) {
-            alert(`✅ ${result.message}`);
+            await appAlert(`✅ ${result.message}`);
             
             // 重新載入模板列表
             await loadEmailTemplates();
@@ -10530,7 +10538,7 @@ async function addHolidayRange() {
 
 // 刪除假日
 async function deleteHoliday(holidayDate) {
-    if (!confirm('確定要刪除這個假日嗎？')) {
+    if (!(await appConfirm('確定要刪除這個假日嗎？'))) {
         return;
     }
     
@@ -10863,7 +10871,7 @@ async function savePromoCode(event) {
 
 // 刪除優惠代碼
 async function deletePromoCode(id, code) {
-    if (!confirm(`確定要刪除優惠代碼「${code}」嗎？此操作無法復原。`)) {
+    if (!(await appConfirm(`確定要刪除優惠代碼「${code}」嗎？此操作無法復原。`))) {
         return;
     }
     
@@ -11281,7 +11289,7 @@ async function saveAdmin(event) {
 
 // 刪除管理員
 async function deleteAdmin(adminId, username) {
-    if (!confirm(`確定要刪除管理員「${username}」嗎？此操作無法復原。`)) {
+    if (!(await appConfirm(`確定要刪除管理員「${username}」嗎？此操作無法復原。`))) {
         return;
     }
     
@@ -11720,7 +11728,7 @@ async function saveRole(event) {
 
 // 刪除角色
 async function deleteRole(roleId, displayName) {
-    if (!confirm(`確定要刪除角色「${displayName}」嗎？此操作無法復原。`)) {
+    if (!(await appConfirm(`確定要刪除角色「${displayName}」嗎？此操作無法復原。`))) {
         return;
     }
     
@@ -12080,7 +12088,7 @@ async function loadBackups() {
 
 // 手動建立備份
 async function createBackup() {
-    if (!confirm('確定要建立資料備份嗎？')) return;
+    if (!(await appConfirm('確定要建立資料備份嗎？'))) return;
     
     try {
         showSuccess('正在建立備份...');
@@ -12108,7 +12116,7 @@ async function cleanupBackups() {
     const daysInput = document.getElementById('backupRetainDays');
     const daysToKeep = parseInt(daysInput?.value) || 30;
     
-    if (!confirm(`確定要清理 ${daysToKeep} 天前的備份嗎？此操作無法復原。`)) return;
+    if (!(await appConfirm(`確定要清理 ${daysToKeep} 天前的備份嗎？此操作無法復原。`))) return;
     
     try {
         const response = await adminFetch('/api/admin/backups/cleanup', {
@@ -12133,7 +12141,7 @@ async function cleanupBackups() {
 
 // 刪除單一備份
 async function deleteBackup(fileName) {
-    if (!confirm(`確定要刪除備份「${fileName}」嗎？此操作無法復原。`)) return;
+    if (!(await appConfirm(`確定要刪除備份「${fileName}」嗎？此操作無法復原。`))) return;
     
     try {
         const response = await adminFetch(`/api/admin/backups/${encodeURIComponent(fileName)}`, {
@@ -12156,10 +12164,10 @@ async function deleteBackup(fileName) {
 
 // 還原備份
 async function restoreBackup(fileName) {
-    if (!confirm(`⚠️ 警告：還原備份將會覆蓋目前所有資料！\n\n備份檔案：${fileName}\n\n系統會在還原前自動建立一份安全備份。\n\n確定要繼續嗎？`)) return;
+    if (!(await appConfirm(`⚠️ 警告：還原備份將會覆蓋目前所有資料！\n\n備份檔案：${fileName}\n\n系統會在還原前自動建立一份安全備份。\n\n確定要繼續嗎？`))) return;
     
     // 二次確認
-    if (!confirm('再次確認：此操作將覆蓋資料庫中的所有現有資料，確定要還原嗎？')) return;
+    if (!(await appConfirm('再次確認：此操作將覆蓋資料庫中的所有現有資料，確定要還原嗎？'))) return;
     
     try {
         showSuccess('正在還原備份，請稍候...');
@@ -14433,7 +14441,7 @@ async function saveEarlyBirdSetting(event) {
 
 // 刪除早鳥優惠
 async function deleteEarlyBirdSetting(id, name) {
-    if (!confirm(`確定要刪除早鳥優惠規則「${name}」嗎？`)) return;
+    if (!(await appConfirm(`確定要刪除早鳥優惠規則「${name}」嗎？`))) return;
     
     try {
         const response = await adminFetch(`/api/admin/early-bird-settings/${id}`, {
