@@ -82,7 +82,7 @@
                 </a>
                 <a href="#room-types" class="nav-item permission-required" data-section="room-types" data-permission="room_types.view" onclick="handleNavClick(event, 'room-types')">
                     <span class="nav-icon"><span class="material-symbols-outlined">king_bed</span></span>
-                    <span>房型管理</span>
+                    <span id="navRoomTypesLabel">房型管理</span>
                 </a>
                 <a href="#addons" class="nav-item permission-required" data-section="addons" data-permission="addons.view" onclick="handleNavClick(event, 'addons')">
                     <span class="nav-icon"><span class="material-symbols-outlined">add_shopping_cart</span></span>
@@ -601,14 +601,14 @@
             <!-- 房型管理區（包含假日管理分頁） -->
             <section id="room-types-section" class="content-section">
                 <div class="section-header">
-                    <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">king_bed</span> 房型管理</h2>
+                    <h2><span class="material-symbols-outlined" style="font-size: 28px; vertical-align: middle; margin-right: 8px;">king_bed</span> <span id="roomTypesSectionTitle">房型管理</span></h2>
                     <div class="header-actions" style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: nowrap;">
                         <div id="roomTypesBuildingFilter" style="display:none; align-items:center; gap:10px;">
                             <label style="margin:0; color:#666; font-size: 13px; white-space: nowrap;">館別</label>
                             <select id="roomTypesBuildingSelect" style="min-width: 180px; padding: 8px; border: 1px solid #ddd; border-radius: 8px;" onchange="onRoomTypesBuildingChange(this.value)"></select>
                         </div>
                         <button class="btn-primary permission-required" id="addRoomTypeBtn" data-permission="room_types.create" onclick="showAddRoomTypeModal()">
-                            <span class="material-symbols-outlined">add</span> 新增房型
+                            <span class="material-symbols-outlined">add</span> <span id="addRoomTypeBtnLabel">新增房型</span>
                         </button>
                         <button class="btn-refresh" id="roomTypeRefreshBtn" onclick="loadRoomTypes()" style="display: none;">
                             <span class="material-symbols-outlined">refresh</span> 重新整理
@@ -627,7 +627,7 @@
                     </button>
                     <button type="button" class="tab-button active" onclick="switchRoomTypeTab('room-types')" id="roomTypesTab">
                         <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">king_bed</span>
-                        房型管理
+                        <span id="roomTypesTabLabel">房型管理</span>
                     </button>
                     <button type="button" class="tab-button" onclick="switchRoomTypeTab('holidays')" id="holidaysTab">
                         <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">event</span>
@@ -669,7 +669,7 @@
                     <div class="room-types-container">
                     <table class="bookings-table">
                         <thead>
-                            <tr>
+                            <tr id="roomTypesTableHeadRow">
                                 <th>排序</th>
                                 <th>照片/圖示</th>
                                 <th>房型代碼</th>

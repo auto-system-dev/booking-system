@@ -799,6 +799,73 @@ function ensureSystemModeUi() {
     }
 
     updateWholePropertyPlansTabVisibility();
+    updateRoomTypesSectionLabelsForSystemMode();
+    refreshRoomTypesRetailTableIfSectionActive();
+}
+
+function isWholePropertySystemMode() {
+    return normalizeSystemMode(currentSystemMode) === 'whole_property';
+}
+
+/** 包棟模式下：側欄、區塊標題、分頁「房型管理」改為「包棟管理」；新增按鈕改為「新增方案」 */
+function updateRoomTypesSectionLabelsForSystemMode() {
+    const label = isWholePropertySystemMode() ? '包棟管理' : '房型管理';
+    const navEl = document.getElementById('navRoomTypesLabel');
+    if (navEl) navEl.textContent = label;
+    const secEl = document.getElementById('roomTypesSectionTitle');
+    if (secEl) secEl.textContent = label;
+    const tabEl = document.getElementById('roomTypesTabLabel');
+    if (tabEl) tabEl.textContent = label;
+    const addBtnLabelEl = document.getElementById('addRoomTypeBtnLabel');
+    if (addBtnLabelEl) {
+        addBtnLabelEl.textContent = isWholePropertySystemMode() ? '新增方案' : '新增房型';
+    }
+}
+
+function getRoomTypesRetailTableHeadHtml() {
+    if (isWholePropertySystemMode()) {
+        return `
+                                <th>排序</th>
+                                <th>照片/圖示</th>
+                                <th>房型代碼</th>
+                                <th>房型名稱</th>
+                                <th>狀態</th>
+                                <th>操作</th>
+        `;
+    }
+    return `
+                                <th>排序</th>
+                                <th>照片/圖示</th>
+                                <th>房型代碼</th>
+                                <th>房型名稱</th>
+                                <th>入住人數</th>
+                                <th>加床人數</th>
+                                <th>加床費用/人</th>
+                                <th>平日價格/晚</th>
+                                <th>假日價格/晚</th>
+                                <th>庫存</th>
+                                <th>狀態</th>
+                                <th>操作</th>
+    `;
+}
+
+function syncRoomTypesRetailTableHeader() {
+    const row = document.getElementById('roomTypesTableHeadRow');
+    if (!row) return;
+    row.innerHTML = getRoomTypesRetailTableHeadHtml();
+}
+
+function refreshRoomTypesRetailTableIfSectionActive() {
+    try {
+        const section = document.getElementById('room-types-section');
+        if (!section || !section.classList.contains('active')) return;
+        const t = localStorage.getItem('roomTypeTab') || 'room-types';
+        if (t !== 'room-types') return;
+        syncRoomTypesRetailTableHeader();
+        renderRoomTypes('retail');
+    } catch (_) {
+        /* ignore */
+    }
 }
 
 /** 包棟方案分頁僅在系統為包棟模式時顯示 */
@@ -1866,6 +1933,7 @@ function switchRoomTypeTab(tab) {
         if (filterWrap) filterWrap.style.display = 'inline-flex';
         document.getElementById('roomTypeRefreshBtn').style.display = 'inline-flex';
         document.getElementById('holidayRefreshBtn').style.display = 'none';
+        updateRoomTypesSectionLabelsForSystemMode();
     };
 
     const showHolidayChrome = () => {
@@ -4947,6 +5015,15 @@ async function loadRoomTypes() {
     try {
         const bid = Number(selectedBuildingIdForRoomTypes) || 1;
         const scope = getActiveRoomTypesListScope();
+        if (scope === 'retail') {
+            updateRoomTypesSectionLabelsForSystemMode();
+            syncRoomTypesRetailTableHeader();
+            const tbodyRt = document.getElementById('roomTypesTableBody');
+            const col = isWholePropertySystemMode() ? 6 : 12;
+            if (tbodyRt) {
+                tbodyRt.innerHTML = `<tr><td colspan="${col}" class="loading">載入中...</td></tr>`;
+            }
+        }
         const roomTypesResponse = await adminFetch(
             `/api/admin/room-types?buildingId=${encodeURIComponent(String(bid))}&listScope=${encodeURIComponent(scope)}`
         );
@@ -5183,10 +5260,16 @@ function renderRoomTypes(scope = 'retail') {
     const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
 
+    if (scope === 'retail') {
+        syncRoomTypesRetailTableHeader();
+    }
+
     const filteredRoomTypes = scope === 'whole_property' ? allRoomTypesWholeProperty : allRoomTypesRetail;
+    const retailCompact = scope === 'retail' && isWholePropertySystemMode();
+    const colCount = retailCompact ? 6 : 12;
 
     if (filteredRoomTypes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="12" class="loading">沒有房型資料</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="${colCount}" class="loading">沒有房型資料</td></tr>`;
         return;
     }
 
@@ -5194,6 +5277,10 @@ function renderRoomTypes(scope = 'retail') {
         const n = (v) => {
             const x = parseInt(String(v ?? '').trim(), 10);
             return Number.isFinite(x) ? x : 0;
+        };
+        const cellOrDash = (s) => {
+            const t = String(s ?? '').trim();
+            return t ? escapeHtml(t) : '—';
         };
         const rowsHtml = filteredRoomTypes.map((room) => {
             const price = n(room.price);
@@ -5206,13 +5293,35 @@ function renderRoomTypes(scope = 'retail') {
             const oldLine = originalPrice > 0
                 ? `<br><small style="color:#aaa;text-decoration:line-through;">NT$ ${originalPrice.toLocaleString()}</small>`
                 : '';
+            const imgCell = room.image_url
+                ? `<img src="${escapeHtml(room.image_url)}" alt="${escapeHtml(room.display_name || '')}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid #eee;">`
+                : `<span style="font-size: 28px;">${room.icon || '🏠'}</span>`;
+            if (retailCompact) {
+                return `
+                <tr ${rowStyle}>
+                    <td>${n(room.display_order)}</td>
+                    <td>${imgCell}</td>
+                    <td>${cellOrDash(room.name)}</td>
+                    <td>${cellOrDash(room.display_name)}</td>
+                    <td>
+                        <span class="status-badge ${isActive ? 'status-sent' : 'status-unsent'}">
+                            ${isActive ? '啟用' : '停用'}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            ${hasPermission('room_types.edit') ? `<button class="btn-edit" onclick="editRoomType(${Number(room.id)})">編輯</button>` : ''}
+                            ${hasPermission('room_types.delete') ? `<button class="btn-cancel" onclick="deleteRoomType(${Number(room.id)})">刪除</button>` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `;
+            }
             return `
                 <tr ${rowStyle}>
                     <td>${n(room.display_order)}</td>
                     <td>
-                        ${room.image_url
-                            ? `<img src="${escapeHtml(room.image_url)}" alt="${escapeHtml(room.display_name)}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid #eee;">`
-                            : `<span style="font-size: 28px;">${room.icon || '🏠'}</span>`}
+                        ${imgCell}
                     </td>
                     <td>${escapeHtml(String(room.name || ''))}</td>
                     <td>${escapeHtml(String(room.display_name || ''))}</td>
@@ -5239,7 +5348,7 @@ function renderRoomTypes(scope = 'retail') {
         tbody.innerHTML = rowsHtml;
     } catch (err) {
         console.error('renderRoomTypes failed:', err, { scope, filteredRoomTypes });
-        tbody.innerHTML = `<tr><td colspan="12" class="loading" style="color:#e74c3c;">房型列表渲染失敗：${escapeHtml(err.message || '未知錯誤')}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${colCount}" class="loading" style="color:#e74c3c;">房型列表渲染失敗：${escapeHtml(err.message || '未知錯誤')}</td></tr>`;
     }
 }
 
