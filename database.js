@@ -159,6 +159,7 @@ async function initDatabase() {
         await seedDefaultWholePropertyPlansIfEmpty();
         await normalizeRetailRoomTypeDisplayNamesIfPackagedByMistake();
         await applyRetailRoomTypesSeedDefaultsBuilding1Once();
+        await repairWholePropertyPlansListScopeMisassignedAsRetail();
     } catch (error) {
         console.error('❌ 資料庫初始化失敗:', error);
         throw error;
@@ -6229,6 +6230,29 @@ async function applyRetailRoomTypesSeedDefaultsBuilding1Once() {
         }
     } catch (e) {
         console.warn('⚠️ 零售房型預設值還原略過:', e.message || e);
+    }
+}
+
+/**
+ * 包棟方案代碼慣例為 wp_ 開頭；若曾誤存成 list_scope=retail（或空值被視為零售），
+ * 「房型管理」分頁會一併列出這些列。啟動時改回 whole_property。
+ */
+async function repairWholePropertyPlansListScopeMisassignedAsRetail() {
+    const retailLike = `COALESCE(NULLIF(TRIM(list_scope), ''), 'retail') = 'retail'`;
+    try {
+        const wpPrefix = usePostgreSQL
+            ? `SUBSTRING(TRIM(name) FROM 1 FOR 3) = 'wp_'`
+            : `SUBSTR(TRIM(name), 1, 3) = 'wp_'`;
+        const res = await query(
+            `UPDATE room_types SET list_scope = 'whole_property', updated_at = CURRENT_TIMESTAMP
+             WHERE ${wpPrefix} AND ${retailLike}`
+        );
+        const n = res.changes || 0;
+        if (n > 0) {
+            console.log(`✅ 已修正 ${n} 筆包棟方案（wp_ 開頭）之 list_scope → whole_property`);
+        }
+    } catch (e) {
+        console.warn('⚠️ 包棟方案 list_scope 修正略過:', e.message || e);
     }
 }
 
