@@ -621,14 +621,47 @@
 
                 <!-- 分頁切換 -->
                 <div class="tab-container" style="margin-bottom: 20px; border-bottom: 2px solid #e0e0e0;">
-                    <button class="tab-button active" onclick="switchRoomTypeTab('room-types')" id="roomTypesTab">
+                    <button type="button" class="tab-button" onclick="switchRoomTypeTab('whole-property-plans')" id="wholePropertyPlansTab">
+                        <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">villa</span>
+                        包棟方案
+                    </button>
+                    <button type="button" class="tab-button active" onclick="switchRoomTypeTab('room-types')" id="roomTypesTab">
                         <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">king_bed</span>
                         房型管理
                     </button>
-                    <button class="tab-button" onclick="switchRoomTypeTab('holidays')" id="holidaysTab">
+                    <button type="button" class="tab-button" onclick="switchRoomTypeTab('holidays')" id="holidaysTab">
                         <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 5px;">event</span>
                         假日管理
                     </button>
+                </div>
+
+                <!-- 包棟方案（欄位與房型管理相同，資料來源相同） -->
+                <div id="wholePropertyPlansTabContent" class="tab-content" style="display: none;">
+                    <div class="room-types-container">
+                    <table class="bookings-table">
+                        <thead>
+                            <tr>
+                                <th>排序</th>
+                                <th>照片/圖示</th>
+                                <th>房型代碼</th>
+                                <th>房型名稱</th>
+                                <th>入住人數</th>
+                                <th>加床人數</th>
+                                <th>加床費用/人</th>
+                                <th>平日價格/晚</th>
+                                <th>假日價格/晚</th>
+                                <th>庫存</th>
+                                <th>狀態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wholePropertyPlansTableBody">
+                            <tr>
+                                <td colspan="12" class="loading">載入中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
                 </div>
 
                 <!-- 房型管理內容 -->

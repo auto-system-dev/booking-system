@@ -1697,12 +1697,9 @@ function switchSection(section) {
     if (section === 'dashboard') {
         loadDashboard();
     } else if (section === 'room-types') {
-        // 載入房型管理時，檢查 localStorage 恢復分頁狀態
+        // 載入房型管理時，檢查 localStorage 恢復分頁狀態（switchRoomTypeTab 內會載入列表）
         const savedTab = localStorage.getItem('roomTypeTab') || 'room-types';
         switchRoomTypeTab(savedTab);
-        if (savedTab === 'room-types') {
-            loadRoomTypes();
-        }
     } else if (section === 'buildings') {
         loadBuildings();
     } else if (section === 'addons') {
@@ -1832,42 +1829,55 @@ function switchPromotionTab(tab) {
 function switchRoomTypeTab(tab) {
     // 保存當前分頁到 localStorage
     localStorage.setItem('roomTypeTab', tab);
-    
-    // 更新分頁按鈕狀態
-    document.querySelectorAll('.tab-button').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // 顯示/隱藏對應的內容
-    if (tab === 'room-types') {
-        document.getElementById('roomTypesTab').classList.add('active');
-        document.getElementById('roomTypesTabContent').style.display = 'block';
-        document.getElementById('holidaysTabContent').style.display = 'none';
-        
-        // 顯示/隱藏對應的按鈕
+
+    const roomTypesSection = document.getElementById('room-types-section');
+    const tabButtons = roomTypesSection
+        ? roomTypesSection.querySelectorAll('.tab-container .tab-button')
+        : document.querySelectorAll('#room-types-section .tab-container .tab-button');
+    tabButtons.forEach((btn) => btn.classList.remove('active'));
+
+    const wpContent = document.getElementById('wholePropertyPlansTabContent');
+    const rtContent = document.getElementById('roomTypesTabContent');
+    const holContent = document.getElementById('holidaysTabContent');
+
+    const showRoomTypeChrome = () => {
         document.getElementById('addRoomTypeBtn').style.display = 'inline-flex';
         const filterWrap = document.getElementById('roomTypesBuildingFilter');
         if (filterWrap) filterWrap.style.display = 'inline-flex';
         document.getElementById('roomTypeRefreshBtn').style.display = 'inline-flex';
         document.getElementById('holidayRefreshBtn').style.display = 'none';
-        
-        // 載入房型列表
-        loadRoomTypes();
-    } else if (tab === 'holidays') {
-        document.getElementById('holidaysTab').classList.add('active');
-        document.getElementById('roomTypesTabContent').style.display = 'none';
-        document.getElementById('holidaysTabContent').style.display = 'block';
-        
-        // 顯示/隱藏對應的按鈕
+    };
+
+    const showHolidayChrome = () => {
         document.getElementById('addRoomTypeBtn').style.display = 'none';
         const filterWrap = document.getElementById('roomTypesBuildingFilter');
         if (filterWrap) filterWrap.style.display = 'none';
         document.getElementById('roomTypeRefreshBtn').style.display = 'none';
         document.getElementById('holidayRefreshBtn').style.display = 'inline-flex';
-        
-        // 載入假日資料和平日/假日設定
+    };
+
+    if (tab === 'whole-property-plans') {
+        const t = document.getElementById('wholePropertyPlansTab');
+        if (t) t.classList.add('active');
+        if (wpContent) wpContent.style.display = 'block';
+        if (rtContent) rtContent.style.display = 'none';
+        if (holContent) holContent.style.display = 'none';
+        showRoomTypeChrome();
+        loadRoomTypes();
+    } else if (tab === 'room-types') {
+        document.getElementById('roomTypesTab').classList.add('active');
+        if (wpContent) wpContent.style.display = 'none';
+        if (rtContent) rtContent.style.display = 'block';
+        if (holContent) holContent.style.display = 'none';
+        showRoomTypeChrome();
+        loadRoomTypes();
+    } else if (tab === 'holidays') {
+        document.getElementById('holidaysTab').classList.add('active');
+        if (wpContent) wpContent.style.display = 'none';
+        if (rtContent) rtContent.style.display = 'none';
+        if (holContent) holContent.style.display = 'block';
+        showHolidayChrome();
         loadHolidays();
-        // 使用 setTimeout 確保 DOM 元素已經渲染完成
         setTimeout(() => {
             loadWeekdaySettingsFromServer();
         }, 200);
@@ -4991,7 +5001,7 @@ function syncRoomTypesBuildingSelect() {
 
     wrap.style.display = 'inline-flex';
 
-    // 只在「房型管理」分頁顯示（假日分頁會在 switchRoomTypeTab 隱藏）
+    // 只在「房型管理／包棟方案」分頁顯示（假日分頁會在 switchRoomTypeTab 隱藏）
     const saved = parseInt(localStorage.getItem('roomTypesBuildingId') || '1', 10);
     selectedBuildingIdForRoomTypes = Number.isFinite(saved) && saved > 0 ? saved : 1;
 
@@ -5133,23 +5143,29 @@ function onRoomTypesBuildingChange(buildingId) {
 
 // 渲染房型列表
 function renderRoomTypes() {
-    const tbody = document.getElementById('roomTypesTableBody');
-    if (!tbody) return;
-    
+    const tbodies = [
+        document.getElementById('roomTypesTableBody'),
+        document.getElementById('wholePropertyPlansTableBody')
+    ].filter(Boolean);
+    if (tbodies.length === 0) return;
+
     // 顯示所有房型（包括啟用和停用的）
     const filteredRoomTypes = allRoomTypes;
-    
+
     if (filteredRoomTypes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="12" class="loading">沒有房型資料</td></tr>';
+        const emptyRow = '<tr><td colspan="12" class="loading">沒有房型資料</td></tr>';
+        tbodies.forEach((tbody) => {
+            tbody.innerHTML = emptyRow;
+        });
         return;
     }
-    
+
     try {
         const n = (v) => {
             const x = parseInt(String(v ?? '').trim(), 10);
             return Number.isFinite(x) ? x : 0;
         };
-        tbody.innerHTML = filteredRoomTypes.map((room) => {
+        const rowsHtml = filteredRoomTypes.map((room) => {
             const price = n(room.price);
             const originalPrice = n(room.original_price);
             const holidaySurcharge = n(room.holiday_surcharge);
@@ -5190,9 +5206,15 @@ function renderRoomTypes() {
                 </tr>
             `;
         }).join('');
+        tbodies.forEach((tbody) => {
+            tbody.innerHTML = rowsHtml;
+        });
     } catch (err) {
         console.error('renderRoomTypes failed:', err, { allRoomTypes });
-        tbody.innerHTML = `<tr><td colspan="12" class="loading" style="color:#e74c3c;">房型列表渲染失敗：${escapeHtml(err.message || '未知錯誤')}</td></tr>`;
+        const errRow = `<tr><td colspan="12" class="loading" style="color:#e74c3c;">房型列表渲染失敗：${escapeHtml(err.message || '未知錯誤')}</td></tr>`;
+        tbodies.forEach((tbody) => {
+            tbody.innerHTML = errRow;
+        });
     }
 }
 
