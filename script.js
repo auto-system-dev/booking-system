@@ -81,6 +81,8 @@ let selectedRoomExtraBeds = {};
 let capacityModalData = { capacity: 0, totalGuests: 0 };
 let roomGalleryData = {};
 let roomFacilitiesData = {};
+/** 後台「旅宿設施」(landing_facilities)，供包棟模式房型卡片與銷售頁一致 */
+let bookingLandingFacilitiesItems = [];
 let roomFacilitiesExpandedState = {};
 let currentRoomGallery = { images: [], index: 0, title: '' };
 let lineUserId = null; // LINE User ID（如果從 LIFF 開啟）
@@ -537,6 +539,9 @@ async function loadRoomTypesAndSettings() {
         applyRoomCountSettings(settingsResult.success ? settingsResult.data : null);
         
         roomTypes = roomTypesResult.success ? (roomTypesResult.data || []) : [];
+        bookingLandingFacilitiesItems = parseLandingFacilitiesForBooking(
+            settingsResult.success && settingsResult.data ? settingsResult.data.landing_facilities : ''
+        );
         renderRoomTypes();
         autoSelectRoomTypeIfRequested();
         
@@ -573,6 +578,7 @@ async function loadRoomTypesAndSettings() {
         calculatePrice();
     } catch (error) {
         console.error('載入房型和設定錯誤:', error);
+        bookingLandingFacilitiesItems = [];
         applyRoomCountSettings(null);
         document.getElementById('roomTypeGrid').innerHTML = '<div class="error">載入房型失敗，請重新整理頁面</div>';
         document.getElementById('addonsGrid').innerHTML = '<div class="error">載入加購商品失敗</div>';
@@ -730,6 +736,18 @@ function escapeRoomText(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+// 與 landing.js renderAmenities 相同：旅宿設施區塊不顯示這兩項
+const BOOKING_HIDDEN_LANDING_AMENITIES = new Set(['電熱水壺', '吹風機']);
+
+function parseLandingFacilitiesForBooking(raw) {
+    const facilitiesStr = String(raw || '').trim();
+    if (!facilitiesStr) return [];
+    return facilitiesStr
+        .split(',')
+        .map((f) => f.trim())
+        .filter((f) => f.length > 0 && !BOOKING_HIDDEN_LANDING_AMENITIES.has(f));
 }
 
 const roomFeatureIconMap = {
@@ -1166,7 +1184,9 @@ async function renderRoomTypes() {
         const extraBedUnitPrice = room.extra_bed_price != null ? Number(room.extra_bed_price) : 0;
         const roomBedTypes = Array.isArray(room.bed_types) ? room.bed_types.filter(Boolean) : [];
         const roomFacilitiesRaw = Array.isArray(room.room_facilities) ? room.room_facilities.filter(Boolean) : [];
-        const roomFacilities = [...new Set([...roomBedTypes, ...roomFacilitiesRaw])];
+        const roomFacilities = isWholePropertyMode
+            ? [...bookingLandingFacilitiesItems]
+            : [...new Set([...roomBedTypes, ...roomFacilitiesRaw])];
         const includedItems = Array.isArray(room.included_items_list) ? room.included_items_list.filter(Boolean) : [];
         roomFacilitiesData[roomId] = roomFacilities;
 
@@ -1240,7 +1260,7 @@ async function renderRoomTypes() {
                             </div>
                         ` : ''}
                         ${roomFacilities.length > 0
-                            ? `<div class="room-meta-item room-meta-item-facilities"><strong>房型設施：</strong></div><div id="roomFacilitiesBlock-${roomId}" class="room-facilities-block">${buildRoomFacilitiesBlock(roomId)}</div>`
+                            ? `<div class="room-meta-item room-meta-item-facilities"><strong>${isWholePropertyMode ? '旅宿設施：' : '房型設施：'}</strong></div><div id="roomFacilitiesBlock-${roomId}" class="room-facilities-block">${buildRoomFacilitiesBlock(roomId)}</div>`
                             : ''}
                         <div class="room-card-bottom">
                             <div class="room-price ${isUnavailable ? 'unavailable-price' : ''}">
