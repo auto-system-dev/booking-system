@@ -158,10 +158,20 @@ function buildDashboardOpsPayload(allBookings, roomTypes, start, end) {
     const calculateKpisByRange = (rangeStart, rangeEnd) => {
         const rangeDayCount = Math.max(1, Math.floor((rangeEnd - rangeStart) / (24 * 60 * 60 * 1000)) + 1);
 
-        const inRangeByCheckInDate = bookings.filter((booking) => {
+        const inRangeRaw = bookings.filter((booking) => {
             const checkIn = normalizeDay(booking.check_in_date);
             if (!checkIn) return false;
             return checkIn >= rangeStart && checkIn <= rangeEnd;
+        });
+        // 同一 booking_id 只計一次，避免重複列造成取消率／付款率異常
+        const seenBookingKeys = new Set();
+        const inRangeByCheckInDate = [];
+        inRangeRaw.forEach((booking, idx) => {
+            const rawId = booking.booking_id != null ? String(booking.booking_id).trim() : '';
+            const dedupeKey = rawId || `__idx_${idx}_${String(booking.check_in_date || '')}`;
+            if (seenBookingKeys.has(dedupeKey)) return;
+            seenBookingKeys.add(dedupeKey);
+            inRangeByCheckInDate.push(booking);
         });
 
         let occupiedRoomNights = 0;

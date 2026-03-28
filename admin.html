@@ -246,7 +246,6 @@
                     </div>
                     <div id="opsTodoList" class="ops-todo-list"></div>
                 </div>
-                <div id="kpiHelpPopover" class="kpi-help-popover" role="dialog" aria-live="polite" aria-hidden="true"></div>
             </section>
 
             <!-- 訂房記錄區 -->
@@ -543,7 +542,7 @@
                             <div class="stat-icon report-kpi-icon"><span class="material-symbols-outlined">hotel_class</span></div>
                             <div class="report-kpi-head-col">
                                 <span class="stat-label report-kpi-label">入住率</span>
-                                <div class="report-kpi-subtitle kpi-help-trigger" data-kpi-help-key="occupancy" title="點擊查看計算說明">已售房晚 / 可售房晚 ⓘ</div>
+                                <button type="button" class="report-kpi-subtitle kpi-help-trigger" data-kpi-help-key="occupancy" title="點擊查看計算說明">已售房晚 / 可售房晚 ⓘ</button>
                             </div>
                         </div>
                         <div class="stat-value report-kpi-value" id="opsOccupancyRate">0.0%</div>
@@ -554,7 +553,7 @@
                             <div class="stat-icon report-kpi-icon"><span class="material-symbols-outlined">credit_score</span></div>
                             <div class="report-kpi-head-col">
                                 <span class="stat-label report-kpi-label">付款成功率</span>
-                                <div class="report-kpi-subtitle kpi-help-trigger" data-kpi-help-key="payment" title="點擊查看計算說明">入住日在區間內的已付款占比 ⓘ</div>
+                                <button type="button" class="report-kpi-subtitle kpi-help-trigger" data-kpi-help-key="payment" title="點擊查看計算說明">入住日在區間內的已付款占比 ⓘ</button>
                             </div>
                         </div>
                         <div class="stat-value report-kpi-value" id="opsPaymentSuccessRate">0.0%</div>
@@ -565,7 +564,7 @@
                             <div class="stat-icon report-kpi-icon"><span class="material-symbols-outlined">event_busy</span></div>
                             <div class="report-kpi-head-col">
                                 <span class="stat-label report-kpi-label">取消率</span>
-                                <div class="report-kpi-subtitle kpi-help-trigger" data-kpi-help-key="cancellation" title="點擊查看計算說明">入住日在區間內的取消占比 ⓘ</div>
+                                <button type="button" class="report-kpi-subtitle kpi-help-trigger" data-kpi-help-key="cancellation" title="點擊查看計算說明">入住日在區間內的取消占比 ⓘ</button>
                             </div>
                         </div>
                         <div class="stat-value report-kpi-value" id="opsCancellationRate">0.0%</div>
@@ -2515,6 +2514,9 @@
                     </div>
                 </div>
             </section>
+
+            <!-- 置於 main 內、所有 content-section 外，避免切換到營運報表時父層 display:none 導致無法顯示 -->
+            <div id="kpiHelpPopover" class="kpi-help-popover" role="dialog" aria-live="polite" aria-hidden="true"></div>
         </main>
     </div>
 

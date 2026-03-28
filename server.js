@@ -4098,6 +4098,33 @@ app.get('/api/dashboard', adminLimiter, async (req, res) => {
     }
 });
 
+/** 營運 KPI／bundle：訂單與房型依系統模式（或 query bookingMode）篩選，避免一般訂房與包棟混算 */
+async function loadBookingsAndRoomTypesForOpsDashboard(req) {
+    const buildingId = req.query.buildingId;
+    const qMode = String(req.query.bookingMode || '').trim().toLowerCase();
+    const systemMode = String((await db.getSetting('system_mode')) || 'retail').trim() || 'retail';
+    let bookingModeFilter;
+    let listScope;
+    if (qMode === 'all') {
+        bookingModeFilter = undefined;
+        listScope = undefined;
+    } else if (qMode === 'retail' || qMode === 'whole_property') {
+        bookingModeFilter = qMode;
+        listScope = qMode;
+    } else {
+        bookingModeFilter = systemMode === 'whole_property' ? 'whole_property' : 'retail';
+        listScope = bookingModeFilter;
+    }
+    const roomTypesPromise = db.getAllRoomTypesAdmin
+        ? db.getAllRoomTypesAdmin(buildingId, listScope)
+        : db.getAllRoomTypes();
+    const [allBookings, roomTypes] = await Promise.all([
+        db.getAllBookings(buildingId, bookingModeFilter),
+        roomTypesPromise
+    ]);
+    return { allBookings, roomTypes };
+}
+
 // API: 儀表板摘要 + 營運 KPI 單次查詢（重新整理時避免重複 getAllBookings）
 app.get('/api/dashboard/bundle', adminLimiter, async (req, res) => {
     try {
@@ -4108,11 +4135,7 @@ app.get('/api/dashboard/bundle', adminLimiter, async (req, res) => {
                 message: parsed.message
             });
         }
-        const buildingId = req.query.buildingId;
-        const [allBookings, roomTypes] = await Promise.all([
-            db.getAllBookings(buildingId),
-            db.getAllRoomTypesAdmin ? db.getAllRoomTypesAdmin(buildingId) : db.getAllRoomTypes()
-        ]);
+        const { allBookings, roomTypes } = await loadBookingsAndRoomTypesForOpsDashboard(req);
         res.json({
             success: true,
             data: {
@@ -4139,11 +4162,7 @@ app.get('/api/dashboard/ops', adminLimiter, async (req, res) => {
                 message: parsed.message
             });
         }
-        const buildingId = req.query.buildingId;
-        const [allBookings, roomTypes] = await Promise.all([
-            db.getAllBookings(buildingId),
-            db.getAllRoomTypesAdmin ? db.getAllRoomTypesAdmin(buildingId) : db.getAllRoomTypes()
-        ]);
+        const { allBookings, roomTypes } = await loadBookingsAndRoomTypesForOpsDashboard(req);
         res.json({
             success: true,
             data: buildDashboardOpsPayload(allBookings, roomTypes, parsed.start, parsed.end)

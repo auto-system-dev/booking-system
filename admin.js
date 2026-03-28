@@ -1046,7 +1046,9 @@ const kpiHelpContentMap = {
         title: '取消率',
         lines: [
             '公式：取消訂單 / 區間內全部訂單 x 100%',
-            '口徑：以入住日在區間內為母體（非取消發生日）。'
+            '口徑：以入住日在區間內為母體（非取消發生日）；分母含「已取消」訂單。',
+            '與上方「總訂單」不同：總訂單為有效筆數（不含已取消）；此處分母為區間內所有入住日訂單（含已取消）。',
+            '計算範圍與目前系統模式一致（一般訂房／包棟不混算）。'
         ]
     }
 };
@@ -1616,24 +1618,28 @@ function initOpsKpiHelp() {
     if (window.__kpiHelpOpsDelegationBound) return;
     window.__kpiHelpOpsDelegationBound = true;
 
-    document.addEventListener('click', (event) => {
-        const trigger = event.target && event.target.closest && event.target.closest('.kpi-help-trigger');
-        if (trigger) {
-            const key = trigger.dataset.kpiHelpKey;
-            if (key) {
-                event.preventDefault();
-                event.stopPropagation();
-                showKpiHelpPopover(trigger, key);
+    document.addEventListener(
+        'click',
+        (event) => {
+            const trigger = event.target && event.target.closest && event.target.closest('.kpi-help-trigger');
+            if (trigger) {
+                const key = trigger.dataset.kpiHelpKey || trigger.getAttribute('data-kpi-help-key');
+                if (key) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    showKpiHelpPopover(trigger, key);
+                }
+                return;
             }
-            return;
-        }
 
-        const popover = document.getElementById('kpiHelpPopover');
-        if (!popover || !popover.classList.contains('active')) return;
-        if (!popover.contains(event.target)) {
-            hideKpiHelpPopover();
-        }
-    });
+            const popover = document.getElementById('kpiHelpPopover');
+            if (!popover || !popover.classList.contains('active')) return;
+            if (!popover.contains(event.target)) {
+                hideKpiHelpPopover();
+            }
+        },
+        true
+    );
 
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
@@ -2113,7 +2119,8 @@ async function loadDashboard(options = {}) {
         const opsQuery = new URLSearchParams({
             startDate: rangeParams.startDate,
             endDate: rangeParams.endDate,
-            buildingId: String(buildingId)
+            buildingId: String(buildingId),
+            bookingMode: normalizeSystemMode(currentSystemMode)
         }).toString();
         const bundleUrl = `/api/dashboard/bundle?${opsQuery}`;
 
@@ -4140,7 +4147,8 @@ async function loadStatistics() {
                 const opsParams = new URLSearchParams({
                     startDate: opsKpiStart,
                     endDate: opsKpiEnd,
-                    buildingId: String(getSelectedBuildingIdForStats())
+                    buildingId: String(getSelectedBuildingIdForStats()),
+                    bookingMode: normalizeSystemMode(currentSystemMode)
                 });
                 const opsResponse = await adminFetch(`/api/dashboard/ops?${opsParams.toString()}`);
                 if (opsResponse.status === 401) {

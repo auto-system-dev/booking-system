@@ -718,6 +718,7 @@ body.login-page-active {
     width: 4px;
     border-radius: 4px 0 0 4px;
     background: var(--report-accent);
+    pointer-events: none;
 }
 
 /* 四張 KPI 左側直條與「總訂房數」相同藍色漸層 */
@@ -764,6 +765,20 @@ body.login-page-active {
     line-height: 1.45;
     font-weight: 500;
     color: var(--report-muted);
+}
+
+/* 營運報表 KPI：說明為 button，避免被當成一般 div 且確保可點 */
+.report-page .report-kpi-subtitle.kpi-help-trigger {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
 }
 
 .report-page .report-kpi-icon,
@@ -1648,7 +1663,8 @@ body.login-page-active {
     text-decoration: underline dotted;
     text-underline-offset: 3px;
     position: relative;
-    z-index: 2;
+    z-index: 3;
+    pointer-events: auto;
 }
 
 .kpi-help-trigger:hover {
