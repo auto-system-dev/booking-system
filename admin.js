@@ -13107,7 +13107,8 @@ async function loadLandingRoomTypes(landingData) {
     try {
         syncLandingRoomsBuildingSelect();
         const bid = getSelectedBuildingIdForLandingRooms();
-        const rtScope = normalizeSystemMode(currentSystemMode || 'retail') === 'whole_property' ? 'whole_property' : 'retail';
+        // 銷售頁房型展示與後台「房型管理」同一資料（retail）；包棟模式下亦不取「包棟方案」
+        const rtScope = 'retail';
         const response = await adminFetch(
             `/api/admin/room-types?buildingId=${encodeURIComponent(String(bid))}&listScope=${encodeURIComponent(rtScope)}`
         );
@@ -13274,7 +13275,9 @@ function syncLandingRoomEnabledSwitch(roomId, isEnabled) {
 }
 
 function buildLandingRoomTypeUpdatePayload(room, showOnLanding) {
+    const ls = String(room.list_scope || 'retail').trim() === 'whole_property' ? 'whole_property' : 'retail';
     return {
+        list_scope: ls,
         building_id: room.building_id ?? room.buildingId ?? 1,
         name: room.name,
         display_name: room.display_name,
