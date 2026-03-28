@@ -241,8 +241,8 @@ function applySingleModeUi(mode) {
         if (roomTitle) roomTitle.innerHTML = '<span class="material-symbols-outlined">villa</span> 選擇包棟方案';
         if (addonSection) addonSection.style.display = 'none';
         selectedAddons = [];
-        if (cardHeaderTitle) cardHeaderTitle.textContent = '包棟訂房系統';
-        if (cardHeaderSubtitle) cardHeaderSubtitle.textContent = '僅提供包棟方案，快速完成整棟預訂';
+        if (cardHeaderTitle) cardHeaderTitle.textContent = '線上訂房系統';
+        if (cardHeaderSubtitle) cardHeaderSubtitle.textContent = '預訂您的完美住宿體驗';
         if (submitBtn) submitBtn.textContent = '確認包棟訂房';
         if (dateTitle) dateTitle.innerHTML = '<span class="material-symbols-outlined">calendar_month</span> 選擇包棟日期';
         // 包棟模式只允許選擇一個方案
