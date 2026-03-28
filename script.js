@@ -831,7 +831,7 @@ function updateRoomSelectButtons() {
         const selected = qty > 0;
         btn.classList.remove('is-unavailable');
         btn.classList.toggle('is-selected', selected);
-        btn.textContent = selected ? '已選取' : '選取房型';
+        btn.textContent = selected ? '已選取' : (currentSystemMode === 'whole_property' ? '選取包棟' : '選取房型');
         if (plusBtn) plusBtn.disabled = true;
     });
 }
@@ -1131,6 +1131,8 @@ async function renderRoomTypes() {
     roomGalleryData = {};
     roomFacilitiesData = {};
 
+    const isWholePropertyMode = currentSystemMode === 'whole_property';
+
     grid.innerHTML = roomTypes.map((room, index) => {
         const isUnavailable = hasDates && unavailableRooms.includes(room.name);
         const roomOptionClass = isUnavailable ? 'room-option unavailable' : 'room-option';
@@ -1192,7 +1194,9 @@ async function renderRoomTypes() {
             Math.max(0, parseInt(selectedRoomExtraBeds[room.name] || '0', 10) || 0)
         );
         selectedRoomExtraBeds[room.name] = selectedExtraBedQty;
-        const selectBtnText = isUnavailable ? '滿房' : (safeQty > 0 ? '已選取' : '選取房型');
+        const selectBtnText = isUnavailable
+            ? '滿房'
+            : (safeQty > 0 ? '已選取' : (isWholePropertyMode ? '選取包棟' : '選取房型'));
         const selectBtnClass = isUnavailable ? 'room-select-btn is-unavailable' : 'room-select-btn';
         const selectBtnAction = isUnavailable ? '' : `onclick='selectRoomTypeByName(event, ${JSON.stringify(room.name)})'`;
         
@@ -1216,13 +1220,14 @@ async function renderRoomTypes() {
                                 ${galleryImages.length > 1 ? `<span class="room-gallery-hint"><span class="material-symbols-outlined">photo_library</span> ${galleryImages.length} 張照片</span>` : ''}
                             </div>` 
                             : `<div class="room-icon">${room.icon || '🏠'}</div>`}
-                        ${includedItems.length > 0 ? `<div class="room-meta-item room-meta-item-included room-meta-item-under-photo"><strong>方案包含：</strong>${escapeRoomText(includedItems.join('、'))}</div>` : ''}
+                        ${!isWholePropertyMode && includedItems.length > 0 ? `<div class="room-meta-item room-meta-item-included room-meta-item-under-photo"><strong>方案包含：</strong>${escapeRoomText(includedItems.join('、'))}</div>` : ''}
                     </div>
                     <div class="room-card-right">
                         <div class="room-basic-info">
                             <div class="room-meta-item"><strong>床型：</strong>${escapeRoomText(bedConfig || '依現場安排')}</div>
                             <div class="room-meta-item"><strong>入住人數：</strong>${maxOccupancy} 人</div>
                             <div class="room-meta-item"><strong>可加床數：</strong>${extraBeds} 人</div>
+                            ${isWholePropertyMode && includedItems.length > 0 ? `<div class="room-meta-item room-meta-item-included"><strong>方案包含：</strong>${escapeRoomText(includedItems.join('、'))}</div>` : ''}
                         </div>
                         ${extraBeds > 0 ? `
                             <div class="room-extra-bed-control" ${safeQty > 0 ? '' : 'style="display:none;"'}>
