@@ -733,6 +733,11 @@ section {
     border-top: 1px solid #eee;
 }
 
+/* 包棟模式：不顯示價格，預訂按鈕置中 */
+.room-price-row--whole-property {
+    justify-content: center;
+}
+
 .room-price {
     display: flex;
     flex-direction: column;

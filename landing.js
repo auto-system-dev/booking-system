@@ -64,6 +64,7 @@ async function loadLandingConfig() {
         try {
             landingConfig = ssrPayload.data;
             landingConfig._roomTypes = ssrPayload.roomTypes || [];
+            landingConfig._systemMode = ssrPayload.system_mode || 'retail';
             console.log('📋 SSR 載入房型數量:', landingConfig._roomTypes.length);
             await applyConfig(landingConfig);
             console.log('✅ 銷售頁設定已由 SSR 注入');
@@ -80,6 +81,7 @@ async function loadLandingConfig() {
         if (result.success && result.data) {
             landingConfig = result.data;
             landingConfig._roomTypes = result.roomTypes || [];
+            landingConfig._systemMode = result.system_mode || 'retail';
             console.log('📋 API 回傳房型數量:', landingConfig._roomTypes.length);
             await applyConfig(landingConfig);
             console.log('✅ 銷售頁設定已從後台載入');
@@ -644,6 +646,8 @@ function renderRoomCards(cfg) {
         return;
     }
 
+    const isWholeProperty = String(cfg._systemMode || '').trim() === 'whole_property';
+
     // 使用 API 回傳的 roomTypes（來自房型管理）
     const allRoomTypes = cfg._roomTypes || [];
     const bid = getLandingSelectedBuildingId();
@@ -658,6 +662,15 @@ function renderRoomCards(cfg) {
     if (roomTypes.length === 0) {
         console.log('ℹ️ 無房型資料，使用預設房型卡片');
         const bookingUrl = getLandingBookingUrl();
+        const priceRowClass = isWholeProperty ? 'room-price-row room-price-row--whole-property' : 'room-price-row';
+        const fallbackPrice = isWholeProperty
+            ? ''
+            : `
+                        <div class="room-price">
+                            <span class="price-current">NT$ 2,800</span>
+                            <span class="price-old">NT$ 3,500</span>
+                        </div>`;
+        const bookLabel = isWholeProperty ? '預訂包棟' : '預訂';
         grid.innerHTML = `
             <div class="room-card">
                 <div class="room-image">
@@ -671,12 +684,9 @@ function renderRoomCards(cfg) {
                         <span><span class="material-symbols-outlined">bathtub</span> 獨立衛浴</span>
                         <span><span class="material-symbols-outlined">wifi</span> 免費 WiFi</span>
                     </div>
-                    <div class="room-price-row">
-                        <div class="room-price">
-                            <span class="price-current">NT$ 2,800</span>
-                            <span class="price-old">NT$ 3,500</span>
-                        </div>
-                        <a href="${bookingUrl}" class="room-book-btn" onclick="trackBookingClick()">預訂</a>
+                    <div class="${priceRowClass}">
+                        ${fallbackPrice}
+                        <a href="${bookingUrl}" class="room-book-btn" onclick="trackBookingClick()">${bookLabel}</a>
                     </div>
                 </div>
             </div>
@@ -717,8 +727,19 @@ function renderRoomCards(cfg) {
 
         console.log(`🏨 ${displayName} (ID:${room.id}) | 價格: ${price} | 原價: ${originalPrice} | 圖庫: ${allImages.length}張`);
 
+        const priceRowClass = isWholeProperty ? 'room-price-row room-price-row--whole-property' : 'room-price-row';
+        const bookLabel = isWholeProperty ? '預訂包棟' : '預訂';
+        const trackPrice = isWholeProperty ? 0 : price;
+        const priceBlock = isWholeProperty
+            ? ''
+            : `
+                        <div class="room-price">
+                            <span class="price-current">NT$ ${price.toLocaleString()}</span>
+                            ${originalPrice > 0 ? `<span class="price-old">NT$ ${originalPrice.toLocaleString()}</span>` : ''}
+                        </div>`;
+
         return `
-            <div class="room-card" onclick="trackViewContent('${displayName}', ${price})">
+            <div class="room-card" onclick="trackViewContent('${displayName}', ${trackPrice})">
                 <div class="room-image" onclick="event.stopPropagation(); ${hasGallery ? `openRoomGallery(${room.id})` : ''};" style="${hasGallery ? 'cursor:pointer;' : ''}">
                     ${room.image_url ? `<img src="${room.image_url}" alt="${displayName}" loading="lazy">` : '<div style="height:200px;background:#e0e0e0;display:flex;align-items:center;justify-content:center;color:#999;">尚無圖片</div>'}
                     ${badge ? `<span class="room-badge ${badgeClass}">${badge}</span>` : ''}
@@ -727,12 +748,9 @@ function renderRoomCards(cfg) {
                 <div class="room-info">
                     <h3>${displayName}</h3>
                     ${featureItems ? `<div class="room-features">${featureItems}</div>` : ''}
-                    <div class="room-price-row">
-                        <div class="room-price">
-                            <span class="price-current">NT$ ${price.toLocaleString()}</span>
-                            ${originalPrice > 0 ? `<span class="price-old">NT$ ${originalPrice.toLocaleString()}</span>` : ''}
-                        </div>
-                        <a href="${bookingUrl}" class="room-book-btn" onclick="trackBookingClick();">預訂</a>
+                    <div class="${priceRowClass}">
+                        ${priceBlock}
+                        <a href="${bookingUrl}" class="room-book-btn" onclick="trackBookingClick();">${bookLabel}</a>
                     </div>
                 </div>
             </div>

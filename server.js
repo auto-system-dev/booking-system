@@ -1644,7 +1644,9 @@ async function getLandingPagePayload() {
         room.gallery_images = galleryMap[room.id] || [];
     });
 
-    return { landingSettings, landingRoomTypes };
+    const systemMode = String(settingsMap.system_mode || 'retail').trim() || 'retail';
+
+    return { landingSettings, landingRoomTypes, systemMode };
 }
 
 function escapeHtmlText(value) {
@@ -1803,7 +1805,7 @@ function buildLandingThemeStyleTag(themeId) {
     return `<style id="landingSsrThemeVars">:root{--primary:${theme.primary};--primary-light:${theme.primary_light};--accent:${theme.accent};--accent-hover:${theme.accent_hover};--bg-cream:${theme.bg_cream};--bg-dark:${theme.primary};--text-dark:${theme.text_dark};--text-light:${theme.text_light};--primary-alpha-95:rgba(${pRgb.r},${pRgb.g},${pRgb.b},0.95);--primary-alpha-85:rgba(${pRgb.r},${pRgb.g},${pRgb.b},0.85);--primary-alpha-75:rgba(${pRgb.r},${pRgb.g},${pRgb.b},0.75);--primary-alpha-60:rgba(${pRgb.r},${pRgb.g},${pRgb.b},0.6);--primary-alpha-08:rgba(${pRgb.r},${pRgb.g},${pRgb.b},0.08);--accent-shadow:rgba(${aRgb.r},${aRgb.g},${aRgb.b},0.4);--accent-shadow-lg:rgba(${aRgb.r},${aRgb.g},${aRgb.b},0.5);--accent-alpha-10:rgba(${aRgb.r},${aRgb.g},${aRgb.b},0.1);}</style>`;
 }
 
-function renderLandingTemplate(templateHtml, landingSettings, landingRoomTypes) {
+function renderLandingTemplate(templateHtml, landingSettings, landingRoomTypes, systemMode = 'retail') {
     let html = templateHtml;
     const cfg = landingSettings || {};
     const landingName = cfg.landing_name || '';
@@ -1911,7 +1913,8 @@ function renderLandingTemplate(templateHtml, landingSettings, landingRoomTypes) 
 
     const ssrPayload = {
         data: cfg,
-        roomTypes: landingRoomTypes || []
+        roomTypes: landingRoomTypes || [],
+        system_mode: systemMode || 'retail'
     };
     const serializedPayload = JSON.stringify(ssrPayload).replace(/</g, '\\u003c');
     html = html.replace(
@@ -1924,9 +1927,9 @@ function renderLandingTemplate(templateHtml, landingSettings, landingRoomTypes) 
 
 async function handleLandingPageRequest(req, res) {
     try {
-        const { landingSettings, landingRoomTypes } = await getLandingPagePayload();
+        const { landingSettings, landingRoomTypes, systemMode } = await getLandingPagePayload();
         const templateHtml = await fs.promises.readFile(path.join(__dirname, 'landing.html'), 'utf8');
-        const renderedHtml = renderLandingTemplate(templateHtml, landingSettings, landingRoomTypes);
+        const renderedHtml = renderLandingTemplate(templateHtml, landingSettings, landingRoomTypes, systemMode);
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.send(renderedHtml);
     } catch (error) {
@@ -5324,12 +5327,13 @@ app.post('/api/admin/landing/upload-image', requireAuth, (req, res) => {
 // API: 取得銷售頁設定（公開）
 app.get('/api/landing-settings', publicLimiter, async (req, res) => {
     try {
-        const { landingSettings, landingRoomTypes } = await getLandingPagePayload();
+        const { landingSettings, landingRoomTypes, systemMode } = await getLandingPagePayload();
 
         res.json({
             success: true,
             data: landingSettings,
-            roomTypes: landingRoomTypes
+            roomTypes: landingRoomTypes,
+            system_mode: systemMode
         });
     } catch (error) {
         console.error('取得銷售頁設定錯誤:', error);
