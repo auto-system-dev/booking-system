@@ -821,7 +821,10 @@ function updateRoomTypesSectionLabelsForSystemMode() {
     if (navEl) navEl.textContent = sectionNavLabel;
     if (secEl) secEl.textContent = sectionNavLabel;
     if (tabEl) tabEl.textContent = '房型管理';
-    if (addBtnLabelEl) addBtnLabelEl.textContent = '新增房型';
+    if (addBtnLabelEl) {
+        const rtTab = localStorage.getItem('roomTypeTab') || 'room-types';
+        addBtnLabelEl.textContent = rtTab === 'whole-property-plans' ? '新增方案' : '新增房型';
+    }
     [navIcon, sectionIcon, tabIcon].forEach((el) => {
         if (el) el.textContent = iconName;
     });
@@ -5386,6 +5389,8 @@ function showRoomTypeModal(room, listScopeHint) {
         ? (String(room.list_scope || 'retail').trim() === 'whole_property' ? 'whole_property' : 'retail')
         : (listScopeHint === 'whole_property' ? 'whole_property' : 'retail');
     const isPlan = listScope === 'whole_property';
+    /** 包棟模式「房型管理」列表未顯示人數／加床／價格／庫存等，表單改以隱藏欄位帶入既有值 */
+    const compactRetailWp = isWholePropertySystemMode() && listScope === 'retail';
     const defaultPlanImage = 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400&h=300&fit=crop&q=80';
     const initialName = isEdit ? room.name : (isPlan ? `wp_plan_${Date.now()}` : '');
     const initialDisplay = isEdit ? room.display_name : (isPlan ? '包棟方案（請修改）' : '');
@@ -5411,25 +5416,21 @@ function showRoomTypeModal(room, listScopeHint) {
     const codeLabel = isPlan ? '方案代碼（英文）' : '房型代碼（英文）';
     const nameLabel = isPlan ? '方案名稱' : '顯示名稱';
 
-    modalBody.innerHTML = `
-        <form id="roomTypeForm" onsubmit="saveRoomType(event, ${isEdit ? room.id : 'null'})">
-            <input type="hidden" name="list_scope" value="${listScope}">
-            <div class="form-group">
-                <label>館別</label>
-                <select name="building_id" required>
-                    ${buildingOptions}
-                </select>
-                <small>目前前台訂房仍固定使用「預設館」的房型；新增其他館別不會影響既有流程</small>
-            </div>
-            <div class="form-group">
-                <label>${codeLabel}</label>
-                <input type="text" name="name" value="${isEdit ? escapeHtml(room.name) : escapeHtml(initialName)}" required ${isEdit ? 'readonly' : ''}>
-                <small>用於系統內部識別，建立後無法修改</small>
-            </div>
-            <div class="form-group">
-                <label>${nameLabel}</label>
-                <input type="text" name="display_name" value="${isEdit ? escapeHtml(room.display_name) : escapeHtml(initialDisplay)}" required>
-            </div>
+    const hpCombined = isEdit ? ((Number(room.price) || 0) + (Number(room.holiday_surcharge) || 0)) : 0;
+    const roomDetailFieldsHtml = compactRetailWp
+        ? `
+            <input type="hidden" name="max_occupancy" value="${isEdit ? (room.max_occupancy ?? 0) : 0}">
+            <input type="hidden" name="extra_beds" value="${isEdit ? (room.extra_beds ?? 0) : 0}">
+            <input type="hidden" name="extra_bed_price" value="${isEdit ? (room.extra_bed_price ?? 0) : 0}">
+            <input type="hidden" name="qty_total" value="${isEdit ? (room.qty_total ?? 1) : 1}">
+            <input type="hidden" name="bed_config" value="${isEdit ? escapeHtml(room.bed_config || '') : ''}">
+            <input type="hidden" name="booking_badge" value="${isEdit ? escapeHtml(room.booking_badge || '') : ''}">
+            <input type="hidden" name="included_items" value="${isEdit ? escapeHtml(room.included_items || '') : ''}">
+            <input type="hidden" name="price" value="${isEdit ? (Number(room.price) || 0) : 0}">
+            <input type="hidden" name="holiday_price" value="${hpCombined}">
+            <input type="hidden" name="original_price" value="${isEdit ? (room.original_price || 0) : 0}">
+        `
+        : `
             <div class="form-group">
                 <label>入住人數</label>
                 <input type="number" name="max_occupancy" value="${isEdit ? (room.max_occupancy ?? 0) : 0}" min="0" step="1" required>
@@ -5484,6 +5485,28 @@ function showRoomTypeModal(room, listScopeHint) {
                 <input type="number" name="original_price" value="${isEdit ? (room.original_price || 0) : 0}" min="0" step="1">
                 <small>銷售頁顯示的原始定價（會以刪除線顯示），設為 0 則不顯示原價</small>
             </div>
+        `;
+
+    modalBody.innerHTML = `
+        <form id="roomTypeForm" onsubmit="saveRoomType(event, ${isEdit ? room.id : 'null'})">
+            <input type="hidden" name="list_scope" value="${listScope}">
+            <div class="form-group">
+                <label>館別</label>
+                <select name="building_id" required>
+                    ${buildingOptions}
+                </select>
+                <small>目前前台訂房仍固定使用「預設館」的房型；新增其他館別不會影響既有流程</small>
+            </div>
+            <div class="form-group">
+                <label>${codeLabel}</label>
+                <input type="text" name="name" value="${isEdit ? escapeHtml(room.name) : escapeHtml(initialName)}" required ${isEdit ? 'readonly' : ''}>
+                <small>用於系統內部識別，建立後無法修改</small>
+            </div>
+            <div class="form-group">
+                <label>${nameLabel}</label>
+                <input type="text" name="display_name" value="${isEdit ? escapeHtml(room.display_name) : escapeHtml(initialDisplay)}" required>
+            </div>
+            ${roomDetailFieldsHtml}
             <div class="form-group">
                 <label>${isPlan ? '方案照片' : '房型照片'}</label>
                 <div id="roomImageUploadArea" style="border: 2px dashed #ccc; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.3s; background: #fafafa; position: relative;" onclick="document.getElementById('roomImageInput').click()">
@@ -5538,8 +5561,10 @@ function showRoomTypeModal(room, listScopeHint) {
     `;
     
     modal.classList.add('active');
-    syncIncludedItemsEditor();
-    
+    if (!compactRetailWp) {
+        syncIncludedItemsEditor();
+    }
+
     if (isEdit) {
         loadGalleryImages(room.id);
     }
