@@ -797,6 +797,22 @@ function ensureSystemModeUi() {
         }
         hint.textContent = `只顯示：${getSystemModeLabel(currentSystemMode)}`;
     }
+
+    updateWholePropertyPlansTabVisibility();
+}
+
+/** 包棟方案分頁僅在系統為包棟模式時顯示 */
+function updateWholePropertyPlansTabVisibility() {
+    const btn = document.getElementById('wholePropertyPlansTab');
+    if (!btn) return;
+    const isWholeProperty = normalizeSystemMode(currentSystemMode) === 'whole_property';
+    btn.style.display = isWholeProperty ? 'flex' : 'none';
+    if (!isWholeProperty && localStorage.getItem('roomTypeTab') === 'whole-property-plans') {
+        localStorage.setItem('roomTypeTab', 'room-types');
+    }
+    if (!isWholeProperty && btn.classList.contains('active')) {
+        switchRoomTypeTab('room-types');
+    }
 }
 
 async function loadSystemModeContext() {
@@ -1827,6 +1843,10 @@ function switchPromotionTab(tab) {
 
 // 切換房型管理分頁
 function switchRoomTypeTab(tab) {
+    if (tab === 'whole-property-plans' && normalizeSystemMode(currentSystemMode) !== 'whole_property') {
+        tab = 'room-types';
+    }
+
     // 保存當前分頁到 localStorage
     localStorage.setItem('roomTypeTab', tab);
 
