@@ -791,21 +791,10 @@ function ensureSystemModeUi() {
         badge.textContent = `目前系統模式：${getSystemModeLabel(currentSystemMode)}`;
     }
 
-    const bookingsSectionHeaderActions = document.querySelector('#bookings-section .section-header .header-actions');
-    if (bookingsSectionHeaderActions) {
-        let hint = document.getElementById('bookingsModeHint');
-        if (!hint) {
-            hint = document.createElement('span');
-            hint.id = 'bookingsModeHint';
-            hint.style.padding = '6px 10px';
-            hint.style.borderRadius = '999px';
-            hint.style.background = '#f3f4f6';
-            hint.style.color = '#374151';
-            hint.style.fontSize = '12px';
-            hint.style.fontWeight = '600';
-            bookingsSectionHeaderActions.prepend(hint);
-        }
-        hint.textContent = `只顯示：${getSystemModeLabel(currentSystemMode)}`;
+    // 訂房記錄標題列不再顯示「只顯示：○○模式」（與左側 systemModeBadge「目前系統模式」重複）
+    const oldBookingsModeHint = document.getElementById('bookingsModeHint');
+    if (oldBookingsModeHint) {
+        oldBookingsModeHint.remove();
     }
 
     updateWholePropertyPlansTabVisibility();
