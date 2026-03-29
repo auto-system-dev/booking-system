@@ -9115,16 +9115,16 @@ function injectBuildingRowForLegacyTemplate(content, buildingName) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 
-    // 與訂房確認模板 .info-row / .info-value 一致，避免部分信箱客戶端 flex 失效造成右欄未對齊
+    // 勿在 label/value 上加 inline flex／text-align，否則手機版 @media 無法覆寫，館別列會與其他列不一致
     const infoRowHtml = `
-<div class="info-row" style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #e0e0e0;flex-wrap:wrap;">
-    <span class="info-label" style="font-weight:600;color:#666;font-size:16px;min-width:140px;flex:0 0 auto;">館別</span>
-    <span class="info-value" style="color:#333;font-size:16px;text-align:right;font-weight:500;flex:1 1 auto;word-break:break-word;">${escapedNameText}</span>
+<div class="info-row">
+    <span class="info-label">館別</span>
+    <span class="info-value">${escapedNameText}</span>
 </div>`;
     const contactRowHtml = `
-<div class="contact-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #e0e0e0;">
-    <span class="contact-label" style="font-weight:600;color:#666;min-width:140px;flex:0 0 auto;">館別</span>
-    <span class="contact-value" style="color:#333;text-align:right;flex:1 1 auto;">${escapedNameText}</span>
+<div class="contact-row">
+    <span class="contact-label">館別</span>
+    <span class="contact-value">${escapedNameText}</span>
 </div>`;
 
     const tableRowHtml = `
