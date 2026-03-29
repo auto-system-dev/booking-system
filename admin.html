@@ -2457,6 +2457,10 @@
                         <button class="btn-primary permission-required" data-permission="backup.create" onclick="createBackup()">
                             <span class="material-symbols-outlined">add</span> 手動備份
                         </button>
+                        <button type="button" class="btn-refresh permission-required" data-permission="backup.create" onclick="document.getElementById('backupFileInput').click()" title="上傳 .json 或 .db 備份檔至伺服器">
+                            <span class="material-symbols-outlined">upload</span> 上傳備份
+                        </button>
+                        <input type="file" id="backupFileInput" accept=".json,.db,application/json" style="display:none" onchange="handleBackupFileSelected(this)">
                         <button class="btn-refresh" onclick="loadBackups()">
                             <span class="material-symbols-outlined">refresh</span> 重新整理
                         </button>

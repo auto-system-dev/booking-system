@@ -640,6 +640,12 @@ function exposeFunctionsToWindow() {
         if (typeof switchSystemModeFromAdmin === 'function') {
             window.switchSystemModeFromAdmin = switchSystemModeFromAdmin;
         }
+        if (typeof downloadBackup === 'function') {
+            window.downloadBackup = downloadBackup;
+        }
+        if (typeof handleBackupFileSelected === 'function') {
+            window.handleBackupFileSelected = handleBackupFileSelected;
+        }
     } catch (error) {
         console.error('暴露函數到 window 對象時發生錯誤:', error);
     }
@@ -11800,6 +11806,7 @@ const actionLabels = {
     'update_admin_role': '更新管理員角色',
     'reset_admin_password': '重設密碼',
     'create_backup': '建立備份',
+    'upload_backup': '上傳備份',
     'cleanup_backups': '清理備份',
     'permission_denied': '權限拒絕'
 };
@@ -12025,7 +12032,7 @@ async function loadBackups() {
                         <div style="font-size: 13px; color: #666;">總大小</div>
                     </div>
                     <div style="background: #fff8e1; padding: 15px; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 24px; font-weight: bold; color: #FF9800;">${stats.latestBackup ? formatDateTime(stats.latestBackup) : '無'}</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #FF9800;">${stats.newestBackup ? formatDateTime(stats.newestBackup) : '無'}</div>
                         <div style="font-size: 13px; color: #666;">最近備份</div>
                     </div>
                     <div style="background: #fce4ec; padding: 15px; border-radius: 8px; text-align: center;">
@@ -12042,6 +12049,7 @@ async function loadBackups() {
             } else {
                 const canRestore = hasPermission('backup.restore');
                 const canDelete = hasPermission('backup.delete');
+                const canDownload = hasPermission('backup.view');
                 
                 tbody.innerHTML = backups.map(backup => {
                     const fileName = escapeHtml(backup.fileName || backup.name || '-');
@@ -12049,6 +12057,11 @@ async function loadBackups() {
                     const isJsonBackup = rawFileName.endsWith('.json');
                     
                     let actionButtons = '';
+                    if (canDownload) {
+                        actionButtons += `<button class="btn-view" type="button" onclick="downloadBackup('${escapeHtml(rawFileName)}')" title="下載此備份" style="padding: 4px 10px; font-size: 12px;">
+                            <span class="material-symbols-outlined" style="font-size: 15px;">download</span> 下載
+                        </button> `;
+                    }
                     if (canRestore && isJsonBackup) {
                         actionButtons += `<button class="btn-edit" onclick="restoreBackup('${escapeHtml(rawFileName)}')" title="還原此備份" style="padding: 4px 10px; font-size: 12px;">
                             <span class="material-symbols-outlined" style="font-size: 15px;">restore</span> 還原
@@ -12083,6 +12096,62 @@ async function loadBackups() {
         console.error('載入備份列表錯誤:', error);
         tbody.innerHTML = '<tr><td colspan="4" class="loading">載入時發生錯誤</td></tr>';
         if (statsDiv) statsDiv.innerHTML = '<div class="loading">載入失敗</div>';
+    }
+}
+
+// 下載備份檔（需具備 backup.view；使用 adminFetch 以統一 401）
+async function downloadBackup(fileName) {
+    if (!fileName) return;
+    try {
+        const url = `/api/admin/backups/download/${encodeURIComponent(fileName)}`;
+        const response = await adminFetch(url, { method: 'GET' });
+        if (response.status === 401) return;
+        if (!response.ok) {
+            const errJson = await response.json().catch(() => ({}));
+            throw new Error(errJson.message || `下載失敗 (${response.status})`);
+        }
+        const blob = await response.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+    } catch (error) {
+        console.error('下載備份錯誤:', error);
+        showError(error.message || '下載失敗');
+    }
+}
+
+// 上傳備份檔（需具備 backup.create）
+async function handleBackupFileSelected(input) {
+    const file = input && input.files && input.files[0];
+    if (!file) return;
+    input.value = '';
+    const name = file.name || '';
+    if (!/^backup_.+\.(json|db)$/i.test(name)) {
+        showError('檔名須為 backup_ 開頭，副檔名 .json 或 .db');
+        return;
+    }
+    try {
+        showSuccess('正在上傳備份...');
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await adminFetch('/api/admin/backups/upload', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+        if (result.success) {
+            showSuccess(result.message || '備份已上傳');
+            loadBackups();
+        } else {
+            showError(result.message || '上傳失敗');
+        }
+    } catch (error) {
+        console.error('上傳備份錯誤:', error);
+        showError(error.message || '上傳失敗');
     }
 }
 

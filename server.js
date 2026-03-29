@@ -91,6 +91,20 @@ const uploadImage = multer({
     }
 });
 
+const uploadBackupFile = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 200 * 1024 * 1024 // 最大 200MB
+    },
+    fileFilter: function (req, file, cb) {
+        const base = path.basename(file.originalname || '');
+        if (!/^backup_.+\.(json|db)$/i.test(base)) {
+            return cb(new Error('檔名須為 backup_ 開頭，副檔名 .json 或 .db'));
+        }
+        cb(null, true);
+    }
+});
+
 const Resend = loadResendProvider();
 const {
     errorHandler,
@@ -2728,6 +2742,71 @@ app.get('/api/admin/backups', requireAuth, checkPermission('backup.view'), admin
         });
     }
 });
+
+// API: 下載備份檔
+app.get('/api/admin/backups/download/:fileName', requireAuth, checkPermission('backup.view'), adminLimiter, (req, res) => {
+    try {
+        const fileName = decodeURIComponent(req.params.fileName || '');
+        const { safeName, filePath } = backup.getBackupFileForDownload(fileName);
+        res.download(filePath, safeName, (err) => {
+            if (err) {
+                console.error('備份下載傳送錯誤:', err.message);
+                if (!res.headersSent) {
+                    res.status(500).json({ success: false, message: '下載失敗' });
+                }
+            }
+        });
+    } catch (error) {
+        console.error('備份下載錯誤:', error);
+        res.status(400).json({
+            success: false,
+            message: error.message || '下載失敗'
+        });
+    }
+});
+
+// API: 上傳備份檔（與手動備份相同目錄；PostgreSQL 僅接受本系統 JSON 備份，SQLite 僅接受 .db）
+app.post(
+    '/api/admin/backups/upload',
+    requireAuth,
+    checkPermission('backup.create'),
+    adminLimiter,
+    (req, res, next) => {
+        uploadBackupFile.single('file')(req, res, (err) => {
+            if (err) {
+                const msg =
+                    err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
+                        ? '檔案超過 200MB 上限'
+                        : err.message || '上傳失敗';
+                return res.status(400).json({ success: false, message: msg });
+            }
+            next();
+        });
+    },
+    async (req, res) => {
+        try {
+            if (!req.file || !req.file.buffer) {
+                return res.status(400).json({ success: false, message: '請選擇備份檔案' });
+            }
+            const result = backup.saveUploadedBackup(req.file.buffer, req.file.originalname);
+            await logAction(req, 'upload_backup', 'backup', result.fileName, {
+                fileName: result.fileName,
+                fileSizeMB: result.fileSizeMB
+            });
+            res.json({
+                success: true,
+                message: `備份已上傳：${result.fileName}`,
+                data: result
+            });
+        } catch (error) {
+            console.error('備份上傳錯誤:', error);
+            res.status(400).json({
+                success: false,
+                message: error.message || '上傳失敗'
+            });
+        }
+    }
+);
 
 // API: 手動執行備份
 app.post('/api/admin/backups/create', requireAuth, checkPermission('backup.create'), adminLimiter, async (req, res) => {

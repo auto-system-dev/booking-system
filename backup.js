@@ -524,6 +524,87 @@ async function restoreBackup(fileName) {
     }
 }
 
+/**
+ * 驗證備份檔 basename（防路徑遍歷、僅允許 backup_*.json / backup_*.db）
+ */
+function assertSafeBackupBasename(name) {
+    const raw = String(name || '');
+    if (raw.includes('..') || /[/\\]/.test(raw)) {
+        throw new Error('無效的備份檔案名稱');
+    }
+    const base = path.basename(raw);
+    if (!/^backup_[a-zA-Z0-9._-]+\.(json|db)$/i.test(base)) {
+        throw new Error('無效的備份檔案名稱（須為 backup_ 開頭，副檔名 .json 或 .db）');
+    }
+    return base;
+}
+
+/**
+ * 下載用：回傳安全路徑
+ */
+function getBackupFileForDownload(fileName) {
+    ensureBackupDir();
+    const safeName = assertSafeBackupBasename(fileName);
+    const filePath = path.join(BACKUP_DIR, safeName);
+    if (!fs.existsSync(filePath)) {
+        throw new Error('備份檔案不存在');
+    }
+    return { safeName, filePath };
+}
+
+/**
+ * 上傳備份至備份目錄（與手動備份相同位置）
+ */
+function saveUploadedBackup(buffer, originalName) {
+    ensureBackupDir();
+    const safeName = assertSafeBackupBasename(originalName);
+    const dest = path.join(BACKUP_DIR, safeName);
+    if (fs.existsSync(dest)) {
+        throw new Error('已存在同名備份檔，請先刪除或使用不同檔名');
+    }
+    if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
+        throw new Error('檔案內容為空');
+    }
+
+    const usePg = !!process.env.DATABASE_URL;
+
+    if (safeName.endsWith('.json')) {
+        if (!usePg) {
+            throw new Error('目前為 SQLite 環境，請上傳 .db 備份檔（本機備份為複製 bookings.db）');
+        }
+        let data;
+        try {
+            data = JSON.parse(buffer.toString('utf8'));
+        } catch (e) {
+            throw new Error('JSON 備份格式無法解析');
+        }
+        if (!data.metadata || typeof data.metadata !== 'object') {
+            throw new Error('不是有效的系統 JSON 備份（缺少 metadata）');
+        }
+        if (data.metadata.type !== 'postgresql_json_backup') {
+            throw new Error('目前為 PostgreSQL 環境，僅能上傳本系統產生的 JSON 備份');
+        }
+    } else if (safeName.endsWith('.db')) {
+        if (usePg) {
+            throw new Error('目前為 PostgreSQL 環境，請上傳 .json 備份檔，勿上傳 .db');
+        }
+        const header = buffer.slice(0, 16).toString('utf8');
+        if (!header.startsWith('SQLite format 3')) {
+            throw new Error('不是有效的 SQLite 備份檔（檔頭不符）');
+        }
+    }
+
+    fs.writeFileSync(dest, buffer);
+    const stats = fs.statSync(dest);
+    const fileSizeMB = parseFloat((stats.size / (1024 * 1024)).toFixed(2));
+    return {
+        fileName: safeName,
+        filePath: dest,
+        fileSize: stats.size,
+        fileSizeMB
+    };
+}
+
 module.exports = {
     performBackup,
     cleanupOldBackups,
@@ -532,6 +613,8 @@ module.exports = {
     deleteBackup,
     restoreBackup,
     backupSQLite,
-    backupPostgreSQL
+    backupPostgreSQL,
+    getBackupFileForDownload,
+    saveUploadedBackup
 };
 
