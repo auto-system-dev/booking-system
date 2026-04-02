@@ -849,7 +849,8 @@ function updateRoomSelectButtons() {
         const selected = qty > 0;
         btn.classList.remove('is-unavailable');
         btn.classList.toggle('is-selected', selected);
-        btn.textContent = selected ? '已選取' : (currentSystemMode === 'whole_property' ? '選取包棟' : '選取房型');
+        const isWholePropertyMode = normalizeSystemMode(currentSystemMode) === 'whole_property';
+        btn.textContent = selected ? '已選取' : (isWholePropertyMode ? '選取包棟' : '選取房型');
         if (plusBtn) plusBtn.disabled = true;
     });
 }
@@ -1151,7 +1152,7 @@ async function renderRoomTypes() {
     roomGalleryData = {};
     roomFacilitiesData = {};
 
-    const isWholePropertyMode = currentSystemMode === 'whole_property';
+    const isWholePropertyMode = normalizeSystemMode(currentSystemMode) === 'whole_property';
 
     grid.innerHTML = roomTypes.map((room, index) => {
         const isUnavailable = hasDates && unavailableRooms.includes(room.name);
