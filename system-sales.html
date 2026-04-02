@@ -9,9 +9,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
   <link rel="stylesheet" href="/system-sales.css" />
-<link rel="stylesheet" href="/landing.css" />
+  <link rel="stylesheet" href="/landing.css" />
 </head>
 
 <body>
@@ -25,6 +27,7 @@
       <div class="nav-menu" id="navMenu">
         <a href="#features" class="nav-link">功能特色</a>
         <a href="#plans" class="nav-link">方案與定價</a>
+        <a href="#delivery" class="nav-link">交付清單</a>
         <a href="#how-it-works" class="nav-link">如何開始</a>
         <a href="#faq" class="nav-link">常見問題</a>
         <a href="#contact" class="nav-cta" id="navCtaBtn">申請試用</a>
@@ -77,25 +80,28 @@
       <div class="container">
         <div class="section-header">
           <span class="section-badge">功能特色</span>
-          <h2 class="section-title">讓訂房變成流程，而不是人力</h2>
-          <p class="section-subtitle">用你熟悉的營運邏輯，快速完成整套訂房作業。</p>
+          <h2 class="section-title">讓訂房變成流程，把人力留給服務</h2>
+          <p class="section-subtitle">
+            這是為民宿/旅館/飯店打造的訂房系統 SaaS：
+            從「房型與價格管理」到「線上訂房、付款回傳、Email 通知」，都能一次到位。
+          </p>
         </div>
 
         <div class="features-grid" id="featuresGrid">
           <article class="feature-card">
             <div class="feature-icon" aria-hidden="true"><span class="material-symbols-outlined">calendar_month</span></div>
             <h3>房型/價格管理</h3>
-            <p>平日/假日價格設定、房型資訊維護，讓網站與營運一致。</p>
+            <p>平日/假日價格調整、房型資訊維護，讓網站顯示與你實際營運一致。</p>
           </article>
           <article class="feature-card">
             <div class="feature-icon" aria-hidden="true"><span class="material-symbols-outlined">receipt_long</span></div>
             <h3>訂房紀錄與查詢</h3>
-            <p>快速查看、搜尋與篩選訂房資料，降低翻找與人工整理。</p>
+            <p>訂房列表、搜尋與篩選，降低人工翻找與對帳成本。</p>
           </article>
           <article class="feature-card">
             <div class="feature-icon" aria-hidden="true"><span class="material-symbols-outlined">mail</span></div>
             <h3>Email 自動通知</h3>
-            <p>訂房確認、匯款提醒、入住提醒與退房關懷（依你啟用的模板）。</p>
+            <p>訂房確認、匯款提醒、入住/退房提醒與關懷通知（依你啟用的模板）。</p>
           </article>
           <article class="feature-card">
             <div class="feature-icon" aria-hidden="true"><span class="material-symbols-outlined">payments</span></div>
@@ -112,11 +118,21 @@
             <h3>安全性與權限控管</h3>
             <p>後台登入保護、輸入驗證與日誌/備份機制（依部署設定）。</p>
           </article>
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true"><span class="material-symbols-outlined">support_agent</span></div>
+            <h3>人員協作更清楚</h3>
+            <p>用一致的訂房流程與通知，讓你跟同事/櫃檯交接更順。</p>
+          </article>
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true"><span class="material-symbols-outlined">auto_graph</span></div>
+            <h3>營收與營運更好管理</h3>
+            <p>提供訂房相關的查詢/列表，讓你更快掌握營運狀況。</p>
+          </article>
         </div>
       </div>
     </section>
 
-    <section id="plans" class="features">
+    <section id="plans" class="section section-muted">
       <div class="container">
         <div class="section-header">
           <span class="section-badge">方案與定價</span>
@@ -124,33 +140,64 @@
           <p class="section-subtitle">年繳通常享有折扣，減少每月續約壓力。</p>
         </div>
 
-        <div class="features-grid" id="plansGrid">
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true"><span class="material-symbols-outlined">trail_start</span></div>
-            <h3>基礎版</h3>
-            <p>月繳 NT$ 1,500 / 月<br>年繳：約 NT$ 15,000–25,000（約 8 折）</p>
-            <p>包含：基本訂房流程、後台管理、Email 通知、平日/假日價格管理</p>
-            <p><a href="#contact" class="hero-cta" style="margin-top:18px; padding:14px 34px; font-size:16px;">申請基礎版試用</a></p>
+        <div class="grid-3" id="plansGrid">
+          <article class="plan">
+            <div class="plan-top">
+              <h3>基礎版</h3>
+              <p class="plan-desc">適合小型民宿、單一據點</p>
+            </div>
+            <div class="price">
+              <div><span class="price-amt">NT$ 1,500</span><span class="price-suffix">/月</span></div>
+              <div class="price-sub">年繳：約 NT$ 15,000–25,000（約 8 折）</div>
+            </div>
+            <ul class="plan-list">
+              <li>基本訂房流程（前台/後台）</li>
+              <li>房型與平日/假日價格設定</li>
+              <li>Email 訂房確認與通知模板</li>
+              <li>基本訂房資料查詢與管理</li>
+            </ul>
+            <a class="btn btn-primary btn-full" href="#contact">申請基礎版試用</a>
           </article>
 
-          <article class="feature-card" style="border: 2px solid rgba(201,169,98,0.6); transform: translateY(-6px);">
-            <div class="feature-icon" aria-hidden="true"><span class="material-symbols-outlined">star_rate</span></div>
-            <h3>進階版（最推薦）</h3>
-            <p>月繳 NT$ 6,000 / 月<br>年繳：約 NT$ 60,000–90,000（約 8 折）</p>
-            <p>包含：金流/支付整合、優惠碼/折扣（依版本）、更多通知與模板、進階後台設定</p>
-            <p><a href="#contact" class="hero-cta" style="margin-top:18px; padding:14px 34px; font-size:16px;">申請進階版試用</a></p>
+          <article class="plan plan-highlight">
+            <div class="ribbon">最推薦</div>
+            <div class="plan-top">
+              <h3>進階版</h3>
+              <p class="plan-desc">適合中型旅館，需要更多自動化</p>
+            </div>
+            <div class="price">
+              <div><span class="price-amt">NT$ 6,000</span><span class="price-suffix">/月</span></div>
+              <div class="price-sub">年繳：約 NT$ 60,000–90,000（約 8 折）</div>
+            </div>
+            <ul class="plan-list">
+              <li>支付/金流整合與回傳流程</li>
+              <li>進階通知模板與自動化任務（依版本）</li>
+              <li>優惠碼/折扣（依你選擇的模組）</li>
+              <li>更完整的後台設定與管理</li>
+            </ul>
+            <a class="btn btn-soft btn-full" href="#contact">申請進階版試用</a>
           </article>
 
-          <article class="feature-card">
-            <div class="feature-icon" aria-hidden="true"><span class="material-symbols-outlined">apartment</span></div>
-            <h3>企業版</h3>
-            <p>月繳 NT$ 20,000 / 月<br>年繳：約 NT$ 200,000–300,000（約 8 折）</p>
-            <p>包含：多據點/更高彈性（依你需求）、API/串接（依版本）、較完整報表與管理、企業級支援</p>
-            <p><a href="#contact" class="hero-cta" style="margin-top:18px; padding:14px 34px; font-size:16px;">申請企業版諮詢</a></p>
+          <article class="plan">
+            <div class="plan-top">
+              <h3>企業版</h3>
+              <p class="plan-desc">適合多據點/更高階需求</p>
+            </div>
+            <div class="price">
+              <div><span class="price-amt">NT$ 20,000</span><span class="price-suffix">/月</span></div>
+              <div class="price-sub">年繳：約 NT$ 200,000–300,000（約 8 折）</div>
+            </div>
+            <ul class="plan-list">
+              <li>多據點管理（依你需求擴充）</li>
+              <li>更進階的報表與營運管理（依版本）</li>
+              <li>API/串接（依你選擇的規格）</li>
+              <li>企業級支援與交付（依合約）</li>
+            </ul>
+            <a class="btn btn-primary btn-full" href="#contact">申請企業版諮詢</a>
           </article>
         </div>
 
-        <p class="section-subtitle" style="text-align:center; margin-top:24px;">
+        <p style="text-align:center; margin-top:24px;">
           * 實際價格依功能範圍、房間/據點數與導入方式調整。你可直接申請試用，我們會給你明確報價。
         </p>
       </div>
@@ -168,23 +215,73 @@
             <div class="step-no">1</div>
             <div class="step-body">
               <h3>提出需求 / 選方案</h3>
-              <p>告訴我們你的房型數、據點、需要的支付與通知功能。</p>
+              <p>告訴我們你的房型/據點數、是否需要金流、以及通知/優惠功能需求。</p>
             </div>
           </div>
           <div class="step">
             <div class="step-no">2</div>
             <div class="step-body">
               <h3>建立你的系統設定</h3>
-              <p>房型、價格、Email 模板與金流環境（依你選擇的方案）。</p>
+              <p>我們會協助完成：房型資料、平日/假日價格、Email 模板與金流環境設定（依方案）。</p>
             </div>
           </div>
           <div class="step">
             <div class="step-no">3</div>
             <div class="step-body">
               <h3>測試並上線</h3>
-              <p>確認訂房流程與付款回傳正常後，上線開始收訂房。</p>
+              <p>確認前台訂房流程、通知寄送、付款回傳（如有）皆正常，接著上線開始收訂房。</p>
             </div>
           </div>
+          <div class="step">
+            <div class="step-no">4</div>
+            <div class="step-body">
+              <h3>持續優化（可選）</h3>
+              <p>依你的營運需求調整通知內容、優惠策略與報表呈現（依合約）。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="delivery" class="section section-muted">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-badge">交付清單</span>
+          <h2 class="section-title">我們交付的不只是「上線」，而是「可運營」</h2>
+          <p style="margin: 0 auto; max-width: 600px;">以下為常見交付內容（實際依你的方案與需求調整）。</p>
+        </div>
+
+        <div class="features-grid">
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true"><span class="material-symbols-outlined">check_circle</span></div>
+            <h3>房型/價格建檔</h3>
+            <p>幫你整理房型、平日/假日價格與加購設定，讓前台顯示正確。</p>
+          </article>
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true"><span class="material-symbols-outlined">mail</span></div>
+            <h3>Email 通知串接</h3>
+            <p>訂房確認、匯款提醒、入住/退房通知等模板與寄送流程。</p>
+          </article>
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true"><span class="material-symbols-outlined">payment</span></div>
+            <h3>金流測試（如有）</h3>
+            <p>確保付款流程回傳正常，避免客戶付款成功卻無法更新訂單狀態。</p>
+          </article>
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true"><span class="material-symbols-outlined">support_agent</span></div>
+            <h3>上線教學與交接</h3>
+            <p>教你如何管理房型、查看訂房、處理常見問題。</p>
+          </article>
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true"><span class="material-symbols-outlined">security</span></div>
+            <h3>基本資安與備份設定</h3>
+            <p>設定登入保護與備份策略，讓系統有基本的維運安全。</p>
+          </article>
+          <article class="feature-card">
+            <div class="feature-icon" aria-hidden="true"><span class="material-symbols-outlined">tune</span></div>
+            <h3>依營運調整（可選）</h3>
+            <p>依你實際收到的訂房情境，協助微調通知與流程。</p>
+          </article>
         </div>
       </div>
     </section>
@@ -213,6 +310,18 @@
             <summary>是否能調整通知內容？</summary>
             <p>可以。你可以在後台設定模板與通知內容（依系統提供的模板功能）。</p>
           </details>
+          <details>
+            <summary>多久可以上線？</summary>
+            <p>通常在完成資料整理與測試後即可上線；若遇到金流/特殊需求，會依交付排程稍作調整。</p>
+          </details>
+          <details>
+            <summary>如果我房間/據點增加怎麼辦？</summary>
+            <p>可依你的成長情況調整方案與功能範圍，我們會協助評估並安排升級。</p>
+          </details>
+          <details>
+            <summary>能不能先試用？</summary>
+            <p>可以。你填完需求後，我們會回覆建議方案與導入方式，安排你最適合的試用路徑。</p>
+          </details>
         </div>
       </div>
     </section>
@@ -230,10 +339,32 @@
             <label>你的 Email</label>
             <input id="contactEmail" type="email" placeholder="name@example.com" />
           </div>
+
+          <div class="contact-row">
+            <label>旅宿/公司名稱</label>
+            <input id="contactBusiness" type="text" placeholder="例如：haoya 旅宿有限公司" />
+          </div>
+
+          <div class="contact-row">
+            <label>聯絡電話</label>
+            <input id="contactPhone" type="text" placeholder="例如：0912-345-678" />
+          </div>
+
           <div class="contact-row">
             <label>大概的房型/據點數</label>
             <input id="contactRooms" type="text" placeholder="例如：10 間房 / 1 個據點" />
           </div>
+
+          <div class="contact-row">
+            <label>偏好計費方式（月繳/年繳）</label>
+            <input id="contactBilling" type="text" placeholder="例如：年繳（希望享折扣）" />
+          </div>
+
+          <div class="contact-row">
+            <label>預計啟用時間（可選）</label>
+            <input id="contactStartAt" type="text" placeholder="例如：3 月內 / 隨時" />
+          </div>
+
           <div class="contact-row">
             <label>希望啟用的功能</label>
             <input id="contactNeed" type="text" placeholder="例如：線上刷卡、入住提醒、優惠碼" />
@@ -273,12 +404,16 @@
       e.preventDefault();
 
       const email = (document.getElementById('contactEmail').value || '').trim();
-      const rooms = (document.getElementById('contactRooms').value || '').trim();
-      const need = (document.getElementById('contactNeed').value || '').trim();
+    const business = (document.getElementById('contactBusiness').value || '').trim();
+    const phone = (document.getElementById('contactPhone').value || '').trim();
+    const rooms = (document.getElementById('contactRooms').value || '').trim();
+    const billing = (document.getElementById('contactBilling').value || '').trim();
+    const startAt = (document.getElementById('contactStartAt').value || '').trim();
+    const need = (document.getElementById('contactNeed').value || '').trim();
 
       const subject = encodeURIComponent('訂房系統試用申請');
       const body = encodeURIComponent(
-        `Email：${email || '-'}\n房型/據點數：${rooms || '-'}\n需求：${need || '-'}\n\n請回覆我建議方案與導入方式。`
+        `Email：${email || '-'}\n公司/旅宿：${business || '-'}\n電話：${phone || '-'}\n房型/據點數：${rooms || '-'}\n計費偏好：${billing || '-'}\n預計啟用：${startAt || '-'}\n需求：${need || '-'}\n\n請回覆我建議方案與導入方式。`
       );
 
       window.location.href = `mailto:${adminEmail}?subject=${subject}&body=${body}`;
