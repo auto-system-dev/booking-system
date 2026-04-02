@@ -8,10 +8,10 @@ let landingConfig = {};
 let countdownDays = 7;
 const DEFAULT_HERO_IMAGE = 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=1920';
 const DEFAULT_FEATURE_ITEMS = [
-    { icon: 'landscape', title: '絕美山景', desc: '每間房間都能欣賞到壯闊的山巒美景', enabled: true, order: 1 },
-    { icon: 'spa', title: '私人湯屋', desc: '獨立溫泉湯屋，24 小時供應天然溫泉', enabled: true, order: 2 },
-    { icon: 'restaurant', title: '精緻早餐', desc: '使用在地新鮮食材，每日現做的豐盛早餐', enabled: true, order: 3 },
-    { icon: 'pets', title: '寵物友善', desc: '帶著毛小孩一起來度假', enabled: true, order: 4 }
+    { icon: '/landing-icons/hero.png', title: '絕美山景', desc: '每間房間都能欣賞到壯闊的山巒美景', enabled: true, order: 1 },
+    { icon: '/landing-icons/about.png', title: '私人湯屋', desc: '獨立溫泉湯屋，24 小時供應天然溫泉', enabled: true, order: 2 },
+    { icon: '/landing-icons/facilities.png', title: '精緻早餐', desc: '使用在地新鮮食材，每日現做的豐盛早餐', enabled: true, order: 3 },
+    { icon: '/landing-icons/features.png', title: '寵物友善', desc: '帶著毛小孩一起來度假', enabled: true, order: 4 }
 ];
 const DEFAULT_FACILITY_GALLERY_ITEMS = [
     {
@@ -375,11 +375,22 @@ function renderFeatureCards(cfg) {
     if (!grid) return;
 
     const items = resolveFeatureItems(cfg);
+
+    const isIconImage = (value) => {
+        const v = String(value || '').trim();
+        if (!v) return false;
+        // URL 或路徑，且看起來是圖片副檔名
+        const isPathLike = v.startsWith('/') || v.startsWith('http://') || v.startsWith('https://');
+        return isPathLike && /\.(png|jpg|jpeg|webp|gif|svg)(\?.*)?$/i.test(v);
+    };
+
+    const normalizeIconValue = (value) => String(value || '').trim();
     grid.innerHTML = items.map(item => `
         <div class="feature-card">
-            <div class="feature-icon">
-                <span class="material-symbols-outlined">${escapeHtml(item.icon || 'check_circle')}</span>
-            </div>
+            ${isIconImage(item.icon)
+                ? `<div class="feature-icon feature-icon--img"><img src="${escapeHtml(normalizeIconValue(item.icon))}" alt="" loading="lazy" decoding="async"></div>`
+                : `<div class="feature-icon"><span class="material-symbols-outlined">${escapeHtml(item.icon || 'check_circle')}</span></div>`
+            }
             <h3>${escapeHtml(item.title || '特色服務')}</h3>
             <p>${escapeHtml(item.desc || '')}</p>
         </div>
