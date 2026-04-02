@@ -399,6 +399,10 @@ h2{
   overflow: hidden;
 }
 
+#landing-features .features-grid{
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 #landing-features .feature-icon.feature-icon--img{
   width: 100%;
   height: 170px;
@@ -428,8 +432,18 @@ h2{
 }
 
 @media (max-width: 480px){
+  #landing-features .features-grid{
+    grid-template-columns: 1fr;
+  }
+
   #landing-features .feature-icon.feature-icon--img{
     height: 150px;
+  }
+}
+
+@media (max-width: 980px){
+  #landing-features .features-grid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 .contact-card{
@@ -439,6 +453,7 @@ h2{
   padding:18px;
   box-shadow: var(--shadow);
   max-width:720px;
+  margin: 0 auto;
 }
 .contact-row{
   display:flex;
@@ -519,9 +534,9 @@ input:focus{
   right: 0;
   z-index: 1000;
   padding: 16px 0;
-  background: var(--primary-alpha-85);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  backdrop-filter: none;
+  border-bottom: none;
   transition: var(--transition, all 0.3s cubic-bezier(0.4, 0, 0.2, 1));
 }
 
