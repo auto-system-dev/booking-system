@@ -565,10 +565,45 @@
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
 
+    const navbar = document.getElementById('navbar');
+    const navToggle = document.getElementById('navToggle');
+    const navMenu = document.getElementById('navMenu');
+    const navLinks = Array.from(document.querySelectorAll('.nav-link, .nav-cta'));
+
+    const syncNavbarState = () => {
+      if (!navbar) return;
+      if (window.scrollY > 16) {
+        navbar.classList.add('scrolled');
+      } else {
+        navbar.classList.remove('scrolled');
+      }
+    };
+
+    window.addEventListener('scroll', syncNavbarState, { passive: true });
+    syncNavbarState();
+
+    if (navToggle && navMenu) {
+      navToggle.addEventListener('click', () => {
+        const expanded = navToggle.getAttribute('aria-expanded') === 'true';
+        navToggle.setAttribute('aria-expanded', String(!expanded));
+        navToggle.classList.toggle('active', !expanded);
+        navMenu.classList.toggle('active', !expanded);
+      });
+
+      navLinks.forEach((link) => {
+        link.addEventListener('click', () => {
+          navToggle.setAttribute('aria-expanded', 'false');
+          navToggle.classList.remove('active');
+          navMenu.classList.remove('active');
+        });
+      });
+    }
+
     const btn = document.getElementById('contactSubmit');
     const adminEmail = 'admin@example.com'; // TODO：改成你實際收件信箱
 
-    btn.addEventListener('click', (e) => {
+    if (btn) {
+      btn.addEventListener('click', (e) => {
       e.preventDefault();
 
       const email = (document.getElementById('contactEmail').value || '').trim();
@@ -584,8 +619,9 @@
         `Email：${email || '-'}\n公司/旅宿：${business || '-'}\n電話：${phone || '-'}\n房型/據點數：${rooms || '-'}\n計費偏好：${billing || '-'}\n預計啟用：${startAt || '-'}\n需求：${need || '-'}\n\n請回覆我建議方案與導入方式。`
       );
 
-      window.location.href = `mailto:${adminEmail}?subject=${subject}&body=${body}`;
-    });
+        window.location.href = `mailto:${adminEmail}?subject=${subject}&body=${body}`;
+      });
+    }
   </script>
 </body>
 </html>
