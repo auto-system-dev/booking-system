@@ -448,3 +448,395 @@ input:focus{
   .nav{ display:none; }
 }
 
+/* ===== 方式 2：複製 landing.css 的主要元件樣式（讓 system-sales 看起來一致）===== */
+:root{
+  --primary-alpha-95: rgba(26, 58, 74, 0.95);
+  --primary-alpha-85: rgba(26, 58, 74, 0.85);
+  --primary-alpha-75: rgba(26, 58, 74, 0.75);
+  --primary-alpha-60: rgba(26, 58, 74, 0.60);
+  --primary-alpha-08: rgba(26, 58, 74, 0.08);
+  --accent-shadow: rgba(201, 169, 98, 0.40);
+  --accent-shadow-lg: rgba(201, 169, 98, 0.50);
+  --accent-alpha-10: rgba(201, 169, 98, 0.10);
+  --radius-md: 16px;
+}
+
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 16px 0;
+  transition: var(--transition, all 0.3s cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.navbar.scrolled {
+  background: var(--primary-alpha-95);
+  backdrop-filter: blur(10px);
+  padding: 12px 0;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+
+.nav-container{
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-logo {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  text-decoration: none;
+  letter-spacing: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-logo-image{
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  object-fit:cover;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+
+.nav-menu{
+  display:flex;
+  align-items:center;
+  gap:32px;
+}
+
+.nav-link{
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  transition: var(--transition, all 0.3s cubic-bezier(0.4,0,0.2,1));
+  position: relative;
+}
+
+.nav-link::after{
+  content:'';
+  position:absolute;
+  bottom:-4px;
+  left:0;
+  width:0;
+  height:2px;
+  background: var(--accent);
+  transition: var(--transition, all 0.3s cubic-bezier(0.4,0,0.2,1));
+}
+.nav-link:hover{
+  color:#fff;
+}
+.nav-link:hover::after{
+  width:100%;
+}
+
+.nav-cta{
+  background: var(--accent);
+  color: var(--primary);
+  padding: 10px 24px;
+  border-radius: 100px;
+  text-decoration:none;
+  font-weight: 700;
+  font-size: 14px;
+  transition: var(--transition, all 0.3s cubic-bezier(0.4,0,0.2,1));
+}
+.nav-cta:hover{
+  background: var(--accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--accent-shadow);
+}
+
+.nav-toggle{
+  display:none;
+  flex-direction:column;
+  gap:5px;
+  background:transparent;
+  border:none;
+  cursor:pointer;
+  padding:8px;
+}
+.nav-toggle span{
+  display:block;
+  width:24px;
+  height:2px;
+  background: #fff;
+  transition: var(--transition, all 0.3s cubic-bezier(0.4,0,0.2,1));
+}
+.nav-toggle.active span:nth-child(1){
+  transform: translateY(7px) rotate(45deg);
+}
+.nav-toggle.active span:nth-child(2){
+  opacity:0;
+}
+.nav-toggle.active span:nth-child(3){
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+.hero{
+  position: relative;
+  min-height: 100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background-color: var(--primary, #1a3a4a);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  padding-top: 92px; /* 避免被 navbar 擋到 */
+}
+
+.hero-overlay{
+  position:absolute;
+  inset:0;
+  background: linear-gradient(
+    135deg,
+    var(--primary-alpha-85) 0%,
+    var(--primary-alpha-60) 50%,
+    var(--primary-alpha-75) 100%
+  );
+}
+
+.hero-content{
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 0 24px;
+  animation: fadeInUp 1s ease-out;
+}
+
+@keyframes fadeInUp{
+  from{ opacity:0; transform: translateY(30px); }
+  to{ opacity:1; transform: translateY(0); }
+}
+
+.hero-badge{
+  display: inline-block;
+  background: var(--accent);
+  color: var(--primary);
+  padding: 8px 20px;
+  border-radius: 100px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse{
+  0%,100%{ transform: scale(1); }
+  50%{ transform: scale(1.05); }
+}
+
+.hero-title{
+  font-family: 'Noto Serif TC', serif;
+  font-size: clamp(40px, 8vw, 72px);
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+  margin-bottom: 20px;
+  letter-spacing: 4px;
+}
+
+.hero-subtitle{
+  font-size: 18px;
+  color: rgba(255,255,255,0.9);
+  max-width: 600px;
+  margin: 0 auto 32px;
+  line-height: 1.8;
+}
+
+.hero-price{
+  display:flex;
+  align-items: baseline;
+  justify-content: center;
+  gap:12px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+
+.price-from{
+  font-size:16px;
+  color: rgba(255,255,255,0.8);
+}
+.price-amount{
+  font-family:'Noto Serif TC', serif;
+  font-size:48px;
+  font-weight:700;
+  color: var(--accent);
+}
+.price-original{
+  font-size:18px;
+  color: rgba(255,255,255,0.6);
+}
+
+.hero-cta{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background: var(--accent);
+  color: var(--primary);
+  padding: 18px 48px;
+  border-radius: 100px;
+  text-decoration: none;
+  font-size: 18px;
+  font-weight: 700;
+  transition: var(--transition, all 0.3s cubic-bezier(0.4,0,0.2,1));
+  box-shadow: 0 4px 20px var(--accent-shadow);
+  margin: 0 auto;
+}
+.hero-cta:hover{
+  background: var(--accent-hover);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px var(--accent-shadow-lg);
+}
+
+.hero-trust{
+  display:flex;
+  justify-content:center;
+  gap:32px;
+  margin-top:48px;
+  flex-wrap:wrap;
+}
+.trust-item{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color: rgba(255,255,255,0.8);
+  font-size: 14px;
+}
+.trust-item .material-symbols-outlined{
+  font-size: 20px;
+  color: var(--accent);
+}
+
+.hero-scroll{
+  position:absolute;
+  bottom:40px;
+  left:0;
+  right:0;
+  width: fit-content;
+  max-width: calc(100% - 48px);
+  margin-left:auto;
+  margin-right:auto;
+  box-sizing:border-box;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  text-align:center;
+  color: rgba(255,255,255,0.7);
+  font-size: 13px;
+  animation: heroScrollBounce 2s infinite;
+  z-index: 1;
+}
+.hero-scroll .material-symbols-outlined{
+  display:block;
+  line-height: 1;
+  font-size: 22px;
+}
+
+@keyframes heroScrollBounce{
+  0%,20%,50%,80%,100%{ transform: translateY(0); }
+  40%{ transform: translateY(-10px); }
+  60%{ transform: translateY(-5px); }
+}
+
+/* ===== Section 與 Features（跟 landing.css 對齊） ===== */
+section{
+  padding: 100px 0;
+}
+.section-header{
+  text-align:center;
+  margin-bottom: 60px;
+}
+.section-badge{
+  display:inline-block;
+  background: linear-gradient(135deg, var(--accent), #d4b86a);
+  color: var(--primary);
+  padding: 6px 16px;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  letter-spacing: 1px;
+}
+.section-title{
+  font-family: 'Noto Serif TC', serif;
+  font-size: clamp(28px, 5vw, 40px);
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 16px;
+  letter-spacing: 2px;
+}
+.section-subtitle{
+  font-size: 16px;
+  color: var(--text-light);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.features{
+  background: var(--bg-cream);
+}
+.features-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 260px));
+  justify-content:center;
+  gap: 24px;
+}
+.feature-card{
+  background: var(--text-white);
+  padding: 40px 24px;
+  border-radius: var(--radius-md, 16px);
+  text-align:center;
+  transition: var(--transition, all 0.3s cubic-bezier(0.4,0,0.2,1));
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(0,0,0,0.08));
+}
+.feature-card:hover{
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-lg, 0 8px 40px rgba(0,0,0,0.16));
+}
+.feature-icon{
+  width:80px;
+  height:80px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin: 0 auto 24px;
+}
+.feature-icon .material-symbols-outlined{
+  font-size:36px;
+  color: var(--text-white, #fff);
+}
+.feature-card h3{
+  font-family:'Noto Serif TC', serif;
+  font-size:20px;
+  font-weight:600;
+  color: var(--text-dark);
+  margin-bottom: 12px;
+}
+.feature-card p{
+  font-size:14px;
+  color: var(--text-light);
+  line-height: 1.7;
+  white-space: pre-line;
+  text-align: left;
+}
+
+@media (max-width: 980px){
+  .features-grid{ grid-template-columns: repeat(2, minmax(220px, 260px)); }
+  .hero-trust{ gap: 18px; }
+  .nav-menu{ gap: 16px; }
+}
+
