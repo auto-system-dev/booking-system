@@ -1971,6 +1971,11 @@ app.get('/', publicLimiter, handleLandingPageRequest);
 // 銷售頁相容路徑
 app.get(['/landing', '/landing.html'], publicLimiter, handleLandingPageRequest);
 
+// 訂房系統 SaaS 銷售頁（不影響既有旅宿銷售頁與 /booking）
+app.get(['/system-sales', '/system-sales.html'], publicLimiter, (req, res) => {
+    res.sendFile(path.join(__dirname, 'system-sales.html'));
+});
+
 // 舊網址相容：/index.html 導向 /booking
 app.get('/index.html', (req, res) => {
     res.redirect(302, '/booking');
