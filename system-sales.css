@@ -391,7 +391,47 @@ h2{
 .contact{
   padding-bottom:88px;
 }
-.section-head-left h2{ text-align:left; }
+.section-head-left h2{ text-align:center; }
+
+/* 只調整銷售頁的 landing 功能卡：改成大圖吃滿卡片寬度 */
+#landing-features .feature-card{
+  padding: 0;
+  overflow: hidden;
+}
+
+#landing-features .feature-icon.feature-icon--img{
+  width: 100%;
+  height: 170px;
+  border-radius: 0;
+  border: 0;
+  margin: 0;
+  box-shadow: none;
+}
+
+#landing-features .feature-icon.feature-icon--img img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+#landing-features .feature-content{
+  padding: 20px 22px 24px;
+}
+
+#landing-features .feature-content h3{
+  margin: 0 0 12px;
+}
+
+#landing-features .feature-content p{
+  margin: 0;
+}
+
+@media (max-width: 480px){
+  #landing-features .feature-icon.feature-icon--img{
+    height: 150px;
+  }
+}
 .contact-card{
   background: var(--card);
   border:1px solid rgba(26,58,74,0.08);
@@ -479,6 +519,9 @@ input:focus{
   right: 0;
   z-index: 1000;
   padding: 16px 0;
+  background: var(--primary-alpha-85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   transition: var(--transition, all 0.3s cubic-bezier(0.4, 0, 0.2, 1));
 }
 
