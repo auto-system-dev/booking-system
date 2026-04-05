@@ -53,6 +53,12 @@ function setLandingSectionVisible(sectionId, visible) {
     if (link) link.style.display = visible ? '' : 'none';
 }
 
+function isLandingSettingEnabled(value, defaultValue = true) {
+    if (value === undefined || value === null || value === '') return defaultValue;
+    const normalized = String(value).trim().toLowerCase();
+    return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+}
+
 // 預設配色主題定義
 const landingThemes = {
     default: { primary: '#1a3a4a', primary_light: '#2d5a6e', accent: '#c9a962', accent_hover: '#b8954d', bg_cream: '#f8f6f3', text_dark: '#2d3436', text_light: '#636e72' },
@@ -194,6 +200,7 @@ async function applyConfig(cfg) {
     setText('aboutSectionTitle', cfg.landing_about_title);
     setText('aboutSectionSubtitle', cfg.landing_about_subtitle);
     setText('aboutCardDesc', cfg.landing_about_card_desc);
+    setLandingSectionVisible('about', isLandingSettingEnabled(cfg.landing_about_enabled, true));
 
     // Hero 背景圖片（先預載再套用，避免刷新時先看到預設圖再切換）
     const heroSection = document.getElementById('hero');

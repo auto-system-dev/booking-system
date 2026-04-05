@@ -12438,6 +12438,7 @@ const landingFieldMap = {
     landing_about_title: 'landingAboutTitle',
     landing_about_subtitle: 'landingAboutSubtitle',
     landing_about_card_desc: 'landingAboutCardDesc',
+    landing_about_enabled: 'landingAboutEnabled',
     landing_nav_logo: 'landingNavLogo',
     landing_hero_image: 'landingHeroImage',
     landing_countdown_days: 'landingCountdownDays',
@@ -13549,7 +13550,7 @@ async function saveLandingSettings(tab) {
             break;
         case 'about':
             keysToSave = Object.keys(landingFieldMap).filter(k =>
-                ['landing_about_title', 'landing_about_subtitle', 'landing_about_card_desc'].includes(k)
+                ['landing_about_enabled', 'landing_about_title', 'landing_about_subtitle', 'landing_about_card_desc'].includes(k)
             );
             break;
         case 'features':
@@ -13635,6 +13636,7 @@ async function saveLandingSettings(tab) {
             landing_about_title: '銷售頁-關於我們主標',
             landing_about_subtitle: '銷售頁-關於我們副標',
             landing_about_card_desc: '銷售頁-關於我們重點卡內容',
+            landing_about_enabled: '銷售頁-關於我們區塊啟用',
             landing_nav_logo: '銷售頁-導航列Logo',
             landing_hero_image: '銷售頁-Hero 背景圖片',
             landing_countdown_days: '銷售頁-倒數天數',
