@@ -13325,9 +13325,10 @@ async function loadLandingRoomTypes(landingData) {
                 <div class="form-group">
                     <label>銷售頁啟用</label>
                     <div style="display:flex; align-items:center; gap:10px;">
-                        <label style="position: relative; display: inline-block; width: 50px; height: 26px;">
-                            <input type="checkbox" id="landingRoomEnabled_${room.id}" ${room.show_on_landing === 1 ? 'checked' : ''} style="opacity:0; width:0; height:0; position:absolute;" onchange="syncLandingRoomEnabledSwitch(${room.id}, this.checked)">
-                            <span style="position:absolute; cursor:pointer; inset:0; background-color:${room.show_on_landing === 1 ? '#27ae60' : '#ccc'}; transition:0.3s; border-radius:26px;" onclick="const cb=this.previousElementSibling; cb.checked=!cb.checked; cb.dispatchEvent(new Event('change'));">
+                        <!-- 勿在內層再加 onclick：外層 label 點擊已會切換 checkbox，重複切換會互相抵銷導致無法開關 -->
+                        <input type="checkbox" id="landingRoomEnabled_${room.id}" ${room.show_on_landing === 1 ? 'checked' : ''} style="position:absolute;opacity:0;width:0;height:0;pointer-events:none;" onchange="syncLandingRoomEnabledSwitch(${room.id}, this.checked)" aria-label="顯示在銷售頁">
+                        <label for="landingRoomEnabled_${room.id}" style="position: relative; display: inline-block; width: 50px; height: 26px; cursor: pointer; flex-shrink: 0;">
+                            <span style="position:absolute; inset:0; background-color:${room.show_on_landing === 1 ? '#27ae60' : '#ccc'}; transition:0.3s; border-radius:26px;">
                                 <span style="position:absolute; height:20px; width:20px; left:3px; bottom:3px; background-color:white; transition:0.3s; border-radius:50%; transform:${room.show_on_landing === 1 ? 'translateX(24px)' : 'translateX(0)'};"></span>
                             </span>
                         </label>
@@ -13369,9 +13370,10 @@ function syncLandingRoomEnabledSwitch(roomId, isEnabled) {
     const textEl = document.getElementById(`landingRoomEnabledText_${roomId}`);
     const checkbox = document.getElementById(`landingRoomEnabled_${roomId}`);
     if (!checkbox) return;
-    const slider = checkbox.nextElementSibling;
-    const knob = slider ? slider.querySelector('span') : null;
-    if (slider) slider.style.backgroundColor = isEnabled ? '#27ae60' : '#ccc';
+    const labelEl = checkbox.nextElementSibling;
+    const track = labelEl && labelEl.firstElementChild;
+    const knob = track && track.firstElementChild;
+    if (track) track.style.backgroundColor = isEnabled ? '#27ae60' : '#ccc';
     if (knob) knob.style.transform = isEnabled ? 'translateX(24px)' : 'translateX(0)';
     if (textEl) textEl.textContent = isEnabled ? '顯示在銷售頁' : '不顯示在銷售頁';
 }
