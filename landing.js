@@ -45,6 +45,14 @@ const DEFAULT_REVIEW_ITEMS = [
     { name: '王小姐', date: '2025 年 12 月', rating: '4.9', text: '位置很好找，房間寬敞明亮，窗外風景很美。整體住宿體驗非常棒，大力推薦！', tags: '景觀優美,交通方便', enabled: true, order: 3 }
 ];
 
+/** 隱藏／顯示銷售頁區塊，並同步導覽列錨點連結（避免點到空白區） */
+function setLandingSectionVisible(sectionId, visible) {
+    const el = document.getElementById(sectionId);
+    if (el) el.style.display = visible ? '' : 'none';
+    const link = document.querySelector(`a.nav-link[href="#${sectionId}"]`);
+    if (link) link.style.display = visible ? '' : 'none';
+}
+
 // 預設配色主題定義
 const landingThemes = {
     default: { primary: '#1a3a4a', primary_light: '#2d5a6e', accent: '#c9a962', accent_hover: '#b8954d', bg_cream: '#f8f6f3', text_dark: '#2d3436', text_light: '#636e72' },
@@ -327,11 +335,13 @@ async function applyConfig(cfg) {
 
 function resolveFeatureItems(cfg) {
     let items = [];
+    let explicitJson = false;
     const raw = cfg.landing_features_items;
-    if (raw) {
+    if (raw !== undefined && raw !== null && String(raw).trim() !== '') {
         try {
             const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
             if (Array.isArray(parsed)) {
+                explicitJson = true;
                 items = parsed.map((item, index) => ({
                     icon: normalizeIconName(item.icon) || 'check_circle',
                     title: String(item.title || '').trim(),
@@ -345,7 +355,7 @@ function resolveFeatureItems(cfg) {
         }
     }
 
-    if (!items.length) {
+    if (!items.length && !explicitJson) {
         for (let i = 1; i <= 4; i++) {
             const icon = normalizeIconName(cfg[`landing_feature_${i}_icon`]);
             const title = String(cfg[`landing_feature_${i}_title`] || '').trim();
@@ -361,7 +371,7 @@ function resolveFeatureItems(cfg) {
         }
     }
 
-    if (!items.length) {
+    if (!items.length && !explicitJson) {
         items = DEFAULT_FEATURE_ITEMS.map(item => ({ ...item }));
     }
 
@@ -375,6 +385,12 @@ function renderFeatureCards(cfg) {
     if (!grid) return;
 
     const items = resolveFeatureItems(cfg);
+    if (!items.length) {
+        grid.innerHTML = '';
+        setLandingSectionVisible('features', false);
+        return;
+    }
+    setLandingSectionVisible('features', true);
 
     const isIconImage = (value) => {
         const v = String(value || '').trim();
@@ -579,26 +595,30 @@ function renderFacilityGallery(cfg) {
     if (!section || !grid) return;
 
     let items = [];
-    try {
-        const raw = cfg.landing_facility_gallery || '[]';
-        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        if (Array.isArray(parsed)) {
-            items = parsed
-                .map(item => {
-                    const images = resolveFacilityGalleryImages(item);
-                    return {
-                        ...item,
-                        images
-                    };
-                })
-                .filter(item => item && item.images.length > 0 && item.enabled !== false)
-                .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+    let explicitGalleryJson = false;
+    const rawGallery = cfg.landing_facility_gallery;
+    if (rawGallery !== undefined && rawGallery !== null && String(rawGallery).trim() !== '') {
+        try {
+            const parsed = typeof rawGallery === 'string' ? JSON.parse(rawGallery) : rawGallery;
+            if (Array.isArray(parsed)) {
+                explicitGalleryJson = true;
+                items = parsed
+                    .map(item => {
+                        const images = resolveFacilityGalleryImages(item);
+                        return {
+                            ...item,
+                            images
+                        };
+                    })
+                    .filter(item => item && item.images.length > 0 && item.enabled !== false)
+                    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+            }
+        } catch (error) {
+            console.warn('⚠️ landing_facility_gallery JSON 解析失敗:', error.message);
         }
-    } catch (error) {
-        console.warn('⚠️ landing_facility_gallery JSON 解析失敗:', error.message);
     }
 
-    if (!items.length) {
+    if (!items.length && !explicitGalleryJson) {
         items = DEFAULT_FACILITY_GALLERY_ITEMS.map((item, index) => ({
             ...item,
             order: index + 1,
@@ -606,7 +626,14 @@ function renderFacilityGallery(cfg) {
         }));
     }
 
-    section.style.display = '';
+    if (!items.length) {
+        grid.innerHTML = '';
+        setLandingSectionVisible('public-facilities', false);
+        window._facilityGalleryItems = [];
+        return;
+    }
+
+    setLandingSectionVisible('public-facilities', true);
     window._facilityGalleryItems = items.map(item => ({
         title: item.title || '公共設施',
         images: item.images
@@ -671,39 +698,12 @@ function renderRoomCards(cfg) {
     });
 
     if (roomTypes.length === 0) {
-        console.log('ℹ️ 無房型資料，使用預設房型卡片');
-        const bookingUrl = getLandingBookingUrl();
-        const priceRowClass = isWholeProperty ? 'room-price-row room-price-row--whole-property' : 'room-price-row';
-        const fallbackPrice = isWholeProperty
-            ? ''
-            : `
-                        <div class="room-price">
-                            <span class="price-current">NT$ 2,800</span>
-                            <span class="price-old">NT$ 3,500</span>
-                        </div>`;
-        const bookLabel = isWholeProperty ? '預訂包棟' : '預訂';
-        grid.innerHTML = `
-            <div class="room-card">
-                <div class="room-image">
-                    <img src="https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600" alt="標準雙人房" loading="lazy">
-                    <span class="room-badge">熱門</span>
-                </div>
-                <div class="room-info">
-                    <h3>標準雙人房</h3>
-                    <div class="room-features">
-                        <span><span class="material-symbols-outlined">king_bed</span> 雙人床</span>
-                        <span><span class="material-symbols-outlined">bathtub</span> 獨立衛浴</span>
-                        <span><span class="material-symbols-outlined">wifi</span> 免費 WiFi</span>
-                    </div>
-                    <div class="${priceRowClass}">
-                        ${fallbackPrice}
-                        <a href="${bookingUrl}" class="room-book-btn" onclick="trackBookingClick()">${bookLabel}</a>
-                    </div>
-                </div>
-            </div>
-        `;
+        console.log('ℹ️ 無可顯示的銷售頁房型，隱藏房型區塊');
+        grid.innerHTML = '';
+        setLandingSectionVisible('rooms', false);
         return;
     }
+    setLandingSectionVisible('rooms', true);
 
     const badgeClassMap = {
         '熱門': '',
@@ -772,11 +772,13 @@ function renderRoomCards(cfg) {
 
 function resolveReviewItems(cfg) {
     let items = [];
+    let explicitJson = false;
     const raw = cfg ? cfg.landing_reviews_items : null;
-    if (raw) {
+    if (raw !== undefined && raw !== null && String(raw).trim() !== '') {
         try {
             const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
             if (Array.isArray(parsed)) {
+                explicitJson = true;
                 items = parsed.map((item, index) => ({
                     name: String(item.name || '').trim(),
                     date: String(item.date || '').trim(),
@@ -792,7 +794,7 @@ function resolveReviewItems(cfg) {
         }
     }
 
-    if (!items.length) {
+    if (!items.length && !explicitJson) {
         for (let i = 1; i <= 3; i++) {
             const name = String(cfg[`landing_review_${i}_name`] || '').trim();
             const text = String(cfg[`landing_review_${i}_text`] || '').trim();
@@ -812,7 +814,7 @@ function resolveReviewItems(cfg) {
         }
     }
 
-    if (!items.length) {
+    if (!items.length && !explicitJson) {
         items = DEFAULT_REVIEW_ITEMS.map(item => ({ ...item }));
     }
 
@@ -827,6 +829,12 @@ function renderReviewCards(cfg) {
     if (!grid) return;
 
     const reviews = resolveReviewItems(cfg);
+    if (!reviews.length) {
+        grid.innerHTML = '';
+        setLandingSectionVisible('reviews', false);
+        return;
+    }
+    setLandingSectionVisible('reviews', true);
     grid.innerHTML = reviews.map(review => {
         const avatar = review.name.charAt(0);
         const tagItems = review.tags
