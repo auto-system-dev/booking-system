@@ -393,21 +393,35 @@ h2{
 }
 .section-head-left h2{ text-align:center; }
 
-/* Landing 介紹：文字卡改為版型示意圖 */
+/* Landing 介紹：去背示意圖（無白框、與區塊同色底避免透色發灰） */
+#landing-intro.about-us{
+  background: var(--bg-cream, #f8f6f3);
+}
+
 #landing-intro .about-card--mockup{
   max-width: min(960px, 100%);
   margin-left: auto;
   margin-right: auto;
-  padding: 12px 12px 16px;
+  padding: 0;
   text-align: center;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 #landing-intro .about-card--mockup img{
   width: 100%;
   height: auto;
   display: block;
-  border-radius: 12px;
+  border-radius: 0;
   vertical-align: middle;
+}
+
+@media (max-width: 768px){
+  #landing-intro .about-card--mockup{
+    padding: 0;
+  }
 }
 
 /* 只調整銷售頁的 landing 功能卡：改成大圖吃滿卡片寬度 */
