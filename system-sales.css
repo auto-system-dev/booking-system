@@ -410,17 +410,54 @@ h2{
   border-radius: 0;
 }
 
-#landing-intro .about-card--mockup img{
+#landing-intro .landing-mockup{
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+#landing-intro .landing-mockup__desktop{
+  width: 100%;
+  height: 100%;
+}
+
+#landing-intro .landing-mockup__desktop img{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  vertical-align: middle;
+}
+
+#landing-intro .landing-mockup__mobile{
+  position: absolute;
+  right: 2%;
+  bottom: 6%;
+  width: clamp(150px, 22%, 240px);
+  height: auto;
+  border-radius: 18px;
+}
+
+#landing-intro .landing-mockup__mobile img{
   width: 100%;
   height: auto;
   display: block;
-  border-radius: 0;
-  vertical-align: middle;
+  border-radius: 18px;
 }
 
 @media (max-width: 768px){
   #landing-intro .about-card--mockup{
     padding: 0;
+  }
+
+  #landing-intro .landing-mockup{
+    aspect-ratio: 4 / 3;
+  }
+
+  #landing-intro .landing-mockup__mobile{
+    right: 3%;
+    bottom: 5%;
+    width: clamp(140px, 32%, 210px);
   }
 }
 
