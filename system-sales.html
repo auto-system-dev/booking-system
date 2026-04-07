@@ -333,15 +333,19 @@
 
         <div class="screens-grid">
           <figure class="screen-card">
-            <img src="/system-sales/screens/admin-dashboard.png" alt="後台總覽示意圖" loading="lazy">
+            <button type="button" class="screen-thumb" data-lightbox-src="/system-sales/screens/admin-dashboard.png" data-lightbox-alt="後台儀表板截圖" aria-label="放大檢視：後台儀表板">
+              <img src="/system-sales/screens/admin-dashboard.png" alt="後台儀表板截圖" loading="lazy">
+            </button>
             <figcaption>
               <div class="screen-title">後台總覽</div>
-              <div class="screen-desc">快速掌握訂房狀態、今日/本月營運概況（依系統提供）。</div>
+              <div class="screen-desc">儀表板彙整關鍵數字與近期動態：訂房筆數、入住/退房提醒、營收或趨勢摘要等，一進後台就能掌握今日營運狀況（實際欄位依系統版本）。</div>
             </figcaption>
           </figure>
 
           <figure class="screen-card">
-            <img src="/system-sales/screens/admin-bookings.png" alt="訂房列表示意圖" loading="lazy">
+            <button type="button" class="screen-thumb" data-lightbox-src="/system-sales/screens/admin-bookings.png" data-lightbox-alt="訂房列表示意圖" aria-label="放大檢視：訂房管理">
+              <img src="/system-sales/screens/admin-bookings.png" alt="訂房列表示意圖" loading="lazy">
+            </button>
             <figcaption>
               <div class="screen-title">訂房管理</div>
               <div class="screen-desc">列表搜尋/篩選、查看訂單細節、更新付款/狀態。</div>
@@ -349,7 +353,9 @@
           </figure>
 
           <figure class="screen-card">
-            <img src="/system-sales/screens/admin-room-types.png" alt="房型管理示意圖" loading="lazy">
+            <button type="button" class="screen-thumb" data-lightbox-src="/system-sales/screens/admin-room-types.png" data-lightbox-alt="房型管理示意圖" aria-label="放大檢視：房型／包棟方案管理">
+              <img src="/system-sales/screens/admin-room-types.png" alt="房型管理示意圖" loading="lazy">
+            </button>
             <figcaption>
               <div class="screen-title">房型/包棟方案管理</div>
               <div class="screen-desc">一般訂房管理房型；包棟模式管理包棟方案與價格。</div>
@@ -357,10 +363,12 @@
           </figure>
 
           <figure class="screen-card">
-            <img src="/system-sales/screens/admin-pricing.png" alt="定價設定示意圖" loading="lazy">
+            <button type="button" class="screen-thumb" data-lightbox-src="/system-sales/screens/admin-reports.png" data-lightbox-alt="營運報表示意圖" aria-label="放大檢視：營運報表">
+              <img src="/system-sales/screens/admin-reports.png" alt="營運報表示意圖" loading="lazy">
+            </button>
             <figcaption>
-              <div class="screen-title">定價與設定</div>
-              <div class="screen-desc">平日/假日價格、通知模板、匯款資訊與其他設定集中管理。</div>
+              <div class="screen-title">營運報表</div>
+              <div class="screen-desc">檢視訂房與營收相關統計，依日期範圍匯出或比對趨勢（依系統提供）。</div>
             </figcaption>
           </figure>
         </div>
@@ -548,6 +556,16 @@
     </section>
   </main>
 
+  <div id="screenLightbox" class="screen-lightbox" role="dialog" aria-modal="true" aria-label="圖片放大預覽" hidden>
+    <div class="screen-lightbox__backdrop" data-lightbox-close tabindex="-1"></div>
+    <div class="screen-lightbox__inner">
+      <button type="button" class="screen-lightbox__close" data-lightbox-close aria-label="關閉預覽">
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+      <img id="screenLightboxImg" class="screen-lightbox__img" src="" alt="">
+    </div>
+  </div>
+
   <footer class="footer">
     <div class="container footer-inner">
       <div class="footer-left">
@@ -622,6 +640,46 @@
         window.location.href = `mailto:${adminEmail}?subject=${subject}&body=${body}`;
       });
     }
+
+    const lightbox = document.getElementById('screenLightbox');
+    const lightboxImg = document.getElementById('screenLightboxImg');
+    const screenThumbs = document.querySelectorAll('.screen-thumb');
+
+    const openLightbox = (src, alt) => {
+      if (!lightbox || !lightboxImg) return;
+      lightboxImg.src = src;
+      lightboxImg.alt = alt || '';
+      lightbox.hidden = false;
+      document.body.style.overflow = 'hidden';
+      const closeBtn = lightbox.querySelector('.screen-lightbox__close');
+      if (closeBtn) closeBtn.focus();
+    };
+
+    const closeLightbox = () => {
+      if (!lightbox || !lightboxImg) return;
+      lightbox.hidden = true;
+      lightboxImg.removeAttribute('src');
+      lightboxImg.alt = '';
+      document.body.style.overflow = '';
+    };
+
+    screenThumbs.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const src = btn.getAttribute('data-lightbox-src') || btn.querySelector('img')?.src || '';
+        const alt = btn.getAttribute('data-lightbox-alt') || btn.querySelector('img')?.alt || '';
+        openLightbox(src, alt);
+      });
+    });
+
+    lightbox?.querySelectorAll('[data-lightbox-close]').forEach((el) => {
+      el.addEventListener('click', closeLightbox);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && lightbox && !lightbox.hidden) {
+        closeLightbox();
+      }
+    });
   </script>
 </body>
 </html>
